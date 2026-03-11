@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pondok Pemulihan Papua</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e9ecef; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; transition: 0.3s; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e9ecef; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; }
         img.logo { width: 120px; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
-        button:hover { background-color: #218838; }
-        .strength { font-size: 12px; margin-top: -5px; margin-bottom: 10px; text-align: left; font-weight: bold; }
+        .strength { font-size: 12px; margin-bottom: 10px; text-align: left; font-weight: bold; }
         .weak { color: #dc3545; }
         .strong { color: #28a745; }
         
@@ -19,6 +18,12 @@
         #loading-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 999; flex-direction: column; justify-content: center; align-items: center; }
         .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #ffd700; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-top: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Halaman Laporan (Awalnya Tersembunyi) */
+        #halaman-laporan { display: none; width: 90%; max-width: 600px; background: white; padding: 20px; border-radius: 15px; margin: 20px auto; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #28a745; color: white; }
     </style>
 </head>
 <body>
@@ -26,40 +31,50 @@
 <div id="loading-screen">
     <img src="logo_pondok.png" alt="Logo" class="logo">
     <div class="spinner"></div>
-    <p style="margin-top: 20px; font-weight: bold; color: #555;">Memproses Data...</p>
+    <p id="loading-text">Memproses Data...</p>
 </div>
 
 <div id="auth-form" class="card">
     <img src="logo_pondok.png" alt="Logo" class="logo">
-    <h2 style="color: #333; margin-bottom: 5px;">Pendaftaran</h2>
-    <p style="color: #777; font-size: 14px; margin-bottom: 20px;">Pondok Pemulihan Papua</p>
+    <h2>Pendaftaran</h2>
+    <p style="color: #777;">Pondok Pemulihan Papua</p>
     
     <input type="text" id="nama" placeholder="Nama Lengkap">
-    <input type="text" id="nohp" placeholder="Nomor HP (WhatsApp)">
+    <input type="text" id="nohp" placeholder="Nomor HP">
     <input type="email" id="email" placeholder="Email Aktif">
     <input type="password" id="pass" placeholder="Password" oninput="validatePassword(this.value)">
     <div id="strength-text" class="strength">Kekuatan: -</div>
     
-    <button onclick="prosesLogin()">DAFTAR SEKARANG</button>
-    <p style="font-size: 11px; color: #999; margin-top: 15px;">Admin gunakan akses khusus</p>
+    <button onclick="prosesLogin()">MASUK / DAFTAR</button>
+</div>
+
+<div id="halaman-laporan">
+    <img src="logo_pondok.png" alt="Logo" style="width: 80px;">
+    <h2>Laporan Pembacaan Alkitab</h2>
+    <hr>
+    <p>Selamat datang di sistem informasi laporan.</p>
+    
+    <table>
+        <tr>
+            <th>Hari/Tanggal</th>
+            <th>Jadwal Bacaan</th>
+        </tr>
+        <tr>
+            <td>Senin, 12 Maret</td>
+            <td>Kejadian 1-3</td>
+        </tr>
+    </table>
+    <br>
+    <button onclick="location.reload()" style="background:#666;">Log Out</button>
 </div>
 
 <script>
     function validatePassword(pass) {
         let text = document.getElementById('strength-text');
-        // Syarat: Minimal 8 karakter, 1 Huruf Besar, 1 Angka, 1 Simbol
         let regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-        
-        if (pass.length === 0) {
-            text.innerHTML = "Kekuatan: -";
-            text.className = "strength";
-        } else if (regex.test(pass)) {
-            text.innerHTML = "Kekuatan: **STRONG** (Sangat Baik)";
-            text.className = "strength strong";
-        } else {
-            text.innerHTML = "Kekuatan: **WEAK** (Butuh Huruf Besar, Angka, & Simbol)";
-            text.className = "strength weak";
-        }
+        if (pass.length === 0) { text.innerHTML = "Kekuatan: -"; text.className = "strength"; }
+        else if (regex.test(pass)) { text.innerHTML = "Kekuatan: **STRONG**"; text.className = "strength strong"; }
+        else { text.innerHTML = "Kekuatan: **WEAK**"; text.className = "strength weak"; }
     }
 
     function prosesLogin() {
@@ -67,53 +82,41 @@
         const nohp = document.getElementById('nohp').value;
         const email = document.getElementById('email').value;
         const pass = document.getElementById('pass').value;
-
-        // URL Server Google Apps Script kamu
         const urlServer = "https://script.google.com/macros/s/AKfycbz2lNjzbAuUxxCE0vQpjUr8TvWFx20EtUHgQvg5i5APUhHjy8Iw-rHJpXtqJIm7te6M1Q/exec";
 
-        // Cek Login Admin Khusus
         if (email === "admin@mail.com" && pass === "admin2026") {
-            startLoading("Akses Admin Diterima!");
+            bukaLaporan("Selamat Datang Admin!");
             return;
         }
 
-        if (nama && nohp && email && pass) {
-            startLoading("Mendaftarkan Akun...");
-
-            // Kirim data ke Google Sheets
+        if (nama && email && pass) {
+            tampilkanLoading("Mendaftarkan...");
+            
             fetch(urlServer, {
                 method: 'POST',
-                mode: 'no-cors', // Penting untuk menghindari CORS error di Apps Script
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    "nama": nama,
-                    "nohp": nohp,
-                    "email": email,
-                    "password": pass
-                })
-            })
-            .then(() => {
-                alert("Pendaftaran Berhasil! Data sudah tersimpan di Google Sheets dan email konfirmasi sedang dikirim.");
-                window.location.href = "halaman_laporan.html"; // Pastikan file ini ada di GitHub
-            })
-            .catch(err => {
-                alert("Gagal terhubung ke server. Cek koneksi internet.");
-                document.getElementById('auth-form').style.display = 'block';
-                document.getElementById('loading-screen').style.display = 'none';
-            });
+                mode: 'no-cors',
+                body: JSON.stringify({ "nama": nama, "nohp": nohp, "email": email, "password": pass })
+            }).then(() => {
+                bukaLaporan("Pendaftaran Berhasil!");
+            }).catch(() => alert("Gagal koneksi server"));
         } else {
-            alert("Harap lengkapi semua kolom!");
+            alert("Isi data dengan lengkap!");
         }
     }
 
-    function startLoading(msg) {
+    function tampilkanLoading(pesan) {
         document.getElementById('auth-form').style.display = 'none';
         document.getElementById('loading-screen').style.display = 'flex';
-        // Simulasi loading 3 detik agar user melihat logo & spinner
+        document.getElementById('loading-text').innerText = pesan;
+    }
+
+    function bukaLaporan(pesan) {
+        tampilkanLoading("Membuka Laporan...");
         setTimeout(() => {
-            if(document.getElementById('email').value === "admin@mail.com") {
-                window.location.href = "halaman_laporan.html";
-            }
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('halaman-laporan').style.display = 'block';
+            document.body.style.alignItems = 'flex-start'; // Agar scroll enak
+            if(pesan) alert(pesan);
         }, 3000);
     }
 </script>
