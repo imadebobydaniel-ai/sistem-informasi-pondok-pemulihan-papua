@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Login - Pondok Pemulihan Papua</title>
     <style>
-        /* Mencegah scroll dan memastikan body pas di layar */
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f0f2f5; }
+        /* Memastikan konten berada di tengah tapi tetap punya ruang napas */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background-color: #f0f2f5; 
+            font-family: 'Segoe UI', sans-serif;
+        }
         
         body { 
-            font-family: 'Segoe UI', sans-serif; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
@@ -17,26 +23,24 @@
 
         .card { 
             background: white; 
-            padding: 15px; /* Padding minimalis */
-            border-radius: 15px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
+            padding: 20px 15px; 
+            border-radius: 20px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1); 
             width: 85%; 
             max-width: 300px; 
             text-align: center; 
-            box-sizing: border-box;
+            position: relative; /* Menjaga konteks elemen di dalamnya */
+            z-index: 1;
         }
 
-        /* Logo sangat kecil agar menghemat tempat vertical */
         img.logo { width: 60px; margin-bottom: 5px; } 
-        
-        h2 { color: #333; margin: 0; font-size: 18px; line-height: 1.2; }
+        h2 { color: #333; margin: 0; font-size: 20px; }
         p.subtitle { color: #666; font-size: 11px; margin: 2px 0 10px 0; }
         
-        /* Input dibuat tipis */
         input { 
             width: 100%; 
-            padding: 8px 12px; 
-            margin: 4px 0; 
+            padding: 10px 12px; 
+            margin: 5px 0; 
             border: 1px solid #ddd; 
             border-radius: 8px; 
             box-sizing: border-box; 
@@ -46,32 +50,36 @@
         
         .btn-masuk { 
             width: 100%; 
-            padding: 10px; 
+            padding: 12px; 
             background-color: #007bff; 
             color: white; 
             border: none; 
             border-radius: 8px; 
             cursor: pointer; 
             font-weight: bold; 
-            font-size: 14px; 
-            margin-top: 8px; 
+            font-size: 15px; 
+            margin-top: 10px; 
         }
 
-        .footer-link { margin-top: 10px; font-size: 12px; color: #666; }
+        .footer-link { margin-top: 12px; font-size: 13px; color: #666; }
+        .footer-link a { color: #007bff; font-weight: bold; text-decoration: none; }
+
+        /* PERBAIKAN TOMBOL ADMIN: Area klik lebih besar dan posisi jelas */
+        .admin-area {
+            margin-top: 15px;
+            padding: 10px; /* Memberikan ruang klik ekstra */
+            display: inline-block;
+            cursor: pointer;
+        }
         
-        /* Pintu rahasia admin sangat kecil di bawah */
         .btn-admin { 
             background: none; 
             border: none; 
             color: #ccc; 
-            font-size: 9px; 
-            margin-top: 10px; 
-            cursor: pointer; 
+            font-size: 10px; 
             text-decoration: none;
-            display: inline-block;
+            pointer-events: auto; /* Memastikan bisa diklik */
         }
-
-        #loading { display: none; margin-top: 5px; color: #007bff; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -81,45 +89,43 @@
     <h2>Login</h2>
     <p class="subtitle">Layanan Pondok Pemulihan Papua</p>
     
-    <input type="email" id="email" placeholder="Email">
+    <input type="email" id="email" placeholder="Email Terdaftar">
     <input type="password" id="pass" placeholder="Password">
     
-    <div id="loading">Memeriksa...</div>
     <button class="btn-masuk" onclick="cekLogin()">MASUK</button>
 
     <div class="footer-link">
         Baru? <a href="index.html">Daftar</a>
     </div>
 
-    <button class="btn-admin" onclick="loginAdmin()">[ Admin Portal ]</button>
+    <div class="admin-area" onclick="loginAdmin()">
+        <span class="btn-admin">[ Admin Portal ]</span>
+    </div>
 </div>
 
 <script>
     function loginAdmin() {
         const p = prompt("Password Admin:");
-        if (p === "admin2026") window.location.href = "admin_portal.html";
+        if (p === "admin2026") {
+            window.location.href = "admin_portal.html";
+        } else if (p !== null) {
+            alert("Password Salah!");
+        }
     }
 
     async function cekLogin() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('pass').value;
-        const loader = document.getElementById('loading');
-        const btn = document.querySelector('.btn-masuk');
+        const urlServer = "https://script.google.com/macros/s/AKfycbykw5ra1tq4mJ5JQZm-uumsZLnTnpdcCOGGPa_GlTWK5Xqt0U51pa2aytduIE3Y-VSeIA/exec";
 
         if (!email || !pass) { alert("Isi data!"); return; }
-
-        loader.style.display = "block";
-        btn.disabled = true;
-        
-        const urlServer = "https://script.google.com/macros/s/AKfycbykw5ra1tq4mJ5JQZm-uumsZLnTnpdcCOGGPa_GlTWK5Xqt0U51pa2aytduIE3Y-VSeIA/exec";
 
         try {
             const response = await fetch(`${urlServer}?action=login&email=${email}&pass=${pass}`);
             const result = await response.json();
             if (result.status === "Aktif") window.location.href = "main_menu.html";
             else alert("Status: " + result.status);
-        } catch (err) { alert("Gagal koneksi."); }
-        finally { loader.style.display = "none"; btn.disabled = false; }
+        } catch (err) { alert("Gagal koneksi ke server."); }
     }
 </script>
 </body>
