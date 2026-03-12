@@ -21,7 +21,7 @@
         td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; color: #333; }
         tr:hover { background-color: #f8f9fa; }
 
-        .btn-edit { background-color: #ffc107; color: #212529; padding: 6px 10px; border-radius: 4px; font-size: 12px; }
+        .btn-edit { background-color: #ffc107; color: #212529; padding: 6px 10px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
         .btn-hapus { background-color: #dc3545; color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
@@ -95,11 +95,32 @@
                         <td>${d.jabatan || 'Anggota'}</td>
                         <td>${d.komsel || '-'}</td>
                         <td>
+                            <button class="btn-edit" onclick="bukaFormEdit('${doc.id}', '${d.nama}', '${d.no_hp}', '${d.jabatan}', '${d.komsel}')">Edit</button>
                             <button class="btn-hapus" onclick="hapusUser('${doc.id}')">Hapus</button>
                         </td>
                     </tr>`;
             });
         } catch (e) { alert("Error: " + e.message); }
+    }
+
+    async function bukaFormEdit(id, namaLama, hpLama, jabatanLama, komselLama) {
+        const namaBaru = prompt("Ubah Nama Lengkap:", namaLama);
+        const hpBaru = prompt("Ubah No HP:", hpLama);
+        const jabatanBaru = prompt("Ubah Jabatan (Ketua Komsel/Anggota Komsel):", jabatanLama);
+        const komselBaru = prompt("Ubah Komsel JC (JC 1 - JC 5):", komselLama);
+
+        if (namaBaru && hpBaru) {
+            try {
+                await db.collection("users").doc(id).update({
+                    nama: namaBaru,
+                    no_hp: hpBaru,
+                    jabatan: jabatanBaru,
+                    komsel: komselBaru
+                });
+                alert("Data berhasil diperbarui!");
+                loadUsers();
+            } catch (e) { alert("Gagal update: " + e.message); }
+        }
     }
 
     async function hapusUser(id) {
@@ -113,7 +134,11 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('landscape');
         doc.text("Laporan Database Anggota - Pondok Pemulihan Papua", 14, 15);
-        doc.autoTable({ html: '#userTable', startY: 25, columns: [0, 1, 2, 3, 5, 6] });
+        doc.autoTable({ 
+            html: '#userTable', 
+            startY: 25, 
+            columns: [0, 1, 2, 3, 4, 5, 6] // Menyertakan semua kolom utama ke PDF
+        });
         doc.save("Database_Papua_Lengkap.pdf");
     }
 
