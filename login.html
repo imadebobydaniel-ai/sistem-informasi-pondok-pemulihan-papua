@@ -111,49 +111,49 @@
         }
     }
 
-   async function cekLogin() {
-    const email = document.getElementById('email').value.trim();
-    const pass = document.getElementById('pass').value.trim();
-    const btn = document.querySelector('.btn-masuk');
-    const loader = document.getElementById('loading');
+    async function cekLogin() {
+        const email = document.getElementById('email').value.trim();
+        const pass = document.getElementById('pass').value.trim();
+        const btn = document.querySelector('.btn-masuk');
+        const loader = document.getElementById('loading');
 
-    if (!email || !pass) { alert("Email dan Password harus diisi!"); return; }
+        if (!email || !pass) { alert("Email dan Password harus diisi!"); return; }
 
-    if(loader) loader.style.display = "block";
-    btn.disabled = true;
-    btn.innerText = "MEMPROSES...";
+        if(loader) loader.style.display = "block";
+        btn.disabled = true;
+        btn.innerText = "MEMPROSES...";
 
-    const urlServer = "https://script.google.com/macros/s/AKfycbxOFJcwB311Qcr6GNe6yQ6PZl7OcinjGx3XdFn7Sym-wsA4UZ5b1D7HCaoj2NvuscqREg/exec";
+        const urlServer = "https://script.google.com/macros/s/AKfycbxOFJcwB311Qcr6GNe6yQ6PZl7OcinjGx3XdFn7Sym-wsA4UZ5b1D7HCaoj2NvuscqREg/exec";
 
-    try {
-        const response = await fetch(`${urlServer}?action=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}`);
-        const result = await response.json();
+        try {
+            // Kita tambahkan action=login agar Apps Script tahu apa yang harus dilakukan
+            const response = await fetch(`${urlServer}?action=login&email=${encodeURIComponent(email)}&pass=${encodeURIComponent(pass)}&_cache=${new Date().getTime()}`);
+            const result = await response.json();
 
-        if (result.status === "Aktif") {
-            // --- BAGIAN PENTING: TITIP DATA KE MEMORI ---
-            localStorage.setItem("namaUser", result.nama);
-            localStorage.setItem("jabatanUser", result.jabatan);
-            localStorage.setItem("wilayahUser", result.wilayah);
-            // --------------------------------------------
+            if (result.status === "Aktif") {
+                // SIMPAN DATA KE MEMORI BROWSER
+                localStorage.setItem("namaUser", result.nama);
+                localStorage.setItem("jabatanUser", result.jabatan);
+                localStorage.setItem("wilayahUser", result.wilayah);
 
-            alert("Login Berhasil! Selamat Datang, " + result.nama);
-            window.location.href = "main_menu.html";
-        } else if (result.status === "Pending") {
-            alert("Akun belum AKTIF. Silakan cek email aktivasi kamu.");
-        } else if (result.status === "Nonaktif") {
-            alert("Akses dicabut oleh Admin.");
-        } else {
-            alert("Email atau Password salah!");
+                alert("Login Berhasil! Selamat Datang, " + result.nama);
+                window.location.href = "main_menu.html";
+            } else if (result.status === "Pending") {
+                alert("Akun belum AKTIF. Silakan hubungi Admin atau cek email.");
+            } else if (result.status === "Nonaktif") {
+                alert("Akun Anda telah dinonaktifkan.");
+            } else {
+                alert("Email atau Password salah! (Status: " + result.status + ")");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Gagal terhubung ke server. Pastikan internet aktif.");
+        } finally {
+            if(loader) loader.style.display = "none";
+            btn.disabled = false;
+            btn.innerText = "MASUK";
         }
-    } catch (err) {
-        console.error(err);
-        alert("Gagal terhubung ke server.");
-    } finally {
-        if(loader) loader.style.display = "none";
-        btn.disabled = false;
-        btn.innerText = "MASUK";
     }
-}
 </script>
 
 </body>
