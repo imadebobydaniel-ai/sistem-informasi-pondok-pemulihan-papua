@@ -11,8 +11,15 @@
         h2 { color: #333; margin: 0; font-size: 22px; }
         p.subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; background: #fafafa; }
-        button { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 15px; transition: 0.3s; }
-        button:hover { background-color: #0056b3; }
+        
+        /* Tombol Utama */
+        .btn-masuk { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 15px; transition: 0.3s; }
+        .btn-masuk:hover { background-color: #0056b3; }
+        
+        /* Tombol Admin (Pintu Rahasia) */
+        .btn-admin { background: none; border: none; color: #999; font-size: 11px; margin-top: 20px; cursor: pointer; text-decoration: underline; }
+        .btn-admin:hover { color: #666; }
+
         .footer-link { margin-top: 15px; font-size: 13px; color: #666; }
         #loading { display: none; margin-top: 10px; color: #555; font-size: 13px; font-weight: bold; }
     </style>
@@ -28,32 +35,47 @@
     <input type="password" id="pass" placeholder="Password">
     
     <div id="loading">Memeriksa Database...</div>
-    <button onclick="cekLogin()">MASUK</button>
+    <button class="btn-masuk" onclick="cekLogin()">MASUK</button>
 
     <div class="footer-link">
         Belum punya akun? <a href="index.html">Daftar di sini</a>
     </div>
+
+    <button class="btn-admin" onclick="loginAdmin()">Login Administrator</button>
 </div>
 
 <script>
+    // Fungsi khusus untuk Admin agar tidak perlu ketik email manual
+    function loginAdmin() {
+        const p = prompt("Masukkan Password Master Admin:");
+        if (p === "admin2026") {
+            alert("Akses Admin Diterima!");
+            window.location.href = "admin_portal.html";
+        } else {
+            alert("Password Salah!");
+        }
+    }
+
     async function cekLogin() {
         const email = document.getElementById('email').value;
         const pass = document.getElementById('pass').value;
+        const loader = document.getElementById('loading');
+        const btn = document.querySelector('.btn-masuk');
 
-        // CEK JIKA YANG LOGIN ADALAH ADMIN
+        if (!email || !pass) {
+            alert("Email dan Password tidak boleh kosong!");
+            return;
+        }
+
+        // Logika Admin jika diketik manual di form
         if (email === "admin@pondok.com" && pass === "admin2026") {
-            alert("Selamat Datang Admin!");
             window.location.href = "admin_portal.html";
             return;
         }
 
-        // ... kode login user biasa tetap di bawahnya ...
-    }
-
         loader.style.display = "block";
         btn.disabled = true;
         
-        // GUNAKAN URL WEB APP APPS SCRIPT KAMU
         const urlServer = "https://script.google.com/macros/s/AKfycbykw5ra1tq4mJ5JQZm-uumsZLnTnpdcCOGGPa_GlTWK5Xqt0U51pa2aytduIE3Y-VSeIA/exec";
 
         try {
@@ -64,12 +86,14 @@
                 alert("Login Berhasil!");
                 window.location.href = "main_menu.html";
             } else if (result.status === "Pending") {
-                alert("Akun Anda belum AKTIF. Silakan klik Link Aktivasi di email Anda terlebih dahulu.");
+                alert("Akun Anda belum AKTIF. Silakan aktivasi melalui email.");
+            } else if (result.status === "Nonaktif") {
+                alert("Akun Anda telah dinonaktifkan oleh Admin.");
             } else {
                 alert("Email atau Password salah!");
             }
         } catch (err) {
-            alert("Gagal terhubung ke server. Pastikan internet stabil.");
+            alert("Gagal terhubung ke server.");
         } finally {
             loader.style.display = "none";
             btn.disabled = false;
