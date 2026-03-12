@@ -11,7 +11,24 @@
         img.logo { width: 60px; margin-bottom: 5px; } 
         h2 { color: #333; margin: 0; font-size: 20px; }
         p.subtitle { color: #666; font-size: 11px; margin: 2px 0 10px 0; }
-        input { width: 100%; padding: 10px 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; background: #fafafa; }
+        
+        /* Container untuk input password agar posisi ikon mata bisa diatur */
+        .password-container { position: relative; width: 100%; margin: 5px 0; }
+        
+        input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; background: #fafafa; }
+        
+        /* Gaya untuk ikon mata */
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #999;
+            font-size: 18px;
+            user-select: none;
+        }
+
         .btn-masuk { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 10px; }
         .footer-link { margin-top: 12px; font-size: 13px; color: #666; }
         .admin-area { margin-top: 15px; padding: 10px; cursor: pointer; display: inline-block; }
@@ -29,14 +46,18 @@
     <h2>Login</h2>
     <p class="subtitle">Layanan Pondok Pemulihan Papua</p>
     
-    <input type="email" id="email" placeholder="Email Terdaftar">
-    <input type="password" id="pass" placeholder="Password">
+    <input type="email" id="email" placeholder="Email Terdaftar" style="margin-bottom: 5px;">
+    
+    <div class="password-container">
+        <input type="password" id="pass" placeholder="Password">
+        <span class="toggle-password" onclick="togglePass()">👁️</span>
+    </div>
     
     <div id="loading">MENGHUBUNGKAN...</div>
     <button class="btn-masuk" onclick="cekLogin()">MASUK</button>
 
     <div class="footer-link">
-        Baru? <a href="index.html">Daftar</a>
+        Baru? <a href="index.html">Daftar di sini</a>
     </div>
 
     <div class="admin-area" onclick="openAdminModal()">
@@ -47,13 +68,38 @@
 <div id="adminModal">
     <div class="modal-content">
         <h4 style="margin:0 0 10px 0">Akses Admin</h4>
-        <input type="password" id="adminPass" placeholder="Password Admin">
+        <div class="password-container">
+            <input type="password" id="adminPass" placeholder="Password Admin">
+            <span class="toggle-password" onclick="toggleAdminPass()">👁️</span>
+        </div>
         <button class="btn-masuk" onclick="validasiAdmin()">KONFIRMASI</button>
         <button class="btn-batal" onclick="closeAdminModal()">BATAL</button>
     </div>
 </div>
 
 <script>
+    // --- FUNGSI LIHAT PASSWORD ---
+    function togglePass() {
+        const passInput = document.getElementById("pass");
+        const eyeIcon = document.querySelector(".password-container .toggle-password");
+        if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.innerText = "🔒"; // Berubah jadi gembok saat terlihat
+        } else {
+            passInput.type = "password";
+            eyeIcon.innerText = "👁️";
+        }
+    }
+
+    function toggleAdminPass() {
+        const adminInput = document.getElementById("adminPass");
+        if (adminInput.type === "password") {
+            adminInput.type = "text";
+        } else {
+            adminInput.type = "password";
+        }
+    }
+
     // --- FUNGSI ADMIN ---
     function openAdminModal() { 
         document.getElementById("adminModal").style.display = "flex"; 
@@ -92,7 +138,6 @@
         btn.disabled = true;
         btn.innerText = "MENGHUBUNGKAN...";
 
-        // GANTI URL INI JIKA KAMU MELAKUKAN DEPLOY ULANG (NEW VERSION)
         const urlServer = "https://script.google.com/macros/s/AKfycbxOFJcwB311Qcr6GNe6yQ6PZl7OcinjGx3XdFn7Sym-wsA4UZ5b1D7HCaoj2NvuscqREg/exec";
 
         try {
