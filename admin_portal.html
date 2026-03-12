@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Administrator - Pondok Pemulihan Papua</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; }
-        .admin-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 1200px; margin: auto; overflow-x: auto; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; margin: 0; }
+        .admin-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 1200px; margin: auto; }
         h2 { color: #1c1e21; border-bottom: 2px solid #0084ff; padding-bottom: 10px; margin-top: 0; }
         .action-buttons { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
         
@@ -15,11 +15,13 @@
         .btn-pdf { background-color: #dc3545; }
         .btn-back { background-color: #6c757d; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 1000px; }
+        .table-responsive { overflow-x: auto; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
         th { background-color: #0084ff; color: white; padding: 12px; text-align: left; font-size: 13px; }
-        td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 13px; color: #333; }
         tr:hover { background-color: #f8f9fa; }
-        .btn-hapus { background: none; color: #dc3545; border: 1px solid #dc3545; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-hapus { background: none; color: #dc3545; border: 1px solid #dc3545; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-hapus:hover { background: #dc3545; color: white; }
     </style>
 </head>
 <body>
@@ -34,21 +36,24 @@
         <button class="btn-pdf" onclick="exportKePDF()">📄 Export ke PDF</button>
     </div>
 
-    <table id="userTable">
-        <thead>
-            <tr>
-                <th>Nama Lengkap</th>
-                <th>Alamat</th>
-                <th>No HP</th>
-                <th>Gol. Darah</th>
-                <th>Status</th>
-                <th>Komsel JC</th>
-                <th>Aksi</th>
-            </tr>
-        </thead>
-        <tbody id="userList">
+    <div class="table-responsive">
+        <table id="userTable">
+            <thead>
+                <tr>
+                    <th>Nama Lengkap</th>
+                    <th>Alamat</th>
+                    <th>No HP</th>
+                    <th>Gol. Darah</th>
+                    <th>Status</th>
+                    <th>Komsel JC</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="userList">
+                <tr><td colspan="7" style="text-align:center;">Klik "Refresh Data" untuk memuat...</td></tr>
             </tbody>
-    </table>
+        </table>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -66,17 +71,24 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
 
     async function loadUsers() {
         const userList = document.getElementById("userList");
-        userList.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Sedang memuat data...</td></tr>";
+        userList.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Sedang memuat data dari database...</td></tr>";
 
         try {
             const snapshot = await db.collection("users").get();
             userList.innerHTML = "";
             
+            if (snapshot.empty) {
+                userList.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Tidak ada data ditemukan.</td></tr>";
+                return;
+            }
+
             snapshot.forEach(doc => {
                 const data = doc.data();
                 userList.innerHTML += `
@@ -85,7 +97,7 @@
                         <td>${data.alamat || '-'}</td>
                         <td>${data.no_hp || '-'}</td>
                         <td>${data.gol_darah || '-'}</td>
-                        <td>${data.status_nikah || data.role || 'Anggota'}</td>
+                        <td>${data.status_nikah || 'Anggota'}</td>
                         <td>${data.komsel || '-'}</td>
                         <td>
                             <button class="btn-hapus" onclick="hapusUser('${doc.id}')">Hapus</button>
@@ -94,6 +106,7 @@
                 `;
             });
         } catch (error) {
+            console.error(error);
             alert("Gagal memuat data: " + error.message);
         }
     }
@@ -108,22 +121,28 @@
         doc.autoTable({
             html: '#userTable',
             startY: 25,
-            columns: [0, 1, 2, 3, 4, 5], // Hanya kolom data, tanpa kolom 'Aksi'
+            columns: [0, 1, 2, 3, 4, 5],
             headStyles: { fillColor: [0, 132, 255] },
-            styles: { fontSize: 10 }
+            styles: { fontSize: 9 }
         });
 
-        doc.save("Laporan_Anggota_Lengkap.pdf");
+        doc.save("Data_Anggota_Lengkap_Papua.pdf");
     }
 
     async function hapusUser(id) {
-        if (confirm("Hapus anggota ini dari database?")) {
-            await db.collection("users").doc(id).delete();
-            loadUsers();
+        if (confirm("Hapus anggota ini selamanya?")) {
+            try {
+                await db.collection("users").doc(id).delete();
+                loadUsers();
+            } catch (error) {
+                alert("Gagal menghapus: " + error.message);
+            }
         }
     }
 
-    loadUsers();
+    // Load data otomatis saat halaman terbuka
+    window.onload = loadUsers;
 </script>
+
 </body>
 </html>
