@@ -122,6 +122,7 @@
     }
 
  function prosesLogin() {
+    // Mengambil data dari input
     const data = {
         nama: document.getElementById('nama').value,
         nohp: document.getElementById('nohp').value,
@@ -131,24 +132,38 @@
         pass: document.getElementById('pass').value
     };
 
-    const urlServer = "https://script.google.com/macros/s/AKfycbz4O_2dDBv3CXXVeAWrLwknhbk24eudTOBksa1l8TKmNERVC4AjFmnqKpFTitzZw504Gw/exec"; // Ganti dengan link hasil deploy terbaru
+    // PASTI-KAN GANTI DENGAN LINK HASIL DEPLOY TERBARU KAMU
+    const urlServer = "MASUKKAN_URL_EXEC_BARU_DI_SINI";
 
     if (data.nama && data.wilayah && data.jabatan && data.email && data.pass) {
+        // Cek syarat password (Min 8 karakter, Huruf Besar, Angka, Simbol)
+        let regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!regex.test(data.pass)) {
+            alert("Password belum memenuhi syarat keamanan!");
+            return;
+        }
+
         tampilkanLoading("Mendaftarkan Identitas...");
 
+        // Mengirim data menggunakan URLSearchParams (Cara paling stabil untuk Google Script)
         fetch(urlServer, {
             method: 'POST',
-            mode: 'no-cors', 
+            mode: 'no-cors',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(data).toString()
         })
         .then(() => {
-            alert("Pendaftaran Berhasil dikirim ke sistem!");
+            alert("Pendaftaran Berhasil dikirim!");
             window.location.href = "main_menu.html";
         })
-        .catch(err => alert("Gagal koneksi: " + err));
+        .catch(err => {
+            alert("Gagal koneksi: " + err);
+            location.reload(); // Refresh jika gagal
+        });
     } else {
         alert("Harap lengkapi semua data!");
+    }
+}
     }
 }
     }
@@ -162,6 +177,7 @@
 </script>
 </body>
 </html>
+
 
 
 
