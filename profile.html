@@ -1,28 +1,37 @@
-<div class="reg-form">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Anggota - Pondok Pemulihan Papua</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .reg-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #0084ff; border-bottom: 2px solid #0084ff; padding-bottom: 10px; margin-bottom: 20px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #0084ff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .btn-back { background-color: #6c757d; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="reg-container">
     <h2>Pendaftaran Anggota Baru</h2>
     <input type="email" id="reg-email" placeholder="Email Utama">
-    <input type="password" id="reg-pass" placeholder="Buat Password">
+    <input type="text" id="reg-pass" placeholder="Buat Password">
     <hr>
     <input type="text" id="reg-nama" placeholder="Nama Lengkap Sesuai KTP">
-    <textarea id="reg-alamat" placeholder="Alamat Lengkap di Jayapura"></textarea>
-    
-    <input type="text" id="reg-nohp" placeholder="Nomor HP (WhatsApp)">
+    <input type="text" id="reg-nohp" placeholder="Nomor HP / WhatsApp">
     
     <select id="reg-goldar">
-        <option value="">Pilih Golongan Darah</option>
-        <option value="A">A</option>
-        <option value="B">B</option>
-        <option value="AB">AB</option>
-        <option value="O">O</option>
+        <option value="-">Pilih Golongan Darah</option>
+        <option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
     </select>
 
     <select id="reg-komsel">
-        <option value="">Pilih Komsel JC</option>
-        <option value="JC 1">JC 1</option>
-        <option value="JC 2">JC 2</option>
-        <option value="JC 3">JC 3</option>
-        <option value="JC 4">JC 4</option>
-        <option value="JC 5">JC 5</option>
+        <option value="-">Pilih Komsel JC</option>
+        <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option><option value="JC 3">JC 3</option>
+        <option value="JC 4">JC 4</option><option value="JC 5">JC 5</option>
     </select>
 
     <select id="reg-jabatan">
@@ -31,24 +40,59 @@
     </select>
 
     <button onclick="prosesDaftar()">Daftar & Simpan Profil</button>
+    <button class="btn-back" onclick="window.location.href='index.html'">Kembali ke Login</button>
 </div>
 
-<script>
-async function prosesDaftar() {
-    const data = {
-        email: document.getElementById("reg-email").value,
-        nama: document.getElementById("reg-nama").value,
-        alamat: document.getElementById("reg-alamat").value,
-        no_hp: document.getElementById("reg-nohp").value,
-        gol_darah: document.getElementById("reg-goldar").value,
-        komsel: document.getElementById("reg-komsel").value,
-        jabatan: document.getElementById("reg-jabatan").value
-    };
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-    try {
-        await db.collection("users").add(data);
-        alert("Pendaftaran Berhasil!");
-        window.location.href = "index.html";
-    } catch (e) { alert(e.message); }
-}
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.firebasestorage.app",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    async function prosesDaftar() {
+        const email = document.getElementById("reg-email").value;
+        const password = document.getElementById("reg-pass").value;
+        const nama = document.getElementById("reg-nama").value;
+        const no_hp = document.getElementById("reg-nohp").value;
+        const goldar = document.getElementById("reg-goldar").value;
+        const komsel = document.getElementById("reg-komsel").value;
+        const jabatan = document.getElementById("reg-jabatan").value;
+
+        if(!email || !password || !nama) return alert("Email, Password, dan Nama wajib diisi!");
+
+        try {
+            // 1. Daftarkan di Firebase Authentication (Untuk Login)
+            await auth.createUserWithEmailAndPassword(email, password);
+
+            // 2. Simpan di Firestore (Agar Admin Bisa Baca Password & Data Lain)
+            await db.collection("users").add({
+                nama: nama,
+                email: email,
+                password: password, // BAGIAN PENTING: Agar Admin bisa melihat password
+                no_hp: no_hp,
+                gol_darah: goldar,
+                komsel: komsel,
+                jabatan: jabatan,
+                waktu_daftar: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            alert("Pendaftaran Berhasil! Data sudah masuk ke Dashboard Admin.");
+            window.location.href = 'index.html';
+        } catch (error) {
+            alert("Gagal Daftar: " + error.message);
+        }
+    }
 </script>
+</body>
+</html>
