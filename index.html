@@ -6,194 +6,38 @@
     <title>Login - Pondok Pemulihan Papua</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; position: relative; }
+        .login-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
         .logo { width: 80px; height: 80px; margin-bottom: 10px; border-radius: 50%; }
-        h2 { color: #1c1e21; margin: 0; }
-        p { color: #606770; font-size: 14px; margin-bottom: 20px; }<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <head>
-    <meta charset="UTF-8">
-    <title>Dashboard Administrator</title>
-    <style>
-        /* SEMUA KODE CSS HARUS ADA DI DALAM SINI */
-        body { font-family: 'Segoe UI', sans-serif; ... }
-        .admin-container { ... }
-    </style>
-</head>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; }
-        .admin-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }
-        h2 { color: #1c1e21; border-bottom: 2px solid #0084ff; padding-bottom: 10px; margin-top: 0; }
-        .action-buttons { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-        
-        button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; }
-        .btn-refresh { background-color: #28a745; }
-        .btn-refresh:hover { background-color: #218838; }
-        .btn-pdf { background-color: #dc3545; }
-        .btn-pdf:hover { background-color: #c82333; }
-        .btn-back { background-color: #6c757d; }
-        .btn-back:hover { background-color: #5a6268; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background-color: #0084ff; color: white; padding: 12px; text-align: left; }
-        td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 14px; }
-        tr:hover { background-color: #f8f9fa; }
-    </style>
-</head>
-<body>
-
-<div class="admin-container">
-    <h2>Dashboard Administrator</h2>
-    <p>Kontrol Database User Pondok Pemulihan Papua</p>
-
-    <div class="action-buttons">
-        <button class="btn-back" onclick="window.location.href='index.html'">⬅ Kembali ke Login</button>
-        
-        <button class="btn-refresh" onclick="loadUsers()">🔄 Refresh Data User</button>
-        
-        <button class="btn-pdf" onclick="exportKePDF()">📄 Export ke PDF</button>
-    </div>
-
-    <table id="userTable">
-        <thead>
-            <tr>
-                <th>Nama</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Aksi</th>
-            </tr>
-        </thead>
-        <tbody id="userList">
-            </tbody>
-    </table>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.firebasestorage.app",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Fungsi Mengambil Data User
-    async function loadUsers() {
-        const userList = document.getElementById("userList");
-        userList.innerHTML = "<tr><td colspan='4'>Memuat data...</td></tr>";
-
-        try {
-            const snapshot = await db.collection("users").orderBy("createdAt", "desc").get();
-            userList.innerHTML = "";
-            
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                userList.innerHTML += `
-                    <tr>
-                        <td>${data.nama || '-'}</td>
-                        <td>${data.email || '-'}</td>
-                        <td>${data.role || 'anggota'}</td>
-                        <td><button style="background:none; color:red; border:none; cursor:pointer;" onclick="hapusUser('${doc.id}')">Hapus</button></td>
-                    </tr>
-                `;
-            });
-        } catch (error) {
-            console.error("Error: ", error);
-            alert("Gagal mengambil data: " + error.message);
-        }
-    }
-
-    // Fungsi Export PDF
-    function exportKePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        doc.text("Daftar Anggota Pondok Pemulihan Papua", 14, 15);
-        
-        doc.autoTable({
-            html: '#userTable',
-            startY: 25,
-            columns: [
-                { header: 'Nama', dataKey: 'nama' },
-                { header: 'Email', dataKey: 'email' },
-                { header: 'Status', dataKey: 'status' }
-            ],
-            // Kita kecualikan kolom 'Aksi' dari PDF
-            didParseCell: function (data) {
-                if (data.column.index === 3) {
-                    data.cell.text = ''; 
-                }
-            }
-        });
-
-        doc.save("Data_Anggota_PP_Papua.pdf");
-    }
-
-    // Jalankan load data saat halaman dibuka
-    loadUsers();
-</script>
-
-</body>
-</html>
-        
-        /* Container untuk Input Password & Mata */
+        h2 { color: #1c1e21; margin: 0; border-bottom: 2px solid #0084ff; padding-bottom: 8px; display: inline-block; margin-bottom: 15px; }
+        p { color: #606770; font-size: 14px; margin-bottom: 20px; }
         .password-box { position: relative; width: 100%; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #dddfe2; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        
         .toggle-password { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #606770; font-size: 18px; user-select: none; }
-
         button { width: 100%; padding: 12px; background-color: #0084ff; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background-color: #0073e6; }
-
-        /* Tombol Admin */
         .admin-btn { background-color: #dc3545; margin-top: 15px; }
-        .admin-btn:hover { background-color: #a71d2a; }
-
         .footer-link { margin-top: 20px; font-size: 13px; color: #606770; }
         .footer-link a { color: #0084ff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
-
 <div class="login-container">
     <img src="logo_pondok.png" alt="Logo" class="logo">
     <h2>Masuk Aplikasi</h2>
     <p>Gunakan Email & Password Anda</p>
-
     <input type="email" id="email" placeholder="Alamat Email">
-    
-    <div class="password-box" style="position: relative;">
-    <input type="password" id="password" placeholder="Kata Sandi">
-    <span class="toggle-password" onclick="togglePassword()" style="position: absolute; right: 10px; top: 35%;">👁️</span>
-</div>
-
+    <div class="password-box">
+        <input type="password" id="password" placeholder="Kata Sandi">
+        <span class="toggle-password" onclick="togglePassword()">👁️</span>
+    </div>
     <button type="button" onclick="prosesLogin()">Masuk Sekarang</button>
-
-    <button type="button" class="admin-btn" onclick="aksesAdmin()">
-        Akses Administrator
-    </button>
-
+    <button type="button" class="admin-btn" onclick="aksesAdmin()">Akses Administrator</button>
     <div class="footer-link">
         Belum punya akun? <br>
         <a href="profile.html">Daftar Anggota Baru</a>
     </div>
 </div>
-
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -203,53 +47,24 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-
-    // Fungsi Intip Password
     function togglePassword() {
         const passInput = document.getElementById("password");
-        const eyeIcon = document.querySelector(".toggle-password");
-        if (passInput.type === "password") {
-            passInput.type = "text";
-            eyeIcon.textContent = "🙈"; 
-        } else {
-            passInput.type = "password";
-            eyeIcon.textContent = "👁️";
-        }
+        passInput.type = passInput.type === "password" ? "text" : "password";
     }
-
-    // Fungsi Akses Admin dengan Password khusus
     function aksesAdmin() {
-        const inputPass = prompt("Masukkan Password Administrator:");
-        if (inputPass === "admin2026") {
+        if (prompt("Masukkan Password Administrator:") === "admin2026") {
             window.location.href = 'admin_portal.html';
-        } else if (inputPass !== null) {
-            alert("Password Salah! Akses ditolak.");
-        }
+        } else { alert("Password Salah!"); }
     }
-
     function prosesLogin() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
-
-        if (!email || !password) {
-            alert("Harap isi Email dan Password!");
-            return;
-        }
-
         auth.signInWithEmailAndPassword(email, password)
-        .then(() => {
-            window.location.href = "main_menu.html";
-        })
-        .catch((error) => {
-            alert("Gagal masuk: " + error.message);
-        });
+            .then(() => { window.location.href = "main_menu.html"; })
+            .catch((error) => { alert("Gagal masuk: " + error.message); });
     }
 </script>
-
 </body>
 </html>
-
-
