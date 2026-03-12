@@ -1,30 +1,87 @@
-<div class="table-responsive">
-    <table id="userTable">
-        <thead>
-            <tr>
-                <th>Nama Lengkap</th>
-                <th>Email</th>
-                <th>Password</th> <th>No HP</th>
-                <th>Gol. Darah</th>
-                <th>Jabatan Komsel</th> <th>Komsel JC</th>
-                <th>Aksi</th>
-            </tr>
-        </thead>
-        <tbody id="userList">
-            </tbody>
-    </table>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Administrator - Pondok Pemulihan Papua</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); max-width: 1300px; margin: auto; }
+        h2 { color: #333; border-bottom: 3px solid #0084ff; padding-bottom: 10px; margin-bottom: 20px; }
+        .btn-group { margin-bottom: 20px; display: flex; gap: 10px; }
+        
+        button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-back { background: #6c757d; color: white; }
+        .btn-refresh { background: #28a745; color: white; }
+        .btn-pdf { background: #dc3545; color: white; }
+        
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        th { background-color: #0084ff; color: white; padding: 15px; text-align: left; font-size: 14px; }
+        td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; color: #444; }
+        tr:hover { background-color: #f9f9f9; }
+        
+        .btn-edit { background: #ffc107; color: #212529; padding: 6px 12px; border-radius: 4px; margin-right: 5px; }
+        .btn-hapus { background: #dc3545; color: white; padding: 6px 12px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Dashboard Administrator</h2>
+    <p>Database Lengkap Anggota Pondok Pemulihan Papua</p>
+
+    <div class="btn-group">
+        <button class="btn-back" onclick="window.location.href='index.html'">← Kembali</button>
+        <button class="btn-refresh" onclick="loadUsers()">🔄 Refresh Data</button>
+        <button class="btn-pdf" onclick="exportKePDF()">📄 Export PDF</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="userTable">
+            <thead>
+                <tr>
+                    <th>Nama Lengkap</th>
+                    <th>Email</th>
+                    <th>Password</th>
+                    <th>No HP</th>
+                    <th>Gol. Darah</th>
+                    <th>Jabatan</th>
+                    <th>Komsel</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="userList">
+                </tbody>
+        </table>
+    </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
 <script>
-    // Fungsi loadUsers untuk menyinkronkan data lengkap
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.firebasestorage.app",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     async function loadUsers() {
         const userList = document.getElementById("userList");
-        userList.innerHTML = "<tr><td colspan='8' style='text-align:center;'>Sinkronisasi data...</td></tr>";
+        userList.innerHTML = "<tr><td colspan='8' style='text-align:center;'>Memuat data...</td></tr>";
 
         try {
             const snapshot = await db.collection("users").get();
             userList.innerHTML = "";
-            
             snapshot.forEach(doc => {
                 const data = doc.data();
                 userList.innerHTML += `
@@ -36,30 +93,31 @@
                         <td>${data.gol_darah || '-'}</td>
                         <td>${data.jabatan || 'Anggota'}</td>
                         <td>${data.komsel || '-'}</td>
-                        <td style="display:flex; gap:5px;">
-                            <button class="btn-edit" onclick="bukaEdit('${doc.id}', '${data.nama}', '${data.email}', '${data.password}', '${data.no_hp}', '${data.gol_darah}', '${data.jabatan}', '${data.komsel}')">Edit</button>
+                        <td>
+                            <button class="btn-edit" onclick="alert('Fitur Edit Sedang Disiapkan')">Edit</button>
                             <button class="btn-hapus" onclick="hapusUser('${doc.id}')">Hapus</button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
-        } catch (error) {
-            alert("Gagal sinkronisasi: " + error.message);
+        } catch (e) { alert("Gagal: " + e.message); }
+    }
+
+    async function hapusUser(id) {
+        if(confirm("Hapus data ini?")) {
+            await db.collection("users").doc(id).delete();
+            loadUsers();
         }
     }
 
-    // Update Fungsi Export PDF agar kolom email & jabatan ikut terbaca
     function exportKePDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('landscape');
-        doc.text("Laporan Database Anggota Pondok Pemulihan Papua", 14, 15);
-        
-        doc.autoTable({
-            html: '#userTable',
-            startY: 25,
-            columns: [0, 1, 3, 4, 5, 6], // Mengekspor data penting saja ke PDF
-            headStyles: { fillColor: [0, 132, 255] }
-        });
-        doc.save("Database_Anggota_Papua.pdf");
+        doc.text("Data Anggota Pondok Pemulihan Papua", 14, 15);
+        doc.autoTable({ html: '#userTable', startY: 25, columns: [0, 1, 3, 4, 5, 6] });
+        doc.save("Database_Anggota.pdf");
     }
+
+    window.onload = loadUsers;
 </script>
+</body>
+</html>
