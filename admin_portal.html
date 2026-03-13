@@ -2,16 +2,8 @@
     <div class="modal-content">
         <h3>Edit Data Anggota</h3>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <label>Nama Lengkap:</label>
-                <input type="text" id="editNama">
-            </div>
-            <div>
-                <label>No HP / WhatsApp:</label>
-                <input type="text" id="editHP">
-            </div>
-        </div>
+        <label>Nama Lengkap:</label>
+        <input type="text" id="editNama">
 
         <label>Alamat Email:</label>
         <input type="email" id="editEmail">
@@ -19,26 +11,24 @@
         <label>Password:</label>
         <input type="text" id="editPassword">
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <label>Golongan Darah:</label>
-                <select id="editGolDarah">
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="AB">AB</option>
-                    <option value="O">O</option>
-                </select>
-            </div>
-            <div>
-                <label>Jabatan:</label>
-                <select id="editJabatan">
-                    <option value="Ketua Komsel">Ketua Komsel</option>
-                    <option value="Wakil Ketua">Wakil Ketua</option>
-                    <option value="Anggota Komsel">Anggota Komsel</option>
-                    <option value="Pengerja">Pengerja</option>
-                </select>
-            </div>
-        </div>
+        <label>No HP / WhatsApp:</label>
+        <input type="text" id="editHP">
+
+        <label>Golongan Darah:</label>
+        <select id="editGolDarah">
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="AB">AB</option>
+            <option value="O">O</option>
+        </select>
+        
+        <label>Jabatan:</label>
+        <select id="editJabatan">
+            <option value="Ketua Komsel">Ketua Komsel</option>
+            <option value="Wakil Ketua">Wakil Ketua</option>
+            <option value="Anggota Komsel">Anggota Komsel</option>
+            
+        </select>
 
         <label>Komsel JC:</label>
         <select id="editKomsel">
@@ -49,9 +39,74 @@
             <option value="JC 5">JC 5</option>
         </select>
 
-        <div class="btn-group-modal">
-            <button class="btn-save-act" onclick="simpanPerubahan()">Simpan Perubahan</button>
-            <button class="btn-cancel-act" onclick="tutupModal()">Batal</button>
+        <div class="btn-group-modal" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn-save-act" onclick="simpanPerubahan()" style="background: #0084ff; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer;">Simpan Perubahan</button>
+            <button class="btn-cancel-act" onclick="tutupModal()" style="background: #6c757d; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;">Batal</button>
         </div>
     </div>
 </div>
+
+<script>
+    function toggleSemua(source) {
+        document.querySelectorAll('.pilih-item').forEach(cb => cb.checked = source.checked);
+    }
+
+    function bukaEditTerpilih() {
+        const terpilih = document.querySelectorAll('.pilih-item:checked');
+        
+        if (terpilih.length === 0) {
+            alert("Centang dulu satu data yang mau diedit, Bang!");
+        } else if (terpilih.length > 1) {
+            alert("Editnya jangan borongan, satu-satu saja ya.");
+        } else {
+            const row = terpilih[0].closest('tr');
+            
+            // Ambil data dari tabel ke Modal
+            document.getElementById('editNama').value     = row.cells[1].innerText;
+            document.getElementById('editEmail').value    = row.cells[2].innerText;
+            document.getElementById('editPassword').value = row.cells[3].innerText;
+            document.getElementById('editHP').value       = row.cells[4].innerText;
+            document.getElementById('editGolDarah').value = row.cells[5].innerText;
+            document.getElementById('editJabatan').value  = row.cells[6].innerText;
+            document.getElementById('editKomsel').value   = row.cells[7].innerText;
+            
+            window.rowSedangDiedit = row;
+            document.getElementById('modalEdit').style.display = 'flex';
+        }
+    }
+
+    function tutupModal() { 
+        document.getElementById('modalEdit').style.display = 'none'; 
+    }
+
+    function simpanPerubahan() {
+        if (window.rowSedangDiedit) {
+            const row = window.rowSedangDiedit;
+            
+            // Masukkan balik dari Modal ke Tabel
+            row.cells[1].innerText = document.getElementById('editNama').value;
+            row.cells[2].innerText = document.getElementById('editEmail').value;
+            row.cells[3].innerText = document.getElementById('editPassword').value;
+            row.cells[4].innerText = document.getElementById('editHP').value;
+            row.cells[5].innerText = document.getElementById('editGolDarah').value;
+            row.cells[6].innerText = document.getElementById('editJabatan').value;
+            row.cells[7].innerText = document.getElementById('editKomsel').value;
+            
+            alert("Data Berhasil di-Update!");
+            tutupModal();
+            
+            // Reset Checkbox
+            document.querySelectorAll('.pilih-item').forEach(cb => cb.checked = false);
+            document.getElementById('checkAll').checked = false;
+        }
+    }
+
+    // Fungsi Hapus Tetap Sama
+    function hapusTerpilih() {
+        const terpilih = document.querySelectorAll('.pilih-item:checked');
+        if (terpilih.length === 0) return alert("Pilih data dulu!");
+        if (confirm(`Hapus ${terpilih.length} data ini?`)) {
+            terpilih.forEach(cb => cb.closest('tr').remove());
+        }
+    }
+</script>
