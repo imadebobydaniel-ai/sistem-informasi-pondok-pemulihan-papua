@@ -16,18 +16,27 @@
         .field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
         input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         
-        /* CSS untuk posisi mata di dalam kolom password */
-        .password-wrapper { position: relative; display: flex; align-items: center; }
-        .password-wrapper input { padding-right: 40px; }
+        /* CSS Perbaikan untuk Posisi Mata */
+        .password-wrapper { 
+            position: relative; 
+            display: flex; 
+            align-items: center; 
+            width: 100%;
+        }
+        .password-wrapper input { 
+            padding-right: 45px; /* Memberi ruang agar teks tidak tertutup mata */
+        }
         .eye-icon { 
             position: absolute; 
-            right: 10px; 
+            right: 12px; 
             cursor: pointer; 
-            font-size: 20px; 
-            color: #888; 
+            font-size: 22px; /* Ukuran diperbesar sedikit */
+            color: #333;    /* Warna dipertegas ke Hitam agar kelihatan */
             user-select: none;
             -webkit-user-select: none;
             padding: 5px;
+            z-index: 10;    /* Memastikan mata berada di paling atas */
+            line-height: 1;
         }
 
         .btn-login { width: 100%; padding: 12px; background: #ff003c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
@@ -75,7 +84,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Fungsi Intip Password saat ditekan/hold
     function intip(lihat) {
         const pInput = document.getElementById('login_password');
         if(lihat) {
@@ -86,7 +94,6 @@
     }
 
     async function prosesLogin() {
-        // .trim() akan menghapus spasi kosong di awal/akhir input
         const email = document.getElementById('login_email').value.trim();
         const pass = document.getElementById('login_password').value.trim();
 
@@ -94,7 +101,6 @@
 
         try {
             const userRef = db.collection("users");
-            // Mencari data yang email DAN passwordnya cocok
             const q = await userRef.where("email", "==", email).where("password", "==", pass).get();
 
             if(!q.empty) {
