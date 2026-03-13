@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf-plugin-autotable.min.js"></script>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Administrator</title>
+    <title>Dashboard Administrator - Pondok Pemulihan Papua</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf-plugin-autotable.min.js"></script>
+
     <style>
-        /* DESAIN DASHBOARD ASLI */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
         .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 1200px; margin: auto; }
         h2 { border-bottom: 3px solid #0084ff; padding-bottom: 10px; color: #1c1e21; }
         
@@ -19,34 +19,19 @@
         .btn-refresh { background: #28a745; }
         .btn-pdf { background: #dc3545; }
 
-        /* TABEL LENGKAP */
+        /* TABEL */
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 1000px; }
         th { background: #0084ff; color: white; padding: 12px; text-align: left; }
         td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .btn-edit { background: #ffc107; color: #000; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-        .btn-hapus { background: #dc3545; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-
-        /* DESAIN MODAL FORM EDIT YANG RAPI */
-        .modal { 
-            display: none; position: fixed; z-index: 9999; 
-            left: 0; top: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.6); justify-content: center; align-items: center; 
-        }
-        .modal-content { 
-            background: white; padding: 25px; border-radius: 15px; 
-            width: 90%; max-width: 450px; max-height: 85vh; overflow-y: auto; 
-        }
-        .modal-content label { 
-            display: block; text-align: left; font-size: 13px; font-weight: bold; 
-            margin-top: 15px; margin-bottom: 5px; color: #333; 
-        }
-        .modal-content input, .modal-content select { 
-            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; 
-        }
+        
+        /* MODAL EDIT */
+        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 450px; max-height: 85vh; overflow-y: auto; }
+        .modal-content label { display: block; font-size: 13px; font-weight: bold; margin-top: 15px; margin-bottom: 5px; }
+        .modal-content input, .modal-content select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .btn-group-modal { display: flex; gap: 10px; margin-top: 25px; }
         .btn-save { flex: 1; padding: 12px; background: #0084ff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-close { flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -57,11 +42,11 @@
     <div class="header-tools">
         <button class="btn btn-back" onclick="window.location.href='index.html'">← Kembali</button>
         <button class="btn btn-refresh" onclick="location.reload()">Refresh Data</button>
-        <button class="btn btn-pdf" onclick="exportPDF()">Export PDF</button>
+        <button class="btn btn-pdf" onclick="generatePDF()">Export PDF</button>
     </div>
 
     <div class="table-responsive">
-        <table id="myTable">
+        <table id="tabelAnggota">
             <thead>
                 <tr>
                     <th>Nama Lengkap</th>
@@ -83,10 +68,7 @@
                     <td>AB</td>
                     <td>Anggota Komsel</td>
                     <td>JC 5</td>
-                    <td>
-                        <button class="btn-edit" onclick="bukaModalEdit('123', {nama_lengkap:'Imade boby', email:'imade.bobydaniel@gmail.com', password:'Bukadong821', no_hp:'081283393576', gol_darah:'AB', jabatan:'Anggota Komsel', komsel_jc:'JC 5'})">Edit</button>
-                        <button class="btn-hapus">Hapus</button>
-                    </td>
+                    <td><button onclick="bukaModalEdit()">Edit</button></td>
                 </tr>
             </tbody>
         </table>
@@ -95,121 +77,52 @@
 
 <div id="modalEdit" class="modal">
     <div class="modal-content">
-        <h3 style="color: #0084ff; text-align: center; border-bottom: 2px solid #0084ff; padding-bottom: 10px; margin-top: 0;">Edit Data Anggota</h3>
-        <form id="formEdit">
-            <label>Nama Lengkap:</label>
-            <input type="text" id="editNama" required>
-            <label>Alamat Email:</label>
-            <input type="email" id="editEmail">
-            <label>Password:</label>
-            <input type="text" id="editPassword">
-            <label>Nomor HP / WhatsApp:</label>
-            <input type="text" id="editNoHP">
-            <label>Golongan Darah:</label>
-            <select id="editGolDarah">
-                <option value="">-- Pilih --</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="AB">AB</option>
-                <option value="O">O</option>
-            </select>
-            <label>Jabatan:</label>
-            <select id="editJabatan">
-                <option value="">-- Pilih --</option>
-                <option value="Anggota Komsel">Anggota Komsel</option>
-                <option value="Ketua Komsel">Ketua Komsel</option>
-                <option value="Pengurus">Pengurus</option>
-            </select>
-            <label>Komsel JC:</label>
-            <input type="text" id="editKomsel">
-            <div class="btn-group-modal">
-                <button type="submit" class="btn-save">Simpan Perubahan</button>
-                <button type="button" onclick="tutupModal()" class="btn-close">Batal</button>
-            </div>
-        </form>
+        <h3>Edit Data Anggota</h3>
+        <label>Nama Lengkap:</label>
+        <input type="text" id="editNama">
+        <label>Nomor HP:</label>
+        <input type="text" id="editNoHP">
+        <div class="btn-group-modal">
+            <button class="btn-save" onclick="tutupModal()">Simpan</button>
+            <button style="flex:1" onclick="tutupModal()">Batal</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // Fungsi Export PDF dengan Kop Surat
-    function exportPDF() {
+    // FUNGSI EXPORT PDF TERBARU (LEBIH STABIL)
+    function generatePDF() {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); 
+        const doc = new jsPDF('l', 'mm', 'a4');
 
-        const img = new Image();
-        img.src = 'logo_pondok.png'; 
-
-        img.onload = function() {
-            // Logo
-            doc.addImage(img, 'PNG', 15, 10, 25, 25);
-
-            // Kop Surat
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.text("PONDOK PEMULIHAN PAPUA", 45, 18);
-            
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.text("Alamat: Jayapura, Papua - Indonesia", 45, 24);
-            doc.text("Email: pondokpemulihanpapua@gmail.com | Kontak: 0812-xxxx-xxxx", 45, 29);
-            
-            // Garis Pembatas
-            doc.setLineWidth(0.5);
-            doc.line(15, 38, 282, 38); 
-
-            // Judul Laporan
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("DAFTAR DATA ANGGOTA", 15, 48);
-
-            // Tabel Data (Mengambil ID myTable)
-            doc.autoTable({
-                html: '#myTable',
-                startY: 55,
-                theme: 'striped',
-                headStyles: { fillColor: [0, 132, 255] },
-                styles: { fontSize: 8 },
-                // Kita hilangkan kolom terakhir (Aksi) agar tidak muncul di PDF
-                columns: [
-                    { header: 'Nama Lengkap' },
-                    { header: 'Email' },
-                    { header: 'Password' },
-                    { header: 'No HP' },
-                    { header: 'Gol. Darah' },
-                    { header: 'Jabatan' },
-                    { header: 'Komsel JC' }
-                ]
-            });
-
-            doc.save("Data_Anggota_Pondok_Pemulihan.pdf");
-        };
+        // Menambahkan teks Kop Surat (Tanpa logo dulu agar tidak error jika file gambar belum ada)
+        doc.setFontSize(18);
+        doc.setTextColor(0, 132, 255);
+        doc.text("PONDOK PEMULIHAN PAPUA", 15, 20);
         
-        // Antisipasi jika gambar logo tidak ditemukan/error
-        img.onerror = function() {
-            console.error("Logo tidak ditemukan, mencetak tanpa logo.");
-            doc.setFontSize(18);
-            doc.text("PONDOK PEMULIHAN PAPUA", 15, 18);
-            doc.setLineWidth(0.5);
-            doc.line(15, 30, 282, 30);
-            doc.autoTable({ html: '#myTable', startY: 40 });
-            doc.save("Data_Anggota.pdf");
-        };
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("Daftar Data Anggota Terdaftar", 15, 28);
+        
+        // Garis pemisah
+        doc.setLineWidth(0.5);
+        doc.line(15, 32, 280, 32);
+
+        // Ambil data dari tabel HTML
+        doc.autoTable({
+            html: '#tabelAnggota',
+            startY: 40,
+            theme: 'striped',
+            headStyles: { fillColor: [0, 132, 255] },
+            // Sembunyikan kolom "Aksi" (indeks ke-7) di PDF
+            columns: [0, 1, 2, 3, 4, 5, 6]
+        });
+
+        doc.save("Laporan_Data_Anggota.pdf");
     }
 
-    function bukaModalEdit(id, data) {
-        document.getElementById('editNama').value = data.nama_lengkap || '';
-        document.getElementById('editEmail').value = data.email || '';
-        document.getElementById('editPassword').value = data.password || '';
-        document.getElementById('editNoHP').value = data.no_hp || '';
-        document.getElementById('editGolDarah').value = data.gol_darah || '';
-        document.getElementById('editJabatan').value = data.jabatan || '';
-        document.getElementById('editKomsel').value = data.komsel_jc || '';
-        document.getElementById('modalEdit').style.display = 'flex';
-    }
-
-    function tutupModal() {
-        document.getElementById('modalEdit').style.display = 'none';
-    }
+    function bukaModalEdit() { document.getElementById('modalEdit').style.display = 'flex'; }
+    function tutupModal() { document.getElementById('modalEdit').style.display = 'none'; }
 </script>
 
 </body>
