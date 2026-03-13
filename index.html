@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Pondok Pemulihan Papua</title>
+    <title>Login - Pondok Pemulihan</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <style>
-        /* STRUKTUR ASLI ABANG - TIDAK ADA YANG BERUBAH */
+        /* STRUKTUR ASLI SESUAI INSPECT ELEMENT */
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-container { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
         .logo { width: 100px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto; }
@@ -16,11 +16,11 @@
         .field { margin-bottom: 15px; text-align: left; }
         input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         
-        /* POSISI MATA */
+        /* POSISI MATA (Sesuai Permintaan) */
         .password-wrapper { position: relative; display: flex; align-items: center; }
         .eye-icon { position: absolute; right: 15px; cursor: pointer; font-size: 22px; color: #555; user-select: none; z-index: 10; }
 
-        /* TOMBOL-TOMBOL SESUAI DESAIN ABANG */
+        /* TOMBOL-TOMBOL STRUKTUR ASLI */
         .btn-masuk { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-admin { width: 100%; padding: 12px; background-color: #ff0019; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
         .btn-daftar { width: 100%; padding: 12px; background: none; color: #007bff; border: 1px dashed #007bff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; text-decoration: none; display: block; }
@@ -30,27 +30,35 @@
 
 <div class="login-container">
     <img src="https://imadebobydaniel-ai.github.io/laporan-pembacaan-alkitab-/logo.png" alt="Logo" class="logo">
-    <h2>Pondok Pemulihan Papua</h2>
+    <h2>Pondok Pemulihan</h2>
     
     <div class="field">
-        <input type="email" id="login_email" placeholder="Email Anggota / Admin">
+        <input type="email" id="login_email" placeholder="Email Anggota">
     </div>
 
     <div class="field">
         <div class="password-wrapper">
             <input type="password" id="login_password" placeholder="Password">
-            <span class="eye-icon" onmousedown="intip(true)" onmouseup="intip(false)" ontouchstart="intip(true)" ontouchend="intip(false)">&#128065;</span>
+            <span class="eye-icon" 
+                  onmousedown="intip(true)" 
+                  onmouseup="intip(false)" 
+                  onmouseleave="intip(false)"
+                  ontouchstart="intip(true)" 
+                  ontouchend="intip(false)">
+                &#128065;
+            </span>
         </div>
     </div>
 
     <button class="btn-masuk" onclick="prosesLogin()">Masuk Sekarang</button>
     
-    <button class="btn-admin" onclick="loginAdmin()">Akses Administrator</button>
+    <button class="btn-admin" onclick="aksesAdmin()">Akses Administrator</button>
     
     <a href="daftar.html" class="btn-daftar">Daftar Anggota Baru</a>
 </div>
 
 <script>
+    // Config Firebase Abang
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -62,41 +70,47 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // Fungsi Mata
     function intip(lihat) {
         document.getElementById('login_password').type = lihat ? 'text' : 'password';
     }
 
-    // FUNGSI KHUSUS ADMINISTRATOR
-    function loginAdmin() {
-        const pass = document.getElementById('login_password').value;
+    // FUNGSI KHUSUS AKSES ADMINISTRATOR
+    function aksesAdmin() {
+        const passCheck = document.getElementById('login_password').value;
         
-        if(pass === "admin2026") {
-            alert("Akses Admin Berhasil!");
+        if (passCheck === "admin2026") {
+            alert("Akses Administrator Diterima!");
             window.location.href = "admin_portal.html";
         } else {
             alert("Password Administrator Salah!");
         }
     }
 
-    // FUNGSI LOGIN ANGGOTA SEPERTI BIASA
+    // FUNGSI LOGIN ANGGOTA
     async function prosesLogin() {
         const email = document.getElementById('login_email').value.trim();
         const pass = document.getElementById('login_password').value.trim();
 
-        if(!email || !pass) return alert("Isi email dan password!");
+        if(!email || !pass) return alert("Harap isi email dan password!");
 
         try {
-            const q = await db.collection("users").where("email", "==", email).where("password", "==", pass).get();
+            const q = await db.collection("users")
+                              .where("email", "==", email)
+                              .where("password", "==", pass)
+                              .get();
+
             if(!q.empty) {
                 alert("Login Berhasil!");
                 window.location.href = "admin_portal.html"; 
             } else {
                 alert("Data tidak ditemukan. Silakan daftar jika belum memiliki akun.");
             }
-        } catch(e) { alert("Error: " + e.message); }
+        } catch(e) { 
+            alert("Terjadi kesalahan: " + e.message); 
+        }
     }
 </script>
 
 </body>
 </html>
-
