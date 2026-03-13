@@ -90,40 +90,63 @@
 </div>
 
 <script>
-    // FUNGSI EXPORT PDF TERBARU (LEBIH STABIL)
+    // FUNGSI EXPORT PDF DENGAN PROTEKSI ERROR
     function generatePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4');
+        try {
+            // Cek apakah library sudah terpasang
+            if (!window.jspdf) {
+                alert("Maaf, Library PDF belum siap. Pastikan internet aktif atau coba refresh halaman.");
+                return;
+            }
 
-        // Menambahkan teks Kop Surat (Tanpa logo dulu agar tidak error jika file gambar belum ada)
-        doc.setFontSize(18);
-        doc.setTextColor(0, 132, 255);
-        doc.text("PONDOK PEMULIHAN PAPUA", 15, 20);
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text("Daftar Data Anggota Terdaftar", 15, 28);
-        
-        // Garis pemisah
-        doc.setLineWidth(0.5);
-        doc.line(15, 32, 280, 32);
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
 
-        // Ambil data dari tabel HTML
-        doc.autoTable({
-            html: '#tabelAnggota',
-            startY: 40,
-            theme: 'striped',
-            headStyles: { fillColor: [0, 132, 255] },
-            // Sembunyikan kolom "Aksi" (indeks ke-7) di PDF
-            columns: [0, 1, 2, 3, 4, 5, 6]
-        });
+            // 1. Teks Kop Surat Langsung (Tanpa nunggu Gambar agar tidak macet)
+            doc.setFontSize(22);
+            doc.setTextColor(0, 132, 255);
+            doc.text("PONDOK PEMULIHAN PAPUA", 15, 20);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text("Laporan Data Anggota Terdaftar", 15, 28);
+            
+            doc.setLineWidth(0.5);
+            doc.line(15, 32, 280, 32);
 
-        doc.save("Laporan_Data_Anggota.pdf");
+            // 2. Ambil Data Tabel
+            // Kita pakai cara manual ambil ID agar lebih 'galak' ke browser
+            doc.autoTable({
+                html: '#tabelAnggota',
+                startY: 40,
+                theme: 'grid',
+                headStyles: { fillColor: [0, 132, 255] },
+                styles: { fontSize: 8 },
+                // Ambil kolom 0 sampai 6 saja (Aksi di kolom 7 dibuang)
+                columns: [
+                    { header: 'Nama' },
+                    { header: 'Email' },
+                    { header: 'Pass' },
+                    { header: 'WhatsApp' },
+                    { header: 'Gol' },
+                    { header: 'Jabatan' },
+                    { header: 'Komsel' }
+                ]
+            });
+
+            // 3. Simpan
+            doc.save("Data_Anggota_PPP.pdf");
+            alert("PDF Berhasil Dibuat!");
+
+        } catch (error) {
+            console.error(error);
+            alert("Terjadi kesalahan teknis: " + error.message);
+        }
     }
 
+    // Fungsi pendukung lainnya tetap ada
     function bukaModalEdit() { document.getElementById('modalEdit').style.display = 'flex'; }
     function tutupModal() { document.getElementById('modalEdit').style.display = 'none'; }
 </script>
-
 </body>
 </html>
