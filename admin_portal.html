@@ -14,11 +14,11 @@
         h2 { border-bottom: 3px solid #0084ff; padding-bottom: 10px; color: #1c1e21; margin-top: 0; }
         
         .header-tools { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .btn { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; font-size: 14px; text-decoration: none; }
+        .btn { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; font-size: 14px; text-decoration: none; display: flex; align-items: center; }
         .btn-back { background: #6c757d; }
         .btn-refresh { background: #28a745; }
         .btn-pdf { background: #dc3545; }
-        .btn-edit-top { background: #ffc107; color: #000; }
+        .btn-edit-top { background: #ffc107; color: #000; } /* Tombol Edit Kuning */
         .btn-danger { background: #ff4757; }
 
         .table-responsive { width: 100%; overflow-x: auto; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; }
@@ -28,10 +28,13 @@
         
         input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
-        /* Modal */
+        /* Modal Edit */
         .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; }
-        .modal-content input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
+        .modal-content h3 { margin-top: 0; color: #1c1e21; }
+        .modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 13px; }
+        .modal-content input, .modal-content select { width: 100%; padding: 10px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn-save { background: #0084ff; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -72,6 +75,16 @@
                     <td>Anggota Komsel</td>
                     <td>JC 5</td>
                 </tr>
+                <tr>
+                    <td><input type="checkbox" class="pilih-item"></td>
+                    <td>Budi Santoso</td>
+                    <td>budi@gmail.com</td>
+                    <td>User123</td>
+                    <td>08123456789</td>
+                    <td>O</td>
+                    <td>Ketua Komsel</td>
+                    <td>JC 1</td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -80,49 +93,96 @@
 <div id="modalEdit" class="modal">
     <div class="modal-content">
         <h3>Edit Data Anggota</h3>
-        <input type="text" id="editNama" placeholder="Nama Lengkap">
-        <input type="text" id="editHP" placeholder="No HP">
-        <button class="btn btn-refresh" style="width: 100%;" onclick="simpanPerubahan()">Simpan Perubahan</button>
-        <button class="btn btn-back" style="width: 100%; margin-top: 10px;" onclick="tutupModal()">Batal</button>
+        <label>Nama Lengkap:</label>
+        <input type="text" id="editNama">
+        
+        <label>Nomor HP / WhatsApp:</label>
+        <input type="text" id="editHP">
+        
+        <label>Jabatan:</label>
+        <select id="editJabatan">
+            <option value="Ketua Komsel">Ketua Komsel</option>
+            <option value="Wakil Ketua">Wakil Ketua</option>
+            <option value="Anggota Komsel">Anggota Komsel</option>
+        </select>
+
+        <label>Komsel JC:</label>
+        <select id="editKomsel">
+            <option value="JC 1">JC 1</option>
+            <option value="JC 2">JC 2</option>
+            <option value="JC 3">JC 3</option>
+            <option value="JC 4">JC 4</option>
+            <option value="JC 5">JC 5</option>
+        </select>
+
+        <button class="btn-save" onclick="simpanPerubahan()">Simpan Perubahan</button>
+        <button class="btn-back" style="width: 100%; margin-top: 10px; border:none; padding:10px; border-radius:8px;" onclick="tutupModal()">Batal</button>
     </div>
 </div>
 
 <script>
+    // 1. Logika Checkbox
     function toggleSemua(source) {
         document.querySelectorAll('.pilih-item').forEach(cb => cb.checked = source.checked);
     }
 
-    // LOGIKA EDIT TERPILIH (MAKSIMAL 1)
+    // 2. Logika EDIT TERPILIH (Syarat: Harus tepat 1)
     function bukaEditTerpilih() {
         const terpilih = document.querySelectorAll('.pilih-item:checked');
         
         if (terpilih.length === 0) {
-            alert("Silakan centang satu data yang ingin diedit!");
+            alert("Pilih satu data yang ingin diedit, Bang!");
         } else if (terpilih.length > 1) {
-            alert("Maaf Bang, edit hanya bisa satu-satu. Tolong centang 1 saja.");
+            alert("Maaf, edit tidak bisa masal. Centang satu data saja ya.");
         } else {
+            // Ambil baris yang dicentang
             const row = terpilih[0].closest('tr');
+            
+            // Masukkan data lama ke dalam input modal
             document.getElementById('editNama').value = row.cells[1].innerText;
             document.getElementById('editHP').value = row.cells[4].innerText;
+            document.getElementById('editJabatan').value = row.cells[6].innerText;
+            document.getElementById('editKomsel').value = row.cells[7].innerText;
+            
+            // Simpan referensi baris yang sedang diedit agar bisa diupdate nanti
+            window.rowSedangDiedit = row;
+            
             document.getElementById('modalEdit').style.display = 'flex';
         }
     }
 
     function tutupModal() { document.getElementById('modalEdit').style.display = 'none'; }
-    function simpanPerubahan() { alert("Perubahan disimpan!"); tutupModal(); }
 
+    function simpanPerubahan() {
+        if (window.rowSedangDiedit) {
+            const row = window.rowSedangDiedit;
+            // Update data di tabel secara langsung
+            row.cells[1].innerText = document.getElementById('editNama').value;
+            row.cells[4].innerText = document.getElementById('editHP').value;
+            row.cells[6].innerText = document.getElementById('editJabatan').value;
+            row.cells[7].innerText = document.getElementById('editKomsel').value;
+            
+            alert("Data berhasil diperbarui!");
+            tutupModal();
+            // Hilangkan centang setelah edit selesai
+            document.querySelectorAll('.pilih-item').forEach(cb => cb.checked = false);
+            document.getElementById('checkAll').checked = false;
+        }
+    }
+
+    // 3. Logika Hapus
     function hapusTerpilih() {
         const terpilih = document.querySelectorAll('.pilih-item:checked');
-        if (terpilih.length === 0) return alert("Pilih data dulu!");
-        if (confirm("Hapus data terpilih?")) {
+        if (terpilih.length === 0) return alert("Pilih data yang mau dihapus!");
+        if (confirm(`Yakin mau hapus ${terpilih.length} data ini?`)) {
             terpilih.forEach(cb => cb.closest('tr').remove());
         }
     }
 
-    // LOGIKA PDF (DIPERKUAT)
+    // 4. Logika PDF (Sesuai yang sudah berhasil)
     function eksporPDF() {
         const selected = document.querySelectorAll('.pilih-item:checked');
-        if (selected.length === 0) return alert("Centang dulu datanya, Bang!");
+        if (selected.length === 0) return alert("Centang dulu datanya!");
 
         try {
             const { jsPDF } = window.jspdf;
@@ -134,7 +194,7 @@
                 rows.push([tr.cells[1].innerText, tr.cells[2].innerText, tr.cells[3].innerText, tr.cells[4].innerText, tr.cells[5].innerText, tr.cells[6].innerText, tr.cells[7].innerText]);
             });
 
-            doc.text("DATA ANGGOTA TERPILIH", 14, 15);
+            doc.text("LAPORAN ANGGOTA TERPILIH", 14, 15);
             doc.autoTable({
                 head: [['Nama', 'Email', 'Password', 'No HP', 'Gol', 'Jabatan', 'Komsel']],
                 body: rows,
@@ -144,7 +204,7 @@
             });
             doc.save("Laporan_Admin.pdf");
         } catch (e) {
-            alert("PDF Gagal: Pastikan laptop terhubung internet untuk memuat library PDF.");
+            alert("Error PDF: " + e.message);
         }
     }
 </script>
