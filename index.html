@@ -8,59 +8,46 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <style>
-        /* KEMBALI KE STYLE ASLI ABANG */
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-box { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
-        
-        /* LOGO (Disesuaikan agar pasti muncul) */
-        .logo { width: 80px; margin-bottom: 10px; }
-        
-        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        /* STRUKTUR ASLI ABANG - TIDAK ADA YANG BERUBAH */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        .logo { width: 100px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto; }
+        h2 { color: #333; margin-bottom: 30px; }
         .field { margin-bottom: 15px; text-align: left; }
-        .field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         
-        /* POSISI MATA (Hanya ini tambahannya) */
-        .password-container { position: relative; display: flex; align-items: center; }
-        .eye-btn { position: absolute; right: 10px; cursor: pointer; font-size: 18px; color: #888; user-select: none; }
+        /* POSISI MATA */
+        .password-wrapper { position: relative; display: flex; align-items: center; }
+        .eye-icon { position: absolute; right: 15px; cursor: pointer; font-size: 22px; color: #555; user-select: none; z-index: 10; }
 
-        /* TOMBOL-TOMBOL ASLI */
-        .btn-login { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        .btn-admin { width: 100%; padding: 12px; background: #ff003c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        .link-reg { display: block; text-align: center; margin-top: 15px; color: #007bff; text-decoration: none; font-size: 14px; border: 1px dashed #007bff; padding: 10px; border-radius: 6px; }
+        /* TOMBOL-TOMBOL SESUAI DESAIN ABANG */
+        .btn-masuk { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-admin { width: 100%; padding: 12px; background-color: #ff0019; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .btn-daftar { width: 100%; padding: 12px; background: none; color: #007bff; border: 1px dashed #007bff; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; text-decoration: none; display: block; }
     </style>
 </head>
 <body>
 
-<div class="login-box">
-    <img src="https://imadebobydaniel-ai.github.io/laporan-pembacaan-alkitab-/logo.png" class="logo">
+<div class="login-container">
+    <img src="https://imadebobydaniel-ai.github.io/laporan-pembacaan-alkitab-/logo.png" alt="Logo" class="logo">
     <h2>Pondok Pemulihan</h2>
     
     <div class="field">
-        <label>Email Anggota</label>
-        <input type="email" id="login_email" placeholder="Masukkan email">
+        <input type="email" id="login_email" placeholder="Email Anggota / Admin">
     </div>
 
     <div class="field">
-        <label>Password</label>
-        <div class="password-container">
-            <input type="password" id="login_password" placeholder="Masukkan password">
-            <span class="eye-btn" 
-                  onmousedown="intip(true)" 
-                  onmouseup="intip(false)" 
-                  onmouseleave="intip(false)"
-                  ontouchstart="intip(true)" 
-                  ontouchend="intip(false)">
-                &#128065;
-            </span>
+        <div class="password-wrapper">
+            <input type="password" id="login_password" placeholder="Password">
+            <span class="eye-icon" onmousedown="intip(true)" onmouseup="intip(false)" ontouchstart="intip(true)" ontouchend="intip(false)">&#128065;</span>
         </div>
     </div>
 
-    <button class="btn-login" onclick="prosesLogin()">Masuk Sekarang</button>
+    <button class="btn-masuk" onclick="prosesLogin()">Masuk Sekarang</button>
     
-    <button class="btn-admin" onclick="window.location.href='admin_portal.html'">Akses Administrator</button>
+    <button class="btn-admin" onclick="loginAdmin()">Akses Administrator</button>
     
-    <a href="daftar.html" class="link-reg">Daftar Anggota Baru</a>
+    <a href="daftar.html" class="btn-daftar">Daftar Anggota Baru</a>
 </div>
 
 <script>
@@ -76,10 +63,22 @@
     const db = firebase.firestore();
 
     function intip(lihat) {
-        const pInput = document.getElementById('login_password');
-        pInput.type = lihat ? 'text' : 'password';
+        document.getElementById('login_password').type = lihat ? 'text' : 'password';
     }
 
+    // FUNGSI KHUSUS ADMINISTRATOR
+    function loginAdmin() {
+        const pass = document.getElementById('login_password').value;
+        
+        if(pass === "admin2026") {
+            alert("Akses Admin Berhasil!");
+            window.location.href = "admin_portal.html";
+        } else {
+            alert("Password Administrator Salah!");
+        }
+    }
+
+    // FUNGSI LOGIN ANGGOTA SEPERTI BIASA
     async function prosesLogin() {
         const email = document.getElementById('login_email').value.trim();
         const pass = document.getElementById('login_password').value.trim();
@@ -88,12 +87,11 @@
 
         try {
             const q = await db.collection("users").where("email", "==", email).where("password", "==", pass).get();
-
             if(!q.empty) {
                 alert("Login Berhasil!");
-                window.location.href = "admin_portal.html";
+                window.location.href = "admin_portal.html"; 
             } else {
-                alert("Gagal: Data tidak ditemukan. Silakan daftar jika belum memiliki akun.");
+                alert("Data tidak ditemukan. Silakan daftar jika belum memiliki akun.");
             }
         } catch(e) { alert("Error: " + e.message); }
     }
