@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Pondok Pemulihan</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <style>
+        /* CSS ASLI MILIK ABANG (TIDAK BERUBAH) */
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .login-box { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; margin-bottom: 20px; }
@@ -17,26 +16,17 @@
         .field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
         input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
         
-        /* 2. CSS agar mata berada di dalam kotak input */
-        .password-wrapper { 
-            position: relative; 
-            display: flex; 
-            align-items: center; 
-        }
-        .password-wrapper input { 
-            padding-right: 40px; /* beri ruang agar teks tidak tertutup icon */
-        }
-        .eye-btn { 
+        /* TAMBAHAN SEDIKIT UNTUK POSISI MATA (TANPA MERUSAK STRUKTUR) */
+        .password-container { position: relative; display: flex; align-items: center; }
+        .eye-toggle { 
             position: absolute; 
-            right: 12px; 
+            right: 10px; 
             cursor: pointer; 
+            font-size: 20px; 
             color: #888; 
-            font-size: 16px;
-            user-select: none; 
-            -webkit-user-select: none;
+            user-select: none;
             padding: 5px;
         }
-        .eye-btn:hover { color: #333; }
 
         .btn-login { width: 100%; padding: 12px; background: #ff003c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
         .link-reg { display: block; text-align: center; margin-top: 15px; color: #666; text-decoration: none; font-size: 14px; }
@@ -54,16 +44,16 @@
 
     <div class="field">
         <label>Password</label>
-        <div class="password-wrapper">
+        <div class="password-container">
             <input type="password" id="login_password" placeholder="Masukkan password">
             
-            <span class="eye-btn" 
+            <span class="eye-toggle" 
                   onmousedown="intip(true)" 
                   onmouseup="intip(false)" 
                   onmouseleave="intip(false)"
                   ontouchstart="intip(true)" 
                   ontouchend="intip(false)">
-                <i class="fas fa-eye" id="icon_mata"></i>
+                &#128065;
             </span>
         </div>
     </div>
@@ -73,6 +63,7 @@
 </div>
 
 <script>
+    // KONFIGURASI FIREBASE ASLI (TIDAK BERUBAH)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -84,27 +75,27 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Fungsi Logika Intip Password
+    // FUNGSI INTIP PASSWORD (HOLD TO REVEAL)
     function intip(lihat) {
         const pInput = document.getElementById('login_password');
-        const pIcon = document.getElementById('icon_mata');
         if(lihat) {
             pInput.type = 'text';
-            pIcon.classList.replace('fa-eye', 'fa-eye-slash');
         } else {
             pInput.type = 'password';
-            pIcon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
 
+    // FUNGSI LOGIN ASLI (TIDAK BERUBAH)
     async function prosesLogin() {
         const email = document.getElementById('login_email').value;
         const pass = document.getElementById('login_password').value;
+
         if(!email || !pass) return alert("Isi email dan password!");
 
         try {
             const userRef = db.collection("users");
             const q = await userRef.where("email", "==", email).where("password", "==", pass).get();
+
             if(!q.empty) {
                 alert("Login Berhasil!");
                 window.location.href = "admin_portal.html";
