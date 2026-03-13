@@ -1,5 +1,90 @@
-<div id="modalEdit" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); align-items: center; justify-content: center;">
-    <div style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: #333;">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Admin - Pondok Pemulihan Papua</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf-plugin-autotable.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #1c1e21; }
+        .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 1300px; margin: auto; }
+        h2 { border-bottom: 3px solid #0084ff; padding-bottom: 10px; margin-top: 0; }
+        
+        /* Baris Tombol */
+        .header-tools { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; font-size: 14px; text-decoration: none; }
+        .btn-refresh { background: #28a745; }
+        .btn-pdf { background: #dc3545; }
+        .btn-edit { background: #ffc107; color: #000; }
+        .btn-danger { background: #ff4757; }
+
+        /* Tabel */
+        .table-responsive { width: 100%; overflow-x: auto; border: 1px solid #ddd; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th { background: #0084ff; color: white; padding: 15px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        tr:hover { background-color: #f9f9f9; }
+
+        /* MODAL CSS - AGAR TIDAK BLANK */
+        .modal-overlay {
+            display: none; 
+            position: fixed; 
+            z-index: 9999; 
+            left: 0; top: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); 
+            align-items: center; 
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Dashboard Administrator</h2>
+    
+    <div class="header-tools">
+        <button class="btn btn-refresh" onclick="location.reload()">Refresh Data</button>
+        <button class="btn btn-pdf" onclick="eksporPDF()">Export PDF</button>
+        <button class="btn btn-edit" onclick="bukaEditTerpilih()">Edit Terpilih</button>
+        <button class="btn btn-danger" onclick="hapusTerpilih()">Hapus Terpilih</button>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px;"><input type="checkbox" id="checkAll" onclick="toggleSemua(this)"></th>
+                    <th>Nama Lengkap</th>
+                    <th>Email</th>
+                    <th>Password</th>
+                    <th>No HP</th>
+                    <th>Gol. Darah</th>
+                    <th>Jabatan</th>
+                    <th>Komsel JC</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td><input type="checkbox" class="pilih-item"></td>
+                    <td>Imade boby</td>
+                    <td>imade.bobydaniel@gmail.com</td>
+                    <td>Bukadong821</td>
+                    <td>081283393576</td>
+                    <td>AB</td>
+                    <td>Anggota Komsel</td>
+                    <td>JC 5</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalEdit" class="modal-overlay">
+    <div style="background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: #333; position: relative;">
         <h3 style="margin-top: 0; border-bottom: 2px solid #0084ff; padding-bottom: 10px;">Edit Data Anggota</h3>
         
         <div style="margin-bottom: 12px;">
@@ -50,3 +135,68 @@
         <button onclick="tutupModal()" style="width:100%; background:#6c757d; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer;">Batal</button>
     </div>
 </div>
+
+<script>
+    // Fungsi Checklist Semua
+    function toggleSemua(source) {
+        document.querySelectorAll('.pilih-item').forEach(cb => cb.checked = source.checked);
+    }
+
+    // Fungsi Buka Modal & Ambil Data dari Baris Tabel
+    function bukaEditTerpilih() {
+        const terpilih = document.querySelectorAll('.pilih-item:checked');
+        if (terpilih.length !== 1) return alert("Pilih satu data saja!");
+
+        const row = terpilih[0].closest('tr');
+        document.getElementById('editNama').value = row.cells[1].innerText;
+        document.getElementById('editEmail').value = row.cells[2].innerText;
+        document.getElementById('editPassword').value = row.cells[3].innerText;
+        document.getElementById('editHP').value = row.cells[4].innerText;
+        document.getElementById('editGolDarah').value = row.cells[5].innerText;
+        document.getElementById('editJabatan').value = row.cells[6].innerText;
+        document.getElementById('editKomsel').value = row.cells[7].innerText;
+
+        window.rowTarget = row;
+        document.getElementById('modalEdit').style.display = 'flex';
+    }
+
+    // Simpan hasil edit ke baris tabel
+    function simpanPerubahan() {
+        if (!window.rowTarget) return;
+        const row = window.rowTarget;
+        row.cells[1].innerText = document.getElementById('editNama').value;
+        row.cells[2].innerText = document.getElementById('editEmail').value;
+        row.cells[3].innerText = document.getElementById('editPassword').value;
+        row.cells[4].innerText = document.getElementById('editHP').value;
+        row.cells[5].innerText = document.getElementById('editGolDarah').value;
+        row.cells[6].innerText = document.getElementById('editJabatan').value;
+        row.cells[7].innerText = document.getElementById('editKomsel').value;
+
+        alert("Berhasil diperbarui!");
+        tutupModal();
+    }
+
+    function tutupModal() {
+        document.getElementById('modalEdit').style.display = 'none';
+        document.querySelectorAll('.pilih-item').forEach(c => c.checked = false);
+    }
+
+    function hapusTerpilih() {
+        const terpilih = document.querySelectorAll('.pilih-item:checked');
+        if (terpilih.length === 0) return alert("Pilih data dulu!");
+        if (confirm("Hapus data terpilih?")) {
+            terpilih.forEach(cb => cb.closest('tr').remove());
+        }
+    }
+
+    function eksporPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        doc.text("Data Anggota Pondok Pemulihan", 14, 15);
+        doc.autoTable({ html: 'table', startY: 20 });
+        doc.save("Data_Anggota.pdf");
+    }
+</script>
+
+</body>
+</html>
