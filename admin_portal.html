@@ -1,28 +1,105 @@
-<div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px;">
-    <button class="btn-refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
-    <button class="btn-edit"><i class="fa-solid fa-pen-to-square"></i> Edit Data</button>
-    <button class="btn-hapus"><i class="fa-solid fa-trash"></i> Hapus</button>
-    
-    <div style="position: relative; flex: 1; max-width: 300px;">
-        <input type="text" id="searchData" placeholder="Cari Nama atau No HP..." 
-            style="width: 100%; padding: 8px 12px 8px 35px; border: 2px solid #ccc; border-radius: 6px; box-sizing: border-box;">
-        <i class="fa-solid fa-magnifying-glass" 
-            style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888;"></i>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Administrator - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .admin-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 98%; margin: auto; position: relative; }
+        
+        /* Header & Keluar */
+        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid red; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-title { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: bold; }
+        .btn-keluar { background: #666; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* Toolbar Tombol - TETAP SESUAI DESAIN ASLI */
+        .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        .btn-tool { border: none; padding: 10px 18px; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .btn-refresh { background: #00e676; }
+        .btn-edit { background: #ffa000; }
+        .btn-hapus { background: #37474f; }
+
+        /* Search Box - DISISIPI SECARA PRESISI */
+        .search-wrapper { position: relative; flex: 1; max-width: 350px; }
+        .search-input { width: 100%; padding: 10px 12px 10px 35px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; transition: 0.3s; }
+        .search-input:focus { border-color: #007bff; }
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; }
+
+        /* Tabel - MERAH SESUAI GAMBAR */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 1000px; }
+        thead { background: red; color: white; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
+        tr:hover { background-color: #f9f9f9; }
+        .check-col { width: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="admin-container">
+    <div class="header-section">
+        <div class="header-title">
+            <i class="fa-solid fa-database"></i> Database Administrator
+        </div>
+        <button class="btn-keluar"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
+    </div>
+
+    <div class="toolbar">
+        <button class="btn-tool btn-refresh"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        <button class="btn-tool btn-edit"><i class="fa-solid fa-pen-to-square"></i> Edit Data</button>
+        <button class="btn-tool btn-hapus"><i class="fa-solid fa-trash"></i> Hapus</button>
+        
+        <div class="search-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Cari Nama atau No HP...">
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th class="check-col"><input type="checkbox"></th>
+                    <th>Nama Lengkap</th>
+                    <th>Email</th>
+                    <th>Password</th>
+                    <th>Nomor HP</th>
+                    <th>Alamat Tempat Tinggal</th>
+                    <th>Jabatan Komsel</th>
+                    <th>Lokasi JC</th>
+                    <th>Gol. Darah</th>
+                </tr>
+            </thead>
+            <tbody id="dataTable">
+                <tr>
+                    <td><input type="checkbox"></td>
+                    <td>Boby Daniel</td>
+                    <td>boby.daniel4@gmail.com</td>
+                    <td style="color: red;">Bukadong821</td>
+                    <td>081283393576</td>
+                    <td>Jl. tanah Hitam Abe pantai</td>
+                    <td>Ketua Komsel</td>
+                    <td>JC 5</td>
+                    <td>AB</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    // Fungsi Search Otomatis
-    document.getElementById('searchData').addEventListener('keyup', function() {
-        let filter = this.value.toLowerCase();
-        let rows = document.querySelectorAll('table tbody tr');
+    // Fungsi Search Tanpa Reload
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#dataTable tr');
 
         rows.forEach(row => {
-            // Kolom Nama (indeks 1) dan Nomor HP (indeks 4)
-            let nama = row.cells[1].textContent.toLowerCase();
-            let noHp = row.cells[4].textContent.toLowerCase();
+            const nama = row.cells[1].textContent.toLowerCase();
+            const noHp = row.cells[4].textContent.toLowerCase();
             
-            if (nama.indexOf(filter) > -1 || noHp.indexOf(filter) > -1) {
+            if (nama.includes(filter) || noHp.includes(filter)) {
                 row.style.display = "";
             } else {
                 row.style.display = "none";
@@ -30,3 +107,6 @@
         });
     });
 </script>
+
+</body>
+</html>
