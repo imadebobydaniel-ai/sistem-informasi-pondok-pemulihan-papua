@@ -1,56 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login User - Pondok Pemulihan Papua</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Pondok Pemulihan Papua</title>
-<style>
-body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-.login-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
-img { width: 70px; margin-bottom: 10px; border-radius: 50%; }
-        h2 { color: #333; margin-bottom: 5px; }
-        p { color: #666; font-size: 14px; margin-bottom: 20px; }
-        h2 { color: #333; margin: 0 0 20px 0; }
-input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #0084ff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; }
-        .btn-admin { background-color: #ff003c; margin-top: 10px; }
-        button { width: 100%; padding: 12px; background-color: #0084ff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-admin { background-color: #ff003c; }
-.link-daftar { display: block; margin-top: 15px; color: #0084ff; text-decoration: none; font-size: 14px; font-weight: bold; }
-</style>
-</head>
-@@ -21,12 +20,11 @@
-<div class="login-container">
-<img src="logo_pondok.png" alt="Logo">
-<h2>Masuk Aplikasi</h2>
-    <p>Gunakan Email & Password Anda</p>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0px 8px 20px rgba(0,0,0,0.15); width: 350px; text-align: center; }
+        .logo { width: 80px; margin-bottom: 10px; }
+        h2 { margin: 5px 0; color: #333; font-size: 22px; }
+        p.subtitle { color: #666; margin-bottom: 25px; font-size: 14px; font-weight: bold; }
+        
+        .input-group { position: relative; margin-bottom: 15px; text-align: left; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+        
+        /* Simbol Mata */
+        .toggle-password { position: absolute; right: 12px; top: 12px; cursor: pointer; color: #999; }
+        
+        .role-selection { margin: 15px 0; display: flex; justify-content: space-around; font-size: 14px; }
+        .role-selection label { cursor: pointer; }
 
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPass" placeholder="Password">
-    <input type="email" id="emailUser" placeholder="Email">
-    <input type="password" id="passUser" placeholder="Password">
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        button:hover { background-color: #0056b3; }
+        
+        .footer-links { margin-top: 20px; font-size: 13px; }
+        .footer-links a { color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <img src="https://via.placeholder.com/80" alt="Logo" class="logo">
+    <h2>Pondok Pemulihan Papua</h2>
+    <p class="subtitle">SISTEM INFORMASI KOMSEL JC</p>
+
+    <div class="input-group">
+        <input type="email" id="email" placeholder="Email Anggota">
+    </div>
+
+    <div class="input-group">
+        <input type="password" id="password" placeholder="Password">
+        <i class="fa-solid fa-eye toggle-password" id="eyeIcon" onclick="togglePass()"></i>
+    </div>
+
+    <div class="role-selection">
+        <label><input type="radio" name="role" value="anggota" checked> Anggota</label>
+        <label><input type="radio" name="role" value="admin"> Administrator</label>
+    </div>
 
     <button onclick="prosesLogin()">Masuk Sekarang</button>
-    <button onclick="loginUser()">Masuk Sekarang</button>
 
-<button class="btn-admin" onclick="window.location.href='login.html'">Akses Administrator</button>
+    <div class="footer-links">
+        Belum punya akun? <a href="daftar_baru.html">Daftar Baru</a>
+    </div>
+</div>
 
-@@ -47,14 +45,13 @@ <h2>Masuk Aplikasi</h2>
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
+<script>
+    // Fungsi Mata Password
+    function togglePass() {
+        const passInput = document.getElementById("password");
+        const eyeIcon = document.getElementById("eyeIcon");
+        if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            passInput.type = "password";
+            eyeIcon.classList.replace("fa-eye-slash", "fa-eye");
+        }
+    }
 
-    async function prosesLogin() {
-        const email = document.getElementById("loginEmail").value;
-        const password = document.getElementById("loginPass").value;
-    async function loginUser() {
-        const e = document.getElementById("emailUser").value;
-        const p = document.getElementById("passUser").value;
-try {
-            await auth.signInWithEmailAndPassword(email, password);
-            // LINK DIPERBAIKI: Sesuai file Abang main.menu.html
-            await auth.signInWithEmailAndPassword(e, p);
-window.location.href = 'main.menu.html';
-        } catch (e) { alert("Gagal: " + e.message); }
-        } catch (err) { alert("Login Gagal: " + err.message); }
-}
+    function prosesLogin() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const role = document.querySelector('input[name="role"]:checked').value;
+
+        if(email === "" || password === "") {
+            alert("Harap isi email dan password!");
+            return;
+        }
+
+        // Ini simulasi pindah halaman, silakan hubungkan dengan Firebase Abang
+        console.log("Login sebagai:", role);
+        alert("Mencoba masuk sebagai " + role + "...");
+        window.location.href = "main_menu.html";
+    }
 </script>
+
 </body>
+</html>
