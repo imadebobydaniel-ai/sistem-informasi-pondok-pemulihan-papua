@@ -3,118 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu Utama - Pondok Pemulihan Papua</title>
+    <title>Login - Pondok Pemulihan Papua</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; padding: 0; background-color: #f4f7f6; 
-            display: flex; flex-direction: column; align-items: center;
-        }
-        /* Header dengan Copyright dan Waktu - Tetap Rapi */
-        .header { 
-            width: 100%; background: #007bff; color: white; 
-            padding: 10px 20px; box-sizing: border-box;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .header-left { font-size: 10px; opacity: 0.9; width: 30%; }
-        .header-center { font-weight: bold; font-size: 16px; text-align: center; width: 40%; }
-        .header-right { font-size: 10px; text-align: right; width: 30%; line-height: 1.2; }
-
-        .profile-card {
-            background: white; width: 85%; max-width: 350px; 
-            margin-top: 30px; border-radius: 20px; overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;
-            padding-bottom: 20px;
-        }
-        .card-header { background: #0056b3; height: 80px; }
-        .avatar { 
-            width: 100px; height: 100px; background-color: #ddd; 
-            border-radius: 50%; border: 5px solid white; 
-            margin-top: -50px; display: inline-block;
-            background-size: cover; background-position: center;
-        }
-        .info h2 { margin: 10px 0 5px 0; color: #333; font-size: 22px; }
-        .info p { margin: 2px 0; color: #666; font-size: 14px; }
-        .status-badge { 
-            display: inline-block; background: #28a745; color: white; 
-            padding: 5px 15px; border-radius: 20px; font-size: 12px; margin-top: 10px;
-        }
-        .menu-grid {
-            display: grid; grid-template-columns: 1fr 1fr; 
-            gap: 15px; width: 85%; max-width: 350px; margin-top: 25px;
-        }
-        .menu-item {
-            background: white; padding: 20px; border-radius: 15px;
-            text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            cursor: pointer; transition: 0.3s;
-        }
-        .menu-item:active { transform: scale(0.95); }
-        .menu-item span { font-size: 28px; display: block; margin-bottom: 8px; }
-        .btn-logout {
-            margin-top: 30px; color: #dc3545; font-weight: bold;
-            cursor: pointer; text-decoration: none; font-size: 14px; padding: 10px;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0px 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+        h2 { margin-bottom: 20px; color: #333; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        button:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="header-left">Copyright 2026 by imade boby</div>
-    <div class="header-center">Pondok Pemulihan Papua</div>
-    <div class="header-right" id="realtimeClock">Memuat...</div>
+<div class="login-container">
+    <h2>Login Anggota</h2>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button onclick="prosesLogin()">Masuk Sekarang</button>
 </div>
-
-<div class="profile-card">
-    <div class="card-header"></div>
-    <div class="avatar" id="userAvatar"></div>
-    <div class="info">
-        <h2 id="userName">Memuat Nama...</h2>
-        <p id="userJabatan">Memuat Jabatan...</p>
-        <p id="userWilayah">Memuat Wilayah...</p>
-        <div class="status-badge" id="userStatus">Anggota Aktif</div>
-    </div>
-</div>
-
-<div class="menu-grid">
-    <div class="menu-item" onclick="alert('Fitur segera hadir!')">
-        <span>📢</span>Informasi
-    </div>
-    <div class="menu-item" onclick="alert('Fitur segera hadir!')">
-        <span>📅</span>Kegiatan
-    </div>
-    <div class="menu-item" onclick="alert('Fitur segera hadir!')">
-        <span>📂</span>Dokumen
-    </div>
-    <div class="menu-item" onclick="alert('Fitur segera hadir!')">
-        <span>💬</span>Chat Grup
-    </div>
-</div>
-
-<div class="btn-logout" onclick="logout()">Keluar Aplikasi</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
-    // 1. FUNGSI JAM OTOMATIS
-    function updateClock() {
-        const now = new Date();
-        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-        
-        const dayName = days[now.getDay()];
-        const day = now.getDate();
-        const month = months[now.getMonth()];
-        const year = now.getFullYear();
-        const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        document.getElementById('realtimeClock').innerHTML = `${dayName}, ${day} ${month} ${year}<br>${time}`;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // 2. KONFIGURASI FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -128,26 +40,32 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 3. AMBIL DATA USER
-    window.onload = function() {
-        db.collection("users").where("email", "==", "boby.daniel4@gmail.com").get().then((querySnapshot) => {
-            if (!querySnapshot.empty) {
-                const data = querySnapshot.docs[0].data();
-                document.getElementById("userName").innerText = data.nama;
-                document.getElementById("userJabatan").innerText = "Jabatan: " + data.jabatan;
-                document.getElementById("userWilayah").innerText = data.alamat;
-                
-                const namaKomsel = data.komsel ? data.komsel : "JC";
-                document.getElementById("userStatus").innerText = "Anggota " + namaKomsel + " Aktif";
-                
-                const avatarUrl = "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.nama) + "&background=random&color=fff";
-                document.getElementById("userAvatar").style.backgroundImage = "url('" + avatarUrl + "')";
-            }
-        }).catch((err) => { console.error("Gagal ambil data:", err); });
-    };
+    function prosesLogin() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
 
-    function logout() {
-        if(confirm("Apakah Anda ingin keluar?")) { window.location.href = "index.html"; }
+        if (!email || !password) {
+            Swal.fire({ icon: 'warning', title: 'Opps!', text: 'Email dan Password harus diisi!', confirmButtonColor: '#007bff' });
+            return;
+        }
+
+        db.collection("users").where("email", "==", email).where("password", "==", password).get().then((querySnapshot) => {
+            if (!querySnapshot.empty) {
+                // Berhasil Login
+                window.location.href = "main.menu.html";
+            } else {
+                // Notifikasi jika Email/Password salah
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Login Gagal',
+                    text: 'Email atau Password salah. Silakan periksa kembali!',
+                    confirmButtonColor: '#d33'
+                });
+            }
+        }).catch((error) => {
+            console.error("Error:", error);
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi gangguan koneksi.' });
+        });
     }
 </script>
 </body>
