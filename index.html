@@ -4,104 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Pondok Pemulihan Papua</title>
-    <style>
-        /* Desain asli sesuai gambar image_4c1483.png */
-        body { 
-            font-family: sans-serif; 
-            background-color: #f4f4f4; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-        }
-        .login-container { 
-            background: white; 
-            padding: 40px; 
-            border-radius: 15px; 
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.1); 
-            width: 380px; 
-            text-align: center; 
-        }
-        h2 { 
-            margin-bottom: 30px; 
-            font-weight: bold; 
-            font-size: 28px;
-        }
-        input { 
-            width: 100%; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            box-sizing: border-box; 
-            font-size: 16px; 
-        }
-        button { 
-            width: 100%; 
-            padding: 15px; 
-            background-color: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 16px; 
-            margin-top: 15px; 
-        }
-    </style>
 </head>
-<body>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
 
-<div class="login-container">
-    <h2>Login Anggota</h2>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button onclick="prosesLogin()">Masuk Sekarang</button>
-</div>
+    <div style="background: white; padding: 40px; border-radius: 15px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; box-sizing: border-box;">
+        <h2 style="margin-bottom: 30px; font-weight: bold; font-size: 28px; color: #000;">Login Anggota</h2>
+        <input type="email" id="email" placeholder="Email" style="width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px;">
+        <input type="password" id="password" placeholder="Password" style="width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px;">
+        <button onclick="prosesLogin()" style="width: 100%; padding: 15px; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 15px;">Masuk Sekarang</button>
+    </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.firebasestorage.app",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389",
-        measurementId: "G-X14300RJL4"
-    };
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.firebasestorage.app",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389",
+            measurementId: "G-X14300RJL4"
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
 
-    if (!firebase.apps.length) { 
-        firebase.initializeApp(firebaseConfig); 
-    }
-    const db = firebase.firestore();
-
-    function prosesLogin() {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-
-        if (!email || !password) {
-            alert("Email dan Password tidak boleh kosong!");
-            return;
+        function prosesLogin() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            db.collection("users").where("email", "==", email).where("password", "==", password).get().then((q) => {
+                if (!q.empty) { window.location.href = "main.menu.html"; }
+                else { alert("Login Gagal!"); }
+            });
         }
-
-        db.collection("users").where("email", "==", email).where("password", "==", password).get()
-        .then((querySnapshot) => {
-            if (!querySnapshot.empty) {
-                window.location.href = "main.menu.html";
-            } else {
-                alert("Login Gagal! Periksa Email dan Password.");
-            }
-        })
-        .catch((error) => {
-            console.error("Error login:", error);
-            alert("Terjadi kesalahan koneksi.");
-        });
-    }
-</script>
-
+    </script>
 </body>
 </html>
