@@ -64,7 +64,7 @@
         <h2 id="userName">Memuat Nama...</h2>
         <p id="userJabatan">Memuat Jabatan...</p>
         <p id="userWilayah">Memuat Wilayah...</p>
-        <div class="status-badge">Anggota Aktif</div>
+        <div class="status-badge" id="userStatus">Anggota Aktif</div>
     </div>
 </div>
 
@@ -72,7 +72,7 @@
     <div class="menu-item" onclick="alert('Fitur segera hadir!')">
         <span>📢</span>Informasi
     </div>
-    <div class="status-badge" id="userStatus">Memuat Status...</div>
+    <div class="menu-item" onclick="alert('Fitur segera hadir!')">
         <span>📅</span>Kegiatan
     </div>
     <div class="menu-item" onclick="alert('Fitur segera hadir!')">
@@ -105,28 +105,27 @@
     const db = firebase.firestore();
 
     window.onload = function() {
-       // ... kode sebelumnya ...
-if (!querySnapshot.empty) {
-    const data = querySnapshot.docs[0].data();
-    
-    document.getElementById("userName").innerText = data.nama;
-    document.getElementById("userJabatan").innerText = "Jabatan: " + data.jabatan;
-    document.getElementById("userWilayah").innerText = data.alamat;
+        // Cari data berdasarkan email login
+        db.collection("users").where("email", "==", "boby.daniel4@gmail.com").get().then((querySnapshot) => {
+            if (!querySnapshot.empty) {
+                const data = querySnapshot.docs[0].data();
+                
+                document.getElementById("userName").innerText = data.nama;
+                document.getElementById("userJabatan").innerText = "Jabatan: " + data.jabatan;
+                document.getElementById("userWilayah").innerText = data.alamat;
 
-    // Tambahkan baris ini untuk mengubah tulisan di kotak hijau:
-    const namaKomsel = data.komsel ? data.komsel : "JC"; 
-    document.getElementById("userStatus").innerText = "Anggota " + namaKomsel + " Aktif";
-    
-    // ... sisa kode avatar ...
-}
+                // Teks status tetap rapi di dalam badge hijau
+                const namaKomsel = data.komsel ? data.komsel : "JC";
+                document.getElementById("userStatus").innerText = "Anggota " + namaKomsel + " Aktif";
+                
+                const avatarUrl = "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.nama) + "&background=random&color=fff";
+                document.getElementById("userAvatar").style.backgroundImage = "url('" + avatarUrl + "')";
             } else {
-                console.log("Data tidak ditemukan!");
-                alert("Data profil belum diisi, silakan lengkapi.");
+                alert("Data tidak ditemukan!");
                 window.location.href = "profile.html"; 
             }
         }).catch((error) => {
-            console.error("Gagal mengambil data:", error);
-            alert("Gagal memuat profil.");
+            console.error("Error:", error);
         });
     };
 
