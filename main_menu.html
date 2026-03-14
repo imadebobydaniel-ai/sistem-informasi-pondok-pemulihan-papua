@@ -26,6 +26,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             height: 50px;
             gap: 10px;
+            position: relative;
         }
 
         .datetime-container {
@@ -39,13 +40,6 @@
             line-height: 1.2;
             position: absolute;
             left: 10px;
-        }
-
-        .footer-padding {
-            background: #007bff;
-            height: 50px;
-            width: 100%;
-            margin-top: auto;
         }
 
         .btn-setting {
@@ -116,30 +110,38 @@
         
         .menu-item i { font-size: 24px; margin-bottom: 8px; color: #007bff; }
         .menu-item h3 { margin: 0; font-size: 12px; font-weight: bold; }
+
         /* Running Text Styles */
-.footer-marquee {
-    background: #ffffff;
-    color: #333;
-    padding: 10px 0;
-    border-top: 1px solid #ddd;
-    font-size: 13px;
-    font-weight: bold;
-    width: 100%;
-    overflow: hidden;
-    white-space: nowrap;
-    box-sizing: border-box;
-}
+        .footer-marquee {
+            background: #ffffff;
+            color: #333;
+            padding: 10px 0;
+            border-top: 1px solid #ddd;
+            font-size: 13px;
+            font-weight: bold;
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            margin-top: 20px;
+        }
 
-.marquee-content {
-    display: inline-block;
-    padding-left: 100%;
-    animation: marquee 15s linear infinite; /* Speed Medium */
-}
+        .marquee-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee 15s linear infinite;
+        }
 
-@keyframes marquee {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(-100%, 0); }
-}
+        @keyframes marquee {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
+        }
+
+        .footer-padding {
+            background: #007bff;
+            height: 50px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -149,8 +151,6 @@
         <div id="datePart">Memuat...</div>
         <div id="timePart">00:00:00</div>
     </div>
-    
-    
     <button class="btn-setting" onclick="location.href='setting.html'"><i class="fa-solid fa-gear"></i></button>
     <button class="btn-logout" onclick="location.href='index.html'">Keluar</button>
 </div>
@@ -193,66 +193,44 @@
             <h3>Lacak Domba</h3>
         </a>
     </div>
-    <div class="footer-marquee">
+</div>
+
+<div class="footer-marquee">
     <div class="marquee-content">
         Aplikasi ini adalah sistem informasi untuk Komsel dan juga sistem laporan berbasis digital. copyright 2026 by. imade boby.
     </div>
 </div>
-
-<div class="footer-padding"></div>
-</div>
-
 <div class="footer-padding"></div>
 
 <script>
-    // Fungsi Jam dan Tanggal Otomatis
     function updateClock() {
         const now = new Date();
         const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
         const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         
-        const dayName = days[now.getDay()];
-        const date = now.getDate();
-        const monthName = months[now.getMonth()];
-        const year = now.getFullYear();
-        
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        
-        document.getElementById('datePart').innerText = `${dayName}, ${date} ${monthName} ${year}`;
-        document.getElementById('timePart').innerText = `${hours}:${minutes}:${seconds}`;
+        document.getElementById('datePart').innerText = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+        document.getElementById('timePart').innerText = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     }
 
-    // Fungsi Otomatis Nama & JC
-   function loadUserData() {
-    // Mengambil data yang tadi dikirim dari index.html
-    const namaUser = localStorage.getItem('nama_login') || "Pengguna"; 
-    const nomorJC = localStorage.getItem('jc_login') || "-"; 
-    const greetingElement = document.getElementById('userGreeting');
-    
-    if(nomorJC !== "-") {
-        greetingElement.innerText = "Selamat Datang " + namaUser + " Komsel JC " + nomorJC;
-    } else {
-        greetingElement.innerText = "Selamat Datang " + namaUser;
-    }
-}
-
-    // Swipe to Refresh
-    let startY = 0;
-    window.addEventListener('touchstart', (e) => {
-        startY = e.touches[0].pageY;
-    }, {passive: true});
-
-    window.addEventListener('touchmove', (e) => {
-        const currentY = e.touches[0].pageY;
-        const diff = currentY - startY;
-        if (diff > 100 && window.scrollY === 0) {
-            location.reload();
+    function loadUserData() {
+        const namaUser = localStorage.getItem('nama_login') || "Pengguna"; 
+        const nomorJC = localStorage.getItem('jc_login') || "-"; 
+        const greetingElement = document.getElementById('userGreeting');
+        
+        if(nomorJC !== "-") {
+            greetingElement.innerText = "Selamat Datang " + namaUser + " Komsel JC " + nomorJC;
+        } else {
+            greetingElement.innerText = "Selamat Datang " + namaUser;
         }
+    }
+
+    let startY = 0;
+    window.addEventListener('touchstart', (e) => { startY = e.touches[0].pageY; }, {passive: true});
+    window.addEventListener('touchmove', (e) => {
+        const diff = e.touches[0].pageY - startY;
+        if (diff > 100 && window.scrollY === 0) { location.reload(); }
     }, {passive: true});
 
-    // Jalankan semua fungsi saat halaman dimuat
     window.onload = function() {
         updateClock();
         setInterval(updateClock, 1000);
