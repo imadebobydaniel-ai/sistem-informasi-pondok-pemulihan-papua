@@ -6,18 +6,16 @@
     <title>Login - Pondok Pemulihan Papua</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); width: 300px; text-align: center; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #0056b3; }
-        .logo { width: 80px; margin-bottom: 10px; }
+        body { font-family: sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        h2 { margin-bottom: 30px; font-weight: bold; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 16px; color: #666; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="login-container">
-    <img src="https://via.placeholder.com/80" alt="Logo" class="logo">
     <h2>Login Anggota</h2>
     <input type="email" id="email" placeholder="Email" required>
     <input type="password" id="password" placeholder="Password" required>
@@ -28,7 +26,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <script>
-    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -39,51 +36,23 @@
         measurementId: "G-X14300RJL4"
     };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
     function prosesLogin() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
 
-        if (email === "" || password === "") {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Opps!',
-                text: 'Email dan Password tidak boleh kosong, Bang.',
-                confirmButtonColor: '#007bff'
-            });
-            return;
-        }
-
-        // Proses Pengecekan ke Database
         db.collection("users").where("email", "==", email).where("password", "==", password).get().then((querySnapshot) => {
             if (!querySnapshot.empty) {
-                // Berhasil Login
                 window.location.href = "main.menu.html";
             } else {
-                // NOTIFIKASI ERROR JIKA SALAH
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Login Gagal',
-                    text: 'Email atau Password salah. Silakan cek kembali!',
-                    confirmButtonColor: '#d33',
-                    confirmButtonText: 'Coba Lagi'
-                });
+                Swal.fire({ icon: 'error', title: 'Login Gagal', text: 'Email atau Password salah!', confirmButtonColor: '#007bff' });
             }
         }).catch((error) => {
-            console.error("Error login:", error);
-            Swal.fire({
-                icon: 'question',
-                title: 'Masalah Koneksi',
-                text: 'Gagal terhubung ke database. Pastikan internet aktif.',
-                confirmButtonColor: '#007bff'
-            });
+            console.error("Error:", error);
         });
     }
 </script>
-
 </body>
 </html>
