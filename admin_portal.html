@@ -64,14 +64,14 @@
             <tbody id="dataTable">
                 <tr>
                     <td><input type="checkbox" class="user-checkbox"></td>
-                    <td>Boby Daniel</td>
-                    <td>boby.daniel4@gmail.com</td>
-                    <td class="password-cell">Bukadong821</td>
-                    <td>081283393576</td>
-                    <td>Jl. tanah Hitam Abe pantai</td>
-                    <td>Ketua Komsel</td>
-                    <td>JC 5</td>
-                    <td>AB</td>
+                    <td contenteditable="false">Boby Daniel</td>
+                    <td contenteditable="false">boby.daniel4@gmail.com</td>
+                    <td class="password-cell" contenteditable="false">Bukadong821</td>
+                    <td contenteditable="false">081283393576</td>
+                    <td contenteditable="false">Jl. tanah Hitam Abe pantai</td>
+                    <td contenteditable="false">Ketua Komsel</td>
+                    <td contenteditable="false">JC 5</td>
+                    <td contenteditable="false">AB</td>
                 </tr>
             </tbody>
         </table>
@@ -79,17 +79,53 @@
 </div>
 
 <script>
-    // --- KREDENSIAL ADMINISTRATOR ---
-    // Email: admin@pondok.com
-    // Pass: papua123
+    // DATA LOGIN ADMIN: admin@pondok.com | papua123
 
-    // 1. FUNGSI CHECKBOX (SELECT ALL)
+    // 1. FUNGSI EDIT DATA (DIPERBAIKI)
+    document.getElementById('btnEdit').onclick = function() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if (selected.length === 0) {
+            alert("Pilih data yang ingin diedit terlebih dahulu dengan mencentang checkbox!");
+            return;
+        }
+        
+        alert("Mode Edit Aktif. Silakan langsung ubah data pada baris yang dicentang.");
+        selected.forEach(cb => {
+            const row = cb.closest('tr');
+            const cells = row.querySelectorAll('td');
+            // Aktifkan mode edit pada kolom (indeks 1 sampai 8)
+            for (let i = 1; i <= 8; i++) {
+                cells[i].contentEditable = "true";
+                cells[i].style.backgroundColor = "#fffde7"; // Tandai area yang bisa diedit
+                cells[i].style.border = "1px dashed orange";
+            }
+        });
+    };
+
+    // 2. FUNGSI REFRESH
+    document.getElementById('btnRefresh').onclick = function() {
+        location.reload();
+    };
+
+    // 3. FUNGSI HAPUS
+    document.getElementById('btnHapus').onclick = function() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if (selected.length > 0) {
+            if (confirm("Hapus " + selected.length + " data?")) {
+                selected.forEach(cb => cb.closest('tr').remove());
+            }
+        } else {
+            alert("Pilih data yang akan dihapus!");
+        }
+    };
+
+    // 4. FUNGSI CHECKALL
     document.getElementById('checkAll').onclick = function() {
         const checkboxes = document.querySelectorAll('.user-checkbox');
         checkboxes.forEach(cb => cb.checked = this.checked);
     };
 
-    // 2. FUNGSI SEARCH
+    // 5. FUNGSI SEARCH
     document.getElementById('searchInput').onkeyup = function() {
         const filter = this.value.toLowerCase();
         const rows = document.querySelectorAll('#dataTable tr');
@@ -98,28 +134,6 @@
             const hp = row.cells[4].innerText.toLowerCase();
             row.style.display = (nama.includes(filter) || hp.includes(filter)) ? "" : "none";
         });
-    };
-
-    // 3. FUNGSI REFRESH
-    document.getElementById('btnRefresh').onclick = function() {
-        location.reload();
-    };
-
-    // 4. FUNGSI EDIT
-    document.getElementById('btnEdit').onclick = function() {
-        alert("Fungsi Edit Data Aktif.");
-    };
-
-    // 5. FUNGSI HAPUS
-    document.getElementById('btnHapus').onclick = function() {
-        const selected = document.querySelectorAll('.user-checkbox:checked');
-        if (selected.length > 0) {
-            if (confirm("Hapus " + selected.length + " data?")) {
-                selected.forEach(cb => cb.closest('tr').remove());
-            }
-        } else {
-            alert("Pilih data dulu!");
-        }
     };
 
     // 6. FUNGSI KELUAR
