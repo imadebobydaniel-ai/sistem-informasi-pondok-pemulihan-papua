@@ -9,17 +9,14 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .profile-card { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; }
         .header-blue { background: #007bff; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2em; }
-        
         .photo-section { text-align: center; padding: 30px 20px; position: relative; background: #fff; }
         .profile-img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid #f8f9fa; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; }
         .btn-upload { position: absolute; bottom: 95px; right: 36%; background: #007bff; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white; transition: 0.3s; }
-        
         .info-container { padding: 0 25px 30px; }
         .info-item { border-bottom: 1px solid #f1f1f1; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
         .label { color: #888; font-size: 10px; text-transform: uppercase; font-weight: 800; }
         .value { color: #333; font-weight: 600; font-size: 14px; }
         .status-aktif { color: #28a745; font-weight: bold; }
-
         .btn-footer { display: block; width: 85%; margin: 0 auto 25px; padding: 13px; text-align: center; border: 2px solid #007bff; color: #007bff; text-decoration: none; border-radius: 12px; font-weight: bold; }
     </style>
 </head>
@@ -27,17 +24,13 @@
 
 <div class="profile-card">
     <div class="header-blue">Profil Saya</div>
-    
     <div class="photo-section">
         <img src="https://via.placeholder.com/120" id="displayPhoto" class="profile-img" onclick="document.getElementById('fileInput').click();">
         <label for="fileInput" class="btn-upload"><i class="fa-solid fa-pencil"></i></label>
-        
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
-        
-        <h3 id="p_nama" style="margin: 15px 0 5px; color: #2c3e50;">Memuat Nama...</h3>
-        <p id="p_jabatan" style="color: #7f8c8d; font-size: 14px; margin: 0;">Memuat Jabatan...</p>
+        <h3 id="p_nama" style="margin: 15px 0 5px; color: #2c3e50;">Memuat...</h3>
+        <p id="p_jabatan" style="color: #7f8c8d; font-size: 14px; margin: 0;">-</p>
     </div>
-
     <div class="info-container">
         <div class="info-item"><span class="label">Email</span><span class="value" id="p_email">-</span></div>
         <div class="info-item"><span class="label">Nomor HP</span><span class="value" id="p_hp">-</span></div>
@@ -45,7 +38,6 @@
         <div class="info-item"><span class="label">Gol. Darah</span><span class="value" id="p_goldar">-</span></div>
         <div class="info-item"><span class="label">Status</span><span class="value status-aktif">Aktif</span></div>
     </div>
-
     <a href="main_menu.html" class="btn-footer">← Kembali ke Menu</a>
 </div>
 
@@ -61,96 +53,79 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     function muatDataProfil() {
-        // Ambil data dari localStorage yang di-set saat login di index.html
-        let userEmail = localStorage.getItem('email_login');
-
-        // Jika email kosong (karena belum login atau cache bersih), arahkan balik atau beri notifikasi
+        // 1. Cek semua kemungkinan kunci penyimpanan
+        let userEmail = localStorage.getItem('email_login') || localStorage.getItem('loggedUserEmail');
+        
         if (!userEmail) {
-            document.getElementById('p_nama').innerText = "Sesi Berakhir";
-            alert("Silakan login kembali agar data profil muncul.");
+            document.getElementById('p_nama').innerText = "Sesi Tidak Ditemukan";
+            document.getElementById('p_email').innerText = "Silakan Login Ulang";
             return;
         }
 
-        // Tampilkan email di UI segera
         document.getElementById('p_email').innerText = userEmail;
 
-        // Cari data lengkap di Firestore berdasarkan email
+        // 2. Cari di koleksi "users"
         db.collection("users").where("email", "==", userEmail.trim()).get()
         .then((querySnapshot) => {
             if (!querySnapshot.empty) {
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    
-                    // Isi elemen UI dengan data dari database
-                    document.getElementById('p_nama').innerText = data.nama || "User";
+                    document.getElementById('p_nama').innerText = data.nama || "Tanpa Nama";
                     document.getElementById('p_jabatan').innerText = data.jabatan || "Anggota";
-                    
-                    // Mendukung variasi nama field database (antisipasi perbedaan kecil)
                     document.getElementById('p_hp').innerText = data.nomor_hp || data.nomorHp || "-";
                     document.getElementById('p_jc').innerText = data.komsel || data.lokasiJc || "-";
                     document.getElementById('p_goldar').innerText = data.gol_darah || data.golDarah || "-";
-                    
-                    // Jika ada foto profil, ganti placeholder
-                    if (data.fotoProfil) {
-                        document.getElementById('displayPhoto').src = data.fotoProfil;
-                    }
+                    if (data.fotoProfil) document.getElementById('displayPhoto').src = data.fotoProfil;
                 });
             } else {
-                document.getElementById('p_nama').innerText = "Profil Belum Lengkap";
+                // Jika email ada tapi dokumen tidak ketemu, coba tampilkan nama dari localStorage
+                document.getElementById('p_nama').innerText = localStorage.getItem('nama_login') || "User Baru";
+                console.log("Data Firestore kosong untuk email ini.");
             }
         })
         .catch((err) => {
-            console.error("Error mengambil data: ", err);
-            document.getElementById('p_nama').innerText = "Gagal Koneksi";
+            console.error("Firebase Error:", err);
+            document.getElementById('p_nama').innerText = "Gagal Memuat Data";
         });
     }
 
-    // Fungsi Upload Foto dengan kompresi otomatis
+    // Fungsi Upload & Kompresi Foto
     document.getElementById('fileInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = 300;
-                    canvas.height = 300;
-                    ctx.drawImage(img, 0, 0, 300, 300);
-                    
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    document.getElementById('displayPhoto').src = compressedBase64;
+        if (!file) return;
 
-                    let userEmail = localStorage.getItem('email_login');
-                    
-                    if (userEmail) {
-                        db.collection("users").where("email", "==", userEmail.trim()).get()
-                        .then((querySnapshot) => {
-                            querySnapshot.forEach((doc) => {
-                                db.collection("users").doc(doc.id).update({
-                                    fotoProfil: compressedBase64
-                                }).then(() => {
-                                    alert("Foto Profil Berhasil Diperbarui!");
-                                });
-                            });
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 300; canvas.height = 300;
+                ctx.drawImage(img, 0, 0, 300, 300);
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                document.getElementById('displayPhoto').src = compressedBase64;
+
+                let userEmail = localStorage.getItem('email_login') || localStorage.getItem('loggedUserEmail');
+                if (userEmail) {
+                    db.collection("users").where("email", "==", userEmail.trim()).get()
+                    .then((qs) => {
+                        qs.forEach((doc) => {
+                            db.collection("users").doc(doc.id).update({ fotoProfil: compressedBase64 })
+                            .then(() => alert("Foto Diperbarui!"));
                         });
-                    }
-                };
+                    });
+                }
             };
-            reader.readAsDataURL(file);
-        }
+        };
+        reader.readAsDataURL(file);
     });
 
-    // Jalankan fungsi saat halaman terbuka
     window.onload = muatDataProfil;
 </script>
-
 </body>
 </html>
