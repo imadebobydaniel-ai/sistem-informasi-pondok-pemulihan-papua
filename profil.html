@@ -66,42 +66,51 @@
     const db = firebase.firestore();
 
     function muatDataProfil() {
-        // Mengambil email dari localStorage yang disimpan saat login
-        // Jika tidak ada, pakai email default untuk testing
-        let userEmail = localStorage.getItem('nama_login') ? localStorage.getItem('email_login') : "boby.daniel4@gmail.com"; 
+        // Ambil data dari localStorage yang di-set saat login di index.html
+        let userEmail = localStorage.getItem('email_login');
 
+        // Jika email kosong (karena belum login atau cache bersih), arahkan balik atau beri notifikasi
         if (!userEmail) {
-            document.getElementById('p_nama').innerText = "Belum Login";
+            document.getElementById('p_nama').innerText = "Sesi Berakhir";
+            alert("Silakan login kembali agar data profil muncul.");
             return;
         }
 
+        // Tampilkan email di UI segera
+        document.getElementById('p_email').innerText = userEmail;
+
+        // Cari data lengkap di Firestore berdasarkan email
         db.collection("users").where("email", "==", userEmail.trim()).get()
         .then((querySnapshot) => {
             if (!querySnapshot.empty) {
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
+                    
+                    // Isi elemen UI dengan data dari database
                     document.getElementById('p_nama').innerText = data.nama || "User";
                     document.getElementById('p_jabatan').innerText = data.jabatan || "Anggota";
-                    document.getElementById('p_email').innerText = data.email || userEmail;
+                    
+                    // Mendukung variasi nama field database (antisipasi perbedaan kecil)
                     document.getElementById('p_hp').innerText = data.nomor_hp || data.nomorHp || "-";
                     document.getElementById('p_jc').innerText = data.komsel || data.lokasiJc || "-";
                     document.getElementById('p_goldar').innerText = data.gol_darah || data.golDarah || "-";
                     
+                    // Jika ada foto profil, ganti placeholder
                     if (data.fotoProfil) {
                         document.getElementById('displayPhoto').src = data.fotoProfil;
                     }
                 });
             } else {
-                document.getElementById('p_nama').innerText = "Data Tidak Ditemukan";
+                document.getElementById('p_nama').innerText = "Profil Belum Lengkap";
             }
         })
         .catch((err) => {
             console.error("Error mengambil data: ", err);
-            document.getElementById('p_nama').innerText = "Gagal Memuat";
+            document.getElementById('p_nama').innerText = "Gagal Koneksi";
         });
     }
 
-    // Fungsi Upload Foto
+    // Fungsi Upload Foto dengan kompresi otomatis
     document.getElementById('fileInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -119,25 +128,27 @@
                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                     document.getElementById('displayPhoto').src = compressedBase64;
 
-                    let userEmail = localStorage.getItem('email_login') || "boby.daniel4@gmail.com";
+                    let userEmail = localStorage.getItem('email_login');
                     
-                    // Simpan foto kembali ke Firestore
-                    db.collection("users").where("email", "==", userEmail).get()
-                    .then((querySnapshot) => {
-                        querySnapshot.forEach((doc) => {
-                            db.collection("users").doc(doc.id).update({
-                                fotoProfil: compressedBase64
-                            }).then(() => {
-                                alert("Foto Berhasil Diperbarui!");
+                    if (userEmail) {
+                        db.collection("users").where("email", "==", userEmail.trim()).get()
+                        .then((querySnapshot) => {
+                            querySnapshot.forEach((doc) => {
+                                db.collection("users").doc(doc.id).update({
+                                    fotoProfil: compressedBase64
+                                }).then(() => {
+                                    alert("Foto Profil Berhasil Diperbarui!");
+                                });
                             });
                         });
-                    });
+                    }
                 };
             };
             reader.readAsDataURL(file);
         }
     });
 
+    // Jalankan fungsi saat halaman terbuka
     window.onload = muatDataProfil;
 </script>
 
