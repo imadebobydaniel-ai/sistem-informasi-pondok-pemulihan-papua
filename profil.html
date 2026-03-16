@@ -7,31 +7,32 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .profile-card { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; }
+        .profile-card { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; position: relative; }
         .header-blue { background: #007bff; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.2em; }
         .photo-section { text-align: center; padding: 30px 20px; position: relative; background: #fff; }
         .profile-img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid #f8f9fa; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; }
         .btn-upload { position: absolute; bottom: 95px; right: 36%; background: #007bff; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white; transition: 0.3s; }
         .info-container { padding: 0 25px 30px; }
-        .info-item { border-bottom: 1px solid #f1f1f1; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; min-height: 50px; }
+        .info-item { border-bottom: 1px solid #f1f1f1; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
         .label { color: #888; font-size: 10px; text-transform: uppercase; font-weight: 800; }
-        .value { color: #333; font-weight: 600; font-size: 14px; text-align: right; max-width: 200px; }
+        .value { color: #333; font-weight: 600; font-size: 14px; text-align: right; }
         .status-aktif { color: #28a745; font-weight: bold; }
         .btn-footer { display: block; width: 85%; margin: 0 auto 25px; padding: 13px; text-align: center; border: 2px solid #007bff; color: #007bff; text-decoration: none; border-radius: 12px; font-weight: bold; }
+        #loading-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 10; }
     </style>
 </head>
 <body>
 
 <div class="profile-card">
+    <div id="loading-overlay"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
     <div class="header-blue">Profil Saya</div>
     <div class="photo-section">
         <img src="https://via.placeholder.com/120" id="displayPhoto" class="profile-img" onclick="document.getElementById('fileInput').click();">
         <label for="fileInput" class="btn-upload"><i class="fa-solid fa-pencil"></i></label>
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
-        <h3 id="p_nama" style="margin: 15px 0 5px; color: #2c3e50;">Memuat Nama...</h3>
-        <p id="p_jabatan" style="color: #7f8c8d; font-size: 14px; margin: 0;">Memuat Jabatan...</p>
+        <h3 id="p_nama" style="margin: 15px 0 5px; color: #2c3e50;">Memuat...</h3>
+        <p id="p_jabatan" style="color: #7f8c8d; font-size: 14px; margin: 0;">-</p>
     </div>
-
     <div class="info-container">
         <div class="info-item"><span class="label">Email</span><span class="value" id="p_email">-</span></div>
         <div class="info-item"><span class="label">Nomor HP</span><span class="value" id="p_hp">-</span></div>
@@ -39,7 +40,6 @@
         <div class="info-item"><span class="label">Gol. Darah</span><span class="value" id="p_goldar">-</span></div>
         <div class="info-item"><span class="label">Status</span><span class="value status-aktif">Aktif</span></div>
     </div>
-
     <a href="main_menu.html" class="btn-footer">← Kembali ke Menu</a>
 </div>
 
@@ -56,31 +56,36 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function muatDataProfil() {
-        // AMBIL SESI (Cek dua kemungkinan nama kunci)
-        let userEmail = localStorage.getItem('email_login') || localStorage.getItem('loggedUserEmail');
+    async function muatDataProfil() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+        
+        // AMBIL SESI - Mencoba semua kemungkinan key
+        let userEmail = localStorage.getItem('email_login') || 
+                        localStorage.getItem('loggedUserEmail') || 
+                        localStorage.getItem('userEmail');
 
         if (!userEmail) {
             document.getElementById('p_nama').innerText = "Sesi Tidak Ditemukan";
             document.getElementById('p_email').innerText = "Silakan Login Ulang";
-            alert("Sesi login hilang. Silakan kembali ke halaman Login (index.html)");
+            document.getElementById('loading-overlay').style.display = 'none';
             return;
         }
 
-        // Tampilkan email yang ditemukan
         document.getElementById('p_email').innerText = userEmail;
 
-        // Ambil data Firestore (Gunakan .trim() dan .toLowerCase() agar akurat)
-        db.collection("users").where("email", "==", userEmail.trim().toLowerCase()).get()
-        .then((querySnapshot) => {
+        try {
+            const querySnapshot = await db.collection("users")
+                .where("email", "==", userEmail.trim().toLowerCase())
+                .get();
+
             if (!querySnapshot.empty) {
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    // Update UI dengan aman
-                    document.getElementById('p_nama').innerText = data.nama || "User";
+                    // Mapping data dengan fallback (jika field beda nama)
+                    document.getElementById('p_nama').innerText = data.nama || "Tanpa Nama";
                     document.getElementById('p_jabatan').innerText = data.jabatan || "Anggota";
                     document.getElementById('p_hp').innerText = data.nomor_hp || data.nomorHp || "-";
                     document.getElementById('p_jc').innerText = data.komsel || data.lokasiJc || "-";
@@ -91,17 +96,18 @@
                     }
                 });
             } else {
-                document.getElementById('p_nama').innerText = "Data Tidak Ditemukan";
-                console.log("Email ditemukan di sesi, tapi tidak ada di koleksi 'users' Firestore.");
+                document.getElementById('p_nama').innerText = "Data Belum Terdaftar";
+                console.log("Email ada di sesi tapi tidak ada di Firestore.");
             }
-        })
-        .catch((error) => {
-            console.error("Error Firestore:", error);
-            document.getElementById('p_nama').innerText = "Gagal Memuat Data";
-        });
+        } catch (error) {
+            console.error("Error:", error);
+            document.getElementById('p_nama').innerText = "Gagal Memuat";
+        } finally {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
     }
 
-    // Fungsi Ganti Foto
+    // Fungsi Upload Foto yang Langsung Save
     document.getElementById('fileInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -116,15 +122,18 @@
                 canvas.width = 300; canvas.height = 300;
                 ctx.drawImage(img, 0, 0, 300, 300);
                 const base64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // Update UI Dulu
                 document.getElementById('displayPhoto').src = base64;
 
+                // Simpan ke Firestore
                 let email = localStorage.getItem('email_login') || localStorage.getItem('loggedUserEmail');
                 if (email) {
                     db.collection("users").where("email", "==", email.trim().toLowerCase()).get()
                     .then((qs) => {
                         qs.forEach((doc) => {
                             db.collection("users").doc(doc.id).update({ fotoProfil: base64 })
-                            .then(() => alert("Foto berhasil disimpan!"));
+                            .then(() => alert("Foto Profil Diperbarui!"));
                         });
                     });
                 }
