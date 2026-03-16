@@ -109,6 +109,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Config Firebase Abang
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -123,6 +124,47 @@
 
     function generateNomorKomsel() {
         const jcValue = document.getElementById('jcSelect').value;
-        const nomorUrut = "001"; 
+        const nomorUrut = Math.floor(100 + Math.random() * 900); // Nomor urut acak agar tidak bentrok
         const tahun = "2026";
-        const formatNom
+        const formatNomor = `NK-PPP-${nomorUrut}-${jcValue}-${tahun}`;
+        document.getElementById('nomorOtomatis').value = formatNomor;
+    }
+
+    window.onload = generateNomorKomsel;
+
+    // Proses Simpan ke Firestore
+    document.getElementById('regForm').onsubmit = function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btnSubmit');
+        const email = document.getElementById('regEmail').value;
+
+        btn.disabled = true;
+        btn.innerText = "Menyimpan...";
+
+        // Menyesuaikan Nama Field dengan Database Abang (no_hp, komsel, dll)
+        db.collection("users").add({
+            nama: document.getElementById('regNama').value,
+            email: email,
+            no_hp: document.getElementById('regHp').value,
+            alamat: document.getElementById('regAlamat').value,
+            password: document.getElementById('regPassword').value,
+            jabatan: document.getElementById('regJabatan').value,
+            komsel: document.getElementById('jcSelect').value,
+            gol_darah: document.getElementById('regGoldar').value,
+            nomor_komsel: document.getElementById('nomorOtomatis').value,
+            status: "Aktif",
+            tanggal_daftar: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            alert("Pendaftaran Berhasil!\nNomor Komsel: " + document.getElementById('nomorOtomatis').value);
+            window.location.href = "index.html";
+        }).catch((err) => {
+            alert("Gagal Simpan: " + err.message);
+            btn.disabled = false;
+            btn.innerText = "Daftar Sekarang";
+        });
+    };
+</script>
+
+</body>
+</html>
