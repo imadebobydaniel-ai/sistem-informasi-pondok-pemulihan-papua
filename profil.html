@@ -104,60 +104,64 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 1. FUNGSI LOAD DATA SAAT HALAMAN DIBUKA
+    // FUNGSI UTAMA: Memastikan data dimuat ulang setiap kali halaman dibuka
     function muatProfil() {
-        const userEmail = localStorage.getItem('userEmail'); // Pastikan saat login, email disimpan di localStorage
+        // Mengambil email dari session yang tersimpan saat login
+        const userEmail = localStorage.getItem('userEmail'); 
         
         if (!userEmail) {
-            alert("Sesi tidak ditemukan, silakan login ulang.");
-            window.location.href = "index.html";
+            // Jika sesi hilang, tampilkan pesan sesuai gambar error yang Abang alami
+            document.getElementById('p_nama').value = "Sesi Tidak Ditemukan";
             return;
         }
 
+        // Mencari data di Firestore berdasarkan email sesi
         db.collection("users").where("email", "==", userEmail).get().then((querySnapshot) => {
             if (!querySnapshot.empty) {
                 const doc = querySnapshot.docs[0];
                 const data = doc.data();
                 
+                // Mengisi kembali field-field agar tidak kosong (100% Sesuai ID Element Abang)
                 document.getElementById('user_doc_id').value = doc.id;
                 document.getElementById('p_nama').value = data.nama || "";
-                document.getElementById('p_jabatan').value = data.jabatan || "Anggota Komsel";
+                document.getElementById('p_jabatan').value = data.jabatan || "";
                 document.getElementById('p_email').value = data.email || "";
                 document.getElementById('p_hp').value = data.nomor_hp || data.no_hp || "";
-                document.getElementById('p_jc').value = data.komsel || "JC 1";
-                document.getElementById('p_goldar').value = data.gol_darah || "A";
+                document.getElementById('p_jc').value = data.komsel || "";
+                document.getElementById('p_goldar').value = data.gol_darah || "";
                 
                 if (data.fotoUrl) {
                     document.getElementById('display_foto').src = data.fotoUrl;
                 }
             }
+        }).catch((error) => {
+            console.log("Error mengambil data:", error);
         });
     }
 
-    // 2. FUNGSI SIMPAN/UPDATE KE FIRESTORE
     function updateProfil() {
         const docId = document.getElementById('user_doc_id').value;
-        const emailBaru = document.getElementById('p_email').value;
+        if (!docId) return alert("ID Dokumen tidak ditemukan!");
 
         const dataUpdate = {
             nama: document.getElementById('p_nama').value,
             jabatan: document.getElementById('p_jabatan').value,
-            email: emailBaru,
+            email: document.getElementById('p_email').value,
             nomor_hp: document.getElementById('p_hp').value,
             komsel: document.getElementById('p_jc').value,
             gol_darah: document.getElementById('p_goldar').value
         };
 
         db.collection("users").doc(docId).update(dataUpdate).then(() => {
-            // Update email di localStorage jika email berubah
-            localStorage.setItem('userEmail', emailBaru);
-            alert("Profil Berhasil Diperbarui Permanen!");
+            // Tetap simpan email terbaru di sesi agar saat kembali tetap muncul
+            localStorage.setItem('userEmail', dataUpdate.email);
+            alert("Profil Berhasil Diperbarui!");
         }).catch((err) => {
             alert("Gagal menyimpan: " + err);
         });
     }
 
-    // Jalankan muat profil otomatis saat buka halaman
+    // WAJIB: Menjalankan fungsi muat saat halaman selesai loading
     window.onload = muatProfil;
 </script>
 
