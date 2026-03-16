@@ -13,9 +13,9 @@
         .profile-img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid #f8f9fa; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; }
         .btn-upload { position: absolute; bottom: 95px; right: 36%; background: #007bff; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white; transition: 0.3s; }
         .info-container { padding: 0 25px 30px; }
-        .info-item { border-bottom: 1px solid #f1f1f1; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+        .info-item { border-bottom: 1px solid #f1f1f1; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; min-height: 50px; }
         .label { color: #888; font-size: 10px; text-transform: uppercase; font-weight: 800; }
-        .value { color: #333; font-weight: 600; font-size: 14px; }
+        .value { color: #333; font-weight: 600; font-size: 14px; text-align: right; max-width: 200px; }
         .status-aktif { color: #28a745; font-weight: bold; }
         .btn-footer { display: block; width: 85%; margin: 0 auto 25px; padding: 13px; text-align: center; border: 2px solid #007bff; color: #007bff; text-decoration: none; border-radius: 12px; font-weight: bold; }
     </style>
@@ -28,9 +28,10 @@
         <img src="https://via.placeholder.com/120" id="displayPhoto" class="profile-img" onclick="document.getElementById('fileInput').click();">
         <label for="fileInput" class="btn-upload"><i class="fa-solid fa-pencil"></i></label>
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
-        <h3 id="p_nama" style="margin: 15px 0 5px; color: #2c3e50;">Memuat...</h3>
-        <p id="p_jabatan" style="color: #7f8c8d; font-size: 14px; margin: 0;">-</p>
+        <h3 id="p_nama" style="margin: 15px 0 5px; color: #2c3e50;">Memuat Nama...</h3>
+        <p id="p_jabatan" style="color: #7f8c8d; font-size: 14px; margin: 0;">Memuat Jabatan...</p>
     </div>
+
     <div class="info-container">
         <div class="info-item"><span class="label">Email</span><span class="value" id="p_email">-</span></div>
         <div class="info-item"><span class="label">Nomor HP</span><span class="value" id="p_hp">-</span></div>
@@ -38,6 +39,7 @@
         <div class="info-item"><span class="label">Gol. Darah</span><span class="value" id="p_goldar">-</span></div>
         <div class="info-item"><span class="label">Status</span><span class="value status-aktif">Aktif</span></div>
     </div>
+
     <a href="main_menu.html" class="btn-footer">← Kembali ke Menu</a>
 </div>
 
@@ -54,36 +56,34 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     
-    // Inisialisasi
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
     function muatDataProfil() {
-        // Cek email di memori
-        let emailSesi = localStorage.getItem('email_login');
-        
-        if (!emailSesi) {
-            document.getElementById('p_nama').innerText = "Sesi Berakhir";
+        // AMBIL SESI (Cek dua kemungkinan nama kunci)
+        let userEmail = localStorage.getItem('email_login') || localStorage.getItem('loggedUserEmail');
+
+        if (!userEmail) {
+            document.getElementById('p_nama').innerText = "Sesi Tidak Ditemukan";
             document.getElementById('p_email').innerText = "Silakan Login Ulang";
+            alert("Sesi login hilang. Silakan kembali ke halaman Login (index.html)");
             return;
         }
 
-        document.getElementById('p_email').innerText = emailSesi;
+        // Tampilkan email yang ditemukan
+        document.getElementById('p_email').innerText = userEmail;
 
-        // Ambil data dari Firestore
-        db.collection("users").where("email", "==", emailSesi.trim()).get()
+        // Ambil data Firestore (Gunakan .trim() dan .toLowerCase() agar akurat)
+        db.collection("users").where("email", "==", userEmail.trim().toLowerCase()).get()
         .then((querySnapshot) => {
             if (!querySnapshot.empty) {
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
-                    
-                    // Update tampilan dengan pengecekan ganda nama field
+                    // Update UI dengan aman
                     document.getElementById('p_nama').innerText = data.nama || "User";
                     document.getElementById('p_jabatan').innerText = data.jabatan || "Anggota";
-                    document.getElementById('p_hp').innerText = data.nomor_hp || data.nomorHp || data.hp || "-";
-                    document.getElementById('p_jc').innerText = data.komsel || data.lokasiJc || data.jc || "-";
+                    document.getElementById('p_hp').innerText = data.nomor_hp || data.nomorHp || "-";
+                    document.getElementById('p_jc').innerText = data.komsel || data.lokasiJc || "-";
                     document.getElementById('p_goldar').innerText = data.gol_darah || data.golDarah || "-";
                     
                     if (data.fotoProfil) {
@@ -91,18 +91,48 @@
                     }
                 });
             } else {
-                // Jika email terdaftar di login tapi datanya tidak ada di tabel users
-                document.getElementById('p_nama').innerText = "Data Kosong";
-                alert("Data profil tidak ditemukan di database untuk email: " + emailSesi);
+                document.getElementById('p_nama').innerText = "Data Tidak Ditemukan";
+                console.log("Email ditemukan di sesi, tapi tidak ada di koleksi 'users' Firestore.");
             }
         })
-        .catch((err) => {
-            console.error("Firebase Error:", err);
-            document.getElementById('p_nama').innerText = "Koneksi Error";
+        .catch((error) => {
+            console.error("Error Firestore:", error);
+            document.getElementById('p_nama').innerText = "Gagal Memuat Data";
         });
     }
 
-    // Jalankan saat halaman siap
+    // Fungsi Ganti Foto
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 300; canvas.height = 300;
+                ctx.drawImage(img, 0, 0, 300, 300);
+                const base64 = canvas.toDataURL('image/jpeg', 0.7);
+                document.getElementById('displayPhoto').src = base64;
+
+                let email = localStorage.getItem('email_login') || localStorage.getItem('loggedUserEmail');
+                if (email) {
+                    db.collection("users").where("email", "==", email.trim().toLowerCase()).get()
+                    .then((qs) => {
+                        qs.forEach((doc) => {
+                            db.collection("users").doc(doc.id).update({ fotoProfil: base64 })
+                            .then(() => alert("Foto berhasil disimpan!"));
+                        });
+                    });
+                }
+            };
+        };
+        reader.readAsDataURL(file);
+    });
+
     window.onload = muatDataProfil;
 </script>
 </body>
