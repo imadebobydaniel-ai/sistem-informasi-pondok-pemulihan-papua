@@ -47,11 +47,73 @@
         <a href="login.html" class="btn-admin"><i class="fa-solid fa-user-shield"></i> Login Administrator</a>
     </div>
 </div>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <script>
-    // Script Firebase Abang tetap aman di sini
-    function togglePass() {
-        const p = document.getElementById('pass');
-        p.type = p.type === "password" ? "text" : "password";
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.firebasestorage.app",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Pastikan ID tombol di HTML adalah id="btnMasuk" atau panggil via onclick
+    document.querySelector('.btn-masuk').onclick = function(e) {
+        e.preventDefault();
+        loginUser();
+    };
+
+    function loginUser() {
+        const emailInput = document.getElementById('email').value;
+        const passwordInput = document.getElementById('password').value;
+        const btn = document.querySelector('.btn-masuk');
+
+        if (!emailInput || !passwordInput) {
+            return alert("Isi email dan password dulu, Bang!");
+        }
+
+        btn.innerText = "Memverifikasi...";
+        btn.disabled = true;
+
+        // Mencari user di koleksi 'users' berdasarkan email
+        db.collection("users").where("email", "==", emailInput).get()
+        .then((querySnapshot) => {
+            if (querySnapshot.empty) {
+                alert("Email tidak terdaftar!");
+                resetBtn();
+                return;
+            }
+
+            let loginBerhasil = false;
+            querySnapshot.forEach((doc) => {
+                const userData = doc.data();
+                if (userData.password === passwordInput) {
+                    loginBerhasil = true;
+                    alert("Login Berhasil! Selamat Datang " + userData.nama);
+                    // Arahkan ke halaman utama/dashboard setelah login
+                    window.location.href = "dashboard.html"; 
+                }
+            });
+
+            if (!loginBerhasil) {
+                alert("Password salah, Bang!");
+                resetBtn();
+            }
+        })
+        .catch((error) => {
+            alert("Error: " + error.message);
+            resetBtn();
+        });
+
+        function resetBtn() {
+            btn.innerText = "MASUK";
+            btn.disabled = false;
+        }
     }
 </script>
 </body>
