@@ -9,20 +9,15 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .reg-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
         .reg-container h2 { text-align: center; color: #333; margin-bottom: 25px; font-size: 22px; }
-        
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: #444; }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        .form-group input[readonly] { background-color: #f9f9f9; color: #555; font-weight: bold; border: 1px solid #ddd; }
-
+        .form-group input[readonly] { background-color: #f9f9f9; color: #d9534f; font-weight: bold; border: 1px solid #ddd; }
         .button-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-        
         .btn { width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
-        
         .btn-daftar { background: #007bff; color: white; }
         .btn-batal { background: #ffc107; color: #333; }
         .btn-kembali { background: white; color: #666; border: 1px solid #ccc; }
-
         .btn:hover { opacity: 0.9; }
     </style>
 </head>
@@ -30,49 +25,34 @@
 
 <div class="reg-container">
     <h2>Daftar Anggota Baru</h2>
-    
     <form id="regForm">
         <div class="form-group">
             <label>Nomor Komsel (Otomatis)</label>
-            <input type="text" id="nomorOtomatis" name="nomor_komsel" readonly>
+            <input type="text" id="nomorOtomatis" name="nomor_komsel" readonly placeholder="Menghitung nomor...">
         </div>
-
         <div class="form-group">
             <label>Nama Lengkap</label>
-            <input type="text" id="regNama" name="nama_lengkap" placeholder="Masukkan nama lengkap" required>
+            <input type="text" id="regNama" placeholder="Masukkan nama lengkap" required>
         </div>
-
         <div class="form-group">
             <label>Email</label>
-            <input type="email" id="regEmail" name="email" placeholder="Masukkan email" required>
+            <input type="email" id="regEmail" placeholder="Masukkan email" required>
         </div>
-
         <div class="form-group">
             <label>Nomor HP</label>
-            <input type="tel" id="regHp" name="nomor_hp" placeholder="Masukkan nomor HP" required>
+            <input type="tel" id="regHp" placeholder="Masukkan nomor HP" required>
         </div>
-
         <div class="form-group">
             <label>Alamat Tempat Tinggal</label>
-            <input type="text" id="regAlamat" name="alamat" placeholder="Masukkan alamat lengkap" required>
+            <input type="text" id="regAlamat" placeholder="Masukkan alamat lengkap" required>
         </div>
-
         <div class="form-group">
             <label>Buat Password</label>
-            <input type="password" id="regPassword" name="password" placeholder="Masukkan password" required>
+            <input type="password" id="regPassword" placeholder="Masukkan password" required>
         </div>
-
-        <div class="form-group">
-            <label>Jabatan Komsel</label>
-            <select id="regJabatan" name="jabatan_komsel">
-                <option value="Anggota Komsel">Anggota Komsel</option>
-                <option value="Ketua Komsel">Ketua Komsel</option>
-            </select>
-        </div>
-
         <div class="form-group">
             <label>Lokasi JC</label>
-            <select id="jcSelect" name="lokasi_jc" onchange="generateNomorKomsel()">
+            <select id="jcSelect" onchange="generateNomorKomsel()">
                 <option value="1">JC 1</option>
                 <option value="2">JC 2</option>
                 <option value="3">JC 3</option>
@@ -80,23 +60,18 @@
                 <option value="5">JC 5</option>
             </select>
         </div>
-
         <div class="form-group">
             <label>Golongan Darah</label>
-            <select id="regGoldar" name="golongan_darah">
+            <select id="regGoldar">
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="AB">AB</option>
                 <option value="O">O</option>
             </select>
         </div>
-
         <div class="button-group">
             <button type="submit" class="btn btn-daftar" id="btnSubmit">
                 <i class="fa-solid fa-user-plus"></i> Daftar Sekarang
-            </button>
-            <button type="reset" class="btn btn-batal">
-                <i class="fa-solid fa-eraser"></i> Batal / Reset
             </button>
             <a href="index.html" class="btn btn-kembali" style="text-decoration: none;">
                 <i class="fa-solid fa-arrow-left"></i> Kembali ke Login
@@ -109,7 +84,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Config Firebase Abang
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -120,51 +94,47 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(); // Menggunakan Firestore
+    const db = firebase.firestore();
 
-    function generateNomorKomsel() {
+    // FOKUS: Generate Nomor Urut Otomatis Berdasarkan Jumlah Data
+    async function generateNomorKomsel() {
         const jcValue = document.getElementById('jcSelect').value;
-        const nomorUrut = Math.floor(100 + Math.random() * 900); // Nomor urut acak agar tidak bentrok
+        const snapshot = await db.collection("users").get();
+        const urutan = (snapshot.size + 1).toString().padStart(3, '0'); 
         const tahun = "2026";
-        const formatNomor = `NK-PPP-${nomorUrut}-${jcValue}-${tahun}`;
+        const formatNomor = `NK-PPP-${urutan}-${jcValue}-${tahun}`;
         document.getElementById('nomorOtomatis').value = formatNomor;
     }
 
     window.onload = generateNomorKomsel;
 
-    // Proses Simpan ke Firestore
-    document.getElementById('regForm').onsubmit = function(e) {
+    document.getElementById('regForm').onsubmit = async function(e) {
         e.preventDefault();
-        
         const btn = document.getElementById('btnSubmit');
-        const email = document.getElementById('regEmail').value;
-
         btn.disabled = true;
         btn.innerText = "Menyimpan...";
 
-        // Menyesuaikan Nama Field dengan Database Abang (no_hp, komsel, dll)
-        db.collection("users").add({
+        const dataInput = {
             nama: document.getElementById('regNama').value,
-            email: email,
+            email: document.getElementById('regEmail').value,
             no_hp: document.getElementById('regHp').value,
             alamat: document.getElementById('regAlamat').value,
             password: document.getElementById('regPassword').value,
-            jabatan: document.getElementById('regJabatan').value,
             komsel: document.getElementById('jcSelect').value,
             gol_darah: document.getElementById('regGoldar').value,
             nomor_komsel: document.getElementById('nomorOtomatis').value,
             status: "Aktif",
             tanggal_daftar: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            alert("Pendaftaran Berhasil!\nNomor Komsel: " + document.getElementById('nomorOtomatis').value);
+        };
+
+        db.collection("users").add(dataInput).then(() => {
+            alert("Pendaftaran Berhasil!\nNomor Komsel: " + dataInput.nomor_komsel);
             window.location.href = "index.html";
         }).catch((err) => {
-            alert("Gagal Simpan: " + err.message);
+            alert("Gagal: " + err.message);
             btn.disabled = false;
-            btn.innerText = "Daftar Sekarang";
         });
     };
 </script>
-
 </body>
 </html>
