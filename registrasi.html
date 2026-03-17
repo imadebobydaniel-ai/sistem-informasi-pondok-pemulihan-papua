@@ -23,8 +23,10 @@
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
         
         .nk-display { background-color: #eefbff; border: 1.5px solid #007bff !important; color: #007bff; font-weight: bold; text-align: center; }
-        .btn-submit { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        /* Style tambahan untuk info otomatis agar user tahu waktu dicatat sistem */
+        .info-otomatis { font-size: 11px; color: #27ae60; font-style: italic; margin-top: -10px; margin-bottom: 10px; display: block; }
         
+        .btn-submit { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .footer-action { margin-top: 20px; text-align: center; }
         .btn-kembali { background: #222; color: #fff; padding: 10px 25px; border-radius: 50px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 10px; }
     </style>
@@ -35,7 +37,7 @@
         <div class="header">
             <img src="logo_pondok.png" alt="Logo">
             <h2>PONDOK PEMULIHAN PAPUA</h2>
-            <p>Formulir Pendaftaran Anggota</p>
+            <p>Formulir Pendaftaran Anggota Baru</p>
         </div>
 
         <div class="photo-container" onclick="document.getElementById('inp-foto').click()">
@@ -43,9 +45,7 @@
                 <i class="fa-solid fa-user" id="icon-user"></i>
                 <img id="img-prev" src="" alt="Preview">
             </div>
-            <div class="pencil-icon">
-                <i class="fa-solid fa-pencil"></i>
-            </div>
+            <div class="pencil-icon"><i class="fa-solid fa-pencil"></i></div>
             <input type="file" id="inp-foto" accept="image/*" style="display: none;" onchange="previewFoto(this)">
         </div>
 
@@ -55,6 +55,8 @@
                 <input type="text" id="reg_nk" class="nk-display" placeholder="Pilih JC untuk generate NK..." readonly>
             </div>
 
+            <span class="info-otomatis"><i class="fa-solid fa-clock"></i> Tanggal & Jam Daftar akan tercatat otomatis saat disimpan</span>
+
             <div class="form-group"><label>Nama Lengkap</label><input type="text" id="reg_nama" required></div>
             <div class="form-group"><label>Email</label><input type="email" id="reg_email" required></div>
             <div class="form-group"><label>Nomor HP / WhatsApp</label><input type="number" id="reg_hp" required></div>
@@ -62,13 +64,13 @@
             
             <div class="form-group">
                 <label>Alamat Lengkap</label>
-                <textarea id="reg_alamat" rows="2" required placeholder="Contoh: Jl. Raya Abepura No. 10"></textarea>
+                <textarea id="reg_alamat" rows="2" required placeholder="Jl. Raya Abepura No. 10"></textarea>
             </div>
 
             <div class="form-group">
                 <label>Golongan Darah</label>
                 <select id="reg_goldar" required>
-                    <option value="">-- Pilih Golongan Darah --</option>
+                    <option value="">-- Pilih --</option>
                     <option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
                 </select>
             </div>
@@ -113,7 +115,6 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        
         let fotoData = ""; 
 
         function previewFoto(input) {
@@ -143,11 +144,11 @@
             if (!fotoData) { alert("Foto profil wajib diunggah!"); return; }
 
             const btn = document.getElementById('btnSubmit');
-            btn.innerText = "Mendaftarkan Anggota...";
+            btn.innerText = "Mendaftarkan...";
             btn.disabled = true;
 
             try {
-                // SCRIPT OTOMATIS TANGGAL & JAM SEWAKTU SIMPAN
+                // Sesuai perintah: Menambahkan field tanggal pendaftaran secara otomatis ke Firebase
                 await db.collection("users").add({
                     nama: document.getElementById('reg_nama').value,
                     email: document.getElementById('reg_email').value,
@@ -159,13 +160,14 @@
                     jabatan: document.getElementById('reg_jabatan').value,
                     nomor_komsel: document.getElementById('reg_nk').value,
                     fotoUrl: fotoData,
-                    tanggal_daftar: firebase.firestore.FieldValue.serverTimestamp() // Otomatis mencatat tanggal & jam server
+                    // FIELD OTOMATIS: Tercatat di Firebase tanpa input manual
+                    tanggal_daftar: firebase.firestore.FieldValue.serverTimestamp() 
                 });
 
-                alert("Selamat! Pendaftaran Berhasil.");
+                alert("Pendaftaran Berhasil!");
                 window.location.href = "index.html";
             } catch (err) {
-                alert("Gagal Daftar: " + err.message);
+                alert("Gagal: " + err.message);
                 btn.disabled = false;
                 btn.innerText = "DAFTAR SEKARANG";
             }
