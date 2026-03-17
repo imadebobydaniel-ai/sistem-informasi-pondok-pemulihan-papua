@@ -20,10 +20,24 @@
         .search-group { display: flex; gap: 5px; flex-grow: 1; max-width: 500px; position: relative; }
         .search-input { padding: 10px 15px; width: 100%; border: 1px solid #ccc; border-radius: 6px; }
         .btn-cari-red { background: #ff0000; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .table-container { overflow-x: auto; background: white; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
-        thead { background: #ff0000; color: white; position: sticky; top: 0; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
+        
+        /* PERBAIKAN TABEL: Checkbox ikut bergeser, tidak freeze berantakan */
+        .table-container { overflow-x: auto; background: white; border-radius: 8px; width: 100%; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; table-layout: auto; }
+        thead { background: #ff0000; color: white; position: sticky; top: 0; z-index: 10; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; white-space: nowrap; }
+        
+        /* Checkbox Tetap di tempat (Sticky) tapi Rapih */
+        th:first-child, td:first-child { 
+            position: sticky; 
+            left: 0; 
+            z-index: 5; 
+            background: white; 
+            width: 40px; 
+            text-align: center;
+        }
+        thead th:first-child { background: #ff0000; }
+
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 90%; max-width: 500px; border-radius: 15px; overflow: hidden; animation: slideDown 0.3s ease; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -84,26 +98,11 @@
         <div class="modal-header">SINKRONISASI DATA ANGGOTA</div>
         <div class="modal-body">
             <input type="hidden" id="edit_id">
-            <div class="form-group">
-                <label>Nama Lengkap</label>
-                <input type="text" id="edit_nama">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="edit_email">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="text" id="edit_pass">
-            </div>
-            <div class="form-group">
-                <label>Nomor HP / WhatsApp</label>
-                <input type="text" id="edit_hp">
-            </div>
-            <div class="form-group">
-                <label>Alamat</label>
-                <input type="text" id="edit_alamat">
-            </div>
+            <div class="form-group"><label>Nama Lengkap</label><input type="text" id="edit_nama"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="edit_email"></div>
+            <div class="form-group"><label>Password</label><input type="text" id="edit_pass"></div>
+            <div class="form-group"><label>Nomor HP / WhatsApp</label><input type="text" id="edit_hp"></div>
+            <div class="form-group"><label>Alamat</label><input type="text" id="edit_alamat"></div>
             <div class="form-group">
                 <label>Jabatan Komsel</label>
                 <select id="edit_jabatan">
@@ -115,20 +114,13 @@
             <div class="form-group">
                 <label>Lokasi Komsel JC</label>
                 <select id="edit_jc">
-                    <option value="1">JC 1</option>
-                    <option value="2">JC 2</option>
-                    <option value="3">JC 3</option>
-                    <option value="4">JC 4</option>
-                    <option value="5">JC 5</option>
+                    <option value="1">JC 1</option><option value="2">JC 2</option><option value="3">JC 3</option><option value="4">JC 4</option><option value="5">JC 5</option>
                 </select>
             </div>
             <div class="form-group">
                 <label>Golongan Darah</label>
                 <select id="edit_goldar">
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="AB">AB</option>
-                    <option value="O">O</option>
+                    <option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
                 </select>
             </div>
         </div>
@@ -143,7 +135,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Inisialisasi Firebase HARUS di paling atas
+    // 1. Inisialisasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -155,11 +147,15 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 2. Fungsi Muat Data (Sekarang Aman)
+    // 2. Muat Data
     function muatDataUser() {
         const badanTabel = document.getElementById('badanTabel');
-        db.collection("users").orderBy("tanggal_daftar", "desc").get().then((querySnapshot) => {
+        db.collection("users").get().then((querySnapshot) => {
             badanTabel.innerHTML = "";
+            if (querySnapshot.empty) {
+                badanTabel.innerHTML = `<tr><td colspan="10" style="text-align:center;">Tidak ada data ditemukan.</td></tr>`;
+                return;
+            }
             querySnapshot.forEach((doc) => {
                 let user = doc.data();
                 let baris = `
@@ -178,12 +174,33 @@
                 badanTabel.innerHTML += baris;
             });
         }).catch(err => {
-            // WARNING Gagal Muat
-            alert("🚨 GAGAL MUAT: " + err.message);
+            alert("🚨 GAGAL MUAT DATA: " + err.message);
         });
     }
 
-    // 3. Fungsi Simpan (Dengan Warning Alert)
+    // 3. Edit Data
+    function bukaModeEdit() {
+        const terpilih = document.querySelectorAll('.cek-baris:checked');
+        if (terpilih.length !== 1) return alert("Pilih satu data melalui checkbox untuk diedit!");
+
+        const id = terpilih[0].closest('tr').getAttribute('data-id');
+        db.collection("users").doc(id).get().then((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById('edit_id').value = id;
+                document.getElementById('edit_nama').value = data.nama || "";
+                document.getElementById('edit_email').value = data.email || "";
+                document.getElementById('edit_pass').value = data.password || "";
+                document.getElementById('edit_hp').value = data.no_hp || "";
+                document.getElementById('edit_alamat').value = data.alamat || "";
+                document.getElementById('edit_jabatan').value = data.jabatan || "Anggota Komsel";
+                document.getElementById('edit_jc').value = data.komsel || "1";
+                document.getElementById('edit_goldar').value = data.gol_darah || "A";
+                document.getElementById('editModal').style.display = 'flex';
+            }
+        });
+    }
+
     function simpanDataUpdate() {
         const id = document.getElementById('edit_id').value;
         const dataBaru = {
@@ -198,18 +215,18 @@
         };
 
         db.collection("users").doc(id).update(dataBaru).then(() => {
-            alert("💾 DATA TERSIMPAN: Perubahan data anggota berhasil disinkronkan!"); 
+            alert("💾 DATA TERSIMPAN: Perubahan berhasil disinkronkan!");
             tutupModal();
             muatDataUser();
-        }).catch(err => alert("❌ GAGAL: " + err));
+        }).catch(err => alert("❌ GAGAL UPDATE: " + err));
     }
 
-    // 4. Fungsi Hapus (Dengan Warning Alert)
+    // 4. Hapus Data
     function hapusTerpilih() {
         const terpilih = document.querySelectorAll('.cek-baris:checked');
-        if (terpilih.length === 0) return alert("Pilih data yang ingin dihapus!");
+        if (terpilih.length === 0) return alert("Pilih minimal satu data untuk dihapus!");
         
-        if (!confirm("⚠️ PERINGATAN: Yakin ingin menghapus data ini?")) return;
+        if (!confirm("⚠️ PERINGATAN: Yakin ingin menghapus data yang dipilih dari database?")) return;
 
         const batch = db.batch();
         terpilih.forEach(cb => {
@@ -218,16 +235,25 @@
         });
 
         batch.commit().then(() => {
-            alert("🗑️ DATA TERHAPUS: Data telah dibersihkan!");
+            alert("🗑️ DATA TERHAPUS: Database telah diperbarui!");
             muatDataUser();
+        }).catch(err => alert("❌ GAGAL HAPUS: " + err));
+    }
+
+    function tutupModal() { document.getElementById('editModal').style.display = 'none'; }
+
+    function jalankanCari() {
+        let input = document.getElementById('kotakCari').value.toLowerCase();
+        document.querySelectorAll('#badanTabel tr').forEach(tr => {
+            tr.style.display = tr.innerText.toLowerCase().includes(input) ? "" : "none";
         });
     }
 
-    // Fungsi lain tetap sama...
-    function tutupModal() { document.getElementById('editModal').style.display = 'none'; }
-    function jalankanCari() { /* ... */ }
+    document.getElementById('pilihSemua').onclick = function() {
+        document.querySelectorAll('.cek-baris').forEach(cb => cb.checked = this.checked);
+    }
+
     window.onload = muatDataUser;
-</script>
 </script>
 </body>
 </html>
