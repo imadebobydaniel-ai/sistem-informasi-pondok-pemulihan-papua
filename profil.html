@@ -28,10 +28,16 @@
     <div class="header">Biodata & Kelengkapan Profil</div>
     
     <div class="photo-section">
+    <div style="position: relative; display: inline-block;">
         <img src="https://via.placeholder.com/150" id="display_foto" class="profile-img">
-        <div class="progress-circle" id="prog_text">100%</div>
-        <p style="font-size: 12px; color: #999; margin-top: 10px;">Klik foto untuk ganti, isi data di bawah</p>
+        
+        <label for="input_file" style="position: absolute; bottom: 5px; right: 5px; background: #007bff; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white;">
+            <i class="fa-solid fa-pencil"></i>
+        </label>
+        
+        <input type="file" id="input_file" style="display: none;" onchange="uploadFotoKeFirebase()">
     </div>
+</div>
 
     <div class="form-body">
         <input type="hidden" id="user_doc_id">
@@ -94,7 +100,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
 <script>
-    // Konfigurasi Firebase Abang
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -109,12 +114,12 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // 1. FUNGSI AMBIL DATA OTOMATIS (Mencegah isi berulang-ulang)
-    function muatDataProfilOtomatis() {
+    // FUNGSI MUAT DATA DARI FIREBASE
+    function muatProfilDariDatabase() {
         const userEmail = localStorage.getItem('userEmail');
         
         if (!userEmail) {
-            console.log("Sesi email tidak ditemukan di localStorage");
+            console.log("Email tidak ditemukan di sesi browser.");
             return;
         }
 
@@ -123,67 +128,29 @@
                 const doc = querySnapshot.docs[0];
                 const data = doc.data();
                 
-                // Isi form otomatis dari database
-                document.getElementById('user_doc_id').value = doc.id;
-                document.getElementById('p_nama').value = data.nama || "";
-                document.getElementById('p_jabatan').value = data.jabatan || "";
-                document.getElementById('p_email').value = data.email || "";
-                document.getElementById('p_hp').value = data.nomor_hp || data.no_hp || "";
-                document.getElementById('p_jc').value = data.komsel || "";
-                document.getElementById('p_goldar').value = data.gol_darah || "";
+                // Isi otomatis kolom biodata (Sesuaikan ID-nya)
+                if(document.getElementById('p_nama')) document.getElementById('p_nama').value = data.nama || "";
+                if(document.getElementById('p_jabatan')) document.getElementById('p_jabatan').value = data.jabatan || "";
+                if(document.getElementById('p_email')) document.getElementById('p_email').value = data.email || "";
+                if(document.getElementById('p_hp')) document.getElementById('p_hp').value = data.nomor_hp || "";
+                if(document.getElementById('p_jc')) document.getElementById('p_jc').value = data.komsel || "";
+                if(document.getElementById('p_goldar')) document.getElementById('p_goldar').value = data.gol_darah || "";
                 
-                // Muat foto profil jika sudah pernah upload
-                if (data.fotoUrl) {
+                // Muat Foto Profil
+                if (data.fotoUrl && document.getElementById('display_foto')) {
                     document.getElementById('display_foto').src = data.fotoUrl;
                 }
+                
+                // Simpan ID dokumen untuk update nanti
+                localStorage.setItem('userDocId', doc.id);
             }
         }).catch((error) => {
-            console.error("Gagal mengambil data database:", error);
+            console.error("Gagal menarik data:", error);
         });
     }
 
-    // 2. FUNGSI UPLOAD FOTO MANUAL
-    function uploadFotoManual() {
-        const fileInput = document.getElementById('input_file');
-        const file = fileInput.files[0];
-        const docId = document.getElementById('user_doc_id').value;
-
-        if (!file || !docId) return;
-
-        const storageRef = storage.ref('profil/' + docId);
-        storageRef.put(file).then(() => {
-            storageRef.getDownloadURL().then((url) => {
-                db.collection("users").doc(docId).update({ fotoUrl: url }).then(() => {
-                    document.getElementById('display_foto').src = url;
-                    alert("Foto Berhasil Diupload!");
-                });
-            });
-        });
-    }
-
-    // 3. FUNGSI UPDATE DATA (Jika user ingin ubah biodata)
-    function simpanPerubahanProfil() {
-        const docId = document.getElementById('user_doc_id').value;
-        if (!docId) return alert("Data belum dimuat sempurna.");
-
-        const dataUpdate = {
-            nama: document.getElementById('p_nama').value,
-            jabatan: document.getElementById('p_jabatan').value,
-            email: document.getElementById('p_email').value,
-            nomor_hp: document.getElementById('p_hp').value,
-            komsel: document.getElementById('p_jc').value,
-            gol_darah: document.getElementById('p_goldar').value
-        };
-
-        db.collection("users").doc(docId).update(dataUpdate).then(() => {
-            localStorage.setItem('userEmail', dataUpdate.email);
-            alert("Biodata Berhasil Diperbarui di Database!");
-        });
-    }
-
-    // JALANKAN FUNGSI MUAT DATA SAAT HALAMAN DIBUKA
-    window.onload = muatDataProfilOtomatis;
+    // JALANKAN SAAT HALAMAN DIBUKA
+    window.onload = muatProfilDariDatabase;
 </script>
-
 </body>
 </html>
