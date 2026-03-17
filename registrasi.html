@@ -7,32 +7,27 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        
         .reg-card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
         .header { text-align: center; margin-bottom: 20px; }
         .header img { width: 80px; margin-bottom: 10px; }
         .header h2 { margin: 0; color: #333; font-size: 20px; text-transform: uppercase; }
-        
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        
-        /* STYLE KOLOM NK OTOMATIS */
         .nk-field { background-color: #f0faff; border: 1.5px solid #007bff !important; color: #007bff; font-weight: bold; text-align: center; }
-
         .btn-submit { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         
-        /* TOMBOL KEMBALI DI BAWAH TOMBOL DAFTAR */
-        .footer-nav { margin-top: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .btn-kembali { 
+        /* TOMBOL KEMBALI DI BAWAH DAFTAR SEKARANG */
+        .footer-action { margin-top: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .btn-kembali-login { 
             background: #222; color: #fff; border: 2px solid #007bff; 
             padding: 10px 25px; border-radius: 50px; cursor: pointer; 
             text-decoration: none; font-size: 14px; font-weight: bold; 
             display: inline-flex; align-items: center; gap: 10px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        .login-link { font-size: 13px; }
-        .login-link a { color: #007bff; text-decoration: none; font-weight: bold; }
+        .login-text { font-size: 13px; }
+        .login-text a { color: #007bff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -67,7 +62,7 @@
 
             <div class="form-group">
                 <label>Komsel JC</label>
-                <select id="reg_jc" required onchange="generateNK()">
+                <select id="reg_jc" required onchange="generateNKAutomatic()">
                     <option value="">-- Pilih Lokasi JC --</option>
                     <option value="JC1">JC 1</option><option value="JC2">JC 2</option>
                     <option value="JC3">JC 3</option><option value="JC4">JC 4</option>
@@ -86,11 +81,11 @@
             <button type="submit" id="btnSubmit" class="btn-submit">DAFTAR SEKARANG</button>
         </form>
 
-        <div class="footer-nav">
-            <a href="index.html" class="btn-kembali">
+        <div class="footer-action">
+            <a href="index.html" class="btn-kembali-login">
                 <i class="fa-solid fa-circle-arrow-left"></i> KEMBALI KE LOGIN
             </a>
-            <div class="login-link">Sudah punya akun? <a href="index.html">Masuk di sini</a></div>
+            <div class="login-text">Sudah punya akun? <a href="index.html">Masuk di sini</a></div>
         </div>
     </div>
 
@@ -109,23 +104,23 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        async function generateNK() {
-            const jcInput = document.getElementById('reg_jc').value;
-            if (!jcInput) { document.getElementById('reg_nk').value = ""; return; }
+        async function generateNKAutomatic() {
+            const jcVal = document.getElementById('reg_jc').value;
+            if (!jcVal) { document.getElementById('reg_nk').value = ""; return; }
             
             const snapshot = await db.collection("users").get();
             const urutan = String(snapshot.size + 1).padStart(3, '0');
             const tahun = "2026";
             
             // Format: NK-PPP-001-JC5-2026
-            document.getElementById('reg_nk').value = `NK-PPP-${urutan}-${jcInput}-${tahun}`;
+            document.getElementById('reg_nk').value = `NK-PPP-${urutan}-${jcVal}-${tahun}`;
         }
 
         async function prosesDaftar(e) {
             e.preventDefault();
             const btn = document.getElementById('btnSubmit');
-            const nkValue = document.getElementById('reg_nk').value;
-            btn.innerText = "Mendaftarkan...";
+            const nkFinal = document.getElementById('reg_nk').value;
+            btn.innerText = "Memproses...";
             btn.disabled = true;
 
             try {
@@ -138,11 +133,11 @@
                     jabatan: document.getElementById('reg_jabatan').value,
                     komsel: document.getElementById('reg_jc').value,
                     gol_darah: document.getElementById('reg_goldar').value,
-                    nomor_komsel: nkValue,
+                    nomor_komsel: nkFinal,
                     tanggal_daftar: new Date().toISOString()
                 });
 
-                alert("BERHASIL! Nomor Komsel Anda: " + nkValue);
+                alert("BERHASIL! Nomor Komsel: " + nkFinal);
                 window.location.href = "index.html";
             } catch (err) { alert("Error: " + err.message); btn.disabled = false; btn.innerText = "DAFTAR SEKARANG"; }
         }
