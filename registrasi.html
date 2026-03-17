@@ -182,6 +182,34 @@
                 btn.innerText = "DAFTAR SEKARANG";
             }
         }
+        // Tambahkan variabel global di script registrasi.html
+let fotoBase64 = "";
+
+// Fungsi untuk mengambil foto dari input file
+function previewFotoProfil(event) {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function() {
+        fotoBase64 = reader.result; // Hasil foto jadi teks kode
+        document.getElementById('img-preview').src = fotoBase64; // Tampilkan di layar
+    }
+    
+    if (file) {
+        // Kompres sederhana: Jika file > 200kb, beri peringatan atau gunakan canvas
+        reader.readAsDataURL(file);
+    }
+}
+
+// Saat simpan pendaftaran (db.collection("users").add)
+// Pastikan field fotoUrl diisi dengan variabel fotoBase64
+await db.collection("users").add({
+    nama: nama,
+    email: email,
+    fotoUrl: fotoBase64, // FOTO MASUK KE SINI
+    tanggal_daftar: firebase.firestore.FieldValue.serverTimestamp()
+    // ... field lainnya
+});
     </script>
 </body>
 </html>
