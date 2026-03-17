@@ -7,18 +7,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .profile-container { background: white; width: 100%; max-width: 400px; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding-bottom: 20px; }
+        .profile-container { background: white; width: 100%; max-width: 400px; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding-bottom: 25px; }
         .profile-header { background: #007bff; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; }
+        
+        /* Area Foto Profil */
         .photo-section { text-align: center; padding: 30px 0; position: relative; }
-        .photo-circle { width: 150px; height: 150px; border-radius: 50%; border: 4px solid #00ff88; margin: 0 auto; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #eee; cursor: pointer; }
+        .photo-circle { width: 160px; height: 160px; border-radius: 50%; border: 4px solid #00ff88; margin: 0 auto; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa; cursor: pointer; position: relative; }
         .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
-        .edit-icon { position: absolute; bottom: 35px; right: 135px; background: #007bff; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; cursor: pointer; }
-        .info-section { padding: 0 25px 20px; }
-        .input-group { margin-bottom: 15px; }
+        .edit-icon { position: absolute; bottom: 35px; right: 130px; background: #007bff; color: white; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; cursor: pointer; z-index: 10; }
+
+        .info-section { padding: 0 25px 15px; }
+        .input-group { margin-bottom: 18px; }
         .input-group label { font-size: 11px; font-weight: bold; color: #888; text-transform: uppercase; display: block; margin-bottom: 5px; }
         .input-group input, .input-group select { width: 100%; border: none; border-bottom: 1px solid #ddd; padding: 8px 0; font-size: 15px; color: #333; outline: none; background: transparent; }
-        .btn-save { width: calc(100% - 50px); margin: 0 25px 10px; background: #007bff; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-back { width: calc(100% - 50px); margin: 0 25px; background: #333; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; display: block; text-align: center; text-decoration: none; font-size: 14px; }
+
+        /* Tombol Aksi */
+        .action-area { padding: 0 25px; display: flex; flex-direction: column; gap: 12px; }
+        .btn-save { background: #007bff; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; width: 100%; }
+        .btn-back { background: #333; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; text-decoration: none; font-size: 14px; width: 100%; box-sizing: border-box; }
+        
         #fileInput { display: none; }
     </style>
 </head>
@@ -29,12 +36,12 @@
     
     <div class="photo-section">
         <div class="photo-circle" onclick="document.getElementById('fileInput').click()">
-            <img id="profile-img" src="https://via.placeholder.com/150" alt="Foto Profil">
+            <img id="profile-img" src="https://via.placeholder.com/150?text=Foto+Profil" alt="Foto Profil">
         </div>
         <div class="edit-icon" onclick="document.getElementById('fileInput').click()">
             <i class="fa-solid fa-pen"></i>
         </div>
-        <input type="file" id="fileInput" accept="image/*" onchange="handleImageUpload(this)">
+        <input type="file" id="fileInput" accept="image/*" onchange="previewAndUpload(this)">
     </div>
 
     <div class="info-section">
@@ -70,7 +77,6 @@
         <div class="input-group">
             <label>Golongan Darah</label>
             <select id="prof-goldar">
-                <option value="- Pilih -">- Pilih -</option>
                 <option value="A">A</option>
                 <option value="B">B</option>
                 <option value="AB">AB</option>
@@ -79,8 +85,10 @@
         </div>
     </div>
 
-    <button class="btn-save" onclick="updateProfil()">SIMPAN PERUBAHAN</button>
-    <a href="menu.html" class="btn-back">KEMBALI KE MENU</a>
+    <div class="action-area">
+        <button class="btn-save" onclick="updateProfil()">SIMPAN PERUBAHAN</button>
+        <a href="menu.html" class="btn-back">KEMBALI KE MENU</a>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -101,59 +109,54 @@
     const storage = firebase.storage();
     const userEmail = localStorage.getItem("userEmail");
 
-    async function loadProfileData() {
-        if (!userEmail) { window.location.href = "index.html"; return; }
-        
-        const snapshot = await db.collection("users").where("email", "==", userEmail).get();
-        if (!snapshot.empty) {
-            const data = snapshot.docs[0].data();
-            document.getElementById('prof-nama').value = data.nama || "";
-            document.getElementById('prof-email').value = data.email || "";
-            document.getElementById('prof-hp').value = data.no_hp || "";
-            
-            // Otomatisasi Dropdown dari Database
-            if (data.jabatan) document.getElementById('prof-jabatan').value = data.jabatan;
-            if (data.komsel) document.getElementById('prof-jc').value = data.komsel;
-            if (data.goldar) document.getElementById('prof-goldar').value = data.goldar;
-            
-            if (data.fotoUrl) {
-                document.getElementById('profile-img').src = data.fotoUrl;
-            }
+    // Load Data Otomatis dari Firebase
+    async function loadProfile() {
+        if (!userEmail) return;
+        const snap = await db.collection("users").where("email", "==", userEmail).get();
+        if (!snap.empty) {
+            const d = snap.docs[0].data();
+            document.getElementById('prof-nama').value = d.nama || "";
+            document.getElementById('prof-email').value = d.email || "";
+            document.getElementById('prof-hp').value = d.no_hp || "";
+            document.getElementById('prof-jabatan').value = d.jabatan || "Anggota Komsel";
+            document.getElementById('prof-jc').value = d.komsel || "JC 1";
+            document.getElementById('prof-goldar').value = d.goldar || "A";
+            if (d.fotoUrl) document.getElementById('profile-img').src = d.fotoUrl;
         }
     }
 
-    async function handleImageUpload(input) {
+    // Fungsi Upload Foto ke Storage
+    async function previewAndUpload(input) {
         const file = input.files[0];
         if (!file) return;
 
-        const storageRef = storage.ref('profil_foto/' + userEmail);
+        const storageRef = storage.ref('users_photo/' + userEmail);
         try {
-            await storageRef.put(file);
-            const downloadURL = await storageRef.getDownloadURL();
-            document.getElementById('profile-img').src = downloadURL;
-            alert("Foto berhasil diproses! Klik Simpan Perubahan.");
-        } catch (e) { alert("Gagal upload: " + e.message); }
+            const task = await storageRef.put(file);
+            const url = await task.ref.getDownloadURL();
+            document.getElementById('profile-img').src = url;
+            alert("Foto berhasil diunggah!");
+        } catch (err) { alert("Gagal upload: " + err.message); }
     }
 
+    // Update Data ke Firestore
     async function updateProfil() {
-        const snapshot = await db.collection("users").where("email", "==", userEmail).get();
-        if (!snapshot.empty) {
-            const docId = snapshot.docs[0].id;
-            try {
-                await db.collection("users").doc(docId).update({
-                    nama: document.getElementById('prof-nama').value,
-                    no_hp: document.getElementById('prof-hp').value,
-                    jabatan: document.getElementById('prof-jabatan').value,
-                    komsel: document.getElementById('prof-jc').value,
-                    goldar: document.getElementById('prof-goldar').value,
-                    fotoUrl: document.getElementById('profile-img').src
-                });
-                alert("Data berhasil diperbarui!");
-            } catch (e) { alert("Gagal update: " + e.message); }
+        const snap = await db.collection("users").where("email", "==", userEmail).get();
+        if (!snap.empty) {
+            const id = snap.docs[0].id;
+            await db.collection("users").doc(id).update({
+                nama: document.getElementById('prof-nama').value,
+                no_hp: document.getElementById('prof-hp').value,
+                jabatan: document.getElementById('prof-jabatan').value,
+                komsel: document.getElementById('prof-jc').value,
+                goldar: document.getElementById('prof-goldar').value,
+                fotoUrl: document.getElementById('profile-img').src
+            });
+            alert("Profil berhasil diperbarui!");
         }
     }
 
-    loadProfileData();
+    loadProfile();
 </script>
 </body>
 </html>
