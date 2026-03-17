@@ -3,54 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrator - PPP</title>
+    <title>Login Administrator - PPP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #1a1a1a; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        
-        /* BOX LOGIN (Muncul jika belum login) */
-        #login-sec { background: #ffffff; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; box-sizing: border-box; border-top: 5px solid #ff0000; display: none; margin-top: 50px; }
-        .header-login { text-align: center; margin-bottom: 30px; }
-        .header-login i { font-size: 50px; color: #ff0000; margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #1a1a1a; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .login-card { background: #ffffff; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; box-sizing: border-box; border-top: 5px solid #ff0000; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header i { font-size: 50px; color: #ff0000; margin-bottom: 10px; }
+        .header h2 { margin: 0; color: #333; font-size: 22px; }
+        .header p { color: #666; font-size: 14px; margin-top: 5px; }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #444; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn-login { width: 100%; padding: 14px; background-color: #ff0000; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        /* DASHBOARD (Muncul jika sudah login) */
-        #dashboard-sec { background: white; width: 100%; max-width: 1000px; padding: 20px; border-radius: 10px; display: none; }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
-        .btn-logout { background: #333; color: white; padding: 8px 15px; border-radius: 5px; cursor: pointer; border: none; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
+        .form-group input:focus { border-color: #ff0000; }
+        .btn-login { width: 100%; padding: 14px; background-color: #ff0000; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-login:hover { background-color: #cc0000; }
+        .footer-link { text-align: center; margin-top: 20px; }
+        .footer-link a { color: #666; text-decoration: none; font-size: 13px; }
     </style>
 </head>
 <body>
 
-    <div id="login-sec">
-        <div class="header-login">
+    <div class="login-card">
+        <div class="header">
             <i class="fa-solid fa-user-shield"></i>
-            <h2 style="margin:0;">ADMIN PANEL</h2>
-            <p style="color:#666; font-size:14px;">Pondok Pemulihan Papua</p>
+            <h2>ADMIN PANEL</h2>
+            <p>Pondok Pemulihan Papua</p>
         </div>
-        <div class="form-group">
-            <label>Username Admin</label>
-            <input type="text" id="admin_user" placeholder="Masukkan username">
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="admin_pass" placeholder="Masukkan password">
-        </div>
-        <button class="btn-login" onclick="prosesLogin()">MASUK SISTEM</button>
-        <p style="text-align:center; margin-top:20px;"><a href="index.html" style="text-decoration:none; color:#666; font-size:13px;">Kembali ke Utama</a></p>
-    </div>
 
-    <div id="dashboard-sec">
-        <div class="top-bar">
-            <h2 style="margin:0;"><i class="fa-solid fa-gauge"></i> Dashboard Admin</h2>
-            <button class="btn-logout" onclick="logoutAdmin()">Keluar</button>
+        <form id="adminLoginForm" onsubmit="loginAdmin(event)">
+            <div class="form-group">
+                <label>Username Admin</label>
+                <input type="text" id="admin_user" required placeholder="Masukkan username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="admin_pass" required placeholder="Masukkan password">
+            </div>
+            <button type="submit" id="btnLogin" class="btn-login">MASUK SISTEM</button>
+        </form>
+
+        <div class="footer-link">
+            <a href="index.html"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login User</a>
         </div>
-        <h3>Daftar Pendaftaran Anggota</h3>
-        <p>Selamat datang di panel kendali Pondok Pemulihan Papua.</p>
-        </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -67,43 +63,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // CEK STATUS SAAT BUKA HALAMAN
-        window.onload = function() {
-            if (localStorage.getItem("adminStatus") === "loggedIn") {
-                document.getElementById('dashboard-sec').style.display = "block";
-            } else {
-                document.getElementById('login-sec').style.display = "block";
-            }
-        };
-
-        // PROSES LOGIN
-        async function prosesLogin() {
+        async function loginAdmin(e) {
+            e.preventDefault();
             const user = document.getElementById('admin_user').value;
             const pass = document.getElementById('admin_pass').value;
+            const btn = document.getElementById('btnLogin');
+
+            btn.innerText = "Verifikasi...";
+            btn.disabled = true;
 
             try {
-                // Mencari di koleksi 'admins' sesuai struktur Firebase Abang
                 const snap = await db.collection("admins")
                     .where("username", "==", user)
                     .where("password", "==", pass)
                     .get();
 
                 if (!snap.empty) {
+                    alert("Login Admin Berhasil!");
                     localStorage.setItem("adminStatus", "loggedIn");
-                    alert("Login Berhasil!");
-                    location.reload(); // Refresh halaman untuk masuk ke dashboard
+                    // PERBAIKAN: Diarahkan ke admin.html bukan admin_dashboard.html
+                    window.location.href = "admin.html"; 
                 } else {
-                    alert("Username atau Password Salah!");
+                    alert("Username atau Password Admin Salah!");
+                    btn.innerText = "MASUK SISTEM";
+                    btn.disabled = false;
                 }
             } catch (err) {
-                alert("Terjadi kesalahan: " + err.message);
+                alert("Error: " + err.message);
+                btn.innerText = "MASUK SISTEM";
+                btn.disabled = false;
             }
-        }
-
-        // PROSES KELUAR
-        function logoutAdmin() {
-            localStorage.removeItem("adminStatus");
-            location.reload();
         }
     </script>
 </body>
