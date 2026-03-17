@@ -12,7 +12,6 @@
         .header img { width: 80px; margin-bottom: 10px; }
         .header h2 { margin: 0; color: #333; font-size: 20px; text-transform: uppercase; }
         
-        /* STYLE KHUSUS FOTO PROFIL */
         .photo-container { position: relative; width: 100px; height: 100px; margin: 0 auto 20px; }
         .photo-circle { width: 100%; height: 100%; border-radius: 50%; border: 3px solid #00ff88; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa; cursor: pointer; }
         .photo-circle img { width: 100%; height: 100%; object-fit: cover; display: none; }
@@ -21,7 +20,7 @@
 
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
         
         .nk-display { background-color: #eefbff; border: 1.5px solid #007bff !important; color: #007bff; font-weight: bold; text-align: center; }
         .btn-submit { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
@@ -62,12 +61,38 @@
             <div class="form-group"><label>Password</label><input type="password" id="reg_pass" required></div>
             
             <div class="form-group">
+                <label>Alamat Lengkap</label>
+                <textarea id="reg_alamat" rows="2" required placeholder="Contoh: Jl. Raya Abepura No. 10"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Golongan Darah</label>
+                <select id="reg_goldar" required>
+                    <option value="">-- Pilih Golongan Darah --</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="AB">AB</option>
+                    <option value="O">O</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label>Komsel JC</label>
                 <select id="reg_jc" required onchange="generateNK()">
                     <option value="">-- Pilih Lokasi JC --</option>
                     <option value="JC1">JC 1</option><option value="JC2">JC 2</option>
                     <option value="JC3">JC 3</option><option value="JC4">JC 4</option>
                     <option value="JC5">JC 5</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Jabatan Komsel</label>
+                <select id="reg_jabatan" required>
+                    <option value="">-- Pilih Jabatan --</option>
+                    <option value="Ketua Komsel">Ketua Komsel</option>
+                    <option value="Wakil Ketua Komsel">Wakil Ketua Komsel</option>
+                    <option value="Anggota Komsel">Anggota Komsel</option>
                 </select>
             </div>
 
@@ -98,7 +123,6 @@
         const db = firebase.firestore();
         const storage = firebase.storage();
 
-        // 1. Fungsi Preview Foto
         function previewFoto(input) {
             const file = input.files[0];
             if (file) {
@@ -112,7 +136,6 @@
             }
         }
 
-        // 2. Fungsi Generate NK (Tetap Seperti Punya Abang)
         async function generateNK() {
             const jc = document.getElementById('reg_jc').value;
             if (!jc) return;
@@ -121,7 +144,6 @@
             document.getElementById('reg_nk').value = `NK-PPP-${urutan}-${jc}-2026`;
         }
 
-        // 3. Fungsi Daftar + Upload Foto
         async function prosesDaftar(e) {
             e.preventDefault();
             const email = document.getElementById('reg_email').value;
@@ -134,20 +156,21 @@
             btn.disabled = true;
 
             try {
-                // Upload Foto ke Firebase Storage
                 const storageRef = storage.ref('users_photo/' + email);
                 const uploadTask = await storageRef.put(fotoFile);
                 const fotoUrl = await uploadTask.ref.getDownloadURL();
 
-                // Simpan ke Firestore
                 await db.collection("users").add({
                     nama: document.getElementById('reg_nama').value,
                     email: email,
                     no_hp: document.getElementById('reg_hp').value,
                     password: document.getElementById('reg_pass').value,
+                    alamat: document.getElementById('reg_alamat').value, // Simpan Alamat
+                    goldar: document.getElementById('reg_goldar').value, // Simpan Goldar
                     komsel: document.getElementById('reg_jc').value,
+                    jabatan: document.getElementById('reg_jabatan').value, // Simpan Jabatan
                     nomor_komsel: document.getElementById('reg_nk').value,
-                    fotoUrl: fotoUrl, // URL Foto masuk ke sini
+                    fotoUrl: fotoUrl,
                     tanggal_daftar: new Date().toISOString()
                 });
 
