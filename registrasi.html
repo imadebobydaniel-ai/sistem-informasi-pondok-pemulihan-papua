@@ -11,33 +11,43 @@
         .header { text-align: center; margin-bottom: 20px; }
         .header img { width: 80px; margin-bottom: 10px; }
         .header h2 { margin: 0; color: #333; font-size: 20px; text-transform: uppercase; }
+        
+        /* STYLE KHUSUS FOTO PROFIL */
+        .photo-container { position: relative; width: 100px; height: 100px; margin: 0 auto 20px; }
+        .photo-circle { width: 100%; height: 100%; border-radius: 50%; border: 3px solid #00ff88; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa; cursor: pointer; }
+        .photo-circle img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .photo-circle i { font-size: 40px; color: #ccc; }
+        .pencil-icon { position: absolute; bottom: 5px; right: 5px; background: #007bff; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; font-size: 14px; cursor: pointer; }
+
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
         .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
         
-        /* KOLOM NK OTOMATIS (SINKRON DENGAN ADMIN) */
         .nk-display { background-color: #eefbff; border: 1.5px solid #007bff !important; color: #007bff; font-weight: bold; text-align: center; }
-
         .btn-submit { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         
-        /* TOMBOL KEMBALI DI BAWAH DAFTAR SEKARANG SESUROUKSI */
-        .footer-action { margin-top: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .btn-kembali { 
-            background: #222; color: #fff; border: 2px solid #007bff; 
-            padding: 10px 25px; border-radius: 50px; cursor: pointer; 
-            text-decoration: none; font-size: 14px; font-weight: bold; 
-            display: inline-flex; align-items: center; gap: 10px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
+        .footer-action { margin-top: 20px; text-align: center; }
+        .btn-kembali { background: #222; color: #fff; padding: 10px 25px; border-radius: 50px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 10px; }
     </style>
 </head>
 <body>
 
     <div class="reg-card">
         <div class="header">
-            <img src="logo_ppp.png" alt="Logo">
+            <img src="logo_pondok.png" alt="Logo">
             <h2>PONDOK PEMULIHAN PAPUA</h2>
             <p>Formulir Pendaftaran Anggota</p>
+        </div>
+
+        <div class="photo-container" onclick="document.getElementById('inp-foto').click()">
+            <div class="photo-circle">
+                <i class="fa-solid fa-user" id="icon-user"></i>
+                <img id="img-prev" src="" alt="Preview">
+            </div>
+            <div class="pencil-icon">
+                <i class="fa-solid fa-pencil"></i>
+            </div>
+            <input type="file" id="inp-foto" accept="image/*" style="display: none;" onchange="previewFoto(this)">
         </div>
 
         <form id="regForm" onsubmit="prosesDaftar(event)">
@@ -53,7 +63,7 @@
             
             <div class="form-group">
                 <label>Komsel JC</label>
-                <select id="reg_jc" required onchange="sinkronNK()">
+                <select id="reg_jc" required onchange="generateNK()">
                     <option value="">-- Pilih Lokasi JC --</option>
                     <option value="JC1">JC 1</option><option value="JC2">JC 2</option>
                     <option value="JC3">JC 3</option><option value="JC4">JC 4</option>
@@ -73,54 +83,81 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <script>
-        // Konfigurasi Firebase Abang
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
             projectId: "boby-apps-project",
-            storageBucket: "boby-apps-project.firebasestorage.app",
+            storageBucket: "boby-apps-project.appspot.com",
             messagingSenderId: "125984859692",
             appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
-        // FUNGSI SINKRON NK: NK-PPP-[Urutan]-[JC]-2026
-        async function sinkronNK() {
-            const jc = document.getElementById('reg_jc').value;
-            if (!jc) { document.getElementById('reg_nk').value = ""; return; }
-            
-            const snap = await db.collection("users").get();
-            const urutan = String(snap.size + 1).padStart(3, '0');
-            const tahun = "2026";
-            
-            document.getElementById('reg_nk').value = `NK-PPP-${urutan}-${jc}-${tahun}`;
+        // 1. Fungsi Preview Foto
+        function previewFoto(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('img-prev').src = e.target.result;
+                    document.getElementById('img-prev').style.display = "block";
+                    document.getElementById('icon-user').style.display = "none";
+                }
+                reader.readAsDataURL(file);
+            }
         }
 
+        // 2. Fungsi Generate NK (Tetap Seperti Punya Abang)
+        async function generateNK() {
+            const jc = document.getElementById('reg_jc').value;
+            if (!jc) return;
+            const snap = await db.collection("users").get();
+            const urutan = String(snap.size + 1).padStart(3, '0');
+            document.getElementById('reg_nk').value = `NK-PPP-${urutan}-${jc}-2026`;
+        }
+
+        // 3. Fungsi Daftar + Upload Foto
         async function prosesDaftar(e) {
             e.preventDefault();
+            const email = document.getElementById('reg_email').value;
+            const fotoFile = document.getElementById('inp-foto').files[0];
+            
+            if (!fotoFile) { alert("Foto profil wajib diisi!"); return; }
+
             const btn = document.getElementById('btnSubmit');
-            const nkFinal = document.getElementById('reg_nk').value;
-            btn.innerText = "Sinkronisasi Data...";
+            btn.innerText = "Mengunggah Data...";
             btn.disabled = true;
 
             try {
-                // SIMPAN KE FIREBASE (Field 'nomor_komsel' harus sama dengan yang dipanggil di Tabel Admin)
+                // Upload Foto ke Firebase Storage
+                const storageRef = storage.ref('users_photo/' + email);
+                const uploadTask = await storageRef.put(fotoFile);
+                const fotoUrl = await uploadTask.ref.getDownloadURL();
+
+                // Simpan ke Firestore
                 await db.collection("users").add({
                     nama: document.getElementById('reg_nama').value,
-                    email: document.getElementById('reg_email').value,
+                    email: email,
                     no_hp: document.getElementById('reg_hp').value,
                     password: document.getElementById('reg_pass').value,
                     komsel: document.getElementById('reg_jc').value,
-                    nomor_komsel: nkFinal, // DATA INI YANG AKAN MUNCUL DI TABEL ADMIN
+                    nomor_komsel: document.getElementById('reg_nk').value,
+                    fotoUrl: fotoUrl, // URL Foto masuk ke sini
                     tanggal_daftar: new Date().toISOString()
                 });
 
-                alert("BERHASIL! NK SINKRON: " + nkFinal);
+                alert("Pendaftaran Berhasil!");
                 window.location.href = "index.html";
-            } catch (err) { alert("Error: " + err.message); btn.disabled = false; btn.innerText = "DAFTAR SEKARANG"; }
+            } catch (err) {
+                alert("Gagal: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "DAFTAR SEKARANG";
+            }
         }
     </script>
 </body>
