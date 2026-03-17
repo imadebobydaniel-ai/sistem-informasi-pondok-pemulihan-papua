@@ -23,7 +23,7 @@
 
 <div class="login-box">
     <div class="header-section">
-        <img src="logo_pondok.png" alt="Logo" class="logo-main">
+        <img src="https://imadebobydaniel-ai.github.io/laporan-pembacaan-alkitab-/logo_pondok.png" alt="Logo" class="logo-main">
         <span id="text-org">PONDOK PEMULIHAN PAPUA</span>
         <span id="text-system">Sistem Informasi Komsel JC</span>
         <span id="text-status">Login Anggota Komsel</span>
@@ -32,7 +32,7 @@
     <input type="email" id="email" placeholder="Email Anggota">
     <input type="password" id="pass" placeholder="Password">
     
-    <button id="btnLogin" class="btn-blue" onclick="prosesLogin()">MASUK</button>
+    <button class="btn-blue" onclick="prosesLogin()">MASUK</button>
     
     <div class="footer-links">
         <p>Belum punya akun? <a href="registrasi.html">Daftar Sekarang</a></p>
@@ -44,7 +44,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Abang
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -57,44 +56,29 @@
     const db = firebase.firestore();
 
     async function prosesLogin() {
-        const emailVal = document.getElementById('email').value;
-        const passVal = document.getElementById('pass').value;
-        const btn = document.getElementById('btnLogin');
-
-        if(!emailVal || !passVal) {
-            alert("Silakan isi email dan password!");
-            return;
-        }
-
-        btn.innerText = "Mengecek...";
-        btn.disabled = true;
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
 
         try {
-            // Cek ke tabel users di Firebase
             const snapshot = await db.collection("users")
-                .where("email", "==", emailVal)
-                .where("password", "==", passVal)
+                .where("email", "==", email)
+                .where("password", "==", pass)
                 .get();
 
             if (!snapshot.empty) {
-                // LOGIN BERHASIL
-                // KUNCI: Simpan email ke localStorage agar Main Menu bisa tarik Nama & Komsel
-                localStorage.setItem("userEmail", emailVal);
+                const user = snapshot.docs[0].data();
+                // Simpan data agar Main Menu langsung kenal
+                localStorage.setItem("userEmail", email);
+                localStorage.setItem("userName", user.nama);
+                localStorage.setItem("userKomsel", user.komsel);
                 
-                alert("Login Berhasil!");
-                window.location.href = "menu.html"; // Pastikan nama file ini benar
+                // Navigasi ke Main Menu
+                window.location.href = "mainmenu.html";
             } else {
-                alert("Email atau Password salah!");
-                btn.innerText = "MASUK";
-                btn.disabled = false;
+                alert("Email atau Password Salah!");
             }
-        } catch (error) {
-            alert("Terjadi kesalahan: " + error.message);
-            btn.innerText = "MASUK";
-            btn.disabled = false;
-        }
+        } catch (e) { alert("Error: " + e.message); }
     }
 </script>
-
 </body>
 </html>
