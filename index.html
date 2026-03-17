@@ -6,38 +6,38 @@
     <title>Login - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 340px; text-align: center; }
-        
-        .header-logo { width: 90px; margin-bottom: 10px; }
-        .title-org { margin: 5px 0; font-size: 18px; color: #333; font-weight: bold; text-transform: uppercase; }
-        .title-system { 
-            margin: 5px 0; font-size: 16px; color: #FFD700; font-weight: bold;
-            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; 
-        }
-        .title-status { margin: 5px 0 20px 0; font-size: 14px; color: #444; font-weight: normal; }
-
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 380px; text-align: center; }
+        .header-section { margin-bottom: 25px; }
+        .logo-main { width: 90px; height: auto; margin-bottom: 15px; }
+        #text-org { margin: 5px 0; font-size: 20px; color: #333; font-weight: bold; text-transform: uppercase; display: block; }
+        #text-system { margin: 8px 0; font-size: 18px; color: #FFD700; font-weight: bold; display: block; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+        #text-status { margin: 10px 0; font-size: 16px; color: #555; font-weight: normal; display: block; }
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn-login { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        .btn-login:hover { background: #0056b3; }
-        .admin-link { margin-top: 15px; display: block; font-size: 12px; color: #666; text-decoration: none; }
-        .reg-link { margin-top: 10px; display: block; font-size: 13px; color: #007bff; text-decoration: none; font-weight: bold; }
+        .btn-blue { background: #007bff; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .footer-links { margin-top: 20px; font-size: 14px; }
+        .footer-links a { color: #007bff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="login-box">
-    <img src="logo_pondok.png" alt="Logo" class="header-logo">
-    <h2 class="title-org">PONDOK PEMULIHAN PAPUA</h2>
-    <h3 class="title-system">Sistem Informasi Komsel JC</h3>
-    <h4 class="title-status">Login Anggota Komsel</h4>
+    <div class="header-section">
+        <img src="logo_pondok.png" alt="Logo" class="logo-main">
+        <span id="text-org">PONDOK PEMULIHAN PAPUA</span>
+        <span id="text-system">Sistem Informasi Komsel JC</span>
+        <span id="text-status">Login Anggota Komsel</span>
+    </div>
 
-    <input type="email" id="userEmail" placeholder="Email Anggota">
-    <input type="password" id="userPass" placeholder="Password">
-    <button class="btn-login" onclick="loginUser()">MASUK</button>
+    <input type="email" id="email" placeholder="Email Anggota">
+    <input type="password" id="pass" placeholder="Password">
     
-    <a href="registrasi.html" class="reg-link">Belum punya akun? Daftar Sekarang</a>
-    <a href="admin.html" class="admin-link">Masuk sebagai Admin</a>
+    <button id="btnLogin" class="btn-blue" onclick="prosesLogin()">MASUK</button>
+    
+    <div class="footer-links">
+        <p>Belum punya akun? <a href="registrasi.html">Daftar Sekarang</a></p>
+        <a href="admin.html" style="color: #888; font-weight: normal;">Masuk sebagai Admin</a>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -56,38 +56,43 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function loginUser() {
-        const email = document.getElementById('userEmail').value;
-        const pass = document.getElementById('userPass').value;
+    async function prosesLogin() {
+        const emailVal = document.getElementById('email').value;
+        const passVal = document.getElementById('pass').value;
+        const btn = document.getElementById('btnLogin');
 
-        if (email === "" || pass === "") {
-            return alert("⚠️ PERINGATAN: Email dan Password harus diisi!");
+        if(!emailVal || !passVal) {
+            alert("Silakan isi email dan password!");
+            return;
         }
 
-        db.collection("users").where("email", "==", email).get()
-        .then((querySnapshot) => {
-            if (querySnapshot.empty) {
-                alert("❌ LOGIN GAGAL: Email tidak terdaftar!");
+        btn.innerText = "Mengecek...";
+        btn.disabled = true;
+
+        try {
+            // Cek ke tabel users di Firebase
+            const snapshot = await db.collection("users")
+                .where("email", "==", emailVal)
+                .where("password", "==", passVal)
+                .get();
+
+            if (!snapshot.empty) {
+                // LOGIN BERHASIL
+                // KUNCI: Simpan email ke localStorage agar Main Menu bisa tarik Nama & Komsel
+                localStorage.setItem("userEmail", emailVal);
+                
+                alert("Login Berhasil!");
+                window.location.href = "mainmenu.html"; // Pastikan nama file ini benar
             } else {
-                let loginSukses = false;
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.password === pass) {
-                        loginSukses = true;
-                        localStorage.setItem('email_login', data.email);
-                        localStorage.setItem('nama_login', data.nama);
-                        alert("✅ LOGIN BERHASIL! Selamat Datang, " + data.nama);
-                        window.location.href = "menu.html"; 
-                    }
-                });
-                if (!loginSukses) {
-                    alert("⚠️ PASSWORD SALAH!");
-                }
+                alert("Email atau Password salah!");
+                btn.innerText = "MASUK";
+                btn.disabled = false;
             }
-        })
-        .catch((error) => {
-            alert("🚨 KENDALA SISTEM: " + error.message);
-        });
+        } catch (error) {
+            alert("Terjadi kesalahan: " + error.message);
+            btn.innerText = "MASUK";
+            btn.disabled = false;
+        }
     }
 </script>
 
