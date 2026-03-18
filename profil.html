@@ -161,6 +161,79 @@
     }
 
     loadProfile();
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    // 1. Konfigurasi Firebase (Sesuai dengan project Anda)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.firebasestorage.app",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    // Inisialisasi Firebase jika belum ada
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    // 2. Ambil Email dari sesi login (localStorage)
+    const userEmail = localStorage.getItem("userEmail");
+
+    // Jika user belum login, arahkan kembali ke index/login
+    if (!userEmail) {
+        window.location.replace("index.html");
+    } else {
+        // 3. Hubungkan data Firebase secara Real-Time menggunakan onSnapshot
+        db.collection("users").where("email", "==", userEmail)
+            .onSnapshot((querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    const data = querySnapshot.docs[0].data();
+
+                    // --- MENGISI DATA KE ELEMEN BIODATA ---
+
+                    // Update Foto Profil (mencari class .profile-pic)
+                    const profileImg = document.querySelector(".profile-pic");
+                    if (profileImg && data.fotoUrl) {
+                        profileImg.src = data.fotoUrl;
+                    }
+
+                    // Update Teks Biodata berdasarkan ID elemen
+                    // Pastikan ID di HTML Anda sama dengan ID di bawah ini
+                    updateText("nomor_komsel", data.nomor_komsel);
+                    updateText("nama_lengkap", data.nama);
+                    updateText("jabatan", data.jabatan);
+                    updateText("email_aktif", data.email);
+                    updateText("no_hp", data.no_hp);
+                    updateText("gol_darah", data.gol_darah);
+                    updateText("alamat", data.alamat);
+                    
+                    // Khusus Lokasi Komsel (Menambahkan prefix "JC")
+                    const lokasiEl = document.getElementById("lokasi_komsel");
+                    if (lokasiEl) {
+                        lokasiEl.innerText = data.komsel ? "JC " + data.komsel : "-";
+                    }
+
+                } else {
+                    console.error("Data user tidak ditemukan di Firebase.");
+                }
+            }, (error) => {
+                console.error("Gagal sinkronisasi data: ", error);
+            });
+    }
+
+    // Fungsi pembantu untuk mengisi teks jika elemen ditemukan
+    function updateText(id, value) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.innerText = value || "-";
+        }
+    }
+</script>
 </script>
 </body>
 </html>
