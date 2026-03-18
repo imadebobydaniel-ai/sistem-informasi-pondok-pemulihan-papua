@@ -8,22 +8,45 @@
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
         
-        /* CSS Running Text */
-        .top-bar-running {
+        /* Baris Pertama: Tanggal dan Jam Tetap */
+        .top-info-bar {
             background: #ffffff;
-            border-bottom: 2px solid #dc3545;
-            color: #007bff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 15px;
             font-weight: bold;
             font-size: 12px;
-            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        #display-tanggal { color: #007bff; }
+        #digital-clock { color: #ff0000; }
+
+        /* Baris Kedua: Running Text dengan Teks Putih Outline Hitam */
+        header { 
+            background: #ffffff; 
+            border-bottom: 2px solid #dc3545;
+            padding: 10px 0;
             overflow: hidden;
             white-space: nowrap;
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
         .running-content {
             display: inline-block;
             padding-left: 100%;
             animation: marquee 25s linear infinite;
+            font-weight: 900;
+            font-size: 14px;
+            color: #ffffff; /* Teks Putih */
+            text-shadow: 
+                -1px -1px 0 #000,  
+                 1px -1px 0 #000,
+                -1px  1px 0 #000,
+                 1px  1px 0 #000; /* Outline Hitam */
+            text-transform: uppercase;
         }
 
         @keyframes marquee {
@@ -31,82 +54,23 @@
             100% { transform: translate(-100%, 0); }
         }
 
-        /* Header Responsif */
-        header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 10px 20px; 
-            background: white; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            position: relative;
-            min-height: 50px;
+        .setting-container {
+            position: absolute;
+            right: 10px;
+            background: white;
+            padding: 0 5px;
+            z-index: 10;
         }
+        .setting-icon { color: #555; font-size: 18px; text-decoration: none; }
 
-        #display-tanggal { 
-            font-weight: bold; 
-            color: #007bff; 
-            font-size: 13px; 
-            flex: 1;
-            white-space: nowrap;
-        }
-
-        .center-title { 
-            position: absolute; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            text-align: center;
-            white-space: nowrap;
-            width: auto;
-        }
-
-        .center-title h2 { 
-            margin: 0; 
-            font-size: 14px; 
-            color: #333; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-        }
-
-        .right-area { 
-            display: flex; 
-            align-items: center; 
-            justify-content: flex-end; 
-            gap: 10px; 
-            flex: 1;
-        }
-
-        #digital-clock { 
-            font-weight: bold; 
-            color: #ff0000; 
-            font-size: 13px; 
-            white-space: nowrap;
-        }
-
-        .setting-icon { 
-            color: #555; 
-            font-size: 18px; 
-            text-decoration: none; 
-        }
-
-        /* Penyesuaian Ukuran HP */
-        @media (max-width: 480px) {
-            header { padding: 8px 10px; }
-            #display-tanggal, #digital-clock, .center-title h2 { 
-                font-size: 10px; 
-            }
-            .right-area { gap: 5px; }
-        }
-        
+        /* Layout Utama */
         .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
         .org-title { margin: 10px 0 20px 0; font-weight: 800; color: #222; text-transform: uppercase; }
         
         .profile-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 25px; }
-        
         .profile-img-container { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px auto; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #eee; }
         .profile-img-container img { width: 100%; height: 100%; object-fit: cover; }
         .profile-section i { font-size: 80px; color: #007bff; }
-
         .profile-section h2 { margin: 5px 0; font-size: 22px; color: #333; }
         .profile-section p { margin: 0; color: #007bff; font-weight: bold; }
 
@@ -119,17 +83,14 @@
 </head>
 <body>
 
-    <div class="top-bar-running">
-        <div id="running-text" class="running-content"> Memuat data... </div>
+    <div class="top-info-bar">
+        <div id="display-tanggal">Memuat Tanggal...</div>
+        <div id="digital-clock">00:00:00 WIT</div>
     </div>
 
     <header>
-        <div id="display-tanggal"></div>
-        <div class="center-title">
-            <h2>PONDOK PEMULIHAN PAPUA</h2>
-        </div>
-        <div class="right-area">
-            <div id="digital-clock">00:00:00 WIT</div>
+        <div id="running-text" class="running-content">Memuat data...</div>
+        <div class="setting-container">
             <a href="setting.html" class="setting-icon"><i class="fa-solid fa-gear"></i></a>
         </div>
     </header>
@@ -187,21 +148,18 @@
             const year = now.getFullYear();
             const time = now.toLocaleTimeString('id-ID', { hour12: false });
 
-            // Update Header Clock
+            // Update Baris Pertama
             document.getElementById('display-tanggal').innerText = `${dayName}, ${date} ${monthName} ${year}`;
             document.getElementById('digital-clock').innerText = `${time} WIT`;
 
-            // Update Running Text Content
+            // Update Baris Kedua (Running Text)
             const runningContent = `${dayName}, ${date} ${monthName} ${year} | ${time} WIT | PONDOK PEMULIHAN PAPUA SISTEM INFORMASI KOMSEL JC | COPYRIGHT BY. IMADE BOBY`;
             document.getElementById('running-text').innerText = runningContent;
         }
 
         function syncUserData() {
             const userEmail = localStorage.getItem("userEmail");
-            if (!userEmail) {
-                window.location.href = "index.html";
-                return;
-            }
+            if (!userEmail) { window.location.href = "index.html"; return; }
 
             db.collection("users").where("email", "==", userEmail)
                 .onSnapshot((querySnapshot) => {
@@ -225,22 +183,9 @@
                 });
         }
 
-        function requestGPS() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    () => console.log("GPS Aktif"),
-                    (err) => console.error("GPS Error: " + err.message),
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                );
-            }
-        }
-
-        document.body.addEventListener('touchstart', () => requestGPS(), {once: true}); 
-
         setInterval(updateWaktuDanRunningText, 1000);
         updateWaktuDanRunningText();
         syncUserData();
-        requestGPS(); 
     </script>
 </body>
 </html>
