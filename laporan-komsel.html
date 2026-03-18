@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Komsel - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; padding-bottom: 80px; }
+        .container { max-width: 500px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 15px; }
+        
+        h3 { border-bottom: 2px solid #007bff; padding-bottom: 10px; font-size: 16px; text-transform: uppercase; }
+        .filter-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
+
+        .chart-container { position: relative; height: 200px; margin-bottom: 20px; }
+        
+        /* Checkbox Target */
+        .target-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .target-item { font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 8px; text-align: center; }
+
+        /* PKS Area */
+        .pks-section { background: #fff3cd; border: 1px dashed #ffeeba; padding: 15px; border-radius: 15px; margin-top: 20px; }
+        
+        .btn-export { background: #28a745; color: white; border: none; width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-back { position: fixed; bottom: 20px; left: 20px; right: 20px; background: #007bff; color: white; text-align: center; padding: 15px; border-radius: 15px; text-decoration: none; font-weight: bold; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="report-page">
+    <div class="card">
+        <h3><i class="fa-solid fa-filter"></i> Periode Laporan</h3>
+        <div class="filter-group">
+            <select id="filter-periode" onchange="generateReport()">
+                <option value="1">Per 1 Bulan</option>
+                <option value="2">Per 2 Bulan</option>
+                <option value="3">Per 3 Bulan</option>
+                <option value="4">Per 4 Bulan</option>
+                <option value="5">Per 5 Bulan</option>
+                <option value="6">Per 6 Bulan</option>
+            </select>
+        </div>
+        <p id="user-jc-info" style="font-weight: bold; color: #007bff;">JC: Memuat...</p>
+    </div>
+
+    <div class="card">
+        <h3><i class="fa-solid fa-chart-line"></i> Ringkasan Performa</h3>
+        <div class="chart-container">
+            <canvas id="chartLaporan"></canvas>
+        </div>
+        <div id="summary-text" style="font-size: 13px; line-height: 1.6; color: #444;">
+            Memproses data laporan...
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fa-solid fa-bullseye"></i> Target & Komitmen</h3>
+        <label style="font-size: 12px; font-weight: bold;">Pilih Jangka Waktu (Bulan):</label>
+        <div class="target-grid">
+            <div class="target-item"><input type="checkbox" value="1"> 1 Bln</div>
+            <div class="target-item"><input type="checkbox" value="2"> 2 Bln</div>
+            <div class="target-item"><input type="checkbox" value="3"> 3 Bln</div>
+            <div class="target-item"><input type="checkbox" value="4"> 4 Bln</div>
+            <div class="target-item"><input type="checkbox" value="5"> 5 Bln</div>
+            <div class="target-item"><input type="checkbox" value="6"> 6 Bln</div>
+        </div>
+        
+        <label style="font-size: 12px; font-weight: bold; display: block; margin-top: 15px;">Komitmen Kehadiran & Baca Firman:</label>
+        <select id="komitmen-user">
+            <option value="Makin Rajin">Makin Rajin</option>
+            <option value="Biasa Biasa Saja">Biasa Biasa Saja</option>
+            <option value="Belum bisa berkomitmen">Belum bisa berkomitmen</option>
+        </select>
+    </div>
+
+    <div class="pks-section">
+        <h4 style="margin:0; color: #856404;"><i class="fa-solid fa-lock"></i> Area Khusus PKS</h4>
+        <input type="password" id="pks-password" placeholder="Masukkan Password PKS" style="margin-top:10px;">
+        <button class="btn-export" onclick="exportToPDF()">
+            <i class="fa-solid fa-file-pdf"></i> Ekspor ke PDF
+        </button>
+    </div>
+
+    <a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> KEMBALI</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    // Konfigurasi Firebase (Gunakan config Anda yang sudah ada)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let userJC = "";
+    let myChart;
+
+    // 1. Keamanan Akses: Ambil JC User yang sedang login
+    async function initSession() {
+        const email = localStorage.getItem("userEmail");
+        const snap = await db.collection("users").where("email", "==", email).get();
+        if(!snap.empty) {
+            userJC = snap.docs[0].data().komsel;
+            document.getElementById("user-jc-info").innerText = "Laporan Khusus JC " + userJC;
+            generateReport();
+        }
+    }
+
+    // 2. Load Data & Visualisasi
+    async function generateReport() {
+        const periode = document.getElementById("filter-periode").value;
+        // Logika query berdasarkan periode & userJC
+        // Di sini kita asumsikan data ditarik dari laporan_bacaan & kehadiran
+        
+        updateChart([75, 85]); // Contoh Data: [Alkitab%, Kehadiran%]
+        document.getElementById("summary-text").innerHTML = `
+            Laporan periode ${periode} bulan terakhir untuk JC ${userJC} menunjukkan tren positif pada kehadiran anggota. 
+            Target pembacaan Alkitab mencapai 75%.
+        `;
+    }
+
+    function updateChart(dataValues) {
+        const ctx = document.getElementById('chartLaporan').getContext('2d');
+        if(myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Alkitab', 'Kehadiran'],
+                datasets: [{
+                    label: '% Capaian',
+                    data: dataValues,
+                    backgroundColor: ['#007bff', '#28a745']
+                }]
+            },
+            options: { maintainAspectRatio: false }
+        });
+    }
+
+    // 3. Ekspor PDF dengan Password PKS
+    function exportToPDF() {
+        const pass = document.getElementById("pks-password").value;
+        // Password sederhana: PKS + Nomor JC (Contoh: PKS5)
+        if(pass !== "PKS" + userJC) {
+            alert("Password PKS Salah! Anda tidak memiliki otoritas ekspor JC ini.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.text("LAPORAN KOMSEL PONDOK PEMULIHAN PAPUA", 10, 10);
+        doc.text("Unit: JC " + userJC, 10, 20);
+        doc.text("Komitmen: " + document.getElementById("komitmen-user").value, 10, 30);
+        
+        // Simpan PDF
+        doc.save(`Laporan_JC${userJC}.pdf`);
+        
+        // Opsi kirim
+        const share = confirm("PDF Berhasil dibuat. Kirim ke WhatsApp?");
+        if(share) {
+            window.open(`https://wa.me/?text=Halo PKS, berikut laporan JC ${userJC} telah siap.`);
+        }
+    }
+
+    window.onload = initSession;
+</script>
+</body>
+</html>
