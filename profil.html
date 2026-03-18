@@ -9,21 +9,16 @@
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .profile-container { background: white; width: 100%; max-width: 400px; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); padding-bottom: 25px; }
         .profile-header { background: #007bff; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 18px; }
-        
-        /* Area Foto Profil dengan Tombol Upload */
         .photo-section { text-align: center; padding: 30px 0; position: relative; }
         .photo-circle { width: 160px; height: 160px; border-radius: 50%; border: 4px solid #00ff88; margin: 0 auto; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f8f9fa; cursor: pointer; }
         .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
         .edit-badge { position: absolute; bottom: 35px; right: 130px; background: #007bff; color: white; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; cursor: pointer; }
-
         .info-section { padding: 0 25px 20px; }
         .data-box { margin-bottom: 18px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
         .data-label { font-size: 11px; font-weight: bold; color: #888; text-transform: uppercase; margin-bottom: 4px; }
         .data-value { font-size: 16px; color: #333; font-weight: 500; }
-
         .action-area { padding: 0 25px; display: flex; flex-direction: column; gap: 10px; }
         .btn-back { background: #333; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; text-decoration: none; font-size: 14px; display: block; width: 100%; box-sizing: border-box; }
-        
         #fileInput { display: none; }
     </style>
 </head>
@@ -45,35 +40,35 @@
     <div class="info-section">
         <div class="data-box">
             <div class="data-label">Nomor Komsel (NK)</div>
-            <div id="view-nk" class="data-value">-</div>
+            <div id="nomor_komsel" class="data-value">-</div>
         </div>
         <div class="data-box">
             <div class="data-label">Nama Lengkap</div>
-            <div id="view-nama" class="data-value">Memuat data...</div>
+            <div id="nama_lengkap" class="data-value">Memuat data...</div>
         </div>
         <div class="data-box">
             <div class="data-label">Jabatan / Peran</div>
-            <div id="view-jabatan" class="data-value">-</div>
+            <div id="jabatan" class="data-value">-</div>
         </div>
         <div class="data-box">
             <div class="data-label">Email Aktif</div>
-            <div id="view-email" class="data-value">-</div>
+            <div id="email_aktif" class="data-value">-</div>
         </div>
         <div class="data-box">
             <div class="data-label">Nomor HP (WhatsApp)</div>
-            <div id="view-hp" class="data-value">-</div>
+            <div id="no_hp" class="data-value">-</div>
         </div>
         <div class="data-box">
             <div class="data-label">Lokasi Komsel JC</div>
-            <div id="view-jc" class="data-value">-</div>
+            <div id="lokasi_komsel" class="data-value">-</div>
         </div>
         <div class="data-box">
             <div class="data-label">Golongan Darah</div>
-            <div id="view-goldar" class="data-value">-</div>
+            <div id="gol_darah" class="data-value">-</div>
         </div>
         <div class="data-box">
             <div class="data-label">Alamat</div>
-            <div id="view-alamat" class="data-value">-</div>
+            <div id="alamat" class="data-value">-</div>
         </div>
     </div>
 
@@ -87,14 +82,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
 <script>
-    db.collection("users").where("email", "==", userEmail).get().then((querySnapshot) => {
-    querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // Langsung pasang ke foto profil di menu utama
-        document.getElementById('main-profile-img').src = data.fotoUrl;
-        document.getElementById('user-name').innerText = data.nama;
-    });
-});
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -103,137 +90,64 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
     const storage = firebase.storage();
     const userEmail = localStorage.getItem("userEmail");
 
-    // 1. Ambil Data Otomatis saat halaman dibuka
-    async function loadProfile() {
-        if (!userEmail) return;
-        const snap = await db.collection("users").where("email", "==", userEmail).get();
-        if (!snap.empty) {
-            const d = snap.docs[0].data();
-            document.getElementById('view-nk').innerText = d.nomor_komsel || "-";
-            document.getElementById('view-nama').innerText = d.nama || "-";
-            document.getElementById('view-jabatan').innerText = d.jabatan || "-";
-            document.getElementById('view-email').innerText = d.email || "-";
-            document.getElementById('view-hp').innerText = d.no_hp || "-";
-            document.getElementById('view-jc').innerText = "JC " + (d.komsel || "-");
-            document.getElementById('view-goldar').innerText = d.gol_darah || d.goldar || "-";
-            document.getElementById('view-alamat').innerText = d.alamat || "-";
-            if (d.fotoUrl) document.getElementById('view-foto').src = d.fotoUrl;
-        }
+    if (!userEmail) {
+        window.location.replace("index.html");
+    } else {
+        // SINKRONISASI REAL-TIME
+        db.collection("users").where("email", "==", userEmail)
+            .onSnapshot((querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    const data = querySnapshot.docs[0].data();
+                    
+                    // Foto Profil
+                    if (data.fotoUrl) document.getElementById('view-foto').src = data.fotoUrl;
+
+                    // Biodata (Sesuai ID di HTML)
+                    document.getElementById("nomor_komsel").innerText = data.nomor_komsel || "-";
+                    document.getElementById("nama_lengkap").innerText = data.nama || "-";
+                    document.getElementById("jabatan").innerText = data.jabatan || "-";
+                    document.getElementById("email_aktif").innerText = data.email || "-";
+                    document.getElementById("no_hp").innerText = data.no_hp || "-";
+                    document.getElementById("gol_darah").innerText = data.gol_darah || "-";
+                    document.getElementById("alamat").innerText = data.alamat || "-";
+                    document.getElementById("lokasi_komsel").innerText = data.komsel ? "JC " + data.komsel : "-";
+                }
+            });
     }
 
-    // 2. Fungsi Upload Foto ke Firebase Storage
+    // FUNGSI UPLOAD FOTO
     async function uploadFoto(input) {
         const file = input.files[0];
         if (!file || !userEmail) return;
 
-        // Tampilkan loading sederhana
         document.getElementById('view-foto').style.opacity = "0.5";
-        
         const storageRef = storage.ref('users_photo/' + userEmail);
+        
         try {
-            // Upload file
             const uploadTask = await storageRef.put(file);
-            // Ambil URL hasil upload
             const downloadURL = await uploadTask.ref.getDownloadURL();
             
-            // Simpan URL foto ke Firestore agar permanen
             const snap = await db.collection("users").where("email", "==", userEmail).get();
             if (!snap.empty) {
                 await db.collection("users").doc(snap.docs[0].id).update({
                     fotoUrl: downloadURL
                 });
             }
-
-            // Update tampilan foto di layar
-            document.getElementById('view-foto').src = downloadURL;
-            document.getElementById('view-foto').style.opacity = "1";
             alert("Foto Berhasil Diperbarui!");
+            document.getElementById('view-foto').style.opacity = "1";
         } catch (error) {
-            console.error(error);
-            alert("Gagal upload: Pastikan Firebase Storage Rules sudah 'allow write'.");
+            alert("Gagal upload: " + error.message);
             document.getElementById('view-foto').style.opacity = "1";
         }
     }
-
-    loadProfile();
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-<script>
-    // 1. Konfigurasi Firebase (Sesuai dengan project Anda)
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.firebasestorage.app",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
-
-    // Inisialisasi Firebase jika belum ada
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
-
-    // 2. Ambil Email dari sesi login (localStorage)
-    const userEmail = localStorage.getItem("userEmail");
-
-    // Jika user belum login, arahkan kembali ke index/login
-    if (!userEmail) {
-        window.location.replace("index.html");
-    } else {
-        // 3. Hubungkan data Firebase secara Real-Time menggunakan onSnapshot
-        db.collection("users").where("email", "==", userEmail)
-            .onSnapshot((querySnapshot) => {
-                if (!querySnapshot.empty) {
-                    const data = querySnapshot.docs[0].data();
-
-                    // --- MENGISI DATA KE ELEMEN BIODATA ---
-
-                    // Update Foto Profil (mencari class .profile-pic)
-                    const profileImg = document.querySelector(".profile-pic");
-                    if (profileImg && data.fotoUrl) {
-                        profileImg.src = data.fotoUrl;
-                    }
-
-                    // Update Teks Biodata berdasarkan ID elemen
-                    // Pastikan ID di HTML Anda sama dengan ID di bawah ini
-                    updateText("nomor_komsel", data.nomor_komsel);
-                    updateText("nama_lengkap", data.nama);
-                    updateText("jabatan", data.jabatan);
-                    updateText("email_aktif", data.email);
-                    updateText("no_hp", data.no_hp);
-                    updateText("gol_darah", data.gol_darah);
-                    updateText("alamat", data.alamat);
-                    
-                    // Khusus Lokasi Komsel (Menambahkan prefix "JC")
-                    const lokasiEl = document.getElementById("lokasi_komsel");
-                    if (lokasiEl) {
-                        lokasiEl.innerText = data.komsel ? "JC " + data.komsel : "-";
-                    }
-
-                } else {
-                    console.error("Data user tidak ditemukan di Firebase.");
-                }
-            }, (error) => {
-                console.error("Gagal sinkronisasi data: ", error);
-            });
-    }
-
-    // Fungsi pembantu untuk mengisi teks jika elemen ditemukan
-    function updateText(id, value) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.innerText = value || "-";
-        }
-    }
-</script>
 </script>
 </body>
 </html>
