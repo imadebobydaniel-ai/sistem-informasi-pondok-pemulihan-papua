@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saran & Masukan - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 400px; background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
+        
+        h3 { color: #333; margin-bottom: 20px; text-transform: uppercase; font-size: 18px; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        
+        .info-user { background: #e7f1ff; padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; color: #007bff; font-weight: bold; text-align: left; }
+        
+        textarea { width: 100%; height: 180px; padding: 15px; border-radius: 15px; border: 1px solid #ddd; outline: none; font-family: inherit; font-size: 14px; box-sizing: border-box; background: #fafafa; transition: border 0.3s; }
+        textarea:focus { border: 1px solid #007bff; background: #fff; }
+
+        .btn-kirim { width: 100%; background: #007bff; color: white; border: none; padding: 15px; border-radius: 15px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+        .btn-kirim:active { transform: scale(0.98); background: #0056b3; }
+        
+        .btn-back { display: block; margin-top: 15px; text-decoration: none; color: #666; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3><i class="fa-solid fa-comment-dots"></i> Kirim Saran</h3>
+    
+    <div class="info-user" id="user-info-display">
+        Memuat identitas pengirim...
+    </div>
+
+    <textarea id="text-saran" placeholder="Tuliskan saran, kritik, atau masukan Anda di sini agar sistem kami lebih baik lagi..."></textarea>
+    
+    <button class="btn-kirim" onclick="prosesKirimSaran()" id="btn-submit">
+        <i class="fa-solid fa-paper-plane"></i> KIRIM SEKARANG
+    </button>
+    
+    <a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let currentUserName = "";
+    let currentUserJC = "";
+
+    // 1. Ambil Identitas Pengirim Secara Otomatis
+    async function getSenderIdentity() {
+        const email = localStorage.getItem("userEmail");
+        if (!email) {
+            window.location.href = "index.html";
+            return;
+        }
+
+        const userSnap = await db.collection("users").where("email", "==", email).get();
+        if (!userSnap.empty) {
+            const data = userSnap.docs[0].data();
+            currentUserName = data.nama;
+            currentUserJC = data.komsel;
+            document.getElementById('user-info-display').innerHTML = `
+                <i class="fa-solid fa-user"></i> ${currentUserName} <br>
+                <i class="fa-solid fa-users"></i> Komsel JC ${currentUserJC}
+            `;
+        }
+    }
+
+    // 2. Kirim Data ke Firebase
+    async function prosesKirimSaran() {
+        const saranText = document.getElementById('text-saran').value.trim();
+        const btn = document.getElementById('btn-submit');
+
+        if (!saranText) {
+            alert("Harap tuliskan saran Anda terlebih dahulu.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = "Mengirim...";
+
+        try {
+            const now = new Date();
+            const formatTanggal = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+            const formatJam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+            await db.collection("saran_masukan").add({
+                nama: currentUserName,
+                jc: currentUserJC,
+                isi_saran: saranText,
+                tanggal_kirim: formatTanggal,
+                jam_kirim: formatJam,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            alert("Terima kasih! Saran Anda telah berhasil dikirim ke database.");
+            window.location.href = "menu.html";
+
+        } catch (error) {
+            console.error("Gagal mengirim:", error);
+            alert("Terjadi kesalahan teknis. Coba lagi.");
+            btn.disabled = false;
+            btn.innerHTML = "KIRIM SEKARANG";
+        }
+    }
+
+    window.onload = getSenderIdentity;
+</script>
+</body>
+</html>
