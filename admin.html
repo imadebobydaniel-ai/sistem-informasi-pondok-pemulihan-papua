@@ -19,16 +19,12 @@
         .edit-btn { color: #007bff; }
         .delete-btn { color: #dc3545; }
 
-        /* MODAL */
         .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 2% auto; padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; position: relative; }
         .form-edit-group { margin-bottom: 12px; }
         .form-edit-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
         .form-edit-group input, .form-edit-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        
-        /* Read-only styling */
         .form-edit-group input[readonly] { background-color: #f0f0f0; cursor: not-allowed; border: 1px solid #ccc; color: #777; }
-
         .profile-upload-area { text-align: center; margin-bottom: 15px; }
         #preview-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #27ae60; }
         .btn-save { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
@@ -40,7 +36,7 @@
 <div class="admin-box">
     <div class="header-panel">
         <h2 style="margin:0;"><i class="fa-solid fa-users-viewfinder"></i> Database Anggota PPP</h2>
-        <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> KEMBALI KE LOGIN</a>
+        <a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> KEMBALI KE MENU</a>
     </div>
 
     <div style="margin-bottom: 15px; display: flex; gap: 10px;">
@@ -59,7 +55,8 @@
                 <th>Gol. Darah</th>
                 <th>WhatsApp</th>
                 <th>Alamat</th>
-                <th>Tgl Daftar</th> <th>Aksi</th>
+                <th>Tgl Daftar</th> 
+                <th>Aksi</th>
             </tr>
         </thead>
         <tbody id="user-list"></tbody>
@@ -78,10 +75,8 @@
         </div>
         <input type="hidden" id="edit-id">
         <div class="form-edit-group"><label>Nama Lengkap</label><input type="text" id="edit-nama"></div>
-        
-        <div class="form-edit-group"><label>Nomor Komsel (NK) - <small>Kunci Otomatis</small></label><input type="text" id="edit-nk" readonly></div>
-        <div class="form-edit-group"><label>Tanggal Daftar - <small>Kunci Otomatis</small></label><input type="text" id="edit-tgl" readonly></div>
-        
+        <div class="form-edit-group"><label>Nomor Komsel (NK)</label><input type="text" id="edit-nk" readonly></div>
+        <div class="form-edit-group"><label>Tanggal Daftar</label><input type="text" id="edit-tgl" readonly></div>
         <div class="form-edit-group">
             <label>Jabatan</label>
             <select id="edit-jabatan">
@@ -121,29 +116,31 @@
     async function loadData() {
         const list = document.getElementById('user-list');
         list.innerHTML = '<tr><td colspan="10" style="text-align:center;">Memuat data...</td></tr>';
-        const snapshot = await db.collection("users").orderBy("tanggal_daftar", "desc").get();
-        list.innerHTML = '';
-        snapshot.forEach(doc => {
-            const d = doc.data();
-            // Format Tanggal untuk Tabel
-            const tgl = d.tanggal_daftar ? new Date(d.tanggal_daftar.seconds * 1000).toLocaleDateString('id-ID') : '-';
-            
-            list.innerHTML += `
-                <tr>
-                    <td><input type="checkbox" class="check-item" value="${doc.id}"></td>
-                    <td><img src="${d.fotoUrl || 'https://via.placeholder.com/50'}" class="user-img"></td>
-                    <td><span class="nk-badge">${d.nomor_komsel || '-'}</span></td>
-                    <td><strong>${d.nama}</strong><br><small>${d.email}</small></td>
-                    <td>${d.jabatan || '-'}</td>
-                    <td style="color:red; font-weight:bold;">${d.gol_darah || '-'}</td>
-                    <td>${d.no_hp}</td>
-                    <td>${d.alamat || '-'}</td>
-                    <td>${tgl}</td>
-                    <td class="action-btns">
-                        <button class="edit-btn" onclick="openEditModal('${doc.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
-                        <button class="delete-btn" onclick="hapusSatu('${doc.id}')"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                </tr>`;
+        
+        // Listener Real-time
+        db.collection("users").orderBy("tanggal_daftar", "desc").onSnapshot((snapshot) => {
+            list.innerHTML = '';
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                const tgl = d.tanggal_daftar ? new Date(d.tanggal_daftar.seconds * 1000).toLocaleDateString('id-ID') : '-';
+                
+                list.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="check-item" value="${doc.id}"></td>
+                        <td><img src="${d.fotoUrl || 'https://via.placeholder.com/50'}" class="user-img"></td>
+                        <td><span class="nk-badge">${d.nomor_komsel || '-'}</span></td>
+                        <td><strong>${d.nama}</strong><br><small>${d.email}</small></td>
+                        <td>${d.jabatan || '-'}</td>
+                        <td style="color:red; font-weight:bold;">${d.golongan_darah || '-'}</td>
+                        <td>${d.no_hp || '-'}</td>
+                        <td>${d.alamat || '-'}</td>
+                        <td>${tgl}</td>
+                        <td class="action-btns">
+                            <button class="edit-btn" onclick="openEditModal('${doc.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button class="delete-btn" onclick="hapusSatu('${doc.id}')"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
         });
     }
 
@@ -154,10 +151,10 @@
 
         document.getElementById('edit-id').value = id;
         document.getElementById('edit-nama').value = data.nama || "";
-        document.getElementById('edit-nk').value = data.nomor_komsel || ""; // Read-only di HTML
-        document.getElementById('edit-tgl').value = tgl; // Read-only di HTML
+        document.getElementById('edit-nk').value = data.nomor_komsel || "";
+        document.getElementById('edit-tgl').value = tgl;
         document.getElementById('edit-jabatan').value = data.jabatan || "Anggota Komsel";
-        document.getElementById('edit-goldar').value = data.gol_darah || "AB";
+        document.getElementById('edit-goldar').value = data.golongan_darah || "AB";
         document.getElementById('edit-wa').value = data.no_hp || "";
         document.getElementById('edit-alamat').value = data.alamat || "";
         document.getElementById('preview-img').src = data.fotoUrl || 'https://via.placeholder.com/100';
@@ -175,14 +172,13 @@
             await db.collection("users").doc(id).update({
                 nama: document.getElementById('edit-nama').value,
                 jabatan: document.getElementById('edit-jabatan').value,
-                gol_darah: document.getElementById('edit-goldar').value,
+                golongan_darah: document.getElementById('edit-goldar').value,
                 no_hp: document.getElementById('edit-wa').value,
                 alamat: document.getElementById('edit-alamat').value,
                 fotoUrl: base64Image
             });
             alert("Data Berhasil Diperbarui!");
             closeEditModal();
-            loadData();
         } catch (e) { alert("Error: " + e.message); }
         btn.innerText = "SIMPAN PERUBAHAN";
         btn.disabled = false;
@@ -199,38 +195,22 @@
     }
 
     function closeEditModal() { document.getElementById('editModal').style.display = "none"; }
+    
     function toggleAll() {
         const master = document.getElementById('selectAll').checked;
         document.querySelectorAll('.check-item').forEach(i => i.checked = master);
     }
+
     async function hapusSatu(id) {
-        if(confirm("Hapus data ini?")) { await db.collection("users").doc(id).delete(); loadData(); }
+        if(confirm("Hapus data ini?")) { await db.collection("users").doc(id).delete(); }
     }
+
     async function hapusTerpilih() {
         const checked = document.querySelectorAll('.check-item:checked');
         if(checked.length === 0) return alert("Pilih data dulu!");
         if(confirm("Hapus " + checked.length + " data?")) {
             for(let i of checked) { await db.collection("users").doc(i.value).delete(); }
-            loadData();
         }
-        // Fungsi Sinkronisasi Dashboard Admin
-function sinkronkanAdmin() {
-    // Sinkronkan Daftar Anggota ke Tabel/List Admin
-    db.collection("users").onSnapshot((snapshot) => {
-        const listAdmin = document.getElementById("daftar-anggota-admin");
-        listAdmin.innerHTML = ""; // Bersihkan list lama
-        
-        snapshot.forEach((doc) => {
-            const user = doc.data();
-            listAdmin.innerHTML += `
-                <div class="admin-item">
-                    <span>${user.nama_lengkap} (JC ${user.komsel})</span>
-                    <button onclick="editUser('${doc.id}')">Kelola</button>
-                </div>
-            `;
-        });
-    });
-}
     }
 
     loadData();
