@@ -20,7 +20,6 @@
         .time-info { font-size: 11px; color: #dc3545; text-align: right; margin-bottom: 15px; font-weight: bold; }
         .btn-submit { width: 100%; padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
         .btn-back-login { display: block; text-align: center; text-decoration: none; color: #666; font-size: 14px; font-weight: bold; padding: 10px; border: 1px solid #ddd; border-radius: 10px; }
-        .login-link { text-align: center; margin-top: 20px; font-size: 13px; color: #666; }
         #blocking-message { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .modal-box i { font-size: 50px; color: #28a745; margin-bottom: 15px; }
@@ -32,8 +31,8 @@
 <div class="reg-container">
     <div class="header-logo"><img src="logo_pondok.png" alt="Logo"></div>
     <div class="header-text">
-        <h2 id="form-title">PONDOK PEMULIHAN PAPUA</h2>
-        <p id="form-subtitle">Formulir Pendaftaran Anggota</p>
+        <h2>PONDOK PEMULIHAN PAPUA</h2>
+        <p>Formulir Pendaftaran Anggota</p>
     </div>
 
     <form id="formRegistrasi">
@@ -85,16 +84,16 @@
             </select>
         </div>
 
-        <button type="button" onclick="handleRegistrasi()" id="btn-submit-text" class="btn-submit">DAFTAR SEKARANG</button>
-        <a href="login.html" class="btn-back-login" id="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login Page</a>
+        <button type="button" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
+        <a href="login.html" class="btn-back-login"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login Page</a>
     </form>
 </div>
 
 <div id="blocking-message">
     <div class="modal-box">
         <i class="fa-solid fa-circle-check"></i>
-        <p id="msg-text">Data Berhasil Disimpan!</p>
-        <button onclick="redirectAfterSuccess()" class="btn-submit" style="background:#007bff">OK</button>
+        <p>Data Berhasil Disimpan! Silahkan Login.</p>
+        <button onclick="window.location.href='login.html'" class="btn-submit" style="background:#007bff">OK / LOGIN</button>
     </div>
 </div>
 
@@ -113,41 +112,8 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Mengambil ID edit (jika ada)
-    const editID = localStorage.getItem("editMemberID");
-
-    window.onload = async function() {
-        // PERBAIKAN: Jika tidak ada editID atau datang bukan dari admin, 
-        // pastikan tombol back ke login.html
-        if (!editID) {
-            document.getElementById("btn-back").href = "login.html";
-            document.getElementById("btn-back").innerHTML = '<i class="fa-solid fa-arrow-left"></i> Kembali ke Login Page';
-            return;
-        }
-
-        // Jika dalam mode EDIT (Data dari Admin)
-        if (editID) {
-            document.getElementById("form-title").innerText = "EDIT DATA ANGGOTA";
-            document.getElementById("btn-submit-text").innerText = "SIMPAN PERUBAHAN";
-            document.getElementById("btn-back").innerHTML = '<i class="fa-solid fa-arrow-left"></i> Kembali ke Data Admin';
-            document.getElementById("btn-back").href = "admin.html";
-            
-            try {
-                const doc = await db.collection("users").doc(editID).get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById("nama").value = data.namaLengkap || "";
-                    document.getElementById("email").value = data.email || "";
-                    document.getElementById("hp").value = data.whatsapp || "";
-                    document.getElementById("pass").value = data.password || "";
-                    document.getElementById("alamat").value = data.alamat || "";
-                    document.getElementById("darah").value = data.golDarah || "";
-                    document.getElementById("jabatan").value = data.jabatan || "";
-                    document.getElementById("komsel").value = data.komsel || "";
-                }
-            } catch (e) { console.error(e); }
-        }
-    };
+    // Membersihkan sisa perintah edit jika ada, agar tidak mengganggu registrasi
+    localStorage.removeItem("editMemberID");
 
     async function handleRegistrasi() {
         const userData = {
@@ -158,27 +124,15 @@
             alamat: document.getElementById("alamat").value,
             golDarah: document.getElementById("darah").value,
             jabatan: document.getElementById("jabatan").value,
-            komsel: document.getElementById("komsel").value
+            komsel: document.getElementById("komsel").value,
+            tanggalDaftar: new Date().toLocaleDateString()
         };
 
         try {
-            if (editID) {
-                await db.collection("users").doc(editID).update(userData);
-                localStorage.removeItem("editMemberID"); // Bersihkan setelah edit selesai
-            } else {
-                await db.collection("users").add({ ...userData, tanggalDaftar: new Date().toLocaleDateString() });
-            }
+            await db.collection("users").add(userData);
             document.getElementById('blocking-message').style.display = 'flex';
-        } catch (error) { alert("Error: " + error.message); }
-    }
-
-    function redirectAfterSuccess() {
-        // Pastikan memori bersih saat pindah halaman
-        localStorage.removeItem("editMemberID"); 
-        if (editID) { 
-            window.location.href = 'admin.html'; 
-        } else { 
-            window.location.href = 'login.html'; 
+        } catch (error) { 
+            alert("Error: " + error.message); 
         }
     }
 </script>
