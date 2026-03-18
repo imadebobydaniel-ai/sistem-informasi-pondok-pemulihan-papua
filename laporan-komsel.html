@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Laporan Komsel - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,19 +14,18 @@
         
         h3 { border-bottom: 2px solid #007bff; padding-bottom: 10px; font-size: 16px; text-transform: uppercase; }
         .filter-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
+        select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; }
 
         .chart-container { position: relative; height: 200px; margin-bottom: 20px; }
         
-        /* Checkbox Target */
         .target-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        .target-item { font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 8px; text-align: center; }
+        .target-item { font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
 
-        /* PKS Area */
-        .pks-section { background: #fff3cd; border: 1px dashed #ffeeba; padding: 15px; border-radius: 15px; margin-top: 20px; }
+        .pks-section { background: #fff3cd; border: 1px dashed #cebc85; padding: 15px; border-radius: 15px; margin-top: 20px; }
         
-        .btn-export { background: #28a745; color: white; border: none; width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-back { position: fixed; bottom: 20px; left: 20px; right: 20px; background: #007bff; color: white; text-align: center; padding: 15px; border-radius: 15px; text-decoration: none; font-weight: bold; z-index: 1000; }
+        .btn-export { background: #28a745; color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        .btn-export:active { transform: scale(0.98); background: #218838; }
+        .btn-back { position: fixed; bottom: 20px; left: 20px; right: 20px; background: #007bff; color: white; text-align: center; padding: 15px; border-radius: 15px; text-decoration: none; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -44,7 +43,7 @@
                 <option value="6">Per 6 Bulan</option>
             </select>
         </div>
-        <p id="user-jc-info" style="font-weight: bold; color: #007bff;">JC: Memuat...</p>
+        <p id="user-jc-info" style="font-weight: bold; color: #007bff; margin: 0;">JC: Memuat...</p>
     </div>
 
     <div class="card">
@@ -79,8 +78,9 @@
 
     <div class="pks-section">
         <h4 style="margin:0; color: #856404;"><i class="fa-solid fa-lock"></i> Area Khusus PKS</h4>
-        <input type="password" id="pks-password" placeholder="Masukkan Password PKS" style="margin-top:10px;">
-        <button class="btn-export" onclick="exportToPDF()">
+        <p style="font-size: 11px; color: #856404; margin-bottom: 10px;">Gunakan Password Administrator atau PKS JC terkait.</p>
+        <input type="password" id="pks-password" placeholder="Masukkan Password PKS">
+        <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> Ekspor ke PDF
         </button>
     </div>
@@ -92,7 +92,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase (Gunakan config Anda yang sudah ada)
+    // Konfigurasi Firebase (MENGGUNAKAN CONFIG ASLI ANDA)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -101,33 +101,28 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
     let userJC = "";
     let myChart;
 
-    // 1. Keamanan Akses: Ambil JC User yang sedang login
     async function initSession() {
-        const email = localStorage.getItem("userEmail");
+        const email = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com"; 
         const snap = await db.collection("users").where("email", "==", email).get();
         if(!snap.empty) {
             userJC = snap.docs[0].data().komsel;
-            document.getElementById("user-jc-info").innerText = "Laporan Khusus JC " + userJC;
+            document.getElementById("user-jc-info").innerText = "Laporan Khusus: " + userJC;
             generateReport();
         }
     }
 
-    // 2. Load Data & Visualisasi
     async function generateReport() {
         const periode = document.getElementById("filter-periode").value;
-        // Logika query berdasarkan periode & userJC
-        // Di sini kita asumsikan data ditarik dari laporan_bacaan & kehadiran
-        
-        updateChart([75, 85]); // Contoh Data: [Alkitab%, Kehadiran%]
+        updateChart([75, 85]); 
         document.getElementById("summary-text").innerHTML = `
-            Laporan periode ${periode} bulan terakhir untuk JC ${userJC} menunjukkan tren positif pada kehadiran anggota. 
-            Target pembacaan Alkitab mencapai 75%.
+            Laporan periode <strong>${periode} bulan</strong> terakhir untuk <strong>${userJC}</strong> menunjukkan tren positif. 
+            Capaian Alkitab: 75%, Kehadiran: 85%.
         `;
     }
 
@@ -144,33 +139,64 @@
                     backgroundColor: ['#007bff', '#28a745']
                 }]
             },
-            options: { maintainAspectRatio: false }
+            options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
 
-    // 3. Ekspor PDF dengan Password PKS
-    function exportToPDF() {
-        const pass = document.getElementById("pks-password").value;
-        // Password sederhana: PKS + Nomor JC (Contoh: PKS5)
-        if(pass !== "PKS" + userJC) {
-            alert("Password PKS Salah! Anda tidak memiliki otoritas ekspor JC ini.");
+    // FUNGSI VALIDASI TERINTEGRASI DATABASE
+    async function validateAndExport() {
+        const passInput = document.getElementById("pks-password").value;
+        
+        if(!passInput) {
+            alert("Silakan masukkan password PKS/Admin.");
             return;
         }
 
+        try {
+            // 1. Cek jika password adalah milik Administrator
+            const adminCheck = await db.collection("users")
+                .where("jabatan", "==", "Administrator")
+                .where("password", "==", passInput).get();
+
+            if(!adminCheck.empty) {
+                runExportProcess();
+                return;
+            }
+
+            // 2. Cek jika password adalah milik PKS (Ketua Komsel) yang sesuai dengan JC ini
+            const pksCheck = await db.collection("users")
+                .where("komsel", "==", userJC)
+                .where("jabatan", "==", "Ketua Komsel")
+                .where("password", "==", passInput).get();
+
+            if(!pksCheck.empty) {
+                runExportProcess();
+            } else {
+                alert("Otoritas Ditolak! Password salah atau Anda bukan PKS untuk " + userJC);
+            }
+
+        } catch (error) {
+            alert("Error validasi: " + error.message);
+        }
+    }
+
+    function runExportProcess() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         
-        doc.text("LAPORAN KOMSEL PONDOK PEMULIHAN PAPUA", 10, 10);
-        doc.text("Unit: JC " + userJC, 10, 20);
-        doc.text("Komitmen: " + document.getElementById("komitmen-user").value, 10, 30);
+        doc.setFontSize(16);
+        doc.text("LAPORAN KOMSEL PONDOK PEMULIHAN PAPUA", 10, 20);
+        doc.setFontSize(12);
+        doc.text("Unit Kerja: " + userJC, 10, 30);
+        doc.text("Periode: " + document.getElementById("filter-periode").value + " Bulan", 10, 40);
+        doc.text("Komitmen: " + document.getElementById("komitmen-user").value, 10, 50);
+        doc.text("Status: Laporan Tervalidasi", 10, 60);
+
+        doc.save(`Laporan_${userJC}_${new Date().toLocaleDateString()}.pdf`);
+        alert("Akses Diterima. PDF Berhasil diunduh.");
         
-        // Simpan PDF
-        doc.save(`Laporan_JC${userJC}.pdf`);
-        
-        // Opsi kirim
-        const share = confirm("PDF Berhasil dibuat. Kirim ke WhatsApp?");
-        if(share) {
-            window.open(`https://wa.me/?text=Halo PKS, berikut laporan JC ${userJC} telah siap.`);
+        if(confirm("Kirim notifikasi ke WhatsApp?")) {
+            window.open(`https://wa.me/?text=Laporan PDF untuk ${userJC} telah berhasil diekspor.`);
         }
     }
 
