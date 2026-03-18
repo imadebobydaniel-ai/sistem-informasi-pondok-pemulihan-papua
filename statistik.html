@@ -122,16 +122,37 @@
     const totalDays = new Date(new Date().getFullYear(), currentMonth, 0).getDate();
 
     async function updateStatistikAlkitab() {
-        const jc = document.getElementById('select-komsel-alkitab').value;
-        const jcN = jc.split(" ")[1]; 
-        document.getElementById('label-komsel-alkitab').innerText = "Capaian " + jc;
-        const snapUsers = await db.collection("users").where("komsel", "==", jcN).get();
-        const snapLaporan = await db.collection("laporan_bacaan").where("komsel", "==", jcN).where("bulan", "==", currentMonth).get();
-        const target = snapUsers.size * totalDays;
-        const pct = target > 0 ? Math.min((snapLaporan.size / target) * 100, 100).toFixed(1) : 0;
-        document.getElementById('pct-alkitab-komsel').innerText = pct + "%";
-        document.getElementById('bar-alkitab-komsel').style.width = pct + "%";
+    const jc = document.getElementById('select-komsel-alkitab').value;
+    const jcN = jc.split(" ")[1]; 
+    document.getElementById('label-komsel-alkitab').innerText = "Capaian " + jc;
+
+    // 1. Ambil semua user di komsel tersebut
+    const snapUsers = await db.collection("users").where("komsel", "==", jcN).get();
+    const userEmails = [];
+    snapUsers.forEach(doc => userEmails.push(doc.data().email));
+
+    if (userEmails.length === 0) {
+        updateDOMAlkitab(0);
+        return;
     }
+
+    // 2. Ambil laporan berdasarkan email user yang ada di komsel tersebut
+    // Ini lebih akurat karena laporan_bacaan Anda menggunakan email sebagai identitas
+    const snapLaporan = await db.collection("laporan_bacaan")
+        .where("email", "in", userEmails)
+        .where("bulan", "==", currentMonth)
+        .get();
+
+    const target = snapUsers.size * totalDays;
+    const pct = target > 0 ? Math.min((snapLaporan.size / target) * 100, 100).toFixed(1) : 0;
+    
+    updateDOMAlkitab(pct);
+}
+
+function updateDOMAlkitab(pct) {
+    document.getElementById('pct-alkitab-komsel').innerText = pct + "%";
+    document.getElementById('bar-alkitab-komsel').style.width = pct + "%";
+}
 
     async function updateStatistikHadir() {
         const jc = document.getElementById('select-komsel-hadir').value;
