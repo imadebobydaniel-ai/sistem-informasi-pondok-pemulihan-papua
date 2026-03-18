@@ -8,39 +8,25 @@
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
         .container { max-width: 450px; margin: auto; }
-        
         .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        
         .card-header { text-align: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
         .card-header h3 { margin: 0; font-size: 16px; color: #333; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 10px; }
-
         .filter-group { margin-bottom: 15px; }
         .filter-group label { display: block; font-size: 12px; font-weight: bold; color: #666; margin-bottom: 5px; }
         select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; font-size: 14px; outline: none; }
-
         .stat-row { margin-bottom: 15px; }
         .stat-label-container { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 5px; }
         .label-text { color: #333; }
-        .label-pct { color: #007bff; }
-
+        .label-pct { color: #007bff; font-weight: bold; }
         .progress-container { background: #eee; border-radius: 10px; height: 10px; width: 100%; overflow: hidden; }
         .progress-bar { height: 100%; width: 0%; transition: width 0.8s ease-in-out; }
-        
         .bar-jc { background: #00a8ff; }
         .bar-global { background: #6c5ce7; }
-        .bar-absensi { background: #dfe6e9; }
-
-        /* Table Style untuk Golongan Darah */
         .blood-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .blood-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
         .blood-type-label { font-weight: bold; color: #dc3545; width: 40px; }
         .blood-count { text-align: right; font-weight: bold; color: #007bff; }
-
-        .btn-back { 
-            display: flex; align-items: center; justify-content: center; text-decoration: none; 
-            color: #007bff; font-weight: bold; padding: 15px; background: white; 
-            border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 10px;
-        }
+        .btn-back { display: flex; align-items: center; justify-content: center; text-decoration: none; color: #007bff; font-weight: bold; padding: 15px; background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -52,7 +38,7 @@
         </div>
         <div class="filter-group">
             <label>Pilih Komsel</label>
-            <select id="select-komsel-alkitab" onchange="syncDataAlkitab()">
+            <select id="select-komsel-alkitab" onchange="updateAlkitabStats()">
                 <option value="JC 1">JC 1</option>
                 <option value="JC 2">JC 2</option>
                 <option value="JC 3">JC 3</option>
@@ -60,25 +46,19 @@
                 <option value="JC 5" selected>JC 5</option>
             </select>
         </div>
-        
         <div class="stat-row">
             <div class="stat-label-container">
                 <span class="label-text" id="lbl-jc-alkitab">Capaian JC 5</span>
-                <span class="label-pct" id="val-jc-alkitab">0%</span>
+                <span class="label-pct" id="pct-jc-alkitab">0.0%</span>
             </div>
-            <div class="progress-container">
-                <div class="progress-bar bar-jc" id="bar-jc-alkitab"></div>
-            </div>
+            <div class="progress-container"><div class="progress-bar bar-jc" id="bar-jc-alkitab"></div></div>
         </div>
-
         <div class="stat-row">
             <div class="stat-label-container">
                 <span class="label-text">Seluruh Komsel (Global)</span>
-                <span class="label-pct" id="val-global-alkitab" style="color: #6c5ce7;">0%</span>
+                <span class="label-pct" id="pct-global-alkitab" style="color: #6c5ce7;">0.0%</span>
             </div>
-            <div class="progress-container">
-                <div class="progress-bar bar-global" id="bar-global-alkitab"></div>
-            </div>
+            <div class="progress-container"><div class="progress-bar bar-global" id="bar-global-alkitab"></div></div>
         </div>
     </div>
 
@@ -88,7 +68,7 @@
         </div>
         <div class="filter-group">
             <label>Pilih Komsel</label>
-            <select id="select-komsel-hadir" onchange="syncDataHadir()">
+            <select id="select-komsel-hadir" onchange="updateKehadiranStats()">
                 <option value="JC 1">JC 1</option>
                 <option value="JC 2">JC 2</option>
                 <option value="JC 3">JC 3</option>
@@ -96,25 +76,19 @@
                 <option value="JC 5" selected>JC 5</option>
             </select>
         </div>
-
         <div class="stat-row">
             <div class="stat-label-container">
                 <span class="label-text" id="lbl-jc-hadir">Kehadiran JC 5</span>
-                <span class="label-pct" id="val-jc-hadir">0%</span>
+                <span class="label-pct" id="pct-jc-hadir">0.0%</span>
             </div>
-            <div class="progress-container">
-                <div class="progress-bar bar-absensi" id="bar-jc-hadir"></div>
-            </div>
+            <div class="progress-container"><div class="progress-bar bar-jc" id="bar-jc-hadir"></div></div>
         </div>
-
         <div class="stat-row">
             <div class="stat-label-container">
                 <span class="label-text">Seluruh Komsel (Global)</span>
-                <span class="label-pct" id="val-global-hadir">0%</span>
+                <span class="label-pct" id="pct-global-hadir" style="color: #6c5ce7;">0.0%</span>
             </div>
-            <div class="progress-container">
-                <div class="progress-bar bar-absensi" id="bar-global-hadir"></div>
-            </div>
+            <div class="progress-container"><div class="progress-bar bar-global" id="bar-global-hadir"></div></div>
         </div>
     </div>
 
@@ -124,7 +98,7 @@
         </div>
         <div class="filter-group">
             <label>Lihat Distribusi Per Komsel</label>
-            <select id="select-gol-darah" onchange="loadDistribusiDarah()">
+            <select id="select-gol-darah" onchange="updateGolDarahStats()">
                 <option value="" disabled selected>Pilih Komsel...</option>
                 <option value="JC 1">JC 1</option>
                 <option value="JC 2">JC 2</option>
@@ -133,7 +107,6 @@
                 <option value="JC 5">JC 5</option>
             </select>
         </div>
-
         <table class="blood-table">
             <tr><td class="blood-type-label">A</td><td id="count-A" class="blood-count">0 Orang</td></tr>
             <tr><td class="blood-type-label">B</td><td id="count-B" class="blood-count">0 Orang</td></tr>
@@ -142,9 +115,7 @@
         </table>
     </div>
 
-    <a href="menu.html" class="btn-back">
-        <i class="fa-solid fa-arrow-left"></i> &nbsp; Kembali ke Menu Utama
-    </a>
+    <a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> &nbsp; Kembali ke Menu Utama</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -162,46 +133,60 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function syncDataAlkitab() {
-        const selected = document.getElementById('select-komsel-alkitab').value;
-        document.getElementById('lbl-jc-alkitab').innerText = "Capaian " + selected;
-        
-        const userSnap = await db.collection("users").where("komsel", "==", selected).get();
-        const totalUser = userSnap.size || 1;
-        const laporanSnap = await db.collection("laporan_bacaan").where("komsel", "==", selected).get();
-        const pct = ((laporanSnap.size / totalUser) * 100).toFixed(1);
+    // Fungsi utilitas untuk update progress bar
+    const updateUI = (pctId, barId, value) => {
+        document.getElementById(pctId).innerText = value + "%";
+        document.getElementById(barId).style.width = value + "%";
+    };
 
-        document.getElementById('val-jc-alkitab').innerText = pct + "%";
-        document.getElementById('bar-jc-alkitab').style.width = pct + "%";
+    async function updateAlkitabStats() {
+        const jc = document.getElementById('select-komsel-alkitab').value;
+        document.getElementById('lbl-jc-alkitab').innerText = "Capaian " + jc;
+        
+        // Data JC Spesifik
+        const usersJC = await db.collection("users").where("komsel", "==", jc).get();
+        const laporanJC = await db.collection("laporan_bacaan").where("komsel", "==", jc).get();
+        const pctJC = usersJC.size > 0 ? ((laporanJC.size / usersJC.size) * 100).toFixed(1) : 0;
+        updateUI('pct-jc-alkitab', 'bar-jc-alkitab', pctJC);
+
+        // Data Global
+        const allUsers = await db.collection("users").get();
+        const allLaporan = await db.collection("laporan_bacaan").get();
+        const pctGlobal = allUsers.size > 0 ? ((allLaporan.size / allUsers.size) * 100).toFixed(1) : 0;
+        updateUI('pct-global-alkitab', 'bar-global-alkitab', pctGlobal);
     }
 
-    async function syncDataHadir() {
-        const selected = document.getElementById('select-komsel-hadir').value;
-        document.getElementById('lbl-jc-hadir').innerText = "Kehadiran " + selected;
-        
-        const hadirSnap = await db.collection("kehadiran").where("komsel", "==", selected).get();
-        const userSnap = await db.collection("users").where("komsel", "==", selected).get();
-        const pct = userSnap.size > 0 ? ((hadirSnap.size / userSnap.size) * 100).toFixed(1) : 0;
+    async function updateKehadiranStats() {
+        const jc = document.getElementById('select-komsel-hadir').value;
+        document.getElementById('lbl-jc-hadir').innerText = "Kehadiran " + jc;
 
-        document.getElementById('val-jc-hadir').innerText = pct + "%";
-        document.getElementById('bar-jc-hadir').style.width = pct + "%";
+        const usersJC = await db.collection("users").where("komsel", "==", jc).get();
+        const hadirJC = await db.collection("kehadiran").where("komsel", "==", jc).get();
+        const pctJC = usersJC.size > 0 ? ((hadirJC.size / usersJC.size) * 100).toFixed(1) : 0;
+        updateUI('pct-jc-hadir', 'bar-jc-hadir', pctJC);
+
+        const allUsers = await db.collection("users").get();
+        const allHadir = await db.collection("kehadiran").get();
+        const pctGlobal = allUsers.size > 0 ? ((allHadir.size / allUsers.size) * 100).toFixed(1) : 0;
+        updateUI('pct-global-hadir', 'bar-global-hadir', pctGlobal);
     }
 
-    async function loadDistribusiDarah() {
-        const jcSelected = document.getElementById('select-gol-darah').value;
-        if (!jcSelected) return;
+    async function updateGolDarahStats() {
+        const jc = document.getElementById('select-gol-darah').value;
         const counts = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
-        const snapshot = await db.collection("users").where("komsel", "==", jcSelected).get();
+        const snapshot = await db.collection("users").where("komsel", "==", jc).get();
+        
         snapshot.forEach(doc => {
             const gol = doc.data().golongan_darah ? doc.data().golongan_darah.toUpperCase() : null;
             if (counts.hasOwnProperty(gol)) counts[gol]++;
         });
-        Object.keys(counts).forEach(type => {
+
+        for (const type in counts) {
             document.getElementById('count-' + type).innerText = counts[type] + " Orang";
-        });
+        }
     }
 
-    window.onload = () => { syncDataAlkitab(); syncDataHadir(); };
+    window.onload = () => { updateAlkitabStats(); updateKehadiranStats(); };
 </script>
 </body>
 </html>
