@@ -24,8 +24,6 @@
         .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .modal-box i { font-size: 50px; color: #28a745; margin-bottom: 15px; }
         .modal-box p { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px; }
-        
-        /* Style tambahan hanya untuk posisi ikon mata */
         .password-container { position: relative; }
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
     </style>
@@ -40,7 +38,7 @@
     </div>
 
     <form id="formRegistrasi">
-        <div class="time-info" id="current-time">Rabu, 18 Maret 2026 pukul 16.56.24 WIT</div>
+        <div class="time-info" id="current-time"></div>
 
         <div class="form-group">
             <label>Nama Lengkap</label>
@@ -85,13 +83,13 @@
             <label>Komsel JC</label>
             <select id="komsel" required>
                 <option value="">-- Pilih Lokasi JC --</option>
-                <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option>
-                <option value="JC 3">JC 3</option><option value="JC 4">JC 4</option>
-                <option value="JC 5">JC 5</option>
+                <option value="1">JC 1</option><option value="2">JC 2</option>
+                <option value="3">JC 3</option><option value="4">JC 4</option>
+                <option value="5">JC 5</option>
             </select>
         </div>
 
-        <button type="button" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
+        <button type="button" id="btnSubmit" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
         <a href="login.html" class="btn-back-login"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login Page</a>
     </form>
 </div>
@@ -99,7 +97,7 @@
 <div id="blocking-message">
     <div class="modal-box">
         <i class="fa-solid fa-circle-check"></i>
-        <p>Data Berhasil Disimpan! Silahkan Login.</p>
+        <p id="pesan-sukses">Data Berhasil Disimpan!</p>
         <button onclick="window.location.href='login.html'" class="btn-submit" style="background:#007bff">OK / LOGIN</button>
     </div>
 </div>
@@ -119,12 +117,18 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    localStorage.removeItem("editMemberID");
+    // Set Waktu Real-time di UI
+    function updateClock() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        document.getElementById('current-time').innerText = now.toLocaleDateString('id-ID', options) + " WIT";
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
-    // Perintah tambahan untuk fungsi ikon mata
+    // Toggle Mata Password
     const eyeIcon = document.getElementById('eyeIcon');
     const passwordInput = document.getElementById('pass');
-
     eyeIcon.addEventListener('click', function() {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
@@ -132,24 +136,55 @@
         this.classList.toggle('fa-eye-slash');
     });
 
+    // FUNGSI GENERATE NOMOR KOMSEL (NK) OTOMATIS
+    async function generateNK(jcValue) {
+        const snapshot = await db.collection("users").get();
+        const urutanNext = snapshot.size + 1;
+        const formatUrutan = String(urutanNext).padStart(3, '0');
+        const tahun = new Date().getFullYear();
+        return `NK-PPP-${formatUrutan}-JC${jcValue}-${tahun}`;
+    }
+
     async function handleRegistrasi() {
-        const userData = {
-            namaLengkap: document.getElementById("nama").value,
-            email: document.getElementById("email").value,
-            whatsapp: document.getElementById("hp").value,
-            password: document.getElementById("pass").value,
-            alamat: document.getElementById("alamat").value,
-            golDarah: document.getElementById("darah").value,
-            jabatan: document.getElementById("jabatan").value,
-            komsel: document.getElementById("komsel").value,
-            tanggalDaftar: new Date().toLocaleDateString()
-        };
+        const btn = document.getElementById("btnSubmit");
+        const jcValue = document.getElementById("komsel").value;
+
+        // Validasi
+        if(!document.getElementById("nama").value || !jcValue) {
+            alert("Harap lengkapi Nama dan Lokasi JC!");
+            return;
+        }
+
+        btn.innerText = "Memproses...";
+        btn.disabled = true;
 
         try {
+            // Generate NK Otomatis
+            const nkBaru = await generateNK(jcValue);
+
+            const userData = {
+                nama: document.getElementById("nama").value,
+                email: document.getElementById("email").value,
+                whatsapp: document.getElementById("hp").value,
+                password: document.getElementById("pass").value,
+                alamat: document.getElementById("alamat").value,
+                golDarah: document.getElementById("darah").value,
+                jabatan: document.getElementById("jabatan").value,
+                komsel: jcValue,
+                nomor_komsel: nkBaru, // Nomor Komsel Otomatis masuk sini
+                status: "Aktif",
+                tanggalDaftar: firebase.firestore.Timestamp.now()
+            };
+
             await db.collection("users").add(userData);
+            
+            document.getElementById('pesan-sukses').innerHTML = `Pendaftaran Berhasil!<br>Nomor Komsel Anda:<br><b style="color:#28a745; font-size:18px;">${nkBaru}</b>`;
             document.getElementById('blocking-message').style.display = 'flex';
+
         } catch (error) { 
             alert("Error: " + error.message); 
+            btn.innerText = "DAFTAR SEKARANG";
+            btn.disabled = false;
         }
     }
 </script>
