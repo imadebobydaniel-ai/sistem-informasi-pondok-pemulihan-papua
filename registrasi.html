@@ -89,9 +89,10 @@
             </select>
         </div>
 
-        <div class="form-group" id="group-nk" style="display:none;">
+        <div class="form-group" id="group-nk" style="display:none; margin-top: 10px;">
             <label>Nomor Komsel (NK) Otomatis</label>
-            <input type="text" id="nk-display" readonly style="background: #e9ecef; font-weight: bold; color: #28a745; border: 1px solid #28a745;">
+            <input type="text" id="nk-display" readonly style="background: #e9ecef; font-weight: bold; color: #28a745; border: 2px solid #28a745;">
+            <small id="nk-loading-text" style="display:none; color: orange;">Sedang sinkronisasi data...</small>
         </div>
 
         <button type="button" id="btnSubmit" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
@@ -139,16 +140,18 @@
         this.classList.toggle('fa-eye-slash');
     });
 
-    // FUNGSI UNTUK MEMUNCULKAN KOLOM NK SECARA INSTAN
+    // FUNGSI UTAMA: MENAMPILKAN KOLOM NK
     async function updateNKPreview() {
         const jcValue = document.getElementById("komsel").value;
         const nkGroup = document.getElementById("group-nk");
         const nkInput = document.getElementById("nk-display");
+        const loadingText = document.getElementById("nk-loading-text");
 
         if (jcValue) {
-            // Munculkan grupnya dulu agar tidak disangka hilang
+            // Langsung munculkan elemen agar user tahu sistem merespon
             nkGroup.style.display = "block";
-            nkInput.value = "Sedang Membuat NK...";
+            loadingText.style.display = "block";
+            nkInput.value = "Generating...";
 
             try {
                 // Ambil data terbaru dari collection "users"
@@ -157,12 +160,15 @@
                 const formatUrutan = String(urutanNext).padStart(3, '0');
                 const tahun = new Date().getFullYear();
                 
-                // Set nilai NK ke dalam input field
                 const nkBaru = `NK-PPP-${formatUrutan}-JC${jcValue}-${tahun}`;
+                
+                // Isi nilai ke input
                 nkInput.value = nkBaru;
+                loadingText.style.display = "none";
             } catch (error) {
-                console.error("Gagal mengambil urutan:", error);
-                nkInput.value = "Gagal mengambil nomor";
+                console.error("Firebase Error:", error);
+                nkInput.value = "Error Data";
+                loadingText.innerText = "Gagal mengambil data dari server.";
             }
         } else {
             nkGroup.style.display = "none";
@@ -174,8 +180,9 @@
         const jcValue = document.getElementById("komsel").value;
         const nkBaru = document.getElementById("nk-display").value;
 
-        if(!document.getElementById("nama").value || !jcValue || !nkBaru || nkBaru === "Sedang Membuat NK...") {
-            alert("Harap lengkapi semua data dan tunggu hingga NK muncul!");
+        // Validasi input wajib
+        if(!document.getElementById("nama").value || !jcValue || nkBaru === "Generating..." || nkBaru === "") {
+            alert("Harap lengkapi Nama dan pilih Komsel JC!");
             return;
         }
 
@@ -203,7 +210,7 @@
             document.getElementById('blocking-message').style.display = 'flex';
 
         } catch (error) { 
-            alert("Error: " + error.message); 
+            alert("Error simpan: " + error.message); 
             btn.innerText = "DAFTAR SEKARANG";
             btn.disabled = false;
         }
