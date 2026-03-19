@@ -203,6 +203,29 @@
         });
         for (let t in counts) document.getElementById('c-' + t).innerText = counts[t] + " Orang";
     }
+    // Fungsi Real-time Listener
+db.collection("users").onSnapshot((snapshot) => {
+    // Reset semua hitungan ke 0 setiap ada perubahan data
+    let countA = 0, countB = 0, countAB = 0, countO = 0;
+
+    snapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Cek field 'gol_darah' ATAU 'golongan_darah'
+        const gd = data.gol_darah || data.golongan_darah;
+
+        if (gd === "A") countA++;
+        else if (gd === "B") countB++;
+        else if (gd === "AB") countAB++; // Ini yang akan menangkap data Boby Daniel
+        else if (gd === "O") countO++;
+    });
+
+    // Update angka di kartu tampilan secara instan
+    document.getElementById("stat_a").innerText = countA + " Orang";
+    document.getElementById("stat_b").innerText = countB + " Orang";
+    document.getElementById("stat_ab").innerText = countAB + " Orang"; // Akan muncul 1
+    document.getElementById("stat_o").innerText = countO + " Orang";
+});
 
     window.onload = () => { loadAlkitab(); loadHadir(); };
 </script>
