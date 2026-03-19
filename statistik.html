@@ -69,7 +69,7 @@
             <div class="filter-group">
                 <label>Periode</label>
                 <select id="month-hadir">
-                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
+                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="4">4 Bulan Terakhir</option><option value="5">5 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
                 </select>
             </div>
         </div>
@@ -93,7 +93,8 @@
             <div class="filter-group">
                 <label>Periode</label>
                 <select id="month-tidak-hadir">
-                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
+                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option>
+                    <option value="3">3 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
                 </select>
             </div>
         </div>
@@ -138,10 +139,15 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // VARIABEL GLOBAL UNTUK PENYIMPANAN DATA USER (Mencegah over-fetching)
     let cachedUsers = [];
 
-    // 1. FUNGSI REAL-TIME STATISTIK (DIPANGGIL SETIAP PERUBAHAN)
+    // FUNGSI PENGAMAN PERSENTASE (Mencegah NaN dan 600%)
+    function calculateSafePct(reports, users) {
+        if (!users || users === 0) return 0;
+        let pct = (reports / users) * 100;
+        return pct > 100 ? 100 : pct.toFixed(1);
+    }
+
     function setupRealtimeListener(collectionName, jcId, monthId, labelId, valId, barId, valGlobalId, barGlobalId, labelText) {
         const jcSelect = document.getElementById(jcId);
         const monthSelect = document.getElementById(monthId);
@@ -149,103 +155,75 @@
         const updateData = () => {
             const selectedJC = jcSelect.value;
             const months = parseInt(monthSelect.value);
-            
-            // Hitung Tanggal Limit
             const dateLimit = new Date();
             dateLimit.setMonth(dateLimit.getMonth() - months);
             const timestampLimit = firebase.firestore.Timestamp.fromDate(dateLimit);
 
-            // Listener Real-time
             db.collection(collectionName)
                 .where("tanggal", ">=", timestampLimit)
                 .onSnapshot(snapshot => {
                     let totalGlobalReports = snapshot.size;
                     let totalJCReports = 0;
-                    
-                    snapshot.forEach(doc => {
-                        if (doc.data().komsel == selectedJC) totalJCReports++;
-                    });
+                    snapshot.forEach(doc => { if (doc.data().komsel == selectedJC) totalJCReports++; });
 
-                    // Ambil jumlah user dari cache
                     const totalGlobalUsers = cachedUsers.length;
                     const totalJCUsers = cachedUsers.filter(u => u.komsel == selectedJC).length;
 
-                    // Update UI JC
-                    const pctJC = totalJCUsers > 0 ? ((totalJCReports / totalJCUsers) * 100).toFixed(1) : 0;
+                    const pctJC = calculateSafePct(totalJCReports, totalJCUsers);
                     document.getElementById(valId).innerText = pctJC + "%";
                     document.getElementById(barId).style.width = pctJC + "%";
                     document.getElementById(labelId).innerText = `${labelText} JC ${selectedJC}`;
 
-                    // Update UI Global
                     if (valGlobalId) {
-                        const pctGlobal = totalGlobalUsers > 0 ? ((totalGlobalReports / totalGlobalUsers) * 100).toFixed(1) : 0;
+                        const pctGlobal = calculateSafePct(totalGlobalReports, totalGlobalUsers);
                         document.getElementById(valGlobalId).innerText = pctGlobal + "%";
                         document.getElementById(barGlobalId).style.width = pctGlobal + "%";
                     }
                 });
         };
-
         jcSelect.addEventListener('change', updateData);
         monthSelect.addEventListener('change', updateData);
         updateData();
     }
 
-    // 2. REAL-TIME GOLONGAN DARAH
     function setupBloodRealtime() {
         const selDarah = document.getElementById('sel-darah');
-        
         const renderBlood = () => {
             const filterJC = selDarah.value;
             let counts = { "A": 0, "B": 0, "O": 0, "AB": 0 };
-            
             cachedUsers.forEach(user => {
                 if (filterJC === "" || user.komsel == filterJC) {
                     if (counts.hasOwnProperty(user.golongan_darah)) counts[user.golongan_darah]++;
                 }
             });
-
-            for (let type in counts) {
-                document.getElementById(`c-${type}`).innerText = counts[type] + " Orang";
-            }
+            for (let type in counts) { document.getElementById(`c-${type}`).innerText = counts[type] + " Orang"; }
         };
-
         selDarah.addEventListener('change', renderBlood);
-        // Memanggil render pertama kali setelah user di-load
         renderBlood();
     }
 
-    // 3. INISIALISASI AWAL (LOAD USERS DULU)
     db.collection("users").onSnapshot(snapshot => {
         cachedUsers = snapshot.docs.map(doc => doc.data());
-        
-        // Setup semua listener setelah data user tersedia
         setupRealtimeListener("laporan_bacaan", "sel-alkitab", "month-alkitab", "lbl-alkitab", "val-alkitab", "bar-alkitab", "val-alkitab-global", "bar-alkitab-global", "Capaian");
         setupRealtimeListener("kehadiran", "sel-hadir", "month-hadir", "lbl-hadir", "val-hadir", "bar-hadir", "val-hadir-global", "bar-hadir-global", "Kehadiran");
-        
-        // Khusus Ketidak Hadiran: Logika difilter berdasarkan status "Tidak Hadir" di collection "kehadiran"
         setupTidakHadirListener();
-        
         setupBloodRealtime();
     });
 
     function setupTidakHadirListener() {
         const jcSelect = document.getElementById("sel-tidak-hadir");
         const monthSelect = document.getElementById("month-tidak-hadir");
-
         const update = () => {
             const dateLimit = new Date();
             dateLimit.setMonth(dateLimit.getMonth() - parseInt(monthSelect.value));
-            
             db.collection("kehadiran")
                 .where("status", "==", "Tidak Hadir")
                 .where("tanggal", ">=", firebase.firestore.Timestamp.fromDate(dateLimit))
                 .onSnapshot(snapshot => {
                     let jcCount = 0;
                     snapshot.forEach(doc => { if(doc.data().komsel == jcSelect.value) jcCount++; });
-                    
                     const totalJCUsers = cachedUsers.filter(u => u.komsel == jcSelect.value).length;
-                    const pct = totalJCUsers > 0 ? ((jcCount / totalJCUsers) * 100).toFixed(1) : 0;
-                    
+                    const pct = calculateSafePct(jcCount, totalJCUsers);
                     document.getElementById("val-tidak-hadir").innerText = pct + "%";
                     document.getElementById("bar-tidak-hadir").style.width = pct + "%";
                     document.getElementById("lbl-tidak-hadir").innerText = `Ketidak Hadiran JC ${jcSelect.value}`;
