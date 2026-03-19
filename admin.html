@@ -19,11 +19,10 @@
 
         /* Fitur Table Scroll & Freeze */
         .table-responsive { overflow-x: auto; max-width: 100%; position: relative; border-radius: 10px; border: 1px solid #eee; }
-        table { width: 100%; border-collapse: collapse; min-width: 1400px; } /* Lebar minimal agar bisa di-scroll */
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
         table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 13px; white-space: nowrap; }
         table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; color: var(--dark); white-space: nowrap; }
         
-        /* Kolom Freeze (Checkbox & NK) */
         .freeze-col { position: sticky; left: 0; z-index: 2; background: white !important; border-right: 2px solid #eee; }
         th.freeze-col { z-index: 3; background: var(--primary) !important; }
 
@@ -93,6 +92,7 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
+    // 1. Fungsi Load Data
     async function loadData() {
         const tableBody = document.getElementById("memberData");
         const loading = document.getElementById("loading-state");
@@ -133,6 +133,7 @@
         }
     }
 
+    // 2. Fungsi Filter Pencarian
     function filterTable() {
         let input = document.getElementById("searchInput").value.toLowerCase();
         let rows = document.getElementById("memberData").getElementsByTagName("tr");
@@ -142,40 +143,33 @@
         }
     }
 
+    // 3. Fungsi Navigasi ke Edit (Berdiri Sendiri)
     function goToEdit(id) {
+        if (!id) return;
         localStorage.setItem("editMemberID", id);
         window.location.href = 'registrasi.html';
     }
 
+    // 4. Fungsi Hapus Member
     async function deleteMember(id, nama) {
-    if (confirm("...")) {
-        try {
-            await db.collection("users").doc(id).delete();
-            // ... (kode lainnya)
-        } catch (error) {
-            // ...
+        if (confirm("Apakah Anda yakin ingin menghapus data " + nama + "?")) {
+            try {
+                await db.collection("users").doc(id).delete();
+                alert("Data berhasil dihapus");
+                location.reload();
+            } catch (error) {
+                alert("Gagal menghapus: " + error.message);
+            }
         }
     }
-    // LIHAT DI SINI:
-    function goToEdit(id) { 
-        // Fungsi ini tertelan di dalam deleteMember!
-        // Akibatnya, saat ikon edit diklik, browser tidak bisa menemukannya.
-    }
-} // Penutup deleteMember baru ada di sini.
-        function goToEdit(id) {
-    if (!id) return;
-    // Menyimpan ID ke memori sementara browser
-    localStorage.setItem("editMemberID", id);
-    // Pindah ke halaman edit (registrasi.html)
-    window.location.href = 'registrasi.html';
-}
-    }
 
+    // 5. Checkbox All
     document.getElementById('checkAll').onclick = function() {
         let checkboxes = document.querySelectorAll('.user-checkbox');
         for (let checkbox of checkboxes) { checkbox.checked = this.checked; }
     }
 
+    // Jalankan saat halaman siap
     window.onload = loadData;
 </script>
 </body>
