@@ -11,44 +11,19 @@
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; padding-bottom: 80px; }
         .container { max-width: 500px; margin: auto; }
         .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 15px; }
-        
         h3 { border-bottom: 2px solid #007bff; padding-bottom: 10px; font-size: 16px; text-transform: uppercase; }
         .filter-group { display: flex; gap: 10px; margin-bottom: 20px; }
         select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; }
-
-        .chart-container { position: relative; height: 200px; margin-bottom: 20px; }
-        
+        .chart-container { position: relative; height: 250px; margin-bottom: 20px; }
         .target-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
         .target-item { font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
-
         .pks-section { background: #fff3cd; border: 1px dashed #cebc85; padding: 15px; border-radius: 15px; margin-top: 20px; }
-        
         .btn-export { background: #28a745; color: white; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
-        .btn-export:active { transform: scale(0.98); background: #218838; }
         .btn-back { position: fixed; bottom: 20px; left: 20px; right: 20px; background: #007bff; color: white; text-align: center; padding: 15px; border-radius: 15px; text-decoration: none; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-
-        /* Style Blocking Notif Display */
-        #notif-block {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .modal-notif {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            max-width: 320px;
-            width: 100%;
-        }
-        .modal-notif i { font-size: 50px; color: #dc3545; margin-bottom: 15px; }
-        .modal-notif p { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px; line-height: 1.5; }
+        
+        /* Notif Modal */
+        #notif-block { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
+        .modal-notif { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .btn-close-notif { background: #333; color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -58,52 +33,54 @@
     <div class="card">
         <h3><i class="fa-solid fa-filter"></i> Periode Laporan</h3>
         <div class="filter-group">
-            <select id="filter-periode" onchange="generateReport()">
+            <select id="filter-periode">
                 <option value="1">Per 1 Bulan</option>
-                <option value="2">Per 2 Bulan</option>
-                <option value="3">Per 3 Bulan</option>
-                <option value="4">Per 4 Bulan</option>
-                <option value="5">Per 5 Bulan</option>
-                <option value="6">Per 6 Bulan</option>
             </select>
         </div>
         <p id="user-jc-info" style="font-weight: bold; color: #007bff; margin: 0;">JC: Memuat...</p>
     </div>
 
     <div class="card">
-        <h3><i class="fa-solid fa-chart-line"></i> Ringkasan Performa</h3>
+        <h3><i class="fa-solid fa-chart-bar"></i> PERFORMA REAL-TIME</h3>
         <div class="chart-container">
-            <canvas id="chartLaporan"></canvas>
+            <canvas id="performaChart"></canvas>
         </div>
-        <div id="summary-text" style="font-size: 13px; line-height: 1.6; color: #444;">
-            Memproses data laporan...
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; margin-top: 10px;">
+            <div style="background: #f0fff4; padding: 12px; border-radius: 10px; border: 1px solid #c6f6d5;">
+                <h4 style="color: #2f855a; margin: 0 0 10px 0; font-size: 14px;"><i class="fa-solid fa-check-circle"></i> Hadir</h4>
+                <div id="list-hadir" style="font-size: 12px; color: #444;">Memuat...</div>
+            </div>
+
+            <div style="background: #fff5f5; padding: 12px; border-radius: 10px; border: 1px solid #fed7d7;">
+                <h4 style="color: #c53030; margin: 0 0 10px 0; font-size: 14px;"><i class="fa-solid fa-times-circle"></i> Tidak Hadir</h4>
+                <div id="list-tidak-hadir" style="font-size: 12px; color: #444;">Memuat...</div>
+            </div>
+        </div>
+
+        <div id="summary-text" style="font-size: 13px; line-height: 1.6; color: #444; margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
+            Menghubungkan ke database...
         </div>
     </div>
 
     <div class="card">
         <h3><i class="fa-solid fa-bullseye"></i> Target & Komitmen</h3>
-        <label style="font-size: 12px; font-weight: bold;">Pilih Jangka Waktu (Bulan):</label>
         <div class="target-grid">
-            <div class="target-item"><input type="checkbox" value="1"> 1 Bln</div>
-            <div class="target-item"><input type="checkbox" value="2"> 2 Bln</div>
-            <div class="target-item"><input type="checkbox" value="3"> 3 Bln</div>
-            <div class="target-item"><input type="checkbox" value="4"> 4 Bln</div>
-            <div class="target-item"><input type="checkbox" value="5"> 5 Bln</div>
-            <div class="target-item"><input type="checkbox" value="6"> 6 Bln</div>
+            <div class="target-item"><input type="checkbox" checked> 1 Bln</div>
+            <div class="target-item"><input type="checkbox"> 2 Bln</div>
+            <div class="target-item"><input type="checkbox"> 3 Bln</div>
         </div>
         
-        <label style="font-size: 12px; font-weight: bold; display: block; margin-top: 15px;">Komitmen Kehadiran & Baca Firman:</label>
+        <label style="font-size: 12px; font-weight: bold; display: block; margin-top: 15px;">Komitmen Anda:</label>
         <select id="komitmen-user">
-            <option value="Makin Rajin">Makin Rajin Dalam Pembacaan Alkitab dan kehadiran Komsel</option>
+            <option value="Makin Rajin">Makin Rajin Baca Alkitab & Komsel</option>
             <option value="Biasa Biasa Saja">Biasa Biasa Saja</option>
-            <option value="Belum bisa berkomitmen">Belum bisa berkomitmen</option>
         </select>
     </div>
 
     <div class="pks-section">
-        <h4 style="margin:0; color: #856404;"><i class="fa-solid fa-lock"></i> Area Khusus PKS</h4>
-        <p style="font-size: 11px; color: #856404; margin-bottom: 10px;">Gunakan Password Administrator atau PKS JC terkait.</p>
-        <input type="password" id="pks-password" placeholder="Masukkan Password PKS">
+        <h4 style="margin:0; color: #856404;"><i class="fa-solid fa-lock"></i> Area Verifikasi PKS</h4>
+        <input type="password" id="pks-password" placeholder="Password PKS" style="margin-top:10px;">
         <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> Ekspor ke PDF
         </button>
@@ -114,8 +91,8 @@
 
 <div id="notif-block">
     <div class="modal-notif">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <p id="notif-text">Pesan Notifikasi</p>
+        <i class="fa-solid fa-circle-exclamation" style="font-size: 40px; color: #dc3545;"></i>
+        <p id="notif-text">Pesan</p>
         <button class="btn-close-notif" onclick="closeNotif()">TUTUP</button>
     </div>
 </div>
@@ -136,7 +113,7 @@
     const db = firebase.firestore();
 
     let userJC = "";
-    let myChart;
+    let myChart; // Variabel global tunggal
 
     function showNotif(msg) {
         document.getElementById("notif-text").innerText = msg;
@@ -147,86 +124,112 @@
         document.getElementById("notif-block").style.display = "none";
     }
 
+    // --- INISIALISASI ---
     async function initSession() {
         const email = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com"; 
         const snap = await db.collection("users").where("email", "==", email).get();
+        
         if(!snap.empty) {
             userJC = snap.docs[0].data().komsel;
             document.getElementById("user-jc-info").innerText = "Laporan Khusus: " + userJC;
-            generateReport();
+            
+            initChart(); // Gambar grafik kosong
+            sinkronisasiDashboard(userJC); // Isi data real-time
         }
     }
 
-    async function generateReport() {
-        const periode = document.getElementById("filter-periode").value;
-        updateChart([75, 85]); 
-        document.getElementById("summary-text").innerHTML = `
-            Laporan periode <strong>${periode} bulan</strong> terakhir untuk <strong>${userJC}</strong> menunjukkan tren positif. 
-            Capaian Alkitab: 75%, Kehadiran: 85%.
-        `;
-    }
-
-    function updateChart(dataValues) {
-        const ctx = document.getElementById('chartLaporan').getContext('2d');
-        if(myChart) myChart.destroy();
+    function initChart() {
+        const ctx = document.getElementById('performaChart').getContext('2d');
         myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Alkitab', 'Kehadiran'],
                 datasets: [{
                     label: '% Capaian',
-                    data: dataValues,
-                    backgroundColor: ['#007bff', '#28a745']
+                    data: [0, 0], 
+                    backgroundColor: ['#007bff', '#28a745'],
+                    borderRadius: 8
                 }]
             },
-            options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            options: { 
+                maintainAspectRatio: false, 
+                scales: { y: { beginAtZero: true, max: 100 } } 
+            }
         });
     }
 
-    async function validateAndExport() {
-        const passInput = document.getElementById("pks-password").value;
-        if(!passInput) {
-            showNotif("Silakan masukkan password PKS/Admin.");
-            return;
-        }
+    // --- SINKRONISASI DATABASE (REAL-TIME) ---
+    function sinkronisasiDashboard(komselId) {
+        const komselStr = String(komselId);
 
-        try {
-            const adminCheck = await db.collection("users")
-                .where("jabatan", "==", "Administrator")
-                .where("password", "==", passInput).get();
+        // 1. Pantau Kehadiran & Tabel Ketidakhadiran
+        db.collection("kehadiran").where("komsel", "==", komselStr)
+            .onSnapshot((snapshot) => {
+                let hadir = 0, tidakHadir = 0;
+                let listH = "", listTH = "";
 
-            if(!adminCheck.empty) {
-                runExportProcess();
-                return;
-            }
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    if(d.status === "Hadir") {
+                        hadir++;
+                        listH += `<div>• ${d.nama}</div>`;
+                    } else {
+                        tidakHadir++;
+                        listTH += `<div>• ${d.nama} <br><small style="color:red">(${d.alasan || 'Izin'})</small></div>`;
+                    }
+                });
 
-            const pksCheck = await db.collection("users")
-                .where("komsel", "==", userJC)
-                .where("jabatan", "==", "Ketua Komsel")
-                .where("password", "==", passInput).get();
+                const total = hadir + tidakHadir;
+                const persenHadir = total > 0 ? Math.round((hadir / total) * 100) : 0;
 
-            if(!pksCheck.empty) {
-                runExportProcess();
-            } else {
-                showNotif("Otoritas Ditolak! Password salah atau Anda bukan PKS untuk " + userJC);
-            }
-        } catch (error) {
-            showNotif("Error validasi: " + error.message);
-        }
+                document.getElementById("list-hadir").innerHTML = listH || "Kosong";
+                document.getElementById("list-tidak-hadir").innerHTML = listTH || "Kosong";
+                
+                myChart.data.datasets[0].data[1] = persenHadir;
+                myChart.update();
+                updateSummary();
+            });
+
+        // 2. Pantau Baca Alkitab
+        db.collection("laporan_bacaan").where("komsel", "==", komselStr)
+            .onSnapshot((snapshot) => {
+                const totalLapor = snapshot.size;
+                const targetJemaat = 10; // Sesuaikan target per komsel
+                const persenAlkitab = Math.min(Math.round((totalLapor / targetJemaat) * 100), 100);
+
+                myChart.data.datasets[0].data[0] = persenAlkitab;
+                myChart.update();
+                updateSummary();
+            });
     }
 
-    function runExportProcess() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text("LAPORAN KOMSEL PONDOK PEMULIHAN PAPUA", 10, 20);
-        doc.setFontSize(12);
-        doc.text("Unit Kerja: " + userJC, 10, 30);
-        doc.text("Periode: " + document.getElementById("filter-periode").value + " Bulan", 10, 40);
-        doc.text("Komitmen: " + document.getElementById("komitmen-user").value, 10, 50);
-        doc.text("Status: Laporan Tervalidasi", 10, 60);
-        doc.save(`Laporan_${userJC}_${new Date().toLocaleDateString()}.pdf`);
-        showNotif("Akses Diterima. PDF Berhasil diunduh.");
+    function updateSummary() {
+        const alk = myChart.data.datasets[0].data[0];
+        const keh = myChart.data.datasets[0].data[1];
+        document.getElementById("summary-text").innerHTML = 
+            `Laporan periode ini untuk <strong>${userJC}</strong> menunjukkan capaian Alkitab <strong>${alk}%</strong> dan Kehadiran <strong>${keh}%</strong>. Data diupdate otomatis.`;
+    }
+
+    // --- PDF EXPORT ---
+    async function validateAndExport() {
+        const pass = document.getElementById("pks-password").value;
+        if(!pass) return showNotif("Masukkan password!");
+
+        const admin = await db.collection("users").where("jabatan", "==", "Administrator").where("password", "==", pass).get();
+        const pks = await db.collection("users").where("komsel", "==", userJC).where("jabatan", "==", "Ketua Komsel").where("password", "==", pass).get();
+
+        if(!admin.empty || !pks.empty) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("LAPORAN KOMSEL PONDOK PEMULIHAN PAPUA", 10, 20);
+            doc.text(`JC: ${userJC}`, 10, 30);
+            doc.text(`Alkitab: ${myChart.data.datasets[0].data[0]}%`, 10, 40);
+            doc.text(`Kehadiran: ${myChart.data.datasets[0].data[1]}%`, 10, 50);
+            doc.save(`Laporan_${userJC}.pdf`);
+            showNotif("PDF Berhasil diunduh!");
+        } else {
+            showNotif("Password Salah / Bukan PKS JC ini.");
+        }
     }
 
     window.onload = initSession;
