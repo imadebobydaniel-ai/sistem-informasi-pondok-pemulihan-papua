@@ -215,6 +215,53 @@
         };
         jcSel.onchange = update; monthSel.onchange = update; update();
     }
+    // --- BAGIAN LOGIKA PERBAIKAN PENTING ---
+
+function calculateSafePct(reports, totalUsers) {
+    // Jika tidak ada laporan, pasti 0%
+    if (!reports || reports <= 0) return "0.0";
+    // Jika tidak ada user ditemukan, jangan bagi dengan 0, tapi anggap 100% atau 0% sesuai kebijakan.
+    // Untuk kasus Anda, kita ingin (1 orang / 20 orang) * 100 = 5%
+    if (!totalUsers || totalUsers <= 0) return "0.0"; 
+
+    let res = (reports / totalUsers) * 100;
+    return res.toFixed(1);
+}
+
+// Perbaikan pada setupAlkitabListener (dan listener lainnya)
+function setupAlkitabListener() {
+    const jcSel = document.getElementById("sel-alkitab");
+    const monthSel = document.getElementById("month-alkitab");
+
+    const update = () => {
+        const selectedJC = jcSel.value; // Ini biasanya string "5"
+        
+        db.collection("laporan_bacaan")
+          .onSnapshot(snap => {
+            let reportsJC = 0;
+            snap.forEach(doc => {
+                // SINKRONISASI TIPE DATA: Pastikan membandingkan String dengan String
+                if (String(doc.data().komsel) === String(selectedJC)) {
+                    reportsJC++;
+                }
+            });
+
+            // HITUNG TOTAL ANGGOTA DI KOMSEL TERSEBUT
+            // Pastikan nama field di database 'users' adalah 'komsel'
+            const membersInJC = cachedUsers.filter(u => String(u.komsel) === String(selectedJC)).length;
+            
+            // LOG UNTUK DEBUG (Cek di Console Browser F12)
+            console.log("Reports:", reportsJC, "Total Members in JC:", membersInJC);
+
+            const pctJC = calculateSafePct(reportsJC, membersInJC);
+            
+            document.getElementById("val-alkitab").innerText = pctJC + "%";
+            document.getElementById("bar-alkitab").style.width = pctJC + "%";
+        });
+    };
+    jcSel.onchange = update;
+    update();
+}
 
     // 4. Logic Golongan Darah
     function setupBloodListener() {
