@@ -48,7 +48,7 @@
         <label>Alasan Tidak Hadir:</label>
         <textarea id="keterangan" placeholder="Isi alasan..."></textarea>
         <div class="btn-group-action">
-            <button class="btn-kirim" onclick="kirimAlasan()">Kirim</button>
+            <button class="btn-kirim" id="btnKirimAlasan" onclick="kirimAlasan()">Kirim</button>
             <button class="btn-batal" onclick="batalProses()">Batal</button>
         </div>
     </div>
@@ -100,6 +100,10 @@
         const btnHadir = document.getElementById('btnHadir');
         btnHadir.disabled = false;
         btnHadir.innerHTML = `SAYA HADIR <i class="fa-solid fa-circle-check"></i>`;
+        
+        const btnKirim = document.getElementById('btnKirimAlasan');
+        btnKirim.disabled = false;
+        btnKirim.innerText = "Kirim";
     }
 
     function tampilkanModal(title, text, icon, color) {
@@ -111,10 +115,9 @@
         document.getElementById('modal-notif').style.display = 'flex';
     }
 
-    // FUNGSI RESET DEFAULT (TIDAK EXIT KE MENU)
     function tutupModal() {
         document.getElementById('modal-notif').style.display = 'none';
-        batalProses(); // Memanggil fungsi reset tampilan agar kembali ke posisi default
+        batalProses(); // Reset ke tampilan default
     }
 
     // --- FUNGSI CORE ---
@@ -135,9 +138,11 @@
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const alamat = await getAlamat(pos.coords.latitude, pos.coords.longitude);
             const snap = await db.collection("users").where("email", "==", userEmail).get();
+            if (snap.empty) return;
             const userData = snap.docs[0].data();
 
-            await db.collection("kehadiran").add({
+            // DIPISAH KE COLLECTION KHUSUS HADIR
+            await db.collection("kehadiran_hadir").add({
                 nama: userData.nama || "-",
                 komsel: userData.komsel || "-",
                 status: "Hadir",
@@ -156,19 +161,31 @@
     async function kirimAlasan() {
         const alasan = document.getElementById('keterangan').value;
         if (!alasan) return alert("Alasan wajib diisi!");
+        
+        const btnKirim = document.getElementById('btnKirimAlasan');
+        btnKirim.innerText = "Mengirim...";
+        btnKirim.disabled = true;
 
-        const snap = await db.collection("users").where("email", "==", userEmail).get();
-        const userData = snap.docs[0].data();
+        try {
+            const snap = await db.collection("users").where("email", "==", userEmail).get();
+            if (snap.empty) return;
+            const userData = snap.docs[0].data();
 
-        await db.collection("kehadiran").add({
-            nama: userData.nama || "-",
-            komsel: userData.komsel || "-",
-            status: "Tidak Hadir",
-            alasan: alasan,
-            tanggal: firebase.firestore.FieldValue.serverTimestamp()
-        });
+            // DIPISAH KE COLLECTION KHUSUS TIDAK HADIR
+            await db.collection("kehadiran_tidak_hadir").add({
+                nama: userData.nama || "-",
+                komsel: userData.komsel || "-",
+                status: "Tidak Hadir",
+                alasan: alasan,
+                tanggal: firebase.firestore.FieldValue.serverTimestamp()
+            });
 
-        tampilkanModal("Laporan Terkirim", "Keterangan anda sudah diinput", "fa-clipboard-check", "#e91e63");
+            tampilkanModal("Laporan Terkirim", "Keterangan anda sudah diinput", "fa-clipboard-check", "#e91e63");
+        } catch (e) {
+            alert("Gagal mengirim.");
+            btnKirim.disabled = false;
+            btnKirim.innerText = "Kirim";
+        }
     }
 </script>
 </body>
