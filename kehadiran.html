@@ -25,8 +25,8 @@
 
         .btn-home { display: inline-block; margin-top: 25px; color: #007bff; text-decoration: none; font-size: 14px; font-weight: bold; cursor: pointer; }
 
-        /* Modal Style */
-        #modal-kehadiran { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        /* Modal Style Universal */
+        #modal-notif { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 25px; border-radius: 15px; width: 85%; max-width: 350px; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
     </style>
 </head>
@@ -58,11 +58,11 @@
     </a>
 </div>
 
-<div id="modal-kehadiran">
+<div id="modal-notif">
     <div class="modal-content">
-        <i class="fa-solid fa-circle-check" style="color: #2ecc71; font-size: 50px; margin-bottom: 15px;"></i>
-        <h3 style="margin: 0 0 10px; color: #333;">Berhasil!</h3>
-        <p id="pesan-lokasi" style="font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 20px;"></p>
+        <i id="modal-icon" class="fa-solid" style="font-size: 50px; margin-bottom: 15px;"></i>
+        <h3 id="modal-title" style="margin: 0 0 10px; color: #333;"></h3>
+        <p id="modal-text" style="font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 20px;"></p>
         <button onclick="tutupModal()" style="background: #007bff; color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; cursor: pointer;">OKE</button>
     </div>
 </div>
@@ -84,7 +84,7 @@
     const db = firebase.firestore();
     const userEmail = localStorage.getItem("userEmail");
 
-    // FUNGSI DASAR TAMPILAN
+    // --- FUNGSI TAMPILAN ---
     function tampilAlasan() {
         document.getElementById('btnHadir').style.display = 'none';
         document.getElementById('btnTidakHadir').style.display = 'none';
@@ -98,81 +98,73 @@
         document.getElementById('btnTidakHadir').style.display = 'flex';
     }
 
+    function tampilkanModal(title, text, icon, color) {
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-text').innerHTML = text;
+        const iconEl = document.getElementById('modal-icon');
+        iconEl.className = "fa-solid " + icon;
+        iconEl.style.color = color;
+        document.getElementById('modal-notif').style.display = 'flex';
+    }
+
     function tutupModal() {
-        document.getElementById('modal-kehadiran').style.display = 'none';
+        document.getElementById('modal-notif').style.display = 'none';
         window.location.href = "menu.html";
     }
 
-    // FUNGSI GEOLOCATION
+    // --- FUNGSI CORE ---
     async function getAlamat(lat, lon) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
             const data = await response.json();
             return data.display_name;
-        } catch (error) {
-            return "Lokasi di Papua";
-        }
+        } catch (error) { return "Lokasi tidak terdeteksi"; }
     }
 
-    // FUNGSI UTAMA LAPOR HADIR
     async function laporHadir() {
-        if (!userEmail) return alert("Silakan login kembali.");
-        
+        if (!userEmail) return alert("Sesi habis.");
         const btn = document.getElementById('btnHadir');
         btn.innerText = "Mendeteksi Lokasi...";
         btn.disabled = true;
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const alamatLengkap = await getAlamat(lat, lon);
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const alamat = await getAlamat(pos.coords.latitude, pos.coords.longitude);
+            const snap = await db.collection("users").where("email", "==", userEmail).get();
+            const userData = snap.docs[0].data();
 
-                // Ambil data profil untuk JC & Nama
-                const snap = await db.collection("users").where("email", "==", userEmail).get();
-                if (snap.empty) return;
-                const userData = snap.docs[0].data();
-
-                // Simpan ke Firebase
-                await db.collection("kehadiran").add({
-                    nama: userData.nama || "User",
-                    komsel: userData.komsel || "-",
-                    status: "Hadir",
-                    alamat_hadir: alamatLengkap,
-                    tanggal: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // Tampilkan Modal Notifikasi
-                document.getElementById('pesan-lokasi').innerHTML = `Anda hadir di Komsel dengan<br><b>Alamat: ${alamatLengkap}</b>`;
-                document.getElementById('modal-kehadiran').style.display = 'flex';
-                btn.innerHTML = `SAYA HADIR <i class="fa-solid fa-circle-check"></i>`;
-                btn.disabled = false;
-
-            }, () => {
-                alert("Gagal akses GPS. Pastikan izin lokasi aktif.");
-                btn.disabled = false;
+            await db.collection("kehadiran").add({
+                nama: userData.nama || "-",
+                komsel: userData.komsel || "-",
+                status: "Hadir",
+                alamat_hadir: alamat,
+                tanggal: firebase.firestore.FieldValue.serverTimestamp()
             });
-        }
+
+            tampilkanModal("Berhasil!", `Anda hadir di Komsel dengan<br><b>Alamat: ${alamat}</b>`, "fa-circle-check", "#2ecc71");
+        }, () => {
+            alert("Aktifkan GPS Anda!");
+            btn.disabled = false;
+            btn.innerHTML = `SAYA HADIR <i class="fa-solid fa-circle-check"></i>`;
+        });
     }
 
-    // FUNGSI KIRIM ALASAN (TIDAK HADIR)
     async function kirimAlasan() {
         const alasan = document.getElementById('keterangan').value;
-        if (!alasan) return alert("Isi alasan!");
+        if (!alasan) return alert("Alasan wajib diisi!");
 
         const snap = await db.collection("users").where("email", "==", userEmail).get();
         const userData = snap.docs[0].data();
 
         await db.collection("kehadiran").add({
-            nama: userData.nama || "User",
+            nama: userData.nama || "-",
             komsel: userData.komsel || "-",
             status: "Tidak Hadir",
             alasan: alasan,
             tanggal: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert("Keterangan tidak hadir terkirim.");
-        window.location.href = "menu.html";
+        // Tampilkan Modal Tidak Hadir
+        tampilkanModal("Laporan Terkirim", "Keterangan anda sudah diinput", "fa-clipboard-check", "#e91e63");
     }
 </script>
 </body>
