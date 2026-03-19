@@ -164,52 +164,71 @@
     checkUtama.addEventListener('change', validateCheck);
     checkAmsal.addEventListener('change', validateCheck);
 
-    async function kirimLaporan() {
-        if (!userEmail) return;
+   async function kirimLaporan() {
+    if (!userEmail) {
+        showModal("EROR", "Sesi berakhir, silakan login kembali.", "error");
+        return;
+    }
 
-        const sekarang = new Date();
-        const jam = sekarang.getHours();
-        const menit = sekarang.getMinutes();
+    const sekarang = new Date();
+    const jam = sekarang.getHours();
+    const menit = sekarang.getMinutes();
 
-        // 1. Validasi Jam (Maks 22:30)
-        if (jam > 22 || (jam === 22 && menit > 30)) {
-            showModal("AKSES DITOLAK", "Maaf Laporan anda melewati jam yang ditentukan.", "error");
+    // 1. Batas waktu laporan (22:30)
+    if (jam > 22 || (jam === 22 && menit > 30)) {
+        showModal("AKSES DITOLAK", "Maaf, batas waktu pelaporan adalah 22:30.", "error");
+        return;
+    }
+
+    btnSubmit.innerText = "Memproses...";
+    btnSubmit.disabled = true;
+
+    try {
+        // A. Ambil Nama & Komsel dari koleksi users secara otomatis
+        const userSnap = await db.collection("users").where("email", "==", userEmail).get();
+        if (userSnap.empty) {
+            showModal("GAGAL", "Data profil Anda tidak ditemukan.", "error");
             return;
         }
 
-        btnSubmit.innerText = "Mengecek...";
-        btnSubmit.disabled = true;
+        const userData = userSnap.docs[0].data();
+        const namaUser = userData.nama;
+        const komselUser = userData.komsel; // Ini kunci agar statistik jalan
 
-        try {
-            const cekLaporan = await db.collection("laporan_bacaan")
-                .where("email", "==", userEmail)
-                .where("tanggal", "==", dateKey)
-                .get();
+        // B. Cek agar tidak lapor dua kali di hari yang sama
+        const cekLaporan = await db.collection("laporan_bacaan")
+            .where("email", "==", userEmail)
+            .where("tanggal_str", "==", dateKey)
+            .get();
 
-            if (!cekLaporan.empty) {
-                showModal("INFO", "anda tadi sudah melakukan pelaporan", "warning", true);
-                return;
-            }
-
-            btnSubmit.innerText = "Mengirim...";
-            await db.collection("laporan_bacaan").add({
-                email: userEmail,
-                tanggal: dateKey,
-                bulan: (sekarang.getMonth() + 1),
-                tahun: sekarang.getFullYear(),
-                pasal_utama: document.getElementById('display-pasal').innerText,
-                pasal_amsal: document.getElementById('display-amsal').innerText,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            showModal("BERHASIL", "Terimakasih untuk laporan anda", "success", true);
-
-        } catch (error) {
-            showModal("GAGAL", "Gagal mengirim laporan. Coba lagi.", "error");
-            btnSubmit.innerText = "KIRIM LAPORAN SEKARANG";
-            btnSubmit.disabled = false;
+        if (!cekLaporan.empty) {
+            showModal("INFO", "Anda sudah melapor hari ini.", "warning", true);
+            return;
         }
+
+        // C. Simpan ke Firestore
+        await db.collection("laporan_bacaan").add({
+            email: userEmail,
+            nama: namaUser,
+            komsel: String(komselUser), // Disimpan sebagai string agar cocok dengan filter
+            tanggal: firebase.firestore.Timestamp.now(), // Digunakan untuk filter periode di statistik
+            tanggal_str: dateKey,
+            pasal_utama: document.getElementById('display-pasal').innerText,
+            pasal_amsal: document.getElementById('display-amsal').innerText,
+            bulan: (sekarang.getMonth() + 1),
+            tahun: sekarang.getFullYear()
+        });
+
+        showModal("BERHASIL", "Laporan berhasil terkirim!", "success", true);
+
+    } catch (error) {
+        console.error(error);
+        showModal("GAGAL", "Terjadi kesalahan koneksi.", "error");
+    } finally {
+        btnSubmit.innerText = "KIRIM LAPORAN SEKARANG";
+        btnSubmit.disabled = false;
     }
+}
 
     initHalaman();
     cekAlarm();
