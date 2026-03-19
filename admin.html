@@ -8,29 +8,29 @@
     <style>
         :root { --primary: #007bff; --dark: #333; --light: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 20px; }
-        .admin-container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .admin-container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
-        /* Header & Menu */
         .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
-        .nav-buttons { display: flex; gap: 10px; }
         .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; }
         
-        /* Fitur Search */
         .search-box { position: relative; margin-bottom: 20px; width: 100%; max-width: 400px; }
         .search-box input { width: 100%; padding: 12px 40px 12px 15px; border: 1px solid #ddd; border-radius: 10px; outline: none; }
         .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
 
-        /* Tabel Data */
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 14px; }
-        table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; color: var(--dark); }
+        /* Fitur Table Scroll & Freeze */
+        .table-responsive { overflow-x: auto; max-width: 100%; position: relative; border-radius: 10px; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; } /* Lebar minimal agar bisa di-scroll */
+        table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 13px; white-space: nowrap; }
+        table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; color: var(--dark); white-space: nowrap; }
         
-        /* Ikon Aksi */
+        /* Kolom Freeze (Checkbox & NK) */
+        .freeze-col { position: sticky; left: 0; z-index: 2; background: white !important; border-right: 2px solid #eee; }
+        th.freeze-col { z-index: 3; background: var(--primary) !important; }
+
+        .password-view { font-family: monospace; background: #f0f0f0; padding: 3px 6px; border-radius: 4px; color: #555; }
         .action-icons { display: flex; gap: 15px; font-size: 18px; }
-        .btn-edit { color: #28a745; cursor: pointer; transition: 0.3s; }
-        .btn-delete { color: #dc3545; cursor: pointer; transition: 0.3s; }
-        .btn-edit:hover, .btn-delete:hover { opacity: 0.7; }
+        .btn-edit { color: #28a745; cursor: pointer; }
+        .btn-delete { color: #dc3545; cursor: pointer; }
 
         #loading-state { text-align: center; padding: 40px; color: var(--primary); font-weight: bold; }
     </style>
@@ -49,7 +49,7 @@
     </div>
 
     <div class="search-box">
-        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari Nama atau NK...">
+        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari Nama, NK, atau Alamat...">
         <i class="fas fa-search"></i>
     </div>
 
@@ -59,17 +59,21 @@
         <table id="adminTable" style="display:none;">
             <thead>
                 <tr>
-                    <th>NK</th>
+                    <th class="freeze-col"><input type="checkbox" id="checkAll"></th>
+                    <th style="left: 45px;" class="freeze-col">NK</th>
                     <th>Nama Anggota</th>
                     <th>WhatsApp</th>
+                    <th>Email</th>
+                    <th>Password (View Only)</th>
+                    <th>Alamat</th>
+                    <th>Gol. Darah</th>
                     <th>Jabatan</th>
                     <th>JC</th>
                     <th>Status</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
-            <tbody id="memberData">
-                </tbody>
+            <tbody id="memberData"></tbody>
         </table>
     </div>
 </div>
@@ -89,7 +93,6 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Fungsi Mengambil Data Sesuai Field Firebase Anda
     async function loadData() {
         const tableBody = document.getElementById("memberData");
         const loading = document.getElementById("loading-state");
@@ -103,9 +106,14 @@
                 const data = doc.data();
                 const row = `
                     <tr>
-                        <td><b>${data.nomor_komsel || '-'}</b></td>
-                        <td>${data.nama || 'Tanpa Nama'}</td>
+                        <td class="freeze-col"><input type="checkbox" class="user-checkbox"></td>
+                        <td style="left: 45px;" class="freeze-col"><b>${data.nomor_komsel || '-'}</b></td>
+                        <td>${data.nama || '-'}</td>
                         <td>${data.no_hp || '-'}</td>
+                        <td>${data.email || '-'}</td>
+                        <td><span class="password-view">${data.password || '******'}</span></td>
+                        <td>${data.alamat || '-'}</td>
+                        <td>${data.golongan_darah || '-'}</td>
                         <td>${data.jabatan || '-'}</td>
                         <td>JC ${data.komsel || '-'}</td>
                         <td><span style="color:${data.status === 'Aktif' ? 'green' : 'red'}">${data.status || 'Pending'}</span></td>
@@ -125,7 +133,6 @@
         }
     }
 
-    // Fungsi Search Data
     function filterTable() {
         let input = document.getElementById("searchInput").value.toLowerCase();
         let rows = document.getElementById("memberData").getElementsByTagName("tr");
@@ -135,13 +142,11 @@
         }
     }
 
-    // Fungsi Navigasi ke Edit (Sinkron dengan registrasi.html)
     function goToEdit(id) {
         localStorage.setItem("editMemberID", id);
         window.location.href = 'registrasi.html';
     }
 
-    // Fungsi Hapus Data
     async function deleteMember(id, nama) {
         if (confirm("Apakah Anda yakin ingin menghapus data " + nama + "?")) {
             try {
@@ -152,6 +157,11 @@
                 alert("Gagal menghapus: " + error.message);
             }
         }
+    }
+
+    document.getElementById('checkAll').onclick = function() {
+        let checkboxes = document.querySelectorAll('.user-checkbox');
+        for (let checkbox of checkboxes) { checkbox.checked = this.checked; }
     }
 
     window.onload = loadData;
