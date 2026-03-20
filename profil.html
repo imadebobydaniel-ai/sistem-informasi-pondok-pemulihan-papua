@@ -274,6 +274,41 @@
                     fotoUrl: downloadURL
                 });
             }
+            async function uploadFoto(input) {
+    const file = input.files[0];
+    if (!file || !userEmail) return;
+
+    // Supaya database tidak keberatan, batasi ukuran foto (Max 1MB)
+    if (file.size > 1024 * 1024) { 
+        alert("Foto terlalu besar, Pak. Silakan gunakan foto di bawah 1MB.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const teksGambar = e.target.result; // Ini adalah foto yang sudah jadi teks
+        const viewFoto = document.getElementById('view-foto');
+
+        try {
+            // Cari data Bapak di database berdasarkan email
+            const snap = await db.collection("users").where("email", "==", userEmail).get();
+            if (!snap.empty) {
+                const docId = snap.docs[0].id;
+                
+                // Simpan teks foto langsung ke Firestore
+                await db.collection("users").doc(docId).update({
+                    fotoUrl: teksGambar
+                });
+                
+                viewFoto.src = teksGambar;
+                alert("Puji Tuhan! Foto sudah berhasil diganti.");
+            }
+        } catch (error) {
+            alert("Ada kendala: " + error.message);
+        }
+    };
+    reader.readAsDataURL(file);
+}
             
             alert("Puji Tuhan! Foto Profil Berhasil Diperbarui.");
         } catch (error) {
