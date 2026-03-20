@@ -41,7 +41,7 @@
     <form id="formRegistrasi">
         <div class="time-info" id="current-time"></div>
 
-        <div class="form-group"><label>Nama Lengkap</label><input type="text" id="nama" required></div>
+        <div class="form-group"><label>Nama Lengkap</label><input type="text" id="nama" placeholder="Contoh: Boby Daniel" required></div>
         <div class="form-group"><label>Email</label><input type="email" id="email" required></div>
         <div class="form-group"><label>Nomor HP / WhatsApp</label><input type="tel" id="hp" required></div>
         <div class="form-group">
@@ -159,12 +159,14 @@
 
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
+        const namaRaw = document.getElementById("nama").value.trim();
+        const emailRaw = document.getElementById("email").value.trim().toLowerCase();
         const jcValue = document.getElementById("komsel").value;
         const nkBaru = document.getElementById("nk-display").value;
         const fotoFile = document.getElementById("foto").files[0];
 
         // Validasi input
-        if(!document.getElementById("nama").value || !jcValue || nkBaru === "" || !fotoFile) {
+        if(!namaRaw || !emailRaw || !jcValue || nkBaru === "" || !fotoFile) {
             alert("Harap lengkapi semua data dan upload Foto Profil!");
             return;
         }
@@ -173,31 +175,35 @@
         btn.disabled = true;
 
         try {
+            // NORMALISASI NAMA: Mengubah "boby daniel" jadi "Boby Daniel"
+            const namaNormal = namaRaw.split(' ').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ');
+
             const reader = new FileReader();
             reader.readAsDataURL(fotoFile);
             reader.onload = async function () {
                 const base64Foto = reader.result;
 
-                // --- BAGIAN UPDATE KUNCI DATABASE (WhatsApp & GolDarah) ---
                 const userData = {
-                    nama: document.getElementById("nama").value,
-                    email: document.getElementById("email").value,
-                    whatsapp: document.getElementById("hp").value, // Sesuai permintaan: 'whatsapp'
+                    nama: namaNormal,
+                    email: emailRaw,
+                    whatsapp: document.getElementById("hp").value,
                     password: document.getElementById("pass").value,
                     alamat: document.getElementById("alamat").value,
-                    goldarah: document.getElementById("darah").value, // Sesuai permintaan: 'goldarah'
+                    goldarah: document.getElementById("darah").value,
                     jabatan: document.getElementById("jabatan").value,
                     komsel: jcValue,
                     nomor_komsel: nkBaru,
                     foto_profil: base64Foto,
                     status: "Aktif",
-                    tanggalDaftar: new Date().toLocaleString('id-ID') // Simpan format tanggal baca
+                    tanggalDaftar: new Date().toLocaleString('id-ID')
                 };
 
                 // Simpan ke Firestore
                 await db.collection("users").add(userData);
                 
-                document.getElementById('pesan-sukses').innerHTML = `Berhasil!<br>Nomor Komsel:<br><b>${nkBaru}</b>`;
+                document.getElementById('pesan-sukses').innerHTML = `Berhasil!<br>Selamat Datang, <b>${namaNormal}</b><br>Nomor Komsel:<br><b>${nkBaru}</b>`;
                 document.getElementById('blocking-message').style.display = 'flex';
             };
         } catch (error) { 
