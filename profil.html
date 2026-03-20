@@ -70,7 +70,7 @@
         }
 
         .data-label { font-size: 10px; font-weight: 800; color: var(--biru-safir); text-transform: uppercase; margin-bottom: 4px; }
-        .data-value { font-size: 15px; color: var(--biru-tua); font-weight: 700; }
+        .data-value { font-size: 14px; color: var(--biru-tua); font-weight: 700; }
 
         .btn-back { 
             background: var(--biru-tua); color: white; 
@@ -82,9 +82,23 @@
         }
         
         #fileInput { display: none; }
+
+        /* Gaya Kotak Notifikasi Block */
+        #notif-block {
+            position: fixed; top: 20px; left: 50%; 
+            transform: translateX(-50%); 
+            background: #2ecc71; color: white; 
+            padding: 15px 25px; border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            z-index: 9999; font-weight: bold; 
+            text-align: center; border: 2px solid white;
+            display: none; /* Sembunyi dulu */
+        }
     </style>
 </head>
 <body>
+
+<div id="notif-block">Puji Tuhan! Foto berhasil diperbarui.</div>
 
 <div class="profile-container">
     <div class="profile-header">Biodata Anggota Komsel</div>
@@ -96,11 +110,11 @@
         <div class="edit-badge" onclick="document.getElementById('fileInput').click()">
             <i class="fa-solid fa-camera"></i>
         </div>
-        <input type="file" id="fileInput" accept="image/*" onchange="uploadFoto(this)">
+        <input type="file" id="fileInput" accept="image/*" onchange="prosesSimpanFoto(this)">
     </div>
 
     <div class="info-section">
-        <div class="data-box"><div class="data-label">Nama Lengkap</div><div id="nama_lengkap" class="data-value">Memuat data...</div></div>
+        <div class="data-box"><div class="data-label">Nama Lengkap</div><div id="nama_lengkap" class="data-value">Memuat...</div></div>
         <div class="data-box"><div class="data-label">Email Aktif</div><div id="email_aktif" class="data-value">-</div></div>
         <div class="data-box"><div class="data-label">Nomor HP</div><div id="no_hp" class="data-value">-</div></div>
         <div class="data-box"><div class="data-label">Lokasi Komsel</div><div id="lokasi_komsel" class="data-value">-</div></div>
@@ -115,7 +129,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. KONFIGURASI FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -131,4 +144,67 @@
     const db = firebase.firestore();
     const userEmail = localStorage.getItem("userEmail");
 
-    // 2.
+    // Tampilkan Data
+    if (!userEmail) {
+        window.location.replace("index.html");
+    } else {
+        db.collection("users").where("email", "==", userEmail)
+            .onSnapshot((querySnapshot) => {
+                if (!querySnapshot.empty) {
+                    const data = querySnapshot.docs[0].data();
+                    if (data.fotoUrl) {
+                        document.getElementById('view-foto').src = data.fotoUrl;
+                    }
+                    document.getElementById("nama_lengkap").innerText = data.nama || "-";
+                    document.getElementById("email_aktif").innerText = data.email || "-";
+                    document.getElementById("no_hp").innerText = data.no_hp || "-";
+                    document.getElementById("lokasi_komsel").innerText = data.komsel ? "JC " + data.komsel : "-";
+                }
+            });
+    }
+
+    // Fungsi Ganti Foto & Notifikasi
+    async function prosesSimpanFoto(input) {
+        const file = input.files[0];
+        if (!file || !userEmail) return;
+
+        // Cek ukuran
+        if (file.size > 1024 * 1024) { 
+            alert("Maaf Pak, ukuran foto terlalu besar (Maksimal 1MB).");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Image = e.target.result;
+            const viewFoto = document.getElementById('view-foto');
+            viewFoto.style.opacity = "0.5";
+
+            try {
+                const snap = await db.collection("users").where("email", "==", userEmail).get();
+                if (!snap.empty) {
+                    const docId = snap.docs[0].id;
+                    await db.collection("users").doc(docId).update({
+                        fotoUrl: base64Image
+                    });
+                    
+                    // Tampilkan Notifikasi Block
+                    const boxNotif = document.getElementById('notif-block');
+                    boxNotif.style.display = "block";
+                    
+                    // Hilang otomatis setelah 3 detik
+                    setTimeout(() => {
+                        boxNotif.style.display = "none";
+                    }, 3000);
+                }
+            } catch (error) {
+                alert("Gagal simpan: " + error.message);
+            } finally {
+                viewFoto.style.opacity = "1";
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+</body>
+</html>
