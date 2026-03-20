@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kegiatan Komsel - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0056b3;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --bg-body: #f0f4f8;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: var(--bg-body); 
+            margin: 0; 
+            padding: 15px; 
+            padding-bottom: 100px;
+        }
+
+        .container { max-width: 500px; margin: auto; }
+
+        /* Header Card */
+        .header-card {
+            background: linear-gradient(135deg, var(--primary), #003d80);
+            color: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-card h2 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Agenda Item */
+        .event-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+        }
+
+        .event-date {
+            background: #eef2f7;
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            min-width: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .event-date span.day { font-size: 18px; font-weight: 800; color: var(--primary); }
+        .event-date span.month { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #666; }
+
+        .event-info { flex: 1; }
+        .event-title { font-weight: 800; color: #333; font-size: 15px; margin-bottom: 4px; }
+        .event-loc { font-size: 12px; color: #777; display: flex; align-items: center; gap: 5px; }
+        
+        .status-badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 8px;
+            display: inline-block;
+        }
+        .status-upcoming { background: #e3f2fd; color: #1976d2; }
+
+        /* Floating Back Button */
+        .btn-back-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            box-sizing: border-box;
+        }
+        .btn-back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--primary);
+            color: white;
+            padding: 14px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-card">
+        <div>
+            <p style="margin:0; font-size:10px; opacity:0.8;">JADWAL KEROHANIAN</p>
+            <h2 id="display-jc">KEGIATAN JC 5</h2>
+        </div>
+        <i class="fa-solid fa-calendar-check" style="font-size: 30px; opacity: 0.3;"></i>
+    </div>
+
+    <div id="list-kegiatan">
+        <div style="text-align:center; padding:50px; color:#999;">
+            <i class="fas fa-spinner fa-spin"></i> Memuat agenda...
+        </div>
+    </div>
+
+    <div class="btn-back-container">
+        <a href="menu.html" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> KEMBALI KE MENU UTAMA
+        </a>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    // Konfigurasi Database Bapak
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    async function loadKegiatan() {
+        const userJC = localStorage.getItem("userJC") || "5";
+        document.getElementById("display-jc").innerText = "KEGIATAN JC " + userJC;
+
+        try {
+            // Mengambil data kegiatan yang akan datang
+            const snap = await db.collection("kegiatan")
+                .where("komsel", "==", userJC)
+                .orderBy("tanggal", "asc")
+                .limit(10)
+                .get();
+
+            let html = "";
+            if (snap.empty) {
+                html = `<div style="text-align:center; padding:40px; color:#999; font-size:13px;">
+                            <i class="fas fa-calendar-xmark" style="font-size:40px; margin-bottom:10px;"></i><br>
+                            Belum ada jadwal kegiatan terdekat.
+                        </div>`;
+            } else {
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const tgl = data.tanggal.toDate();
+                    const day = tgl.getDate();
+                    const month = tgl.toLocaleDateString('id-ID', { month: 'short' });
+                    
+                    html += `
+                        <div class="event-card">
+                            <div class="event-date">
+                                <span class="day">${day}</span>
+                                <span class="month">${month}</span>
+                            </div>
+                            <div class="event-info">
+                                <div class="event-title">${data.nama_kegiatan}</div>
+                                <div class="event-loc"><i class="fas fa-location-dot"></i> ${data.lokasi || 'Gedung Gereja'}</div>
+                                <div class="event-loc" style="margin-top:3px;"><i class="fas fa-clock"></i> ${data.jam || '18:00'} WIT</div>
+                                <div class="status-badge status-upcoming">Mendatang</div>
+                            </div>
+                            <div style="display:flex; align-items:center;">
+                                <i class="fas fa-chevron-right" style="color:#ccc;"></i>
+                            </div>
+                        </div>`;
+                });
+            }
+            document.getElementById("list-kegiatan").innerHTML = html;
+        } catch (e) {
+            console.error(e);
+            document.getElementById("list-kegiatan").innerHTML = "Gagal memuat data.";
+        }
+    }
+
+    window.onload = loadKegiatan;
+</script>
+</body>
+</html>
