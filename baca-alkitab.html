@@ -76,38 +76,35 @@
     const db = firebase.firestore();
     const userEmail = localStorage.getItem("userEmail");
 
-    // --- 1. LOGIKA TARGET OTOMATIS (VERSI PERBAIKAN TOTAL) ---
+    // --- 1. LOGIKA TARGET OTOMATIS ---
     function updateTargetHarian() {
         const sekarang = new Date();
-        // Kita kunci tanggal mulai di 1 Maret 2026
         const tanggalMulai = new Date("2026-03-01"); 
-        
         const selisihWaktu = sekarang.getTime() - tanggalMulai.getTime();
         const hariKe = Math.floor(selisihWaktu / (1000 * 3600 * 24)) + 1;
 
-        // Daftar ini harus ada 20 baris supaya hari ke-20 (hari ini) muncul datanya
         const listTarget = [
-            { utama: "Matius 1 - 4", hikmat: "Amsal 1" },    // Hari 1
-            { utama: "Matius 5 - 8", hikmat: "Amsal 2" },    // Hari 2
-            { utama: "Matius 9 - 12", hikmat: "Amsal 3" },   // Hari 3
-            { utama: "Matius 13 - 15", hikmat: "Amsal 4" },  // Hari 4
-            { utama: "Matius 16 - 18", hikmat: "Amsal 5" },  // Hari 5
-            { utama: "Matius 19 - 21", hikmat: "Amsal 6" },  // Hari 6
-            { utama: "Matius 22 - 25", hikmat: "Amsal 7" },  // Hari 7
-            { utama: "Matius 26 - 28", hikmat: "Amsal 8" },  // Hari 8
-            { utama: "Markus 1 - 4", hikmat: "Amsal 9" },    // Hari 9
-            { utama: "Markus 5 - 8", hikmat: "Amsal 10" },   // Hari 10
-            { utama: "Markus 9 - 12", hikmat: "Amsal 11" },  // Hari 11
-            { utama: "Markus 13 - 16", hikmat: "Amsal 12" }, // Hari 12
-            { utama: "Lukas 1 - 4", hikmat: "Amsal 13" },    // Hari 13
-            { utama: "Lukas 5 - 8", hikmat: "Amsal 14" },    // Hari 14
-            { utama: "Lukas 9 - 12", hikmat: "Amsal 15" },   // Hari 15
-            { utama: "Lukas 13 - 16", hikmat: "Amsal 16" },  // Hari 16
-            { utama: "Lukas 17 - 20", hikmat: "Amsal 17" },  // Hari 17
-            { utama: "Lukas 21 - 24", hikmat: "Amsal 18" },  // Hari 18
-            { utama: "Matius 19 - 22", hikmat: "Amsal 19" }, // Hari 19 (19 Mar)
-            { utama: "Matius 23 - 26", hikmat: "Amsal 20" }, // Hari 20 (HARI INI)
-            { utama: "Matius 27 - 28 & Markus 1-2", hikmat: "Amsal 21" } // Hari 21 (Besok)
+            { utama: "Matius 1 - 4", hikmat: "Amsal 1" },
+            { utama: "Matius 5 - 8", hikmat: "Amsal 2" },
+            { utama: "Matius 9 - 12", hikmat: "Amsal 3" },
+            { utama: "Matius 13 - 15", hikmat: "Amsal 4" },
+            { utama: "Matius 16 - 18", hikmat: "Amsal 5" },
+            { utama: "Matius 19 - 21", hikmat: "Amsal 6" },
+            { utama: "Matius 22 - 25", hikmat: "Amsal 7" },
+            { utama: "Matius 26 - 28", hikmat: "Amsal 8" },
+            { utama: "Markus 1 - 4", hikmat: "Amsal 9" },
+            { utama: "Markus 5 - 8", hikmat: "Amsal 10" },
+            { utama: "Markus 9 - 12", hikmat: "Amsal 11" },
+            { utama: "Markus 13 - 16", hikmat: "Amsal 12" },
+            { utama: "Lukas 1 - 4", hikmat: "Amsal 13" },
+            { utama: "Lukas 5 - 8", hikmat: "Amsal 14" },
+            { utama: "Lukas 9 - 12", hikmat: "Amsal 15" },
+            { utama: "Lukas 13 - 16", hikmat: "Amsal 16" },
+            { utama: "Lukas 17 - 20", hikmat: "Amsal 17" },
+            { utama: "Lukas 21 - 24", hikmat: "Amsal 18" },
+            { utama: "Matius 19 - 22", hikmat: "Amsal 19" }, 
+            { utama: "Matius 23 - 26", hikmat: "Amsal 20" }, // HARI INI
+            { utama: "Matius 27 - 28 & Markus 1-2", hikmat: "Amsal 21" } // BESOK
         ];
 
         const index = hariKe - 1;
@@ -115,13 +112,32 @@
             document.getElementById("pasal-utama").innerText = listTarget[index].utama;
             document.getElementById("pasal-hikmat").innerText = listTarget[index].hikmat;
         } else {
-            // Jika hariKe lebih besar dari jumlah list (Misal hari ke-22)
             document.getElementById("pasal-utama").innerText = "Jadwal Belum Diupdate";
             document.getElementById("pasal-hikmat").innerText = "-";
         }
     }
 
-    // --- 2. CEK LAPORAN HARI INI ---
+    // --- 2. CEK APAKAH WAKTU PELAPORAN VALID (22:00 - 00:30) ---
+    function isWaktuPelaporanLewat() {
+        const sekarang = new Date();
+        const jam = sekarang.getHours();
+        const menit = sekarang.getMinutes();
+        // Lewat jam 10 malam (22:00) ATAU Sebelum jam 12:30 malam (00:00 - 00:29)
+        return (jam >= 22 || (jam === 0 && menit < 30));
+    }
+
+    // --- 3. TAMPILKAN PESAN BLOKIR ---
+    function tampilkanPesanBlokir(pesan, icon, color) {
+        // Jika pesan mengandung "Terimakasih", judulnya BERHASIL, jika tidak maka MAAF
+        document.getElementById('block-title').innerText = pesan.includes("Terimakasih") ? "BERHASIL!" : "MAAF!";
+        document.getElementById('block-message').innerText = pesan;
+        const iconEl = document.getElementById('block-icon');
+        iconEl.className = "fa-solid " + icon;
+        iconEl.style.color = color;
+        document.getElementById('block-screen').style.display = 'flex';
+    }
+
+    // --- 4. CEK LAPORAN HARI INI ---
     async function cekLaporanHariIni() {
         if (!userEmail) return;
         const hariIni = new Date();
@@ -140,15 +156,6 @@
         } catch (e) { console.error(e); }
     }
 
-    function tampilkanPesanBlokir(pesan, icon, color) {
-        document.getElementById('block-title').innerText = pesan.includes("Terimakasih") ? "BERHASIL!" : "MAAF!";
-        document.getElementById('block-message').innerText = pesan;
-        const iconEl = document.getElementById('block-icon');
-        iconEl.className = "fa-solid " + icon;
-        iconEl.style.color = color;
-        document.getElementById('block-screen').style.display = 'flex';
-    }
-
     function validasiTombol() {
         const c1 = document.getElementById('check1').checked;
         const c2 = document.getElementById('check2').checked;
@@ -157,7 +164,14 @@
         btn.className = (c1 && c2) ? "btn-kirim btn-enabled" : "btn-kirim btn-disabled";
     }
 
+    // --- 5. FUNGSI KIRIM LAPORAN ---
     async function kirimLaporan() {
+        // Cek waktu pelaporan sebelum mengirim
+        if (isWaktuPelaporanLewat()) {
+            tampilkanPesanBlokir("Waktu Pelaporan Sudah Lewat. Silakan melapor kembali jam 00:30 WIT.", "fa-clock", "#e74c3c");
+            return;
+        }
+
         const btn = document.getElementById('btnKirim');
         btn.innerText = "Mengirim...";
         btn.disabled = true;
@@ -176,6 +190,7 @@
                 tanggal: firebase.firestore.Timestamp.now()
             });
 
+            // Notifikasi Sukses yang tetap menggunakan block-display lama
             tampilkanPesanBlokir("Terimakasih Atas Laporan Anda", "fa-circle-check", "#2ecc71");
         } catch (e) {
             alert("Terjadi kesalahan.");
@@ -185,12 +200,17 @@
     }
 
     window.onload = function() {
-        // Jalankan Urutan Logika
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', options);
         
         updateTargetHarian();
-        cekLaporanHariIni();
+        
+        // Cek Jam saat halaman dibuka
+        if (isWaktuPelaporanLewat()) {
+            tampilkanPesanBlokir("Waktu Pelaporan Sudah Lewat (22:00 - 00:30).", "fa-clock", "#e74c3c");
+        } else {
+            cekLaporanHariIni();
+        }
     };
 </script>
 </body>
