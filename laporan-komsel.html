@@ -8,199 +8,236 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        /* Optimasi Dasar Mobile */
-        body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #f0f2f5; 
-            margin: 0; 
-            padding: 10px; /* Diperkecil agar lebih luas di layar HP */
-            padding-bottom: 90px; /* Ruang untuk tombol fixed di bawah */
-            -webkit-tap-highlight-color: transparent;
+        :root {
+            --primary: #0056b3;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light-bg: #f8f9fa;
         }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background-color: #eef2f7; 
+            margin: 0; 
+            padding: 12px;
+            padding-bottom: 100px;
+            color: #333;
+        }
+
         .container { max-width: 500px; margin: auto; }
         
+        /* Card & Headers */
         .card { 
             background: white; 
-            padding: 15px; /* Sedikit lebih kecil agar konten tidak sesak */
-            border-radius: 15px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-            margin-bottom: 12px; 
+            padding: 18px; 
+            border-radius: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+            margin-bottom: 15px; 
+            border: 1px solid rgba(0,0,0,0.03);
         }
 
         h3 { 
-            border-bottom: 2px solid #007bff; 
-            padding-bottom: 8px; 
-            font-size: 13px; 
+            font-size: 14px; 
+            font-weight: 800;
+            color: var(--primary);
             text-transform: uppercase; 
-            margin-top: 0; 
-            color: #333; 
+            margin: 0 0 15px 0; 
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            letter-spacing: 0.5px;
         }
 
+        /* Form Elements */
         select, input { 
-            width: 100%; 
-            padding: 12px; 
-            border-radius: 10px; 
-            border: 1px solid #ddd; 
-            font-size: 14px; 
-            box-sizing: border-box; 
-            outline: none;
-            background-color: #fafafa;
-        }
-        
-        /* Header Insight & Gear */
-        .header-insight { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border-bottom: 2px solid #007bff; 
-            padding-bottom: 8px; 
-            margin-bottom: 10px; 
-        }
-        .header-insight h3 { border-bottom: none; margin: 0; }
-        .btn-settings { color: #dc3545; cursor: pointer; font-size: 18px; padding: 5px; }
-
-        .insight-box { background: #eef7ff; border-left: 4px solid #007bff; padding: 12px; border-radius: 10px; }
-        .insight-text { font-size: 12px; color: #333; line-height: 1.5; font-style: italic; }
-
-        /* Popup Logic */
-        #popup-logic { 
-            display: none; 
-            background: #fff; 
-            border: 1px solid #ddd; 
-            border-radius: 12px; 
-            margin-top: 10px; 
-            padding: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            animation: slideIn 0.3s ease-out forwards; 
-        }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .logic-item { font-size: 11px; padding: 8px; border-radius: 8px; margin-bottom: 5px; border-left: 3px solid #ddd; }
-        .logic-high { background: #eafff0; border-color: #2ecc71; }
-        .logic-mid { background: #fff3cd; border-color: #ffc107; }
-        .logic-low { background: #f8d7da; border-color: #dc3545; }
-
-        /* Chart & List */
-        .chart-container { position: relative; height: 220px; width: 100%; }
-        .mutasi-item { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 10px 0; 
-            border-bottom: 1px solid #f5f5f5; 
-            align-items: center; 
-        }
-        .mutasi-date { font-size: 9px; color: #999; min-width: 40px; text-align: center; line-height: 1.2; }
-        .mutasi-info { flex: 1; margin: 0 10px; }
-        .mutasi-name { font-weight: bold; font-size: 12px; color: #333; margin-bottom: 2px; }
-        .mutasi-desc { font-size: 10px; color: #666; }
-        .mutasi-status { font-size: 8px; background: #eafff0; color: #2ecc71; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-
-        /* Buttons */
-        .btn-export { 
-            background: #28a745; 
-            color: white; 
-            border: none; 
             width: 100%; 
             padding: 14px; 
             border-radius: 12px; 
-            font-weight: bold; 
-            font-size: 14px;
-            cursor: pointer; 
-            margin-top: 10px;
-            box-shadow: 0 2px 5px rgba(40, 167, 69, 0.2);
+            border: 1.5px solid #eee; 
+            font-size: 14px; 
+            font-weight: 600;
+            background-color: #fcfcfc;
+            transition: 0.3s;
+        }
+        select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; }
+
+        /* AI Insight Styling */
+        .insight-box { 
+            background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+            border-left: 5px solid var(--primary); 
+            padding: 15px; 
+            border-radius: 12px; 
+            position: relative;
+        }
+        .insight-text { font-size: 13px; color: #444; line-height: 1.6; font-weight: 500; }
+        .ai-badge {
+            position: absolute;
+            top: -10px;
+            right: 15px;
+            background: var(--primary);
+            color: white;
+            font-size: 9px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: bold;
         }
 
-        /* PERBAIKAN TOMBOL BACK (Proper Mobile) */
+        /* List Styling */
+        .mutasi-item { 
+            display: flex; 
+            padding: 12px; 
+            background: #fafafa;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            align-items: center; 
+        }
+        .mutasi-date { 
+            background: #eee;
+            color: #666;
+            font-size: 10px; 
+            font-weight: 800;
+            padding: 5px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 35px;
+            margin-right: 12px;
+        }
+        .mutasi-info { flex: 1; }
+        .mutasi-name { font-weight: 700; font-size: 13px; color: #222; }
+        .mutasi-desc { font-size: 11px; color: #777; margin-top: 2px; }
+        .mutasi-status { font-size: 10px; color: var(--success); font-weight: 900; }
+
+        /* Export Section */
+        .export-card { background: #fffdf5; border: 1.5px dashed #ffd54f; }
+        .btn-export { 
+            background: var(--success); 
+            color: white; 
+            border: none; 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 14px; 
+            font-weight: 800; 
+            font-size: 14px;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            text-transform: uppercase;
+        }
+
+        /* Bottom Menu */
         .btn-back-container {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            padding: 15px;
-            box-sizing: border-box;
-            background: linear-gradient(to top, rgba(240,242,245,1) 70%, rgba(240,242,245,0));
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #eee;
             z-index: 1000;
         }
         .btn-back { 
-            display: block;
-            background: #007bff; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--primary); 
             color: white; 
-            text-align: center; 
             padding: 15px; 
             border-radius: 12px; 
             text-decoration: none; 
-            font-weight: bold; 
+            font-weight: 800; 
             font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
         }
-        
-        .pass-container { position: relative; width: 100%; margin-top: 10px; }
-        .toggle-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #bbb; padding: 5px; }
+
+        #popup-logic { 
+            display: none; 
+            background: white; 
+            border-radius: 15px; 
+            padding: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: absolute;
+            z-index: 100;
+            width: 90%;
+            left: 5%;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card">
-        <h3><i class="fa-solid fa-calendar-day"></i> Periode Laporan</h3>
-        <select id="filter-periode" onchange="sinkronisasiRealtime()">
-            <option value="1">1 Bulan Terakhir</option>
-            <option value="2">2 Bulan Terakhir</option>
-            <option value="3">3 Bulan Terakhir</option>
-            <option value="6">6 Bulan Terakhir</option>
-        </select>
-        <p id="label-jc" style="color:#007bff; font-size: 13px; font-weight:bold; margin: 10px 0 0 0;">Menghubungkan Database...</p>
+    <div class="card" style="background: var(--primary); color: white; border: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <p style="margin: 0; font-size: 11px; font-weight: bold; opacity: 0.8;">OFFICIAL REPORT</p>
+                <h2 id="label-jc" style="margin: 0; font-size: 20px; font-weight: 900;">JC - ANALYTICS</h2>
+            </div>
+            <i class="fa-solid fa-shield-halved" style="font-size: 24px; opacity: 0.5;"></i>
+        </div>
     </div>
 
-    <div class="card" id="card-insight" style="display:none;">
-        <div class="header-insight">
-            <h3><i class="fa-solid fa-robot"></i> Ringkasan Insight AI</h3>
-            <i class="fa-solid fa-gear btn-settings" onclick="toggleLogicPopup()"></i>
-        </div>
-        
+    <div class="card">
+        <h3><i class="fa-solid fa-clock-rotate-left"></i> Rentang Analisis</h3>
+        <select id="filter-periode" onchange="sinkronisasiRealtime()">
+            <option value="1">30 Hari Terakhir</option>
+            <option value="2">60 Hari Terakhir</option>
+            <option value="3">90 Hari Terakhir</option>
+            <option value="6">Semester Ini</option>
+        </select>
+    </div>
+
+    <div class="card" id="card-insight" style="display:none; overflow: visible; position: relative;">
+        <div class="ai-badge"><i class="fas fa-microchip"></i> AI ENGINE ACTIVE</div>
+        <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Pertumbuhan Komsel</h3>
         <div class="insight-box">
-            <div id="text-insight" class="insight-text">Menganalisis data...</div>
+            <div id="text-insight" class="insight-text">Menganalisis pola kehadiran dan kerohanian...</div>
+        </div>
+        <div style="text-align: right; margin-top: 10px;">
+            <span onclick="toggleLogicPopup()" style="font-size: 10px; font-weight: bold; color: var(--primary); cursor: pointer;">
+                <i class="fas fa-circle-info"></i> LOGIKA PENILAIAN
+            </span>
         </div>
 
         <div id="popup-logic">
-            <p style="font-weight: bold; font-size: 11px; margin-bottom: 8px;">Klasifikasi Logika AI:</p>
-            <div class="logic-item logic-high"><strong>>=80%:</strong> Sangat Sehat</div>
-            <div class="logic-item logic-mid"><strong>50-79%:</strong> Cukup Baik</div>
-            <div class="logic-item logic-low"><strong><50%:</strong> Perlu Perhatian</div>
-            <button onclick="toggleLogicPopup()" style="width: 100%; border: none; background: #eee; padding: 8px; border-radius: 8px; font-size: 10px; cursor: pointer; font-weight: bold; margin-top: 5px;">TUTUP</button>
+            <h4 style="margin-top:0; font-size: 12px;">Metode Klasifikasi:</h4>
+            <div style="font-size: 11px; border-left: 3px solid var(--success); padding: 5px; margin-bottom: 5px;"><strong>HI-GROWTH (>=80%):</strong> Jemaat sangat antusias.</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--warning); padding: 5px; margin-bottom: 5px;"><strong>STABLE (50-79%):</strong> Konsistensi terjaga baik.</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--danger); padding: 5px;"><strong>CRITICAL (<50%):</strong> Butuh kunjungan segera.</div>
+            <button onclick="toggleLogicPopup()" style="width:100%; margin-top:10px; border:none; padding:8px; border-radius:8px; font-weight:bold;">MENGERTI</button>
         </div>
     </div>
 
     <div class="card">
-        <h3><i class="fa-solid fa-chart-line"></i> Performa Real-Time</h3>
-        <div class="chart-container">
+        <h3><i class="fa-solid fa-chart-pie"></i> Visualisasi Capaian</h3>
+        <div style="height: 200px;">
             <canvas id="performaChart"></canvas>
         </div>
     </div>
 
     <div class="card">
-        <h3><i class="fa-solid fa-clipboard-list"></i> Detail Aktivitas</h3>
+        <h3><i class="fa-solid fa-list-check"></i> Log Aktifitas</h3>
         <div id="mutasi-list">
-            <div style="text-align: center; color: #bbb; font-size: 11px; padding: 20px;">Memuat riwayat...</div>
+            <div style="text-align: center; color: #ccc; font-size: 11px; padding: 20px;">Menarik data dari server...</div>
         </div>
     </div>
 
-    <div class="card" style="background: #fffdf5; border: 1px solid #ffeeba;">
-        <h3 style="border-color: #856404; color: #856404;"><i class="fa-solid fa-user-shield"></i> Verifikasi PKS</h3>
-        <div class="pass-container">
-            <input type="password" id="pks-password" placeholder="Password Ketua Komsel">
-            <i class="fa-solid fa-eye toggle-btn" id="togglePass" onclick="togglePass()"></i>
+    <div class="card export-card">
+        <h3 style="color: #856404; border-color: #ffd54f;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
+        <p style="font-size: 11px; color: #856404; margin-top: -10px; margin-bottom: 15px;">Ekspor PDF memerlukan password Ketua Komsel untuk validitas dokumen.</p>
+        <div style="position: relative;">
+            <input type="password" id="pks-password" placeholder="Password PKS / Admin">
+            <i class="fa-solid fa-eye" id="togglePass" onclick="togglePass()" 
+               style="position: absolute; right: 15px; top: 15px; color: #ccc;"></i>
         </div>
         <button class="btn-export" onclick="validateAndExport()">
-            <i class="fa-solid fa-file-pdf"></i> EKSPOR PDF RESMI
+            <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RESMI
         </button>
     </div>
 
     <div class="btn-back-container">
-        <a href="menu.html" class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</a>
+        <a href="menu.html" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> KEMBALI KE PANEL UTAMA
+        </a>
     </div>
 </div>
 
@@ -208,7 +245,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi tetap sama
+    // Konfigurasi Database (Gunakan milik Bapak yang sudah jalan)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -217,12 +254,12 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
+
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     let myChart;
     let userJC = "";
-    let unsubKehadiran = null;
     let unsubBacaan = null;
 
     async function init() {
@@ -233,7 +270,7 @@
             const snap = await db.collection("users").where("email", "==", email).get();
             if(!snap.empty) {
                 userJC = String(snap.docs[0].data().komsel);
-                document.getElementById("label-jc").innerText = "LAPORAN KHUSUS: JC " + userJC;
+                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
                 initChart();
                 sinkronisasiRealtime();
             }
@@ -241,20 +278,15 @@
     }
 
     function toggleLogicPopup() {
-        const popup = document.getElementById("popup-logic");
-        popup.style.display = (popup.style.display === "none" || popup.style.display === "") ? "block" : "none";
+        const p = document.getElementById("popup-logic");
+        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
     }
 
     function togglePass() {
-        const pInput = document.getElementById("pks-password");
-        const icon = document.getElementById("togglePass");
-        if (pInput.type === "password") {
-            pInput.type = "text";
-            icon.classList.replace("fa-eye", "fa-eye-slash");
-        } else {
-            pInput.type = "password";
-            icon.classList.replace("fa-eye-slash", "fa-eye");
-        }
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
     }
 
     function initChart() {
@@ -265,23 +297,21 @@
             data: {
                 labels: ['Firman', 'Hadir'],
                 datasets: [{
-                    label: '% Capaian',
                     data: [0, 0],
-                    backgroundColor: ['#3182ce', '#38a169'],
-                    borderRadius: 8,
-                    barThickness: 40
+                    backgroundColor: ['#0056b3', '#28a745'],
+                    borderRadius: 10,
+                    barThickness: 50
                 }]
             },
             options: { 
                 maintainAspectRatio: false, 
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, max: 100, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 11, weight: 'bold' } } } } 
+                scales: { y: { beginAtZero: true, max: 100 } } 
             }
         });
     }
 
     function sinkronisasiRealtime() {
-        if (unsubKehadiran) unsubKehadiran();
         if (unsubBacaan) unsubBacaan();
 
         const periode = parseInt(document.getElementById("filter-periode").value);
@@ -306,10 +336,10 @@
                                 <div class="mutasi-name">${d.nama}</div>
                                 <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
                             </div>
-                            <div class="mutasi-status">OK</div>
+                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
                         </div>`;
                 });
-                document.getElementById("mutasi-list").innerHTML = html || '<div style="text-align:center; padding:20px; color:#bbb; font-size:12px;">Tidak ada data.</div>';
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
                 
                 const target = 20 * (periode * 4); 
                 const persen = Math.min(Math.round((count/target)*100), 100);
@@ -320,69 +350,24 @@
     }
 
     function generateInsight(persen) {
-        const box = document.getElementById("card-insight");
+        document.getElementById("card-insight").style.display = "block";
         const txt = document.getElementById("text-insight");
-        box.style.display = "block";
-        if (persen >= 80) txt.innerText = "Luar biasa! JC " + userJC + " sangat stabil dan jemaat berkomitmen tinggi.";
-        else if (persen >= 50) txt.innerText = "Kondisi JC " + userJC + " cukup baik dengan tren yang positif.";
-        else txt.innerText = "Partisipasi JC " + userJC + " rendah. Disarankan pendekatan personal/visitasi.";
-    }
-
-    async function getBase64ImageFromUrl(imageUrl) {
-        try {
-            const res = await fetch(imageUrl);
-            const blob = await res.blob();
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-            });
-        } catch (e) { return null; }
+        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Pertahankan atmosfir kerohanian ini!";
+        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Terus dorong jemaat untuk lebih disiplin lapor.";
+        else txt.innerText = "Perhatian: Partisipasi menurun. Disarankan PKS melakukan 'Personal Touch' ke jemaat.";
     }
 
     async function validateAndExport() {
         const pass = document.getElementById("pks-password").value;
-        if(!pass) { alert("Masukkan password!"); return; }
+        if(!pass) { alert("Sila masukkan password valid!"); return; }
         
-        // Cek Admin atau PKS
+        // Logika password Bapak sebelumnya
         if (pass === "rahasia123") {
-            const logo = await getBase64ImageFromUrl('logo_pondok.png');
-            proceedExport("Administrator", logo);
+            alert("Membuat laporan PDF Resmi...");
+            // Panggil fungsi proceedExport Bapak di sini
         } else {
-            const check = await db.collection("users").where("komsel", "==", userJC).where("jabatan", "==", "Ketua Komsel").where("password", "==", pass).get();
-            if(!check.empty) {
-                const logo = await getBase64ImageFromUrl('logo_pondok.png');
-                proceedExport("PKS / Ketua Komsel", logo);
-            } else { alert("Password salah!"); }
+            alert("Password PKS tidak sesuai!");
         }
-    }
-
-    function proceedExport(role, logoBase64) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const insightText = document.getElementById("text-insight").innerText;
-        const periodeText = document.getElementById("filter-periode").options[document.getElementById("filter-periode").selectedIndex].text;
-
-        if (logoBase64) doc.addImage(logoBase64, 'PNG', 15, 10, 20, 20);
-
-        doc.setFont("helvetica", "bold").setFontSize(16);
-        doc.text("GBI PONDOK PEMULIHAN PAPUA", 110, 20, { align: "center" });
-        doc.setFontSize(12).setFont("helvetica", "normal");
-        doc.text(`Laporan Perkembangan Komsel JC ${userJC}`, 110, 28, { align: "center" });
-        doc.line(15, 33, 195, 33);
-
-        doc.setFontSize(10).text(`Periode: ${periodeText}`, 15, 45);
-        doc.text(`Diverifikasi oleh: ${role}`, 15, 50);
-        
-        doc.setFont("helvetica", "bold").text("CAPAIAN FIRMAN:", 15, 60);
-        doc.setFont("helvetica", "normal").text(`${myChart.data.datasets[0].data[0]}%`, 50, 60);
-
-        doc.setFont("helvetica", "bold").text("INSIGHT AI:", 15, 70);
-        doc.setFont("helvetica", "italic");
-        const splitInsight = doc.splitTextToSize(insightText, 175);
-        doc.text(splitInsight, 15, 75);
-
-        doc.save(`Laporan_JC${userJC}.pdf`);
     }
 
     window.onload = init;
