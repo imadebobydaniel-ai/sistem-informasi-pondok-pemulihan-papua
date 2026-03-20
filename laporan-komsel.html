@@ -14,9 +14,12 @@
         h3 { border-bottom: 2px solid #007bff; padding-bottom: 10px; font-size: 14px; text-transform: uppercase; margin-top: 0; color: #333; }
         select, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; outline: none; }
         
+        /* Tambahan CSS Ikon Mata agar presisi */
+        .pass-container { position: relative; width: 100%; }
+        .pass-container input { padding-right: 45px; }
+        .toggle-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; cursor: pointer; z-index: 10; }
+
         .chart-container { position: relative; height: 250px; margin-bottom: 20px; width: 100%; }
-        
-        /* Gaya Mutasi Rekening BCA */
         .mutasi-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; align-items: center; }
         .mutasi-date { font-size: 10px; color: #888; width: 45px; font-weight: bold; }
         .mutasi-info { flex: 1; margin-left: 10px; }
@@ -24,7 +27,6 @@
         .mutasi-desc { font-size: 10px; color: #2ecc71; }
         .mutasi-status { font-size: 9px; background: #eafff0; color: #2ecc71; padding: 2px 8px; border-radius: 5px; font-weight: bold; }
 
-        /* Gaya Insight AI */
         .insight-box { background: #eef7ff; border-left: 4px solid #007bff; padding: 15px; border-radius: 10px; margin-top: 10px; }
         .insight-text { font-size: 12.5px; color: #333; line-height: 1.5; font-style: italic; }
 
@@ -71,7 +73,10 @@
 
     <div class="card" style="background: #fff3cd;">
         <h3 style="border-color: #856404; color: #856404;"><i class="fa-solid fa-shield-halved"></i> Verifikasi PKS</h3>
-        <input type="password" id="pks-password" placeholder="Masukkan Password PKS">
+        <div class="pass-container">
+            <input type="password" id="pks-password" placeholder="Masukkan Password PKS">
+            <i class="fa-solid fa-eye toggle-btn" id="togglePass" onclick="togglePass()"></i>
+        </div>
         <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> EKSPOR PDF RESMI
         </button>
@@ -113,6 +118,19 @@
                 sinkronisasiRealtime();
             }
         } catch (e) { console.error(e); }
+    }
+
+    // Fungsi Toggle Password (Mata)
+    function togglePass() {
+        const pInput = document.getElementById("pks-password");
+        const icon = document.getElementById("togglePass");
+        if (pInput.type === "password") {
+            pInput.type = "text";
+            icon.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            pInput.type = "password";
+            icon.classList.replace("fa-eye-slash", "fa-eye");
+        }
     }
 
     function initChart() {
@@ -178,102 +196,94 @@
         box.style.display = "block";
 
         if (persen >= 80) {
-            txt.innerText = "Luar biasa! Pertumbuhan rohani di JC " + userJC + " sangat stabil. Jemaat menunjukkan komitmen tinggi terhadap Firman Tuhan. Terus fasilitasi momentum ini.";
+            txt.innerText = "Luar biasa! Pertumbuhan rohani di JC " + userJC + " sangat stabil. Jemaat menunjukkan komitmen tinggi terhadap Firman Tuhan.";
         } else if (persen >= 50) {
-            txt.innerText = "Kondisi JC " + userJC + " cukup baik. Ada tren positif dalam kehadiran. Disarankan PKS memberikan apresiasi kecil di grup WA untuk menjaga semangat jemaat.";
+            txt.innerText = "Kondisi JC " + userJC + " cukup baik. Ada tren positif dalam kehadiran.";
         } else {
-            txt.innerText = "Tingkat partisipasi JC " + userJC + " perlu perhatian. Disarankan melakukan visitasi digital atau kontak personal kepada jemaat yang jarang melapor periode ini.";
+            txt.innerText = "Tingkat partisipasi JC " + userJC + " perlu perhatian. Disarankan melakukan visitasi digital.";
         }
     }
 
     async function validateAndExport() {
         const pass = document.getElementById("pks-password").value;
-        if(!pass) { alert("Masukkan password PKS!"); return; }
+        const ADMIN_KEY = "rahasia123";
         
-        try {
-            const check = await db.collection("users").where("komsel", "==", userJC).where("jabatan", "==", "Ketua Komsel").where("password", "==", pass).get();
-            
-            if(!check.empty) {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                const insightText = document.getElementById("text-insight").innerText;
-                const periodeText = document.getElementById("filter-periode").options[document.getElementById("filter-periode").selectedIndex].text;
+        if(!pass) { alert("Masukkan password!"); return; }
 
-                // --- 1. KOP SURAT ---
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(16);
-                doc.text("GBI PONDOK PEMULIHAN PAPUA", 105, 20, { align: "center" });
+        // LOGIKA BARU: Cek Admin dulu, jika bukan, cek Firestore
+        if (pass === ADMIN_KEY) {
+            proceedExport("Administrator");
+        } else {
+            try {
+                const check = await db.collection("users")
+                    .where("komsel", "==", userJC)
+                    .where("jabatan", "==", "Ketua Komsel")
+                    .where("password", "==", pass)
+                    .get();
                 
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                doc.text(`Laporan Perkembangan Komsel JC ${userJC}`, 105, 28, { align: "center" });
-                
-                doc.setLineWidth(0.8);
-                doc.line(20, 32, 190, 32); 
-                doc.setLineWidth(0.2);
-                doc.line(20, 33.5, 190, 33.5);
+                if(!check.empty) {
+                    proceedExport("PKS / Ketua Komsel");
+                } else { 
+                    alert("Password Salah!"); 
+                }
+            } catch (e) { alert("Error: " + e.message); }
+        }
+    }
 
-                // --- 2. INFO LAPORAN ---
-                doc.setFontSize(10);
-                doc.text(`Periode: ${periodeText}`, 20, 45);
-                doc.text(`Tanggal Cetak: ${new Date().toLocaleString('id-ID')}`, 20, 50);
+    function proceedExport(role) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const insightText = document.getElementById("text-insight").innerText;
+        const periodeText = document.getElementById("filter-periode").options[document.getElementById("filter-periode").selectedIndex].text;
 
-                // --- 3. PERFORMA REALTIME (DARI CHART) ---
-                doc.setFont("helvetica", "bold");
-                doc.text("PERFORMA CAPAIAN (%)", 20, 60);
-                doc.setFont("helvetica", "normal");
-                const valFirman = myChart.data.datasets[0].data[0];
-                const valHadir = myChart.data.datasets[0].data[1];
-                doc.text(`- Baca Firman: ${valFirman}%`, 25, 65);
-                doc.text(`- Kehadiran   : ${valHadir}%`, 25, 70);
+        // --- KOP SURAT ---
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("GBI PONDOK PEMULIHAN PAPUA", 105, 20, { align: "center" });
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Laporan Perkembangan Komsel JC ${userJC}`, 105, 28, { align: "center" });
+        doc.setLineWidth(0.8);
+        doc.line(20, 32, 190, 32); 
+        doc.setLineWidth(0.2);
+        doc.line(20, 33.5, 190, 33.5);
 
-                // --- 4. RINGKASAN INSIGHT AI ---
-                doc.setFont("helvetica", "bold");
-                doc.text("RINGKASAN PERKEMBANGAN (AI):", 20, 80);
-                doc.setFont("helvetica", "italic");
-                const splitInsight = doc.splitTextToSize(insightText, 170);
-                doc.text(splitInsight, 20, 85);
+        // --- ISI LAPORAN ---
+        doc.setFontSize(10);
+        doc.text(`Periode: ${periodeText}`, 20, 45);
+        doc.text(`Diverifikasi oleh: ${role}`, 20, 50);
+        
+        doc.setFont("helvetica", "bold");
+        doc.text("PERFORMA CAPAIAN (%)", 20, 60);
+        doc.setFont("helvetica", "normal");
+        const valFirman = myChart.data.datasets[0].data[0];
+        doc.text(`- Baca Firman: ${valFirman}%`, 25, 65);
 
-                // --- 5. DAFTAR AKTIVITAS (MUTASI) ---
-                let yPos = 90 + (splitInsight.length * 6);
-                doc.setFont("helvetica", "bold");
-                doc.text("DETAIL AKTIVITAS JEMAAT (MUTASI):", 20, yPos);
-                yPos += 7;
+        doc.setFont("helvetica", "bold");
+        doc.text("RINGKASAN INSIGHT AI:", 20, 75);
+        doc.setFont("helvetica", "italic");
+        const splitInsight = doc.splitTextToSize(insightText, 170);
+        doc.text(splitInsight, 20, 80);
 
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "bold");
-                doc.text("TGL", 20, yPos);
-                doc.text("NAMA JEMAAT / AKTIVITAS", 45, yPos);
-                doc.text("STATUS", 170, yPos);
-                doc.line(20, yPos + 2, 190, yPos + 2);
-                yPos += 8;
+        // --- MUTASI LIST ---
+        let yPos = 85 + (splitInsight.length * 6);
+        doc.setFont("helvetica", "bold");
+        doc.text("DETAIL MUTASI AKTIVITAS:", 20, yPos);
+        yPos += 7;
+        
+        const items = document.querySelectorAll(".mutasi-item");
+        items.forEach((item) => {
+            if (yPos > 270) { doc.addPage(); yPos = 20; }
+            const tgl = item.querySelector(".mutasi-date").innerText;
+            const nama = item.querySelector(".mutasi-name").innerText;
+            const desc = item.querySelector(".mutasi-desc").innerText;
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.text(`${tgl} - ${nama} (${desc})`, 20, yPos);
+            yPos += 6;
+        });
 
-                doc.setFont("helvetica", "normal");
-                const items = document.querySelectorAll(".mutasi-item");
-                items.forEach((item) => {
-                    if (yPos > 270) { doc.addPage(); yPos = 20; }
-                    const tgl = item.querySelector(".mutasi-date").innerText;
-                    const nama = item.querySelector(".mutasi-name").innerText;
-                    const desc = item.querySelector(".mutasi-desc").innerText;
-                    
-                    doc.text(tgl, 20, yPos);
-                    doc.text(`${nama} (${desc})`, 45, yPos);
-                    doc.text("BERHASIL", 170, yPos);
-                    yPos += 7;
-                });
-
-                // --- 6. TANDA TANGAN ---
-                yPos += 15;
-                if (yPos > 250) { doc.addPage(); yPos = 30; }
-                doc.setFont("helvetica", "bold");
-                doc.text("Jayapura, " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}), 150, yPos, { align: "center" });
-                doc.text("Mengetahui,", 150, yPos + 7, { align: "center" });
-                doc.text("Ketua Komsel JC " + userJC, 150, yPos + 32, { align: "center" });
-                doc.line(125, yPos + 33, 175, yPos + 33);
-
-                doc.save(`Laporan_Resmi_JC${userJC}.pdf`);
-            } else { alert("Password Salah atau Anda bukan Ketua Komsel!"); }
-        } catch (e) { alert("Error: " + e.message); }
+        doc.save(`Laporan_Resmi_JC${userJC}.pdf`);
     }
 
     window.onload = init;
