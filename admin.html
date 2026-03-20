@@ -30,7 +30,7 @@
         .modal-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .readonly-field { background: #f0f0f0; cursor: not-allowed; font-weight: bold; }
         .btn-save { width: 100%; padding: 12px; background: var(--success); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .close-modal { position: absolute; right: 20px; top: 20px; font-size: 20px; cursor: pointer; color: #aaa; }
@@ -101,8 +101,18 @@
                 <input type="email" id="edit_email" required>
             </div>
             <div class="form-group">
+                <label>Golongan Darah</label>
+                <select id="edit_goldarah">
+                    <option value="-">-</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="AB">AB</option>
+                    <option value="O">O</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label>Jabatan dalam Komsel</label>
-                <select id="edit_jabatan" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                <select id="edit_jabatan">
                     <option value="Ketua Komsel">Ketua Komsel</option>
                     <option value="Wakil Ketua Komsel">Wakil Ketua Komsel</option>
                     <option value="Anggota Komsel">Anggota Komsel</option>
@@ -111,7 +121,7 @@
             </div>
             <div class="form-group">
                 <label>Lokasi JC</label>
-                <select id="edit_jc" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                <select id="edit_jc">
                     <option value="1">JC 1</option>
                     <option value="2">JC 2</option>
                     <option value="3">JC 3</option>
@@ -153,7 +163,6 @@
             const snapshot = await db.collection("users").get();
             tableBody.innerHTML = "";
 
-            // --- BAGIAN SCRIPT YANG DIMASUKKAN ---
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const row = `
@@ -165,7 +174,7 @@
                         <td>${data.email || '-'}</td>
                         <td><code>${data.password || '-'}</code></td>
                         <td>${data.alamat || '-'}</td>
-                        <td>${data.goldarah || '-'}</td>
+                        <td>${data.golDarah || '-'}</td>
                         <td>${data.jabatan || '-'}</td>
                         <td>JC ${data.komsel || '-'}</td>
                         <td>${data.status || 'Aktif'}</td>
@@ -177,7 +186,6 @@
                 `;
                 tableBody.innerHTML += row;
             });
-            // -------------------------------------
 
             document.getElementById("loading-state").style.display = "none";
             document.getElementById("adminTable").style.display = "table";
@@ -195,8 +203,12 @@
             document.getElementById("edit_email").value = data.email || "";
             document.getElementById("edit_pass").value = data.password || "";
             document.getElementById("edit_alamat").value = data.alamat || "";
+            
+            // Sync dropdowns
+            document.getElementById("edit_goldarah").value = data.golDarah || "-";
             document.getElementById("edit_jabatan").value = data.jabatan || "Anggota";
             document.getElementById("edit_jc").value = data.komsel || "1";
+            
             document.getElementById("editModal").style.display = "block";
         }
     }
@@ -212,6 +224,7 @@
                 whatsapp: document.getElementById("edit_wa").value,
                 email: document.getElementById("edit_email").value,
                 alamat: document.getElementById("edit_alamat").value,
+                golDarah: document.getElementById("edit_goldarah").value,
                 jabatan: document.getElementById("edit_jabatan").value,
                 komsel: document.getElementById("edit_jc").value
             });
