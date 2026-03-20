@@ -3,31 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistik Pembacaan</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <title>Statistik Saya</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        h2 { color: #333; }
-        .info { margin-bottom: 20px; color: #666; font-size: 14px; }
-        .btn-back { display: inline-block; margin-top: 25px; text-decoration: none; color: #007bff; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 400px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px; text-align: center; }
+        .card i { font-size: 30px; margin-bottom: 10px; }
+        .title { font-size: 16px; color: #666; font-weight: bold; }
+        .value { font-size: 24px; font-weight: bold; color: #333; margin: 5px 0; }
+        .desc { font-size: 13px; color: #888; }
+        .progress-container { background: #eee; height: 10px; border-radius: 5px; margin-top: 10px; overflow: hidden; }
+        .progress-bar { height: 100%; transition: 0.5s; }
+        .btn-back { margin-top: 10px; display: inline-block; text-decoration: none; color: #007bff; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2><i class="fas fa-crown" style="color: gold;"></i> Peringkat Keaktifan JC</h2>
-    <p class="info" id="total-info">Menarik data dari database...</p>
-    
-    <div style="position: relative; height:40vh; width:100%">
-        <canvas id="chartJC"></canvas>
+    <h3 style="text-align: center;"><i class="fa-solid fa-chart-line"></i> STATISTIK PRIBADI</h3>
+
+    <div class="card">
+        <i class="fa-solid fa-book-bible" style="color: #007bff;"></i>
+        <div class="title">Laporan Baca Alkitab</div>
+        <div class="value" id="val-alkitab">0</div>
+        <div class="desc">Total laporan Anda bulan ini</div>
+        <div class="progress-container">
+            <div id="bar-alkitab" class="progress-bar" style="background: #007bff; width: 0%;"></div>
+        </div>
     </div>
 
-    <a href="menu.html" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali ke Menu</a>
+    <div class="card">
+        <i class="fa-solid fa-calendar-check" style="color: #2ecc71;"></i>
+        <div class="title">Kehadiran Ibadah</div>
+        <div class="value" id="val-hadir">0</div>
+        <div class="desc">Jumlah kehadiran bulan ini</div>
+    </div>
+
+    <div class="card">
+        <i class="fa-solid fa-calendar-xmark" style="color: #e74c3c;"></i>
+        <div class="title">Ketidakhadiran</div>
+        <div class="value" id="val-absen">0</div>
+        <div class="desc">Total absen bulan ini</div>
+    </div>
+
+    <div class="card">
+        <i class="fa-solid fa-droplet" style="color: #d63031;"></i>
+        <div class="title">Golongan Darah</div>
+        <div class="value" id="val-darah">-</div>
+        <div class="desc">Data identitas medis Anda</div>
+    </div>
+
+    <center><a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu</a></center>
 </div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -41,75 +72,55 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
+    const userEmail = localStorage.getItem("userEmail");
 
-    async function muatStatistik() {
+    async function loadStatistik() {
+        if (!userEmail) return;
+
         const sekarang = new Date();
         const awalBulan = new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
         const tsAwalBulan = firebase.firestore.Timestamp.fromDate(awalBulan);
 
         try {
-            // Ambil semua laporan di bulan ini
-            const snap = await db.collection("laporan_bacaan")
+            // 1. Ambil Data Profil (Golongan Darah)
+            const snapUser = await db.collection("users").where("email", "==", userEmail).get();
+            if (!snapUser.empty) {
+                const u = snapUser.docs[0].data();
+                document.getElementById('val-darah').innerText = u.golongan_darah || "-";
+            }
+
+            // 2. Ambil Laporan Alkitab
+            const snapAlkitab = await db.collection("laporan_bacaan")
+                .where("email", "==", userEmail)
                 .where("tanggal", ">=", tsAwalBulan)
                 .get();
+            
+            const jmlLapor = snapAlkitab.size;
+            document.getElementById('val-alkitab').innerText = jmlLapor;
+            // Progress bar (asumsi 30 hari dalam sebulan)
+            const persen = (jmlLapor / 30) * 100;
+            document.getElementById('bar-alkitab').style.width = persen + "%";
 
-            let rekapJC = {
-                "JC 1": 0, "JC 2": 0, "JC 3": 0, "JC 4": 0, "JC 5": 0,
-                "JC 6": 0, "JC 7": 0, "JC 8": 0, "JC 9": 0, "JC 10": 0
-            };
+            // 3. Ambil Kehadiran
+            const snapHadir = await db.collection("kehadiran")
+                .where("email", "==", userEmail)
+                .where("tanggal", ">=", tsAwalBulan)
+                .where("status", "==", "Hadir")
+                .get();
+            document.getElementById('val-hadir').innerText = snapHadir.size;
 
-            let totalSeluruhLaporan = 0;
+            // 4. Ambil Ketidakhadiran
+            const snapAbsen = await db.collection("kehadiran")
+                .where("email", "==", userEmail)
+                .where("tanggal", ">=", tsAwalBulan)
+                .where("status", "==", "Absen")
+                .get();
+            document.getElementById('val-absen').innerText = snapAbsen.size;
 
-            snap.forEach(doc => {
-                const d = doc.data();
-                if (rekapJC.hasOwnProperty(d.komsel)) {
-                    rekapJC[d.komsel]++;
-                    totalSeluruhLaporan++;
-                }
-            });
-
-            document.getElementById('total-info').innerText = `Total ${totalSeluruhLaporan} laporan terkumpul bulan ini`;
-            tampilkanGrafik(rekapJC);
         } catch (e) { console.error(e); }
     }
 
-    function tampilkanGrafik(dataLaporan) {
-        const ctx = document.getElementById('chartJC').getContext('2d');
-        
-        // Warna warni supaya menarik
-        const colors = [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
-            '#FF9F40', '#C9CBCF', '#2ecc71', '#e74c3c', '#34495e'
-        ];
-
-        new Chart(ctx, {
-            type: 'bar', // Grafik Batang
-            data: {
-                labels: Object.keys(dataLaporan),
-                datasets: [{
-                    label: 'Jumlah Laporan Terkirim',
-                    data: Object.values(dataLaporan),
-                    backgroundColor: colors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { 
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 } // Karena jumlah orang, angkanya bulat (1, 2, 3...)
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    }
-
-    window.onload = muatStatistik;
+    window.onload = loadStatistik;
 </script>
 </body>
 </html>
