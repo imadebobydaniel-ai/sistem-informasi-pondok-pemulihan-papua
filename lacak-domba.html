@@ -12,21 +12,16 @@
         .header { background: white; padding: 20px; text-align: center; border-bottom: 3px solid var(--biru-safir); }
         .header h2 { margin: 0; color: var(--biru-tua); font-size: 18px; text-transform: uppercase; }
 
-        /* Search Bar Anggota */
         .search-container { padding: 15px; background: white; margin: 10px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
         .search-box { display: flex; gap: 10px; }
         .search-box input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; }
-        .btn-search { background: var(--biru-safir); color: white; border: none; padding: 10px 15px; border-radius: 10px; }
 
-        /* Map Area Placeholder */
         #map-container { 
-            width: 95%; height: 350px; background: #e5e3df; margin: auto; 
-            border-radius: 20px; position: relative; overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
+            width: 92%; height: 250px; background: #e5e3df; margin: auto; 
+            border-radius: 20px; display: flex; align-items: center; justify-content: center;
             border: 2px solid white; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
 
-        /* List Teman JC */
         .friends-list { padding: 15px; }
         .friend-item { 
             background: white; padding: 12px; border-radius: 15px; margin-bottom: 10px;
@@ -38,76 +33,111 @@
         .friend-info p { margin: 0; font-size: 11px; color: #888; }
         .btn-track { background: #f0fdfa; color: #0d9488; border: 1px solid #0d9488; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; }
 
-        .back-btn { display: block; text-align: center; margin: 20px; color: var(--biru-safir); text-decoration: none; font-weight: bold; }
+        .back-btn { display: block; text-align: center; margin: 20px; color: var(--biru-safir); text-decoration: none; font-weight: bold; padding-bottom: 30px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2><i class="fa-solid fa-map-location-dot" style="color: var(--emas-lux);"></i> Lacak Domba (JC 5)</h2>
+        <h2><i class="fa-solid fa-map-location-dot" style="color: #D4AF37;"></i> Lacak Domba (JC 5)</h2>
     </div>
 
     <div class="search-container">
         <div class="search-box">
             <input type="text" id="search-name" placeholder="Cari nama anggota JC 5...">
-            <button class="btn-search"><i class="fa-solid fa-magnifying-glass"></i></button>
         </div>
     </div>
 
     <div id="map-container">
-        <div style="text-align: center; color: #666;">
-            <i class="fa-solid fa-location-dot fa-3x" style="color: #ff4757; margin-bottom: 10px;"></i><br>
-            <strong>Peta Sedang Memuat...</strong><br>
-            <small>Hanya menampilkan teman di JC 5</small>
+        <div style="text-align: center; color: #666; padding: 20px;">
+            <i class="fa-solid fa-location-dot fa-2x" style="color: #ff4757; margin-bottom: 10px;"></i><br>
+            <strong id="map-status">Peta Siap Melacak</strong><br>
+            <small id="map-coord">Pilih anggota untuk melihat posisi</small>
         </div>
     </div>
 
-    <div class="friends-list">
-        <h3 style="font-size: 14px; color: #666; margin-left: 5px;">Teman Komsel JC 5</h3>
-        
-        <div class="friend-item">
-            <img src="https://via.placeholder.com/100" class="friend-img">
-            <div class="friend-info">
-                <h4>Andi Pratama</h4>
-                <p><i class="fa-solid fa-circle" style="color: var(--hijau-zamrud); font-size: 8px;"></i> Aktif 2 menit lalu</p>
-            </div>
-            <button class="btn-track" onclick="trackMember('Andi')">LIHAT POSISI</button>
+    <div class="friends-list" id="list-container">
         </div>
-
-        <div class="friend-item">
-            <img src="https://via.placeholder.com/100" class="friend-img">
-            <div class="friend-info">
-                <h4>Siska Wulandari</h4>
-                <p><i class="fa-solid fa-circle" style="color: #ccc; font-size: 8px;"></i> Terakhir terlihat 1 jam lalu</p>
-            </div>
-            <button class="btn-track" onclick="trackMember('Siska')">LIHAT POSISI</button>
-        </div>
-    </div>
 
     <a href="menu.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu</a>
 
     <script>
-        // Logika Identifikasi JC
-        const myJC = localStorage.getItem('userJC') || "Belum Set";
+        // 1. DATA JEMAAT JC 5 (Contoh)
+        const jemaatJC5 = [
+            { id: 1, nama: "Andi Pratama", status: "Aktif 2 menit lalu", online: true, lat: -2.5489, lon: 140.7040 },
+            { id: 2, nama: "Siska Wulandari", status: "Terakhir terlihat 1 jam lalu", online: false, lat: -2.5500, lon: 140.7100 },
+            { id: 3, nama: "Budi Santoso", status: "Aktif sekarang", online: true, lat: -2.5400, lon: 140.6900 },
+            { id: 4, nama: "Yohanes Papua", status: "Aktif 5 menit lalu", online: true, lat: -2.5300, lon: 140.7200 }
+        ];
 
-        function trackMember(name) {
-            // Simulasi pergerakan peta
-            alert("Melacak posisi " + name + " di JC 5...");
+        const myJC = localStorage.getItem('userJC') || "Belum Set";
+        const listContainer = document.getElementById('list-container');
+        const searchInput = document.getElementById('search-name');
+
+        // 2. FUNGSI MENAMPILKAN DAFTAR (FILTERING)
+        function renderDaftar(filterText = "") {
+            // KEAMANAN: Jika user bukan JC 5, jangan tampilkan apa-apa
+            if (myJC !== "JC 5") {
+                listContainer.innerHTML = "<div style='text-align:center; color:red; padding:20px;'>⚠️ Akses Terbatas: Anda bukan anggota JC 5</div>";
+                return;
+            }
+
+            listContainer.innerHTML = `<h3 style="font-size: 14px; color: #666; margin-bottom: 15px;">Anggota JC 5 Saling Berteman</h3>`;
+
+            const hasilFilter = jemaatJC5.filter(user => 
+                user.nama.toLowerCase().includes(filterText.toLowerCase())
+            );
+
+            if (hasilFilter.length === 0) {
+                listContainer.innerHTML += "<p style='text-align:center; font-size:13px; color:#999;'>Nama tidak ditemukan...</p>";
+                return;
+            }
+
+            hasilFilter.forEach(user => {
+                const color = user.online ? "var(--hijau-zamrud)" : "#ccc";
+                const item = `
+                    <div class="friend-item">
+                        <img src="https://ui-avatars.com/api/?name=${user.nama}&background=random" class="friend-img">
+                        <div class="friend-info">
+                            <h4>${user.nama}</h4>
+                            <p><i class="fa-solid fa-circle" style="color: ${color}; font-size: 8px;"></i> ${user.status}</p>
+                        </div>
+                        <button class="btn-track" onclick="lacakPosisi('${user.nama}', ${user.lat}, ${user.lon})">LACAK</button>
+                    </div>
+                `;
+                listContainer.innerHTML += item;
+            });
         }
 
-        // Script Mengambil GPS (PENTING UNTUK HP)
-        function updateMyPosition() {
+        // 3. FUNGSI LACAK (Update Tampilan Peta)
+        function lacakPosisi(nama, lat, lon) {
+            document.getElementById('map-status').innerText = "Melacak: " + nama;
+            document.getElementById('map-coord').innerText = "Lat: " + lat + " | Lon: " + lon;
+            
+            // Efek berkedip saat melacak
+            const mapBox = document.getElementById('map-container');
+            mapBox.style.background = "#d1fae5"; 
+            setTimeout(() => mapBox.style.background = "#e5e3df", 500);
+        }
+
+        // 4. FUNGSI GPS HP (Kirim Posisi Saya)
+        function aktifkanGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition((pos) => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    console.log("Posisi Saya (" + myJC + "): ", lat, lon);
-                    // Kirim lat & lon ke database Bapak di sini
-                });
+                    console.log("GPS Aktif: ", pos.coords.latitude, pos.coords.longitude);
+                }, (err) => {
+                    console.warn("GPS Dimatikan oleh user.");
+                }, { enableHighAccuracy: true });
             }
         }
-        
-        window.onload = updateMyPosition;
+
+        // 5. EVENT SEARCH & LOAD
+        searchInput.addEventListener('input', (e) => renderDaftar(e.target.value));
+
+        window.onload = () => {
+            renderDaftar();
+            aktifkanGPS();
+        };
     </script>
 </body>
 </html>
