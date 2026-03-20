@@ -9,82 +9,146 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root {
+            --biru-tua: #003366;
+            --biru-safir: #0056b3;
+            --emas-lux: #D4AF37;
+            --perak: #C0C0C0;
+            --perunggu: #CD7F32;
+            --putih-bg: #f4f7fa;
+        }
+
         body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #f0f2f5; 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background-color: var(--putih-bg); 
             margin: 0; 
             padding: 15px;
-            padding-bottom: 90px;
+            padding-bottom: 100px;
         }
+
         .container { max-width: 500px; margin: auto; }
         
         /* Card Styles */
         .card { 
             background: white; 
-            padding: 20px; 
-            border-radius: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-            margin-bottom: 15px; 
+            padding: 25px; 
+            border-radius: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            margin-bottom: 20px; 
             text-align: center;
+            border-top: 5px solid var(--biru-safir);
         }
 
-        h2 { color: #333; font-size: 18px; margin-bottom: 5px; }
-        .info-sub { color: #666; font-size: 12px; margin-bottom: 20px; }
+        h2 { color: var(--biru-tua); font-size: 20px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; }
+        .info-sub { color: #888; font-size: 13px; font-weight: 600; margin-bottom: 25px; }
 
-        /* Podium Simple */
+        /* Podium Visual */
         .podium-container {
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
             align-items: flex-end;
-            margin-bottom: 25px;
-            padding-top: 10px;
+            margin-bottom: 30px;
+            gap: 10px;
         }
-        .podium-item { flex: 1; text-align: center; }
-        .podium-rank { font-size: 24px; margin-bottom: 5px; }
-        .podium-name { font-weight: bold; font-size: 13px; color: #444; }
-        .podium-score { font-size: 11px; color: #007bff; font-weight: bold; }
+        .podium-item { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        
+        /* Trophy Icons */
+        .trophy-box {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .rank-1 .trophy-box { background: linear-gradient(135deg, #FFD700, #FDB931); color: white; width: 65px; height: 65px; font-size: 32px; }
+        .rank-2 .trophy-box { background: linear-gradient(135deg, #E0E0E0, #BDBDBD); color: white; }
+        .rank-3 .trophy-box { background: linear-gradient(135deg, #f0a26d, #CD7F32); color: white; }
+
+        .podium-name { font-weight: 900; font-size: 14px; color: var(--biru-tua); margin-top: 5px; }
+        .podium-score { 
+            font-size: 11px; 
+            background: var(--biru-tua); 
+            color: white; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            margin-top: 4px;
+            font-weight: 700;
+        }
         
         /* Chart Box */
-        .chart-box { position: relative; height: 250px; width: 100%; margin-top: 10px; }
+        .chart-box { 
+            height: 220px; 
+            width: 100%; 
+            margin-top: 15px; 
+            padding: 10px;
+            background: #fdfdfd;
+            border-radius: 15px;
+        }
 
         /* List Peringkat */
-        .rank-list { text-align: left; margin-top: 20px; }
+        .rank-list { text-align: left; margin-top: 10px; }
         .rank-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 15px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            margin-bottom: 8px;
-            border-left: 4px solid #ddd;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            border: 1.5px solid #f0f0f0;
+            transition: 0.3s;
         }
-        .rank-item.top-three { border-left-color: #ffc107; background: #fffdf5; }
-        .rank-jc { font-weight: bold; font-size: 14px; color: #333; }
-        .rank-val { background: #007bff; color: white; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .rank-item.top-three { 
+            border-left: 5px solid var(--emas-lux); 
+            background: linear-gradient(to right, #fffdf5, #ffffff);
+        }
+        .rank-jc { font-weight: 800; font-size: 15px; color: var(--biru-tua); }
+        .rank-val { 
+            background: var(--biru-safir); 
+            color: white; 
+            padding: 5px 12px; 
+            border-radius: 50px; 
+            font-size: 12px; 
+            font-weight: 900; 
+            box-shadow: 0 4px 10px rgba(0,86,179,0.2);
+        }
 
-        /* Back Button Fixed */
+        /* Bottom Menu */
         .btn-back-container {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            padding: 15px;
+            padding: 20px;
             box-sizing: border-box;
-            background: linear-gradient(to top, rgba(240,242,245,1) 70%, rgba(240,242,245,0));
+            background: white;
+            border-top: 1px solid #eee;
             z-index: 1000;
         }
         .btn-back { 
-            display: block;
-            background: #007bff; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--biru-tua); 
             color: white; 
-            text-align: center; 
-            padding: 15px; 
-            border-radius: 12px; 
+            padding: 18px; 
+            border-radius: 50px; 
             text-decoration: none; 
-            font-weight: bold; 
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+            font-weight: 800; 
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 8px 25px rgba(0,51,102,0.3);
         }
     </style>
 </head>
@@ -92,23 +156,23 @@
 
 <div class="container">
     <div class="card">
-        <h2><i class="fas fa-crown" style="color: gold;"></i> Leaderboard Komsel</h2>
+        <h2><i class="fas fa-trophy" style="color: var(--emas-lux);"></i> Leaderboard</h2>
         <p class="info-sub" id="current-month">Periode: Memuat...</p>
 
         <div class="podium-container" id="podium">
-            <div class="podium-item" style="order: 2;">
-                <div class="podium-rank">🥇</div>
-                <div class="podium-name" id="top1-name">-</div>
-                <div class="podium-score" id="top1-val">0 Laporan</div>
-            </div>
-            <div class="podium-item" style="order: 1;">
-                <div class="podium-rank" style="font-size: 18px;">🥈</div>
-                <div class="podium-name" id="top2-name">-</div>
+            <div class="podium-item rank-2" style="order: 1;">
+                <div class="trophy-box"><i class="fas fa-medal"></i></div>
+                <div class="podium-name" id="top2-name">JC -</div>
                 <div class="podium-score" id="top2-val">0</div>
             </div>
-            <div class="podium-item" style="order: 3;">
-                <div class="podium-rank" style="font-size: 18px;">🥉</div>
-                <div class="podium-name" id="top3-name">-</div>
+            <div class="podium-item rank-1" style="order: 2;">
+                <div class="trophy-box"><i class="fas fa-crown"></i></div>
+                <div class="podium-name" id="top1-name">JC -</div>
+                <div class="podium-score" id="top1-val">0</div>
+            </div>
+            <div class="podium-item rank-3" style="order: 3;">
+                <div class="trophy-box"><i class="fas fa-award"></i></div>
+                <div class="podium-name" id="top3-name">JC -</div>
                 <div class="podium-score" id="top3-val">0</div>
             </div>
         </div>
@@ -118,20 +182,23 @@
         </div>
     </div>
 
-    <div class="card" style="text-align: left;">
-        <h3 style="font-size: 14px; border-bottom: 2px solid #eee; padding-bottom: 10px;"><i class="fas fa-list-ol"></i> Urutan Berdasarkan Keaktifan</h3>
+    <div style="padding: 0 5px;">
+        <h3 style="font-size: 14px; font-weight: 800; color: #777; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px;">
+            <i class="fas fa-list-ol"></i> Peringkat Keaktifan
+        </h3>
         <div id="rank-list" class="rank-list">
-            <p style="text-align:center; color:#ccc;">Menghitung skor...</p>
+            <p style="text-align:center; color:#ccc; padding: 20px;">Menghitung skor surgawi...</p>
         </div>
     </div>
 
     <div class="btn-back-container">
-        <a href="menu.html" class="btn-back"><i class="fas fa-arrow-left"></i> KEMBALI KE MENU</a>
+        <a href="menu.html" class="btn-back">
+            <i class="fas fa-home"></i> KEMBALI KE MENU
+        </a>
     </div>
 </div>
 
 <script>
-    // Konfigurasi Firebase Bapak
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -147,7 +214,7 @@
     async function muatStatistik() {
         const sekarang = new Date();
         const namaBulan = sekarang.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-        document.getElementById('current-month').innerText = `Periode: ${namaBulan}`;
+        document.getElementById('current-month').innerText = `Update: ${namaBulan}`;
 
         const awalBulan = new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
         const tsAwalBulan = firebase.firestore.Timestamp.fromDate(awalBulan);
@@ -158,43 +225,41 @@
                 .get();
 
             let rekapJC = {};
-            // Inisialisasi JC 1-10
-            for(let i=1; i<=10; i++) { rekapJC[`JC ${i}`] = 0; }
+            // Inisialisasi JC 1-5 (atau sesuaikan jumlah JC Bapak)
+            for(let i=1; i<=5; i++) { rekapJC[`JC ${i}`] = 0; }
 
             snap.forEach(doc => {
                 const d = doc.data();
-                const namaJC = d.komsel; // Pastikan field di Firestore namanya "komsel"
+                const namaJC = d.komsel.startsWith("JC") ? d.komsel : `JC ${d.komsel}`;
                 if (rekapJC.hasOwnProperty(namaJC)) {
                     rekapJC[namaJC]++;
                 }
             });
 
-            // Sorting data untuk peringkat
-            const sortedJC = Object.entries(rekapJC)
-                .sort(([,a], [,b]) => b - a);
+            const sortedJC = Object.entries(rekapJC).sort(([,a], [,b]) => b - a);
 
             updatePodium(sortedJC);
             tampilkanGrafik(rekapJC);
             tampilkanList(sortedJC);
 
         } catch (e) { 
-            console.error("Error Database:", e); 
-            document.getElementById('rank-list').innerHTML = "Gagal memuat data.";
+            console.error(e); 
+            document.getElementById('rank-list').innerHTML = "Gagal memuat peringkat.";
         }
     }
 
     function updatePodium(sortedData) {
         if(sortedData[0]) {
             document.getElementById('top1-name').innerText = sortedData[0][0];
-            document.getElementById('top1-val').innerText = sortedData[0][1] + " Laporan";
+            document.getElementById('top1-val').innerText = sortedData[0][1] + " Lap";
         }
         if(sortedData[1]) {
             document.getElementById('top2-name').innerText = sortedData[1][0];
-            document.getElementById('top2-val').innerText = sortedData[1][1];
+            document.getElementById('top2-val').innerText = sortedData[1][1] + " Lap";
         }
         if(sortedData[2]) {
             document.getElementById('top3-name').innerText = sortedData[2][0];
-            document.getElementById('top3-val').innerText = sortedData[2][1];
+            document.getElementById('top3-val').innerText = sortedData[2][1] + " Lap";
         }
     }
 
@@ -205,7 +270,7 @@
             html += `
                 <div class="rank-item ${isTop}">
                     <span class="rank-jc">${index + 1}. ${item[0]}</span>
-                    <span class="rank-val">${item[1]} Lap</span>
+                    <span class="rank-val">${item[1]} LAPORAN</span>
                 </div>`;
         });
         document.getElementById('rank-list').innerHTML = html;
@@ -218,18 +283,18 @@
             data: {
                 labels: Object.keys(dataLaporan),
                 datasets: [{
-                    label: 'Laporan',
                     data: Object.values(dataLaporan),
-                    backgroundColor: '#007bff',
-                    borderRadius: 5
+                    backgroundColor: '#0056b3',
+                    borderRadius: 10,
+                    barPercentage: 0.6
                 }]
             },
             options: {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { 
-                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } },
-                    x: { ticks: { font: { size: 10, weight: 'bold' } } }
+                    y: { display: false },
+                    x: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 11 } } }
                 }
             }
         });
