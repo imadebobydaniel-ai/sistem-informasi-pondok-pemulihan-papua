@@ -36,7 +36,6 @@
             width: 100%; padding: 12px; border-radius: 12px; border: 1.5px solid #ddd;
             box-sizing: border-box; font-size: 14px; transition: 0.3s;
         }
-        .input-group input:focus { border-color: var(--biru-safir); outline: none; box-shadow: 0 0 8px rgba(0,86,179,0.2); }
 
         /* Style Toggle Switch */
         .switch-group {
@@ -61,20 +60,14 @@
             padding: 15px; border-radius: 50px; font-weight: bold; margin-top: 20px;
             cursor: pointer; box-shadow: 0 4px 15px rgba(0,86,179,0.3); transition: 0.3s;
         }
-        .btn-save:active { transform: scale(0.98); }
 
-        .btn-delete {
-            width: 100%; background: #dc3545; color: white; border: none;
-            padding: 12px; border-radius: 50px; font-weight: bold; margin-top: 10px;
-            cursor: pointer; font-size: 13px;
+        #notif-pesan {
+            display: none; color: #0d9488; font-weight: bold; margin-top: 15px; 
+            text-align: center; background: #f0fdfa; padding: 10px; border-radius: 12px;
+            font-size: 13px; border: 1px solid #0d9488;
         }
 
-        .info-box {
-            background: #eef6ff; border-left: 4px solid var(--biru-muda);
-            padding: 15px; border-radius: 12px; margin-top: 25px; font-size: 12px; text-align: left;
-        }
-
-        .back-link { display: block; margin-top: 25px; text-decoration: none; color: var(--biru-safir); font-weight: bold; font-size: 14px; }
+        .back-link { display: block; margin-top: 25px; text-decoration: none; color: var(--biru-safir); font-weight: bold; font-size: 14px; text-align: center; }
     </style>
 </head>
 <body>
@@ -82,16 +75,6 @@
     <div class="settings-card">
         <h2><i class="fa-solid fa-user-gear"></i> Pengaturan Akun</h2>
         
-        <div class="input-group">
-            <label>Email Baru</label>
-            <input type="email" id="new-email" placeholder="Masukkan email baru">
-        </div>
-
-        <div class="input-group">
-            <label>Password Baru</label>
-            <input type="password" id="new-password" placeholder="Masukkan password baru">
-        </div>
-
         <div class="input-group">
             <label>Lokasi Komsel</label>
             <select id="lokasi-komsel">
@@ -111,16 +94,8 @@
             </label>
         </div>
 
-        <div class="switch-group">
-            <label style="font-weight: bold; font-size: 13px; color: var(--biru-tua);">Aktifkan Popup Notifikasi</label>
-            <label class="switch">
-                <input type="checkbox" id="toggle-popup">
-                <span class="slider"></span>
-            </label>
-        </div>
-
         <div class="input-group" style="margin-top: 15px;">
-            <label>Logout Otomatis</label>
+            <label>Logout Otomatis (Keamanan)</label>
             <select id="auto-logout">
                 <option value="0">Matikan</option>
                 <option value="30">30 Menit</option>
@@ -129,12 +104,8 @@
         </div>
 
         <button class="btn-save" onclick="saveSettings()">SIMPAN PERUBAHAN</button>
-        <button class="btn-delete">HAPUS AKUN PERMANEN</button>
-
-        <div class="info-box">
-            <strong style="color: var(--biru-safir);"><i class="fa-solid fa-circle-info"></i> Info Pengembang</strong><br>
-            Aplikasi ini dikembangkan untuk memudahkan pelaporan pembacaan Alkitab secara realtime bagi Komsel JC Pondok Pemulihan Papua.
-        </div>
+        
+        <div id="notif-pesan"></div>
 
         <a href="menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu</a>
     </div>
@@ -142,113 +113,62 @@
     <audio id="sirine-audio" src="https://www.soundjay.com/buttons/sounds/beep-01a.mp3"></audio>
 
     <script>
-        // --- BAGIAN LOGIC UNTUK LOGOUT OTOMATIS & NOTIFIKASI ---
+        let idleTimer;
 
-let timeout;
-const pesanNotif = document.getElementById('notif-pesan'); // Pastikan ada elemen ini di HTML Bapak
-
-function resetTimer() {
-    clearTimeout(timeout);
-    
-    // Ambil durasi dari pilihan dropdown (misal: 30 menit)
-    const durasiMenit = parseInt(document.getElementById('logout-select').value) || 30;
-    const durasiMS = durasiMenit * 60 * 1000;
-
-    timeout = setTimeout(() => {
-        // Proses Logout Otomatis
-        localStorage.clear(); // Hapus data login
-        window.location.href = 'login.html'; // Pindah ke halaman login
-    }, durasiMS);
-}
-
-// Jalankan deteksi aktivitas di HP (sentuhan layar)
-window.onload = resetTimer;
-document.onmousemove = resetTimer;
-document.onkeypress = resetTimer;
-document.ontouchstart = resetTimer; // Sangat penting untuk penggunaan di HP
-
-function simpanPengaturan() {
-    // 1. Simpan data ke localStorage agar tersimpan permanen
-    const durasi = document.getElementById('logout-select').value;
-    localStorage.setItem('durasiLogout', durasi);
-
-    // 2. GANTI ALERT DENGAN BLOCK DISPLAY
-    // Alih-alih muncul popup "OK", kita munculkan teks di bawah tombol
-    pesanNotif.style.display = 'block';
-    pesanNotif.innerText = '✅ Pengaturan Berhasil Disimpan!';
-    
-    // Hilangkan pesan setelah 3 detik secara otomatis
-    setTimeout(() => {
-        pesanNotif.style.display = 'none';
-    }, 3000);
-}
-        // Memuat Pengaturan Saat Halaman Dibuka
+        // 1. Memuat Pengaturan Saat Halaman Dibuka
         window.onload = function() {
             document.getElementById('toggle-suara').checked = localStorage.getItem('suaraNotif') === 'true';
-            document.getElementById('toggle-popup').checked = localStorage.getItem('popupNotif') === 'true';
-            document.getElementById('auto-logout').value = localStorage.getItem('timeoutValue') || "0";
+            document.getElementById('lokasi-komsel').value = localStorage.getItem('userJC') || "JC 1";
             
-            // Jalankan sistem monitoring
+            const savedTimeout = localStorage.getItem('timeoutValue') || "0";
+            document.getElementById('auto-logout').value = savedTimeout;
+
             startInactivityTimer();
-            startNotificationCheck();
         };
 
+        // 2. Fungsi Simpan Pengaturan (Tanpa Popup Alert)
         function saveSettings() {
             const suara = document.getElementById('toggle-suara').checked;
-            const popup = document.getElementById('toggle-popup').checked;
-            const timeout = document.getElementById('auto-logout').value;
+            const jc = document.getElementById('lokasi-komsel').value;
+            const timeoutVal = document.getElementById('auto-logout').value;
 
             localStorage.setItem('suaraNotif', suara);
-            localStorage.setItem('popupNotif', popup);
-            localStorage.setItem('timeoutValue', timeout);
+            localStorage.setItem('userJC', jc);
+            localStorage.setItem('timeoutValue', timeoutVal);
 
-            alert("Pengaturan Berhasil Disimpan!");
-            location.reload();
+            // Tampilkan notifikasi teks (Block Display)
+            const pesan = document.getElementById('notif-pesan');
+            pesan.style.display = 'block';
+            pesan.innerHTML = '✅ Pengaturan Berhasil Diperbarui!';
+            
+            setTimeout(() => { 
+                pesan.style.display = 'none'; 
+                location.reload(); // Refresh untuk menerapkan timer baru
+            }, 2000);
         }
 
-        // --- LOGIKA LOGOUT OTOMATIS ---
-        let idleTimer;
+        // 3. Sistem Logout Otomatis (Tanpa Popup Pesan)
         function startInactivityTimer() {
             const minutes = parseInt(localStorage.getItem('timeoutValue'));
             if (minutes > 0) {
                 const ms = minutes * 60 * 1000;
                 resetTimer(ms);
+
+                // Deteksi aktivitas termasuk sentuhan layar HP
                 window.onmousemove = () => resetTimer(ms);
                 window.onkeypress = () => resetTimer(ms);
-                window.ontouchstart = () => resetTimer(ms);
+                window.ontouchstart = () => resetTimer(ms); 
+                window.onclick = () => resetTimer(ms);
             }
         }
 
         function resetTimer(ms) {
             clearTimeout(idleTimer);
             idleTimer = setTimeout(() => {
-                alert("Sesi berakhir karena tidak ada aktivitas.");
+                // Logout langsung tanpa alert
                 localStorage.clear();
-                window.location.href = 'index.html';
+                window.location.href = 'login.html';
             }, ms);
-        }
-
-        // --- LOGIKA NOTIFIKASI JAM 10 MALAM (22:00) ---
-        function startNotificationCheck() {
-            setInterval(() => {
-                const now = new Date();
-                if (now.getHours() === 22 && now.getMinutes() === 0 && now.getSeconds() === 0) {
-                    executeNotification();
-                }
-            }, 1000);
-        }
-
-        function executeNotification() {
-            const suaraAktif = localStorage.getItem('suaraNotif') === 'true';
-            const popupAktif = localStorage.getItem('popupNotif') === 'true';
-
-            if (suaraAktif) {
-                document.getElementById('sirine-audio').play();
-            }
-
-            if (popupAktif) {
-                alert("🔔 PENGINGAT: Harap segera laporkan pembacaan Alkitab Anda hari ini!");
-            }
         }
     </script>
 </body>
