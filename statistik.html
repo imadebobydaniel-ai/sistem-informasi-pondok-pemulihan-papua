@@ -3,63 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistik Saya</title>
+    <title>Statistik Lengkap JC</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 100%; max-width: 400px; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 15px; text-align: center; }
-        .card i { font-size: 30px; margin-bottom: 10px; }
-        .title { font-size: 16px; color: #666; font-weight: bold; }
-        .value { font-size: 24px; font-weight: bold; color: #333; margin: 5px 0; }
-        .desc { font-size: 13px; color: #888; }
-        .progress-container { background: #eee; height: 10px; border-radius: 5px; margin-top: 10px; overflow: hidden; }
-        .progress-bar { height: 100%; transition: 0.5s; }
-        .btn-back { margin-top: 10px; display: inline-block; text-decoration: none; color: #007bff; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 450px; }
+        .card { background: white; padding: 15px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-title { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: bold; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; }
+        
+        .filter-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .filter-item { flex: 1; }
+        .filter-item label { font-size: 9px; font-weight: bold; color: #bbb; display: block; margin-bottom: 4px; text-transform: uppercase; }
+        select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; background: #f9f9f9; font-size: 12px; font-weight: bold; outline: none; }
+
+        .stat-line { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 5px 0; font-size: 13px; font-weight: bold; }
+        .val-txt { color: #007bff; }
+        .progress-bg { background: #eee; height: 10px; border-radius: 10px; width: 100%; overflow: hidden; margin-bottom: 15px; }
+        .progress-fill { height: 100%; transition: 0.5s; border-radius: 10px; }
+
+        .blood-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .blood-type { font-weight: bold; color: #333; }
+        .blood-count { color: #007bff; font-weight: bold; }
+
+        .btn-footer { display: block; width: 100%; padding: 12px; background: white; border-radius: 12px; text-align: center; text-decoration: none; color: #007bff; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h3 style="text-align: center;"><i class="fa-solid fa-chart-line"></i> STATISTIK PRIBADI</h3>
+    
+    <div class="card">
+        <div class="card-title"><i class="fa-solid fa-earth-asia"></i> Capaian Baca Alkitab</div>
+        <div class="filter-row">
+            <div class="filter-item">
+                <label>Pilih Komsel</label>
+                <select id="jc-alkitab" onchange="loadAlkitab()">
+                    <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option><option value="JC 3">JC 3</option>
+                    <option value="JC 4">JC 4</option><option value="JC 5" selected>JC 5</option><option value="JC 6">JC 6</option>
+                    <option value="JC 10">JC 10</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label>Periode</label>
+                <select id="per-alkitab" onchange="loadAlkitab()">
+                    <option value="1">1 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option>
+                </select>
+            </div>
+        </div>
+        <div class="stat-line"><span>Capaian <span id="label-jc-baca">JC 5</span></span><span class="val-txt" id="txt-baca-jc">0.0%</span></div>
+        <div class="progress-bg"><div id="bar-baca-jc" class="progress-fill" style="background: #00c6ff; width: 0%;"></div></div>
+        <div class="stat-line"><span>Seluruh Komsel (Global)</span><span class="val-txt" style="color: #6c5ce7;" id="txt-baca-global">0.0%</span></div>
+        <div class="progress-bg"><div id="bar-baca-global" class="progress-fill" style="background: #a29bfe; width: 0%;"></div></div>
+    </div>
 
     <div class="card">
-        <i class="fa-solid fa-book-bible" style="color: #007bff;"></i>
-        <div class="title">Laporan Baca Alkitab</div>
-        <div class="value" id="val-alkitab">0</div>
-        <div class="desc">Total laporan Anda bulan ini</div>
-        <div class="progress-container">
-            <div id="bar-alkitab" class="progress-bar" style="background: #007bff; width: 0%;"></div>
+        <div class="card-title"><i class="fa-solid fa-calendar-check"></i> Statistik Kehadiran</div>
+        <div class="filter-row">
+            <div class="filter-item">
+                <label>Pilih Komsel</label>
+                <select id="jc-hadir" onchange="loadKehadiran()">
+                    <option value="JC 5" selected>JC 5</option><option value="Semua">Semua</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label>Periode</label>
+                <select id="per-hadir" onchange="loadKehadiran()">
+                    <option value="1">1 Bulan Terakhir</option>
+                </select>
+            </div>
+        </div>
+        <div class="stat-line"><span>Kehadiran <span id="label-jc-hadir">JC 5</span></span><span class="val-txt" id="txt-hadir-jc">0%</span></div>
+        <div class="progress-bg"><div id="bar-hadir-jc" class="progress-fill" style="background: #ddd; width: 0%;"></div></div>
+        <div class="stat-line"><span>Seluruh Komsel (Global)</span><span class="val-txt" id="txt-hadir-global">0%</span></div>
+        <div class="progress-bg"><div id="bar-hadir-global" class="progress-fill" style="background: #ddd; width: 0%;"></div></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="border-bottom-color: #ff4757;"><i class="fa-solid fa-circle-dot" style="color: #ff4757;"></i> Ketidak Hadiran</div>
+        <div class="filter-row">
+            <div class="filter-item"><label>Pilih Komsel</label><select id="jc-absen" onchange="loadKehadiran()"><option value="JC 5">JC 5</option></select></div>
+            <div class="filter-item"><label>Periode</label><select id="per-absen"><option value="1">1 Bulan Terakhir</option></select></div>
+        </div>
+        <div class="stat-line"><span>Ketidak Hadiran JC 5</span><span class="val-txt" style="color: #ff4757;" id="txt-absen-jc">0%</span></div>
+        <div class="progress-bg"><div id="bar-absen-jc" class="progress-fill" style="background: #ddd; width: 0%;"></div></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fa-solid fa-droplet"></i> Data Golongan Darah</div>
+        <label style="font-size: 9px; font-weight: bold; color: #bbb;">LIHAT DISTRIBUSI PER KOMSEL</label>
+        <select id="jc-darah" style="margin-top: 5px;" onchange="loadDarah()">
+            <option value="Semua">Semua Komsel</option><option value="5">JC 5</option>
+        </select>
+        <div style="margin-top: 15px;">
+            <div class="blood-row"><span class="blood-type">A</span><span class="blood-count" id="count-A">0 Orang</span></div>
+            <div class="blood-row"><span class="blood-type">B</span><span class="blood-count" id="count-B">0 Orang</span></div>
+            <div class="blood-row"><span class="blood-type">O</span><span class="blood-count" id="count-O">0 Orang</span></div>
+            <div class="blood-row" style="border:none;"><span class="blood-type">AB</span><span class="blood-count" id="count-AB">0 Orang</span></div>
         </div>
     </div>
 
-    <div class="card">
-        <i class="fa-solid fa-calendar-check" style="color: #2ecc71;"></i>
-        <div class="title">Kehadiran Ibadah</div>
-        <div class="value" id="val-hadir">0</div>
-        <div class="desc">Jumlah kehadiran bulan ini</div>
-    </div>
-
-    <div class="card">
-        <i class="fa-solid fa-calendar-xmark" style="color: #e74c3c;"></i>
-        <div class="title">Ketidakhadiran</div>
-        <div class="value" id="val-absen">0</div>
-        <div class="desc">Total absen bulan ini</div>
-    </div>
-
-    <div class="card">
-        <i class="fa-solid fa-droplet" style="color: #d63031;"></i>
-        <div class="title">Golongan Darah</div>
-        <div class="value" id="val-darah">-</div>
-        <div class="desc">Data identitas medis Anda</div>
-    </div>
-
-    <center><a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu</a></center>
+    <a href="menu.html" class="btn-footer"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu Utama</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -69,58 +116,45 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
-    const userEmail = localStorage.getItem("userEmail");
 
-    async function loadStatistik() {
-        if (!userEmail) return;
-
-        const sekarang = new Date();
-        const awalBulan = new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
-        const tsAwalBulan = firebase.firestore.Timestamp.fromDate(awalBulan);
-
-        try {
-            // 1. Ambil Data Profil (Golongan Darah)
-            const snapUser = await db.collection("users").where("email", "==", userEmail).get();
-            if (!snapUser.empty) {
-                const u = snapUser.docs[0].data();
-                document.getElementById('val-darah').innerText = u.golongan_darah || "-";
-            }
-
-            // 2. Ambil Laporan Alkitab
-            const snapAlkitab = await db.collection("laporan_bacaan")
-                .where("email", "==", userEmail)
-                .where("tanggal", ">=", tsAwalBulan)
-                .get();
-            
-            const jmlLapor = snapAlkitab.size;
-            document.getElementById('val-alkitab').innerText = jmlLapor;
-            // Progress bar (asumsi 30 hari dalam sebulan)
-            const persen = (jmlLapor / 30) * 100;
-            document.getElementById('bar-alkitab').style.width = persen + "%";
-
-            // 3. Ambil Kehadiran
-            const snapHadir = await db.collection("kehadiran")
-                .where("email", "==", userEmail)
-                .where("tanggal", ">=", tsAwalBulan)
-                .where("status", "==", "Hadir")
-                .get();
-            document.getElementById('val-hadir').innerText = snapHadir.size;
-
-            // 4. Ambil Ketidakhadiran
-            const snapAbsen = await db.collection("kehadiran")
-                .where("email", "==", userEmail)
-                .where("tanggal", ">=", tsAwalBulan)
-                .where("status", "==", "Absen")
-                .get();
-            document.getElementById('val-absen').innerText = snapAbsen.size;
-
-        } catch (e) { console.error(e); }
+    async function loadAlkitab() {
+        const jc = document.getElementById('jc-alkitab').value;
+        document.getElementById('label-jc-baca').innerText = jc;
+        const snap = await db.collection("laporan_bacaan").get();
+        let total = 0, jcCount = 0;
+        snap.forEach(doc => {
+            total++;
+            if(doc.data().komsel === jc.replace("JC ","")) jcCount++;
+        });
+        const pJC = total > 0 ? ((jcCount/total)*100).toFixed(1) : 0;
+        document.getElementById('txt-baca-jc').innerText = pJC + "%";
+        document.getElementById('bar-baca-jc').style.width = pJC + "%";
+        document.getElementById('txt-baca-global').innerText = (total > 0 ? "100.0%" : "0.0%");
+        document.getElementById('bar-baca-global').style.width = (total > 0 ? "100%" : "0%");
     }
 
-    window.onload = loadStatistik;
+    async function loadKehadiran() {
+        // Simulasi hitung sederhana karena data kehadiran butuh field status
+        document.getElementById('txt-hadir-jc').innerText = "0%";
+        document.getElementById('txt-absen-jc').innerText = "0%";
+    }
+
+    async function loadDarah() {
+        const jc = document.getElementById('jc-darah').value;
+        let q = db.collection("users");
+        if(jc !== "Semua") q = q.where("komsel", "==", jc);
+        const snap = await q.get();
+        let counts = { "A": 0, "B": 0, "O": 0, "AB": 0 };
+        snap.forEach(doc => { 
+            const d = doc.data().golongan_darah;
+            if(counts.hasOwnProperty(d)) counts[d]++;
+        });
+        for(let t in counts) { document.getElementById('count-'+t).innerText = counts[t] + " Orang"; }
+    }
+
+    window.onload = () => { loadAlkitab(); loadDarah(); loadKehadiran(); };
 </script>
 </body>
 </html>
