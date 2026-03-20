@@ -47,7 +47,7 @@
 
     <div class="search-container">
         <div class="search-box">
-            <input type="text" id="search-input" placeholder="Cari Nama atau ketik 'JC 5'...">
+            <input type="text" id="search-input" placeholder="Cari Nama (Contoh: Boby)...">
         </div>
     </div>
 
@@ -89,9 +89,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-        // 1. Inisialisasi Firebase (Ganti dengan Config Bapak)
+        // --- 1. KONFIGURASI FIREBASE ---
+        // Ganti dengan Config asli dari Firebase Console Bapak
         const firebaseConfig = {
-            apiKey: "AIzaSy...",
+            apiKey: "AIzaSy...", 
             authDomain: "pondok-pemulihan.firebaseapp.com",
             projectId: "pondok-pemulihan",
             storageBucket: "pondok-pemulihan.appspot.com",
@@ -108,43 +109,45 @@
         document.getElementById('header-title').innerHTML += ` (${myJC})`;
         document.getElementById('access-text').innerText = `Lacak Domba hanya bisa dilakukan sesama anggota ${myJC} dengan saling terhubung masing-masing akun.`;
 
-        // 2. Fungsi Search Real-time dari Firebase
+        // --- 2. FUNGSI HELPER (CAPITALIZE) ---
+        // Mengubah "boby daniel" menjadi "Boby Daniel" agar cocok dengan Database
+        function capitalizeWords(str) {
+            return str.replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        // --- 3. FUNGSI SEARCH ---
         async function renderLists(filter = "") {
             const searchResults = document.getElementById('search-results');
             const searchSection = document.getElementById('search-results-section');
-            
             searchResults.innerHTML = "";
 
-            if (!filter) {
+            if (!filter || filter.length < 2) {
                 searchSection.style.display = "none";
-                loadConnectedFriends(); 
                 return;
             }
 
             searchSection.style.display = "block";
             
-            let queryField = "nama";
-            let searchTerm = filter;
-
-            if (filter.toLowerCase().includes("jc")) {
-                queryField = "komsel";
-                searchTerm = filter.replace(/\D/g, ""); 
-            }
+            // Perbaikan di sini: Menyesuaikan input user dengan format database
+            let searchTerm = capitalizeWords(filter.trim());
 
             try {
                 const snapshot = await db.collection("users")
-                    .where(queryField, ">=", searchTerm)
-                    .where(queryField, "<=", searchTerm + "\uf8ff")
+                    .where("nama", ">=", searchTerm)
+                    .where("nama", "<=", searchTerm + "\uf8ff")
+                    .limit(5)
                     .get();
 
                 if (snapshot.empty) {
-                    searchResults.innerHTML = "<p style='padding:10px; font-size:12px; color:red;'>Tidak ada anggota ditemukan.</p>";
+                    searchResults.innerHTML = "<p style='padding:10px; font-size:12px; color:red;'>Nama tidak ditemukan (Perhatikan Huruf Besar/Kecil).</p>";
                     return;
                 }
 
                 snapshot.forEach(doc => {
                     const user = doc.data();
                     const userId = doc.id;
+                    
+                    // Sembunyikan diri sendiri dari hasil cari
                     if (user.email === currentUserEmail) return;
 
                     const avatar = user.foto_profil || `https://ui-avatars.com/api/?name=${user.nama}&background=random&bold=true`;
@@ -154,7 +157,7 @@
                             <img src="${avatar}" class="friend-img" onclick="bukaProfil('${userId}')">
                             <div class="friend-info" onclick="bukaProfil('${userId}')">
                                 <h4>${user.nama}</h4>
-                                <p>Komsel JC ${user.komsel} • ${user.jabatan || 'Anggota'}</p>
+                                <p>JC ${user.komsel} • ${user.jabatan || 'Anggota'}</p>
                             </div>
                             <button class="btn btn-invite" id="btn-${userId}" onclick="handleInvite('${userId}', '${user.nama}')">
                                 <i class="fa-solid fa-user-plus"></i> ADD
@@ -165,12 +168,12 @@
             } catch (error) { console.error("Error search:", error); }
         }
 
-        // 3. Fungsi Kirim Add Friend
+        // --- 4. FUNGSI INVITE ---
         async function handleInvite(targetId, targetName) {
             try {
                 await db.collection("friend_requests").add({
-                    fromId: currentUserId,
-                    fromNama: localStorage.getItem('userName'),
+                    fromId: currentUserId || "ID_ANONIM",
+                    fromNama: localStorage.getItem('userName') || "Anggota Baru",
                     toId: targetId,
                     status: "pending",
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -179,8 +182,8 @@
                 btn.innerHTML = "SENT";
                 btn.classList.add('btn-sent');
                 btn.onclick = null;
-                alert("Permintaan pertemanan terkirim ke " + targetName);
-            } catch (e) { alert("Gagal kirim permintaan."); }
+                alert("Permintaan terkirim ke " + targetName);
+            } catch (e) { alert("Gagal mengirim permintaan."); }
         }
 
         async function bukaProfil(id) {
@@ -196,11 +199,11 @@
 
         function tutupProfil() { document.getElementById('modalProfil').style.display = 'none'; }
 
-        // Tambahkan Listener Pencarian
-        document.getElementById('search-input').addEventListener('input', (e) => renderLists(e.target.value));
+        // Listener Input
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            renderLists(e.target.value);
+        });
 
-        // Panggil fungsi saat awal buka
-        window.onload = () => renderLists("");
     </script>
 </body>
 </html>
