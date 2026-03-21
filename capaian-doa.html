@@ -6,149 +6,191 @@
     <title>Capaian Doa Komsel - JC</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --biru: #003366; --emas: #D4AF37; --bg: #f4f7fa; --hijau: #28a745; }
-        
-        body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: var(--bg); 
-            margin: 0; 
-            padding-bottom: 50px;
-            /* Memperbaiki tampilan mepet di HP dengan Notch */
-            padding-top: env(safe-area-inset-top); 
+        :root { 
+            --biru-gelap: #002d5a; 
+            --emas: #D4AF37; 
+            --bg: #f0f2f5; 
+            --hijau: #28a745; 
+            --putih: #ffffff;
         }
         
-        /* Header dengan Tombol Back di Kanan */
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg); 
+            margin: 0; 
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden; /* Mencegah scroll pada body utama */
+        }
+
+        /* Header Statis di Atas */
         header { 
-            background-color: var(--biru); 
+            background-color: var(--biru-gelap); 
             color: white; 
-            padding: 20px 15px; /* Padding diperbesar agar tidak mepet */
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between;
-            position: sticky; 
-            top: 0; 
-            z-index: 100;
+            padding: calc(20px + env(safe-area-inset-top)) 15px 15px;
+            text-align: center;
             border-bottom: 3px solid var(--emas);
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-shrink: 0;
         }
         
         header h2 { 
             margin: 0; 
-            font-size: 17px; 
+            font-size: 18px; 
             text-transform: uppercase; 
-            letter-spacing: 1px;
-            font-weight: 700;
+            letter-spacing: 1.5px;
+            font-weight: 800;
         }
 
-        header a { 
-            color: white; 
-            text-decoration: none; 
-            font-size: 22px;
-            display: flex;
-            align-items: center;
+        /* Area Konten yang Bisa di-Scroll */
+        .main-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 100px; /* Ruang untuk tombol bawah */
+            -webkit-overflow-scrolling: touch;
         }
 
-        .container { padding: 20px 15px; }
+        .label-group {
+            color: var(--biru-gelap);
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
 
         .btn-add { 
             background: var(--emas); 
-            color: var(--biru); 
-            padding: 15px; 
+            color: var(--biru-gelap); 
+            padding: 16px; 
             border-radius: 12px; 
             border: none; 
-            font-weight: bold; 
+            font-weight: 800; 
             width: 100%; 
-            margin-bottom: 25px; 
+            margin-bottom: 20px; 
             cursor: pointer; 
-            font-size: 15px; 
+            font-size: 14px; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             gap: 10px; 
-            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3); 
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            text-transform: uppercase;
         }
 
-        /* Card Styles */
+        /* Card Style - Lebih Bersih */
         .ticket-card { 
-            background: white; 
-            border-radius: 15px; 
-            padding: 18px; 
+            background: var(--putih); 
+            border-radius: 16px; 
+            padding: 16px; 
             margin-bottom: 15px; 
-            border-left: 6px solid var(--emas); 
-            box-shadow: 0 3px 12px rgba(0,0,0,0.06); 
-            text-align: left; 
+            border-left: 5px solid var(--emas); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
         }
         
-        .ticket-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: #999; margin-bottom: 10px; }
-        .pokok-doa { font-weight: 600; color: var(--biru); margin: 12px 0; line-height: 1.5; font-style: italic; font-size: 14px; }
-        .sla-info { font-size: 11px; background: #fff3e0; color: #e67e22; padding: 6px 12px; border-radius: 20px; display: inline-block; font-weight: bold; }
-        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 9px; font-weight: bold; letter-spacing: 0.5px; }
-        .waiting { background: #ffeaa7; color: #d35400; }
-        .answered { background: #d4edda; color: #155724; }
+        .ticket-header { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 10px; }
+        .pokok-doa { font-size: 15px; color: #333; margin: 10px 0; line-height: 1.5; font-weight: 500; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; }
+        .waiting { background: #fff4e5; color: #d35400; }
+        .answered { background: #e8f5e9; color: #2e7d32; }
 
-        .btn-check { 
-            margin-top: 15px; 
-            width: 100%; 
-            padding: 12px; 
-            border-radius: 10px; 
-            border: 1.5px solid var(--hijau); 
-            color: var(--hijau); 
-            background: white; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 13px;
+        /* Navigasi Bawah (Tombol Back) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--putih);
+            padding: 15px 0 calc(15px + env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: center;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+            z-index: 1000;
         }
 
-        /* Modal Styles */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .modal-content { background: white; width: 85%; max-width: 400px; padding: 25px; border-radius: 20px; text-align: center; }
-        .form-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: var(--biru); text-transform: uppercase; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; outline: none; }
+        .btn-back-bottom {
+            background: #e74c3c;
+            color: white;
+            text-decoration: none;
+            padding: 12px 40px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+
+        .btn-back-bottom:active { transform: scale(0.95); opacity: 0.9; }
+
+        /* Modal Responsif */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: flex-end; }
+        .modal-content { 
+            background: white; 
+            width: 100%; 
+            padding: 25px; 
+            border-radius: 25px 25px 0 0; /* Gaya Bottom Sheet */
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .form-group { margin-bottom: 15px; }
+        label { font-size: 11px; font-weight: bold; color: var(--biru-gelap); display: block; margin-bottom: 5px; }
+        textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; font-size: 14px; box-sizing: border-box; outline: none; }
     </style>
 </head>
 <body>
 
 <header>
     <h2>Capaian Doa Komsel</h2>
-    <a href="menu.html"><i class="fa-solid fa-circle-xmark"></i></a>
 </header>
 
-<div class="container">
-    <h4 id="label-kelompok" style="color: var(--biru); margin: 0 0 15px 5px; text-transform: uppercase; font-size: 13px; opacity: 0.8;">Memuat Kelompok...</h4>
+<div class="main-content">
+    <div id="label-kelompok" class="label-group">MEMUAT DATA...</div>
     
     <button class="btn-add" onclick="openModal()">
         <i class="fa-solid fa-plus-circle"></i> TAMBAH DOA BARU
     </button>
     
     <div id="list-doa">
-        <p style="text-align:center; color:#999; padding:40px;">Sedang menyinkronkan doa...</p>
+        <div style="text-align:center; padding:50px; color:#aaa;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 30px; margin-bottom: 10px;"></i>
+            <p>Menyinkronkan data...</p>
+        </div>
     </div>
+</div>
+
+<div class="bottom-nav">
+    <a href="menu.html" class="btn-back-bottom">
+        <i class="fa-solid fa-house"></i> KEMBALI KE MENU
+    </a>
 </div>
 
 <div id="doaModal" class="modal">
     <div class="modal-content">
-        <h3 style="color: var(--biru); margin: 0 0 20px 0;">FORM INPUT DOA</h3>
-        <div class="form-group"><label>No. Tiket</label><input type="text" id="ticketNo" readonly></div>
-        <div class="form-group"><label>Pokok Doa</label><textarea id="pokokDoa" rows="4" placeholder="Apa yang ingin didoakan?"></textarea></div>
-        <button onclick="simpanDoa()" style="background: var(--biru); color:white; width:100%; padding:15px; border-radius:12px; border:none; font-weight:bold; cursor:pointer; font-size: 14px;">KIRIM DOA</button>
-        <button onclick="closeModal()" style="background: none; color:#999; width:100%; border:none; margin-top:12px; cursor:pointer; font-size: 13px;">Batal</button>
-    </div>
-</div>
-
-<div id="notifSuccess" class="modal">
-    <div class="modal-content" style="border-top: 6px solid var(--hijau);">
-        <i class="fa-solid fa-check-circle" style="font-size: 50px; color: var(--hijau); margin-bottom: 15px;"></i>
-        <h3 style="margin:0;">TERKIRIM!</h3>
-        <p style="color:#666; font-size: 14px;">Doa Anda telah tersimpan di database.</p>
-        <button onclick="closeNotif()" style="background: var(--hijau); color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold;">Selesai</button>
+        <div style="width: 40px; height: 5px; background: #ddd; border-radius: 10px; margin: -10px auto 20px;"></div>
+        <h3 style="color: var(--biru-gelap); margin-top: 0;">Input Doa Baru</h3>
+        <div class="form-group">
+            <label>Pokok Doa</label>
+            <textarea id="pokokDoa" rows="4" placeholder="Tuliskan pergumulan doa Anda di sini..."></textarea>
+        </div>
+        <button onclick="simpanDoa()" style="background: var(--biru-gelap); color:white; width:100%; padding:15px; border-radius:12px; border:none; font-weight:bold; cursor:pointer;">KIRIM DOA</button>
+        <button onclick="closeModal()" style="background: none; color:#999; width:100%; border:none; margin-top:10px; cursor:pointer; font-size: 14px;">Batal</button>
     </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <script>
+    // Konfigurasi Firebase (Gunakan milik Anda)
     const firebaseConfig = { 
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
@@ -161,93 +203,62 @@
     const db = firebase.firestore();
 
     const userName = localStorage.getItem("userName") || "Anggota";
-    const userEmail = localStorage.getItem("userEmail");
     const userJC = localStorage.getItem("userJC") || "5"; 
 
     window.onload = function() {
-        document.getElementById('label-kelompok').innerText = `LIST DOA KELOMPOK JC-${userJC}`;
+        document.getElementById('label-kelompok').innerText = `LIST DOA JC-${userJC}`;
         getRiwayatDoa();
     };
 
-    async function openModal() {
-        document.getElementById('doaModal').style.display = 'flex';
-        const count = Math.floor(Math.random() * 900) + 100;
-        document.getElementById('ticketNo').value = `DOA-${count}-2026`;
-    }
-
+    function openModal() { document.getElementById('doaModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('doaModal').style.display = 'none'; }
-    function closeNotif() { document.getElementById('notifSuccess').style.display = 'none'; }
 
     async function simpanDoa() {
         const pokok = document.getElementById('pokokDoa').value;
-        if(!pokok) return alert("Harap isi pokok doa!");
-
+        if(!pokok) return alert("Isi doa dulu ya!");
         try {
             await db.collection("laporan_doa").add({
-                ticketId: document.getElementById('ticketNo').value,
+                ticketId: "DOA-" + Math.floor(Math.random()*1000),
                 nama: userName,
-                email: userEmail,
                 jc: userJC,
                 pokokDoa: pokok,
                 tglInput: firebase.firestore.FieldValue.serverTimestamp(),
-                status: "Proses",
-                tglCapaian: null,
-                totalHari: 0
+                status: "Proses"
             });
             closeModal();
             document.getElementById('pokokDoa').value = "";
-            document.getElementById('notifSuccess').style.display = 'flex';
-        } catch(e) { alert("Error: " + e.message); }
+        } catch(e) { alert("Gagal: " + e.message); }
     }
 
     function getRiwayatDoa() {
         db.collection("laporan_doa")
-        .where("jc", "==", userJC) 
+        .where("jc", "==", userJC)
         .orderBy("tglInput", "desc")
         .onSnapshot((snapshot) => {
             const listDiv = document.getElementById('list-doa');
             listDiv.innerHTML = "";
             if (snapshot.empty) {
-                listDiv.innerHTML = `<p style="text-align:center; color:#999; padding:40px;">Belum ada riwayat doa.</p>`;
+                listDiv.innerHTML = `<p style="text-align:center; color:#999; margin-top:30px;">Belum ada riwayat doa.</p>`;
                 return;
             }
             snapshot.forEach((doc) => {
                 const item = doc.data();
-                const id = doc.id;
-                let days = 0;
-                if(item.tglInput) {
-                    const start = item.tglInput.toDate();
-                    const end = item.tglCapaian ? item.tglCapaian.toDate() : new Date();
-                    days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
-                }
                 const isAnswered = item.status === "Selesai";
                 listDiv.innerHTML += `
                     <div class="ticket-card" style="border-left-color: ${isAnswered ? '#28a745' : '#D4AF37'}">
                         <div class="ticket-header">
-                            <span>${item.ticketId}</span>
+                            <span>${item.ticketId || 'DOA-JC'}</span>
                             <span class="status-badge ${isAnswered ? 'answered' : 'waiting'}">
-                                ${isAnswered ? 'DIKABULKAN' : 'DALAM DOA'}
+                                ${isAnswered ? 'TERJAWAB' : 'PROSES'}
                             </span>
                         </div>
-                        <div style="font-size:13px; font-weight:700; color:var(--biru);">${item.nama}</div>
+                        <div style="font-weight:bold; font-size:13px; color:var(--biru-gelap)">${item.nama}</div>
                         <div class="pokok-doa">"${item.pokokDoa}"</div>
-                        <div class="sla-info">
-                            <i class="fa-solid fa-clock"></i> ${isAnswered ? 'Selesai dalam: ' + item.totalHari : 'Sudah berjalan: ' + days} Hari
-                        </div>
-                        ${!isAnswered ? `<button class="btn-check" onclick="markAsDone('${id}', ${days})">Tandai Sudah Dijawab</button>` : ''}
                     </div>`;
             });
+        }, (err) => {
+            listDiv.innerHTML = `<p style="color:red; text-align:center; font-size:12px;">Gagal memuat. Pastikan Index Firestore aktif.</p>`;
         });
-    }
-
-    async function markAsDone(docId, totalDays) {
-        if(confirm("Puji Tuhan! Apakah doa ini benar sudah dijawab?")) {
-            await db.collection("laporan_doa").doc(docId).update({
-                status: "Selesai",
-                tglCapaian: firebase.firestore.FieldValue.serverTimestamp(),
-                totalHari: totalDays
-            });
-        }
     }
 </script>
 </body>
