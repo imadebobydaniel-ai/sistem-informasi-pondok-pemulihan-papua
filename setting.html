@@ -11,18 +11,27 @@
         .setting-container { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 25px; border-top: 5px solid var(--biru-utama); }
         .header { text-align: center; margin-bottom: 25px; color: var(--biru-utama); font-weight: bold; font-size: 1.2rem; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; }
-        .btn-save { background: var(--biru-utama); color: white; width: 100%; padding: 15px; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
-        .btn-save:hover { background: #003d80; }
-        .back-link { display: block; text-align: center; margin-top: 20px; text-decoration: none; color: var(--biru-utama); font-size: 14px; font-weight: bold; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #444; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; }
         
-        /* Notifikasi Block Display */
+        /* Area Garis Merah Bapak - Fitur Tambahan */
+        .fitur-tambahan { margin-top: 25px; padding-top: 20px; border-top: 2px dashed #eee; }
+        .flex-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+        
+        /* Gaya Switch Toggle */
+        .switch { position: relative; display: inline-block; width: 45px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--biru-utama); }
+        input:checked + .slider:before { transform: translateX(21px); }
+
+        .btn-save { background: var(--biru-utama); color: white; width: 100%; padding: 15px; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        
         #notif-block {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9); color: white; padding: 30px; border-radius: 15px;
-            text-align: center; z-index: 10000; width: 80%; max-width: 300px;
-            border: 2px solid var(--biru-utama);
+            background: rgba(0,0,0,0.95); color: white; padding: 30px; border-radius: 15px;
+            text-align: center; z-index: 10000; width: 80%; max-width: 300px; border: 2px solid var(--biru-utama);
         }
     </style>
 </head>
@@ -30,8 +39,8 @@
 
 <div id="notif-block">
     <i class="fa-solid fa-circle-check" style="font-size: 40px; color: #2ecc71; margin-bottom: 15px;"></i>
-    <p id="notif-text" style="margin: 0;">Password dan Email Berhasil diupdate</p>
-    <p style="font-size: 12px; margin-top: 10px; color: #aaa;">Mengalihkan ke Login...</p>
+    <p style="margin: 0; font-weight: bold;">Password dan Email Berhasil diupdate</p>
+    <p style="font-size: 12px; margin-top: 10px; color: #ccc;">Silakan login ulang...</p>
 </div>
 
 <div class="setting-container">
@@ -41,22 +50,39 @@
         <label>Email Baru</label>
         <input type="email" id="newEmail" placeholder="Masukkan email baru">
     </div>
-
     <div class="form-group">
         <label>Password Baru</label>
         <input type="password" id="newPassword" placeholder="Masukkan password baru">
     </div>
 
     <button class="btn-save" onclick="updateAkun()">SIMPAN PERUBAHAN</button>
-    
-    <a href="menu.html" class="back-link">← Kembali ke Menu</a>
+
+    <div class="fitur-tambahan">
+        <div class="flex-row">
+            <label style="margin: 0;">Suara Notifikasi Alkitab (22:00 WIT)</label>
+            <label class="switch">
+                <input type="checkbox" id="notifSound" onchange="updateMemory()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="form-group" style="margin-top: 15px;">
+            <label>Masa Waktu Aktif Aplikasi (Otomatis Logout)</label>
+            <select id="timerLogout" onchange="updateMemory()">
+                <option value="0">Selalu Aktif</option>
+                <option value="30">30 Menit</option>
+                <option value="60">60 Menit</option>
+            </select>
+        </div>
+    </div>
+
+    <a href="menu.html" style="display: block; text-align: center; margin-top: 25px; text-decoration: none; color: var(--biru-utama); font-weight: bold;">← Kembali ke Menu</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase (Tetap sesuai milik Bapak)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -68,44 +94,41 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
-    const oldEmail = localStorage.getItem("userEmail");
+    const userEmail = localStorage.getItem("userEmail");
+
+    // Load settingan dari memory HP saat halaman dibuka
+    window.onload = function() {
+        document.getElementById("notifSound").checked = localStorage.getItem("setSuara") === "true";
+        document.getElementById("timerLogout").value = localStorage.getItem("setTimer") || "0";
+    };
+
+    // Fungsi menyimpan pilihan user ke memory HP
+    function updateMemory() {
+        localStorage.setItem("setSuara", document.getElementById("notifSound").checked);
+        localStorage.setItem("setTimer", document.getElementById("timerLogout").value);
+    }
 
     async function updateAkun() {
-        const newEmail = document.getElementById("newEmail").value;
-        const newPassword = document.getElementById("newPassword").value;
+        const nEmail = document.getElementById("newEmail").value;
+        const nPass = document.getElementById("newPassword").value;
 
-        if (!newEmail || !newPassword) {
-            alert("Harap isi Email dan Password baru!");
-            return;
-        }
+        if (!nEmail || !nPass) { alert("Harap isi Email dan Password!"); return; }
 
         try {
-            // 1. Cari dokumen user berdasarkan email lama
-            const snap = await db.collection("users").where("email", "==", oldEmail).get();
-
+            const snap = await db.collection("users").where("email", "==", userEmail).get();
             if (!snap.empty) {
-                const docId = snap.docs[0].id;
-
-                // 2. Update di Database
-                await db.collection("users").doc(docId).update({
-                    email: newEmail,
-                    password: newPassword // Pastikan nama field sesuai di DB Bapak
+                await db.collection("users").doc(snap.docs[0].id).update({
+                    email: nEmail,
+                    password: nPass
                 });
 
-                // 3. Munculkan Notif Block
                 document.getElementById("notif-block").style.display = "block";
-
-                // 4. Hapus sesi & Arahkan ke Login setelah 3 detik
                 setTimeout(() => {
                     localStorage.clear();
                     window.location.replace("index.html");
-                }, 3000);
-            } else {
-                alert("Data user tidak ditemukan.");
+                }, 3500);
             }
-        } catch (error) {
-            alert("Gagal update: " + error.message);
-        }
+        } catch (e) { alert("Gagal: " + e.message); }
     }
 </script>
 </body>
