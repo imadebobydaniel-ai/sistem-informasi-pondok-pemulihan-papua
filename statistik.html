@@ -12,7 +12,6 @@
         .mobile-wrapper { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
         .card { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #eee; }
         .card-header { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; border-bottom: 2px solid var(--biru-utama); padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; font-size: 13px; color: #333; }
-        .header-doa { border-bottom-color: var(--emas-doa); }
         
         .flex-row { display: flex; gap: 8px; margin-bottom: 12px; }
         .input-box { flex: 1; }
@@ -75,22 +74,40 @@
         <div class="card-header"><i class="fa-solid fa-calendar-check"></i> STATISTIK KEHADIRAN</div>
         <div class="flex-row">
             <div class="input-box"><label>Pilih Komsel</label>
-                <select id="select-komsel-hadir"><option>JC 1</option><option>JC 2</option><option>JC 3</option><option>JC 4</option><option selected>JC 5</option><option>JC 6</option></select>
+                <select id="select-komsel-hadir" onchange="syncKehadiranRealtime()"><option>JC 1</option><option>JC 2</option><option>JC 3</option><option>JC 4</option><option selected>JC 5</option><option>JC 6</option></select>
             </div>
             <div class="input-box"><label>Periode</label>
-                <select id="select-periode-hadir">
+                <select id="select-periode-hadir" onchange="syncKehadiranRealtime()">
                     <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="4">4 Bulan Terakhir</option><option value="5">5 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
                 </select>
             </div>
         </div>
         <div class="stat-item">
-            <div class="stat-label-flex"><span>Kehadiran Komsel</span><span style="color:var(--biru-utama)">0%</span></div>
-            <div class="progress-bar"><div class="progress-fill" style="width: 0%; background: var(--biru-utama);"></div></div>
+            <div class="stat-label-flex"><span>Kehadiran Komsel</span><span id="text-hadir-komsel" style="color:var(--biru-utama)">0%</span></div>
+            <div class="progress-bar"><div id="bar-hadir-komsel" class="progress-fill" style="width: 0%; background: var(--biru-utama);"></div></div>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-header header-doa"><i class="fa-solid fa-hands-praying" style="color:var(--emas-doa)"></i> CAPAIAN DOA (SLA)</div>
+        <div class="card-header" style="border-bottom-color: var(--merah-absen);"><i class="fa-solid fa-circle-dot" style="color:var(--merah-absen)"></i> KETIDAK HADIRAN</div>
+        <div class="flex-row">
+            <div class="input-box"><label>Pilih Komsel</label>
+                <select id="select-komsel-absen" onchange="syncKehadiranRealtime()"><option>JC 1</option><option>JC 2</option><option>JC 3</option><option>JC 4</option><option selected>JC 5</option><option>JC 6</option></select>
+            </div>
+            <div class="input-box"><label>Periode</label>
+                <select id="select-periode-absen" onchange="syncKehadiranRealtime()">
+                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="4">4 Bulan Terakhir</option><option value="5">5 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
+                </select>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>Ketidak Hadiran Komsel</span><span id="text-absen-komsel" style="color:var(--merah-absen)">0%</span></div>
+            <div class="progress-bar"><div id="bar-absen-komsel" class="progress-fill" style="width: 0%; background: var(--merah-absen);"></div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header" style="border-bottom-color: var(--emas-doa);"><i class="fa-solid fa-hands-praying" style="color:var(--emas-doa)"></i> CAPAIAN DOA (SLA)</div>
         <div class="flex-row">
             <div class="input-box"><label>Grup JC</label>
                 <select id="select-komsel-doa" onchange="syncDoaRealtime()">
@@ -150,7 +167,37 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // SINKRONISASI DOA REALTIME (PENAMBAHAN BARU)
+    // SINKRONISASI KEHADIRAN & KETIDAK HADIRAN REALTIME
+    function syncKehadiranRealtime() {
+        const selKomsel = document.getElementById('select-komsel-hadir').value;
+        const perHadir = parseInt(document.getElementById('select-periode-hadir').value);
+        const perAbsen = parseInt(document.getElementById('select-periode-absen').value);
+        
+        const startDateHadir = new Date(); startDateHadir.setMonth(startDateHadir.getMonth() - perHadir);
+        const startDateAbsen = new Date(); startDateAbsen.setMonth(startDateAbsen.getMonth() - perAbsen);
+
+        db.collection("kehadiran").onSnapshot(snap => {
+            const data = snap.docs.map(d => d.data());
+            
+            // Logic Kehadiran
+            const filteredHadir = data.filter(d => d.komsel === selKomsel && d.tanggal.toDate() >= startDateHadir);
+            const totalHadir = filteredHadir.filter(d => d.status === "Hadir").length;
+            const persenHadir = filteredHadir.length > 0 ? (totalHadir / filteredHadir.length) * 100 : 0;
+            
+            document.getElementById('text-hadir-komsel').innerText = persenHadir.toFixed(1) + "%";
+            document.getElementById('bar-hadir-komsel').style.width = persenHadir + "%";
+
+            // Logic Ketidak Hadiran
+            const filteredAbsen = data.filter(d => d.komsel === selKomsel && d.tanggal.toDate() >= startDateAbsen);
+            const totalAbsen = filteredAbsen.filter(d => d.status === "Absen" || d.status === "Izin").length;
+            const persenAbsen = filteredAbsen.length > 0 ? (totalAbsen / filteredAbsen.length) * 100 : 0;
+
+            document.getElementById('text-absen-komsel').innerText = persenAbsen.toFixed(1) + "%";
+            document.getElementById('bar-absen-komsel').style.width = persenAbsen + "%";
+        });
+    }
+
+    // SINKRONISASI DOA REALTIME
     function syncDoaRealtime() {
         const filter = document.getElementById('select-komsel-doa').value;
         db.collection("laporan_doa").onSnapshot((snapshot) => {
@@ -175,7 +222,7 @@
         });
     }
 
-    // GOLONGAN DARAH (BACKUP)
+    // GOLONGAN DARAH
     function syncGoldarRealtime() {
         const filter = document.getElementById('select-komsel-goldar').value;
         db.collection("users").onSnapshot((snapshot) => {
@@ -215,43 +262,3 @@
                     <div class="user-info-text"><p class="user-name">${u.nama || "Tanpa Nama"}</p><p class="user-jc">${String(u.komsel || "").includes("JC") ? u.komsel : "JC " + u.komsel}</p></div>
                 </div>`;
             });
-        }
-        listBody.innerHTML = html; modal.style.display = "flex";
-    }
-
-    // CAPAIAN BACA ALKITAB (BACKUP)
-    function syncCapaianRealtime() {
-        const selKomsel = document.getElementById('select-komsel-alkitab').value;
-        const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
-        db.collection("users").onSnapshot(snapUsers => {
-            const allUsers = snapUsers.docs.map(d => d.data());
-            const totalGlobal = allUsers.length;
-            const totalKomsel = allUsers.filter(u => (String(u.komsel || "").includes("JC") ? u.komsel : "JC " + u.komsel) === selKomsel).length;
-            const startDate = new Date();
-            startDate.setMonth(startDate.getMonth() - periodeBulan);
-            startDate.setHours(0,0,0,0);
-            db.collection("laporan_bacaan").where("tanggal", ">=", startDate).onSnapshot(snapLapor => {
-                const laporGlobal = snapLapor.size;
-                const laporKomsel = snapLapor.docs.filter(d => (String(d.data().komsel || "").includes("JC") ? d.data().komsel : "JC " + d.data().komsel) === selKomsel).length;
-                const pGlobal = totalGlobal > 0 ? (laporGlobal / (totalGlobal * 30 * periodeBulan)) * 100 : 0;
-                const pKomsel = totalKomsel > 0 ? (laporKomsel / (totalKomsel * 30 * periodeBulan)) * 100 : 0;
-                updateUI("global", Math.min(pGlobal, 100));
-                updateUI("komsel", Math.min(pKomsel, 100));
-            });
-        });
-    }
-
-    function updateUI(type, percent) {
-        const val = percent.toFixed(1) + "%";
-        document.getElementById('text-capaian-' + type).innerText = val;
-        document.getElementById('bar-capaian-' + type).style.width = val;
-    }
-
-    window.onload = () => { 
-        syncGoldarRealtime(); 
-        syncCapaianRealtime(); 
-        syncDoaRealtime(); // Jalankan sinkronisasi doa saat load
-    };
-</script>
-</body>
-</html>
