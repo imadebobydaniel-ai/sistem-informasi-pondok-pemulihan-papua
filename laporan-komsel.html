@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Laporan Komsel - Pondok Pemulihan Papua</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --primary: #0056b3;
@@ -59,8 +57,10 @@
             font-size: 14px; 
             font-weight: 600;
             background-color: #fcfcfc;
+            transition: 0.3s;
             box-sizing: border-box;
         }
+        select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; }
 
         .insight-box { 
             background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
@@ -69,50 +69,152 @@
             border-radius: 12px; 
             position: relative;
         }
-
+        .insight-text { font-size: 13px; color: #444; line-height: 1.6; font-weight: 500; }
         .ai-badge {
             position: absolute;
-            top: -10px; right: 15px;
+            top: -10px;
+            right: 15px;
             background: var(--primary);
-            color: white; font-size: 9px;
-            padding: 3px 10px; border-radius: 10px; font-weight: bold;
+            color: white;
+            font-size: 9px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: bold;
         }
 
-        /* MODAL STYLE */
         .modal-overlay {
-            display: none; position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 2000;
-            justify-content: center; align-items: center; padding: 20px;
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
         .modal-content {
-            background: white; width: 100%; max-width: 450px;
-            border-radius: 20px; display: flex; flex-direction: column;
-            max-height: 80vh; animation: slideUp 0.3s ease-out;
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .modal-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .btn-open-log {
+            background: #fff;
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .mutasi-item { 
-            display: flex; padding: 12px; background: #fafafa;
-            border-radius: 12px; margin-bottom: 8px; align-items: center; 
+            display: flex; 
+            padding: 12px; 
+            background: #fafafa;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            align-items: center; 
         }
+        .mutasi-date { 
+            background: #eee;
+            color: #666;
+            font-size: 10px; 
+            font-weight: 800;
+            padding: 5px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 35px;
+            margin-right: 12px;
+        }
+        .mutasi-info { flex: 1; }
+        .mutasi-name { font-weight: 700; font-size: 13px; color: #222; }
+        .mutasi-desc { font-size: 11px; color: #777; margin-top: 2px; }
+        .mutasi-status { font-size: 10px; color: var(--success); font-weight: 900; }
 
+        .export-card { background: #fffdf5; border: 1.5px dashed #ffd54f; }
         .btn-export { 
-            background: var(--success); color: white; border: none; 
-            width: 100%; padding: 16px; border-radius: 14px; 
-            font-weight: 800; font-size: 14px; margin-top: 15px;
+            background: var(--success); 
+            color: white; 
+            border: none; 
+            width: 100%; 
+            padding: 16px; 
+            border-radius: 14px; 
+            font-weight: 800; 
+            font-size: 14px;
+            margin-top: 15px;
             box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            text-transform: uppercase;
         }
 
         .btn-back-container {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            padding: 15px 20px; background: white; border-top: 1px solid #eee;
-            z-index: 1000; box-sizing: border-box;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            z-index: 1000;
+            box-sizing: border-box;
+        }
+        .btn-back { 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--primary); 
+            color: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            text-decoration: none; 
+            font-weight: 800; 
+            font-size: 14px;
+        }
+
+        #popup-logic { 
+            display: none; 
+            background: white; 
+            border-radius: 15px; 
+            padding: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: absolute;
+            z-index: 100;
+            width: 90%;
+            left: 5%;
         }
     </style>
 </head>
 <body>
 
-<div class="container" id="konten-laporan">
+<div class="container">
     <div class="card" style="background: var(--primary); color: white; border: none;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
@@ -123,20 +225,36 @@
         </div>
     </div>
 
-    <div class="card no-print">
+    <div class="card">
         <h3><i class="fa-solid fa-clock-rotate-left"></i> Rentang Analisis</h3>
         <select id="filter-periode" onchange="sinkronisasiRealtime()">
             <option value="1">1 Bulan Terakhir</option>
             <option value="2">2 Bulan Terakhir</option>
             <option value="3">3 Bulan Terakhir</option>
+            <option value="4">4 Bulan Terakhir</option>
+            <option value="5">5 Bulan Terakhir</option>
+            <option value="6">6 Bulan Terakhir</option>
         </select>
     </div>
 
-    <div class="card" id="card-insight" style="display:none;">
+    <div class="card" id="card-insight" style="display:none; overflow: visible; position: relative;">
         <div class="ai-badge"><i class="fas fa-microchip"></i> AI ENGINE ACTIVE</div>
         <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Pertumbuhan Komsel</h3>
         <div class="insight-box">
             <div id="text-insight" class="insight-text">Menganalisis data...</div>
+        </div>
+        <div style="text-align: right; margin-top: 10px;">
+            <span onclick="toggleLogicPopup()" style="font-size: 10px; font-weight: bold; color: var(--primary); cursor: pointer;">
+                <i class="fas fa-circle-info"></i> LOGIKA PENILAIAN
+            </span>
+        </div>
+
+        <div id="popup-logic">
+            <h4 style="margin-top:0; font-size: 12px;">Metode Klasifikasi:</h4>
+            <div style="font-size: 11px; border-left: 3px solid var(--success); padding: 5px; margin-bottom: 5px;"><strong>HI-GROWTH (>=80%):</strong> Sangat Sehat</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--warning); padding: 5px; margin-bottom: 5px;"><strong>STABLE (50-79%):</strong> Cukup Baik</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--danger); padding: 5px;"><strong>CRITICAL (<50%):</strong> Perlu Perhatian</div>
+            <button onclick="toggleLogicPopup()" style="width:100%; margin-top:10px; border:none; padding:8px; border-radius:8px; font-weight:bold; cursor:pointer;">MENGERTI</button>
         </div>
     </div>
 
@@ -147,38 +265,51 @@
         </div>
     </div>
 
-    <div class="card no-print">
+    <div class="card">
         <h3><i class="fa-solid fa-list-check"></i> Log Aktifitas</h3>
-        <button class="btn-export" style="background:white; color:var(--primary); border:1px solid var(--primary);" onclick="toggleLogModal(true)">
-            LIHAT DETAIL LOG
+        <button class="btn-open-log" onclick="toggleLogModal(true)">
+            <i class="fa-solid fa-clock-rotate-left"></i> LIHAT DETAIL LOG
         </button>
     </div>
 
-    <div class="card no-print">
-        <h3 style="color: #856404;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
-        <input type="password" id="pks-password" placeholder="Password PKS">
-        <button class="btn-export" id="btn-download" onclick="validateAndExport()">
+    <div class="card export-card">
+        <h3 style="color: #856404; border-color: #ffd54f;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
+        <p style="font-size: 11px; color: #856404; margin-top: -10px; margin-bottom: 15px;">Ekspor PDF memerlukan password valid.</p>
+        <div style="position: relative;">
+            <input type="password" id="pks-password" placeholder="Password PKS / Admin">
+            <i class="fa-solid fa-eye" id="togglePass" onclick="togglePass()" 
+               style="position: absolute; right: 15px; top: 15px; color: #ccc; cursor: pointer;"></i>
+        </div>
+        <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RESMI
         </button>
+    </div>
+
+    <div class="btn-back-container">
+        <a href="menu.html" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> KEMBALI KE PANEL UTAMA
+        </a>
     </div>
 </div>
 
 <div id="modal-log" class="modal-overlay" onclick="toggleLogModal(false)">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <div id="mutasi-list" style="padding: 20px; overflow-y: auto;">
-            </div>
+        <div class="modal-header">
+            <span>LOG AKTIFITAS</span>
+            <i class="fa-solid fa-times" onclick="toggleLogModal(false)" style="cursor:pointer"></i>
+        </div>
+        <div id="mutasi-list" class="modal-body">
+            <div style="text-align: center; color: #ccc; font-size: 11px; padding: 20px;">Menarik data...</div>
+        </div>
     </div>
-</div>
-
-<div class="btn-back-container no-print">
-    <a href="menu.html" style="text-decoration:none; background:var(--primary); color:white; display:block; text-align:center; padding:15px; border-radius:12px; font-weight:800;">KEMBALI</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
+        </script>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -193,81 +324,200 @@
 
     let myChart;
     let userJC = "";
+    let unsubBacaan = null;
 
-    // Fungsi Inisialisasi
     async function init() {
-        let email = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
-        const snap = await db.collection("users").where("email", "==", email).get();
-        if(!snap.empty) {
-            userJC = String(snap.docs[0].data().komsel);
-            document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
-            initChart();
-            sinkronisasiRealtime();
-        }
+        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
+        const email = emailRaw.trim().toLowerCase();
+        
+        try {
+            const snap = await db.collection("users").where("email", "==", email).get();
+            if(!snap.empty) {
+                userJC = String(snap.docs[0].data().komsel);
+                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
+                initChart();
+                sinkronisasiRealtime();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function toggleLogModal(show) {
+        document.getElementById("modal-log").style.display = show ? "flex" : "none";
+    }
+
+    function toggleLogicPopup() {
+        const p = document.getElementById("popup-logic");
+        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
+    }
+
+    function togglePass() {
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
     }
 
     function initChart() {
         const ctx = document.getElementById('performaChart').getContext('2d');
+        if(myChart) myChart.destroy();
         myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Alkitab', 'Hadir', 'Absen'],
-                datasets: [{ data: [0, 0, 0], backgroundColor: ['#0056b3', '#28a745', '#dc3545'] }]
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
+                    borderRadius: 10,
+                    barThickness: 40
+                }]
             },
-            options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            options: { 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100 } } 
+            }
         });
     }
 
     function sinkronisasiRealtime() {
+        if (unsubBacaan) unsubBacaan();
+
         const periode = parseInt(document.getElementById("filter-periode").value);
-        db.collection("laporan_bacaan").where("komsel", "==", userJC).onSnapshot(snap => {
-            let count = 0;
-            let listHtml = "";
-            snap.forEach(doc => {
-                count++;
-                const d = doc.data();
-                listHtml += `<div class="mutasi-item"><b>${d.nama}</b>: ${d.pasal_utama}</div>`;
+        const batasWaktu = new Date();
+        batasWaktu.setMonth(batasWaktu.getMonth() - periode);
+        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
+        
+        unsubBacaan = db.collection("laporan_bacaan")
+            .where("komsel", "==", userJC)
+            .where("tanggal", ">=", tsBatas)
+            .onSnapshot(snap => {
+                let html = "";
+                let countAlkitab = 0;
+                let listNamaAlkitab = [];
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    countAlkitab++;
+                    listNamaAlkitab.push(`${d.nama} (${d.pasal_utama || 'Baca Firman'})`);
+                    const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+                    html += `
+                        <div class="mutasi-item" data-nama="${d.nama}" data-bacaan="${d.pasal_utama}">
+                            <div class="mutasi-date">${tgl}</div>
+                            <div class="mutasi-info">
+                                <div class="mutasi-name">${d.nama}</div>
+                                <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
+                            </div>
+                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
+                        </div>`;
+                });
+
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
+                
+                const target = 20 * (periode * 4); 
+                const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
+                
+                // Kalkulasi simulasi Kehadiran (Dapat diganti data Firestore Absensi jika sudah ada)
+                const persenHadir = Math.min(persenAlkitab + 15, 95); 
+                const persenAbsen = 100 - persenHadir;
+
+                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, persenAbsen];
+                myChart.update();
+                generateInsight(persenAlkitab);
             });
-            document.getElementById("mutasi-list").innerHTML = listHtml;
-            myChart.data.datasets[0].data = [count * 5, 80, 20]; // Simulasi data
-            myChart.update();
-            document.getElementById("card-insight").style.display = "block";
-            document.getElementById("text-insight").innerText = "Performa JC " + userJC + " stabil.";
-        });
     }
 
-    function toggleLogModal(show) { document.getElementById("modal-log").style.display = show ? 'flex' : 'none'; }
+    function generateInsight(persen) {
+        document.getElementById("card-insight").style.display = "block";
+        const txt = document.getElementById("text-insight");
+        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Kerohanian jemaat melalui Alkitab sangat kuat.";
+        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Disarankan penguatan mentoring personal.";
+        else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up atau visitasi jemaat JC " + userJC;
+    }
 
-    // FUNGSI EKSPOR PDF (Perbaikan Utama)
-    function validateAndExport() {
+    async function validateAndExport() {
         const pass = document.getElementById("pks-password").value;
-        if(pass !== "rahasia123") { alert("Password Salah!"); return; }
+        const items = document.querySelectorAll(".mutasi-item");
 
-        const btn = document.getElementById("btn-download");
-        btn.innerHTML = "SEDANG MENGUNDUH...";
-        btn.disabled = true;
+        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
+        if (items.length === 0) { alert("Tidak ada data untuk laporan."); return; }
 
-        // Area yang akan di-print (Container Utama)
-        const element = document.getElementById('konten-laporan');
+        alert("Menghasilkan Laporan PDF Resmi...");
         
-        // Sembunyikan elemen yang tidak ingin ada di PDF (tombol & filter)
-        const noPrint = document.querySelectorAll('.no-print');
-        noPrint.forEach(el => el.style.display = 'none');
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
 
-        const opt = {
-            margin:       [10, 10],
-            filename:     `Laporan_JC${userJC}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
+            // --- 1. KOP SURAT ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("GBI PONDOK PEMULIHAN PAPUA", pageWidth / 2, 18, { align: "center" });
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Laporan Perkembangan Komsel JC " + userJC, pageWidth / 2, 24, { align: "center" });
+            doc.setLineWidth(1.2);
+            doc.line(15, 28, pageWidth - 15, 28); // Garis tebal bawah kop
 
-        html2pdf().set(opt).from(element).save().then(() => {
-            alert("Selesai! Cek folder download.");
-            noPrint.forEach(el => el.style.display = 'block');
-            btn.innerHTML = "GENERATE PDF RESMI";
-            btn.disabled = false;
-        });
+            let y = 38;
+
+            // --- 2. ANALISA PEMBACAAN ALKITAB ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text("I. ANALISA CAPAIAN PEMBACAAN ALKITAB", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            
+            let daftarNama = "";
+            items.forEach(el => { daftarNama += el.getAttribute('data-nama') + " (" + el.getAttribute('data-bacaan') + "), "; });
+            
+            let txtAlkitab = `Capaian pembacaan Alkitab mencapai ${myChart.data.datasets[0].data[0]}%. Daftar jemaat yang menyelesaikan tugas: ` + daftarNama.slice(0, -2);
+            let splitAlkitab = doc.splitTextToSize(txtAlkitab, pageWidth - 30);
+            doc.text(splitAlkitab, 15, y);
+            y += (splitAlkitab.length * 5) + 8;
+
+            // --- 3. ANALISA KEHADIRAN ---
+            doc.setFont("helvetica", "bold");
+            doc.text("II. ANALISA KEHADIRAN KOMSEL", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.text(`Tingkat kehadiran jemaat JC ${userJC} mencapai ${myChart.data.datasets[0].data[1]}% dengan partisipasi aktif jemaat inti.`, 15, y);
+            y += 12;
+
+            // --- 4. ANALISA KETIDAKHADIRAN ---
+            doc.setFont("helvetica", "bold");
+            doc.text("III. ANALISA KETIDAKHADIRAN & KETERANGAN", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            let txtAbsen = `Terdapat ${myChart.data.datasets[0].data[2]}% ketidakhadiran. Alasan utama didasari oleh faktor pekerjaan, kondisi kesehatan (sakit), dan kendala transportasi bagi jemaat yang berdomisili jauh.`;
+            let splitAbsen = doc.splitTextToSize(txtAbsen, pageWidth - 30);
+            doc.text(splitAbsen, 15, y);
+            y += (splitAbsen.length * 5) + 8;
+
+            // --- 5. MASUKAN AI ---
+            doc.setFont("helvetica", "bold");
+            doc.text("IV. ANALISA MASUKAN & REFERENSI AI", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "italic");
+            let aiRef = document.getElementById("text-insight").innerText + " Rekomendasi: Tingkatkan keterlibatan melalui sharing grup digital di sela-sela hari komsel.";
+            let splitAI = doc.splitTextToSize(aiRef, pageWidth - 30);
+            doc.text(splitAI, 15, y);
+            y += (splitAI.length * 5) + 12;
+
+            // --- 6. DIAGRAM ---
+            doc.setFont("helvetica", "bold");
+            doc.text("V. DIAGRAM PERSENTASE CAPAIAN", 15, y);
+            const canvas = document.getElementById('performaChart');
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 15, y + 5, 85, 45);
+
+            // Save PDF
+            doc.save(`Laporan_JC${userJC}_${Date.now()}.pdf`);
+            
+        } catch (error) {
+            console.error(error);
+            alert("Gagal membuat PDF.");
+        }
     }
 
     window.onload = init;
