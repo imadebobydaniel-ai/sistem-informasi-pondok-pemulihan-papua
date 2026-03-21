@@ -115,38 +115,51 @@
 </div>
 
 <script type="module">
-    // Pastikan Firebase sudah diinisialisasi di sini atau di file global Anda
-    import { db } from './firebase-config.js'; // Sesuaikan path config Anda
-    import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { db } from './firebase-config.js'; 
+    import { collection, query, where, getDocs, or } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // Fungsi Update Statistik Angka di Kartu
     window.updateBloodStats = async function() {
-        const komsel = document.getElementById('filterKomselDarah').value;
+        const komselTerpilih = document.getElementById('filterKomselDarah').value;
         const types = ['A', 'B', 'O', 'AB'];
         
         for (const type of types) {
             let q;
-            if (komsel === "Semua") {
-                q = query(collection(db, "users"), where("golongan_darah", "==", type));
+            const usersRef = collection(db, "users");
+            
+            // Menggunakan or() untuk mengecek field 'golongan_darah' ATAU 'golDarah'
+            if (komselTerpilih === "Semua") {
+                q = query(usersRef, or(where("golongan_darah", "==", type), where("golDarah", "==", type)));
             } else {
-                q = query(collection(db, "users"), where("golongan_darah", "==", type), where("komsel", "==", komsel));
+                q = query(usersRef, 
+                    where("komsel", "==", komselTerpilih), 
+                    or(where("golongan_darah", "==", type), where("golDarah", "==", type))
+                );
             }
+            
             const querySnapshot = await getDocs(q);
             document.getElementById(`count${type}`).innerText = `${querySnapshot.size} Orang`;
         }
     }
 
+    // Fungsi Membuka Popup dan Menampilkan Nama/Foto
     window.openPopup = async function(type) {
         document.getElementById("bloodTypeTitle").innerText = type;
         document.getElementById("modalDetail").style.display = "flex";
         const userList = document.getElementById("userList");
         userList.innerHTML = '<p style="text-align:center; font-size:12px; color:#999;">Memuat data...</p>';
         
-        const komsel = document.getElementById('filterKomselDarah').value;
+        const komselTerpilih = document.getElementById('filterKomselDarah').value;
+        const usersRef = collection(db, "users");
         let q;
-        if (komsel === "Semua") {
-            q = query(collection(db, "users"), where("golongan_darah", "==", type));
+
+        if (komselTerpilih === "Semua") {
+            q = query(usersRef, or(where("golongan_darah", "==", type), where("golDarah", "==", type)));
         } else {
-            q = query(collection(db, "users"), where("golongan_darah", "==", type), where("komsel", "==", komsel));
+            q = query(usersRef, 
+                where("komsel", "==", komselTerpilih), 
+                or(where("golongan_darah", "==", type), where("golDarah", "==", type))
+            );
         }
 
         const querySnapshot = await getDocs(q);
@@ -159,9 +172,11 @@
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            // Cek field fotoUrl atau foto_profil (sesuai data Boby Daniel & I Made Boby)
+            const photo = data.fotoUrl || data.foto_profil || 'https://via.placeholder.com/50';
             userList.innerHTML += `
                 <div class="user-list-item">
-                    <img src="${data.fotoUrl || 'https://via.placeholder.com/50'}" alt="Foto">
+                    <img src="${photo}" alt="Foto">
                     <div class="user-info-text">
                         <p class="user-name">${data.nama}</p>
                         <p class="user-jc">Unit: JC ${data.komsel}</p>
@@ -172,7 +187,7 @@
 
     window.closePopup = function() { document.getElementById("modalDetail").style.display = "none"; }
     
-    // Load awal
+    // Inisialisasi data saat halaman terbuka
     updateBloodStats();
 </script>
 </body>
