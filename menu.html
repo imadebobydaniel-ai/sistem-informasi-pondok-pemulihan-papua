@@ -335,6 +335,28 @@
                         photoImg.style.display = "none"; 
                         defaultIcon.style.display = "block"; 
                     }
+                    // Jalankan ini saat body onload di menu.html
+function aktifkanTrackingOtomatis() {
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(async (position) => {
+            const userEmail = localStorage.getItem("userEmail");
+            const userJC = localStorage.getItem("userJC"); // Kita ambil grup komselnya
+
+            await db.collection("live_tracking").doc(userEmail).set({
+                nama: localStorage.getItem("userName"),
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                komsel: userJC,
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }, (error) => {
+            console.log("GPS tidak aktif atau diizinkan");
+        }, { 
+            enableHighAccuracy: true,
+            maximumAge: 0 
+        });
+    }
+}
                 }
             });
         }
