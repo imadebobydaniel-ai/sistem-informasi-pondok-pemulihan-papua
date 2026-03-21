@@ -17,15 +17,15 @@
 
         /* Modal Popup */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 90%; max-width: 450px; padding: 25px; border-radius: 20px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: white; width: 90%; max-width: 450px; padding: 25px; border-radius: 20px; position: relative; max-height: 90vh; overflow-y: auto; text-align: center; }
         
-        .form-group { margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; text-align: left; }
         label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: var(--biru); text-transform: uppercase; }
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; }
         input[readonly] { background: #f0f0f0; color: #777; }
 
         /* Card Tiket Doa */
-        .ticket-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 6px solid var(--emas); box-shadow: 0 3px 10px rgba(0,0,0,0.05); position: relative; }
+        .ticket-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; border-left: 6px solid var(--emas); box-shadow: 0 3px 10px rgba(0,0,0,0.05); position: relative; text-align: left; }
         .ticket-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #888; margin-bottom: 8px; }
         .pokok-doa { font-weight: 600; color: var(--biru); margin: 10px 0; line-height: 1.4; }
         .sla-info { font-size: 12px; background: #fff3e0; color: #e67e22; padding: 5px 10px; border-radius: 20px; display: inline-block; font-weight: bold; }
@@ -56,7 +56,7 @@
 
 <div id="doaModal" class="modal">
     <div class="modal-content">
-        <h3 style="color: var(--biru); margin: 0 0 20px 0; text-align: center;">FORM INPUT DOA</h3>
+        <h3 style="color: var(--biru); margin: 0 0 20px 0;">FORM INPUT DOA</h3>
         
         <div class="form-group">
             <label>No. Tiket Doa</label>
@@ -96,11 +96,19 @@
     </div>
 </div>
 
+<div id="notifSuccess" class="modal">
+    <div class="modal-content" style="border-top: 6px solid var(--hijau);">
+        <i class="fa-solid fa-circle-check" style="font-size: 50px; color: var(--hijau); margin-bottom: 15px;"></i>
+        <h3 style="margin: 0; color: #333;">BERHASIL!</h3>
+        <p style="color: #666; font-size: 14px;">Doa Telah di Input & Terintegrasi</p>
+        <button onclick="closeNotif()" style="background: var(--hijau); color: white; border: none; padding: 12px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%;">OK</button>
+    </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Bapak
     const firebaseConfig = { 
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
@@ -115,15 +123,12 @@
     const userName = localStorage.getItem("userName") || "Anggota";
     const userEmail = localStorage.getItem("userEmail");
 
-    // 1. Logika Tiket Otomatis & Popup
     async function openModal() {
         document.getElementById('doaModal').style.display = 'flex';
         document.getElementById('namaUser').value = userName;
-        
         const now = new Date();
         document.getElementById('tglDisplay').value = now.toLocaleDateString('id-ID');
 
-        // Generate ID Urut Berdasarkan Waktu (001-2026 Style)
         const snapshot = await db.collection("laporan_doa").get();
         const count = snapshot.size + 1;
         const formattedCount = String(count).padStart(3, '0');
@@ -131,8 +136,8 @@
     }
 
     function closeModal() { document.getElementById('doaModal').style.display = 'none'; }
+    function closeNotif() { document.getElementById('notifSuccess').style.display = 'none'; }
 
-    // 2. Simpan Realtime ke Database
     async function simpanDoa() {
         const pokok = document.getElementById('pokokDoa').value;
         if(!pokok) return alert("Isi pokok doa!");
@@ -151,32 +156,28 @@
 
         try {
             await db.collection("laporan_doa").add(data);
-            alert("Doa Berhasil Terintegrasi!");
-            closeModal();
+            closeModal(); // Tutup form input
             document.getElementById('pokokDoa').value = "";
+            
+            // Tampilkan Notifikasi Block Display
+            document.getElementById('notifSuccess').style.display = 'flex';
         } catch(e) { alert("Gagal koneksi database."); }
     }
 
-    // 3. Realtime Listener & Hitung SLA
     function getRiwayatDoa() {
         db.collection("laporan_doa").orderBy("tglInput", "desc").onSnapshot((snapshot) => {
             const listDiv = document.getElementById('list-doa');
             listDiv.innerHTML = "";
-
             snapshot.forEach((doc) => {
                 const item = doc.data();
                 const id = doc.id;
-                
-                // Hitung SLA (Total Hari)
                 let days = 0;
                 if(item.tglInput) {
                     const start = item.tglInput.toDate();
                     const end = item.tglCapaian ? item.tglCapaian.toDate() : new Date();
                     days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
                 }
-
                 const isAnswered = item.status === "Selesai";
-                
                 listDiv.innerHTML += `
                     <div class="ticket-card" style="border-left-color: ${isAnswered ? '#28a745' : '#D4AF37'}">
                         <div class="ticket-header">
@@ -197,7 +198,6 @@
         });
     }
 
-    // 4. Update Status "Dikabulkan"
     async function markAsDone(docId, totalDays) {
         if(confirm("Puji Tuhan! Apakah doa ini sudah dijawab?")) {
             await db.collection("laporan_doa").doc(docId).update({
