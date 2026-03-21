@@ -3,181 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Pondok Pemulihan Papua</title>
+    <title>Login - Komsel JC</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; position: relative; }
-        .logo { width: 80px; margin-bottom: 20px; }
-        h2 { margin: 10px 0; font-size: 20px; color: #333; }
-        h3 { color: #ffcc00; margin-bottom: 20px; font-size: 18px; text-shadow: 1px 1px 2px #000; }
-        form { text-align: left; }
-        .form-group { margin-bottom: 20px; position: relative; }
-        input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; }
-        .toggle-password { position: absolute; right: 15px; top: 12px; cursor: pointer; color: #999; }
-        .btn-login { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .footer-links { margin-top: 25px; font-size: 14px; color: #666; }
-        .footer-links a { color: #007bff; text-decoration: none; font-weight: bold; }
-        .admin-link { display: block; margin-top: 15px; color: #666; text-decoration: none; font-size: 13px; }
-
-        /* Style Custom Popup */
-        #custom-popup {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; padding: 20px;
-        }
-        .popup-box {
-            background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 320px; text-align: center;
-        }
-        .btn-ok { 
-            background: #007bff; color: white; padding: 12px 20px; border-radius: 10px; border: none; 
-            cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px;
-        }
+        :root { --biru: #003366; --emas: #D4AF37; --bg: #f4f7fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 350px; text-align: center; border-top: 5px solid var(--biru); }
+        img { width: 80px; margin-bottom: 15px; border-radius: 50%; }
+        h2 { color: var(--biru); margin-bottom: 20px; font-size: 20px; text-transform: uppercase; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: var(--biru); }
+        button { width: 100%; padding: 12px; background: var(--biru); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; border: 2px solid var(--emas); transition: 0.3s; }
+        button:active { transform: scale(0.98); }
+        .error { color: #e74c3c; font-size: 13px; margin-top: 10px; display: none; font-weight: 600; }
     </style>
 </head>
 <body>
 
-    <div id="custom-popup">
-        <div class="popup-box">
-            <i id="popup-icon" class="fa-solid fa-triangle-exclamation" style="font-size: 40px; color: #d81b60;"></i>
-            <h3 id="popup-title" style="margin: 15px 0 10px; color: #333; text-shadow: none;">Pemberitahuan</h3>
-            <p id="popup-message" style="font-size: 14px; color: #666; line-height: 1.4;"></p>
-            <button class="btn-ok" onclick="tutupPopup()">SAYA MENGERTI</button>
-        </div>
-    </div>
+<div class="login-card">
+    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT78Z0M-B4CjR6iF9xX0D0M5_B_m9FfXW9vDw&s" alt="Logo">
+    <h2>PORTAL KOMSEL JC</h2>
+    <input type="email" id="email" placeholder="Email Terdaftar">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="prosesLogin()">MASUK SISTEM</button>
+    <div id="error-msg" class="error"></div>
+</div>
 
-    <div class="login-card">
-        <img src="logo_pondok.png" alt="Logo" class="logo">
-        <h2>PONDOK PEMULIHAN PAPUA</h2>
-        <h3>Sistem Informasi Komsel JC</h3>
-        <p style="color: #666; margin-bottom: 20px;">Login Anggota Komsel</p>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-        <form id="loginForm">
-            <div class="form-group">
-                <input type="email" id="email" placeholder="Email Anggota" required>
-            </div>
-            <div class="form-group">
-                <input type="password" id="pass" placeholder="Password" required>
-                <i class="fa-solid fa-eye toggle-password" id="eyeIconLogin" onclick="togglePassLogin()"></i>
-            </div>
-            <button type="submit" class="btn-login" id="submitBtn">MASUK</button>
-        </form>
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+        authDomain: "boby-apps-project.firebaseapp.com", 
+        projectId: "boby-apps-project", 
+        storageBucket: "boby-apps-project.appspot.com", 
+        messagingSenderId: "125984859692", 
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        <div class="footer-links">
-            Belum punya akun? <a href="registrasi.html">Daftar Sekarang</a>
-        </div>
-        <a href="login_admin.html" class="admin-link">Masuk sebagai Admin</a>
-    </div>
+    async function prosesLogin() {
+        const emailInput = document.getElementById('email').value.trim();
+        const passInput = document.getElementById('password').value.trim();
+        const errorDiv = document.getElementById('error-msg');
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-            authDomain: "boby-apps-project.firebaseapp.com",
-            projectId: "boby-apps-project",
-            storageBucket: "boby-apps-project.firebasestorage.app",
-            messagingSenderId: "125984859692",
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // Fungsi Popup
-        function tampilPopup(judul, pesan) {
-            document.getElementById("popup-title").innerText = judul;
-            document.getElementById("popup-message").innerText = pesan;
-            document.getElementById("custom-popup").style.display = "flex";
+        if(!emailInput || !passInput) {
+            errorDiv.innerText = "Email dan Password wajib diisi!";
+            errorDiv.style.display = "block";
+            return;
         }
 
-        function tutupPopup() {
-            document.getElementById("custom-popup").style.display = "none";
+        try {
+            // Langsung cek email dan password tanpa filter Device ID
+            const userRef = db.collection("users").where("email", "==", emailInput).where("password", "==", passInput);
+            const snapshot = await userRef.get();
+
+            if (snapshot.empty) {
+                errorDiv.innerText = "Akun tidak ditemukan atau Password salah!";
+                errorDiv.style.display = "block";
+                return;
+            }
+
+            // Ambil data user yang berhasil login
+            const userDoc = snapshot.docs[0];
+            const userData = userDoc.data();
+
+            // Simpan nama & email ke LocalStorage agar menu.html bisa mengenali siapa yang login
+            localStorage.setItem("userEmail", userData.email);
+            localStorage.setItem("userName", userData.nama);
+            
+            // Pindah ke menu utama
+            window.location.href = "menu.html";
+
+        } catch (e) {
+            console.error(e);
+            errorDiv.innerText = "Gagal login. Periksa koneksi internet Anda.";
+            errorDiv.style.display = "block";
         }
-
-        function togglePassLogin() {
-            const passInput = document.getElementById('pass');
-            const eyeIcon = document.getElementById('eyeIconLogin');
-            if (passInput.type === 'password') {
-                passInput.type = 'text';
-                eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                passInput.type = 'password';
-                eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-
-        // --- FUNGSI VALIDASI PERANGKAT ---
-        async function validasiPerangkat(userEmail) {
-            let deviceId = localStorage.getItem("my_app_device_id");
-            if (!deviceId) {
-                deviceId = "dev-" + Math.random().toString(36).substr(2, 9);
-            }
-
-            const userDoc = await db.collection("users_devices").doc(userEmail).get();
-            let registeredDevices = [];
-
-            if (userDoc.exists) {
-                registeredDevices = userDoc.data().deviceIds || [];
-            }
-
-            if (registeredDevices.includes(deviceId)) {
-                localStorage.setItem("my_app_device_id", deviceId);
-                return true;
-            } else {
-                if (registeredDevices.length < 2) {
-                    registeredDevices.push(deviceId);
-                    await db.collection("users_devices").doc(userEmail).set({
-                        deviceIds: registeredDevices,
-                        lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                    
-                    localStorage.setItem("my_app_device_id", deviceId);
-                    return true;
-                } else {
-                    tampilPopup("Akses Terbatas", "Maaf, Anda sudah login di 2 perangkat. Silakan hubungi admin untuk reset jika Anda berganti HP.");
-                    return false;
-                }
-            }
-        }
-
-        // --- LOGIKA LOGIN UTAMA ---
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('pass').value;
-
-            btn.disabled = true;
-            btn.innerText = "Memvalidasi...";
-
-            try {
-                const snapshot = await db.collection("users")
-                    .where("email", "==", email)
-                    .where("password", "==", password)
-                    .get();
-
-                if (!snapshot.empty) {
-                    // Cek Pembatasan Perangkat
-                    const bolehMasuk = await validasiPerangkat(email);
-                    
-                    if (bolehMasuk) {
-                        localStorage.setItem("userEmail", email);
-                        window.location.replace("menu.html");
-                    } else {
-                        btn.disabled = false;
-                        btn.innerText = "MASUK";
-                    }
-                } else {
-                    tampilPopup("Gagal Login", "Email atau Password Salah!");
-                    btn.disabled = false;
-                    btn.innerText = "MASUK";
-                }
-            } catch (err) {
-                tampilPopup("Error", err.message);
-                btn.disabled = false;
-                btn.innerText = "MASUK";
-            }
-        });
-    </script>
+    }
+</script>
 </body>
 </html>
