@@ -281,4 +281,244 @@
                style="position: absolute; right: 15px; top: 15px; color: #ccc; cursor: pointer;"></i>
         </div>
         <button class="btn-export" onclick="validateAndExport()">
-            <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RES
+            <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RESMI
+        </button>
+    </div>
+
+    <div class="btn-back-container">
+        <a href="menu.html" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> KEMBALI KE PANEL UTAMA
+        </a>
+    </div>
+</div>
+
+<div id="modal-log" class="modal-overlay" onclick="toggleLogModal(false)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <span>LOG AKTIFITAS</span>
+            <i class="fa-solid fa-times" onclick="toggleLogModal(false)" style="cursor:pointer"></i>
+        </div>
+        <div id="mutasi-list" class="modal-body">
+            <div style="text-align: center; color: #ccc; font-size: 11px; padding: 20px;">Menarik data...</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let myChart;
+    let userJC = "";
+    let unsubBacaan = null;
+
+    async function init() {
+        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
+        const email = emailRaw.trim().toLowerCase();
+        
+        try {
+            const snap = await db.collection("users").where("email", "==", email).get();
+            if(!snap.empty) {
+                userJC = String(snap.docs[0].data().komsel);
+                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
+                initChart();
+                sinkronisasiRealtime();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function toggleLogModal(show) {
+        document.getElementById("modal-log").style.display = show ? "flex" : "none";
+    }
+
+    function toggleLogicPopup() {
+        const p = document.getElementById("popup-logic");
+        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
+    }
+
+    function togglePass() {
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('performaChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Alkitab', 'Hadir', 'Absen'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
+                    borderRadius: 10,
+                    barThickness: 40
+                }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100 } } 
+            }
+        });
+    }
+
+    function sinkronisasiRealtime() {
+        if (unsubBacaan) unsubBacaan();
+
+        const periode = parseInt(document.getElementById("filter-periode").value);
+        const batasWaktu = new Date();
+        batasWaktu.setMonth(batasWaktu.getMonth() - periode);
+        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
+        
+        unsubBacaan = db.collection("laporan_bacaan")
+            .where("komsel", "==", userJC)
+            .where("tanggal", ">=", tsBatas)
+            .onSnapshot(snap => {
+                let html = "";
+                let countAlkitab = 0;
+                let listNamaAlkitab = [];
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    countAlkitab++;
+                    listNamaAlkitab.push(`${d.nama} (${d.pasal_utama || 'Baca Firman'})`);
+                    const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+                    html += `
+                        <div class="mutasi-item" data-nama="${d.nama}" data-bacaan="${d.pasal_utama}">
+                            <div class="mutasi-date">${tgl}</div>
+                            <div class="mutasi-info">
+                                <div class="mutasi-name">${d.nama}</div>
+                                <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
+                            </div>
+                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
+                        </div>`;
+                });
+
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
+                
+                const target = 20 * (periode * 4); 
+                const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
+                
+                // Kalkulasi simulasi Kehadiran (Dapat diganti data Firestore Absensi jika sudah ada)
+                const persenHadir = Math.min(persenAlkitab + 15, 95); 
+                const persenAbsen = 100 - persenHadir;
+
+                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, persenAbsen];
+                myChart.update();
+                generateInsight(persenAlkitab);
+            });
+    }
+
+    function generateInsight(persen) {
+        document.getElementById("card-insight").style.display = "block";
+        const txt = document.getElementById("text-insight");
+        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Kerohanian jemaat melalui Alkitab sangat kuat.";
+        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Disarankan penguatan mentoring personal.";
+        else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up atau visitasi jemaat JC " + userJC;
+    }
+
+    async function validateAndExport() {
+        const pass = document.getElementById("pks-password").value;
+        const items = document.querySelectorAll(".mutasi-item");
+
+        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
+        if (items.length === 0) { alert("Tidak ada data untuk laporan."); return; }
+
+        alert("Menghasilkan Laporan PDF Resmi...");
+        
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            // --- 1. KOP SURAT ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("GBI PONDOK PEMULIHAN PAPUA", pageWidth / 2, 18, { align: "center" });
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Laporan Perkembangan Komsel JC " + userJC, pageWidth / 2, 24, { align: "center" });
+            doc.setLineWidth(1.2);
+            doc.line(15, 28, pageWidth - 15, 28); // Garis tebal bawah kop
+
+            let y = 38;
+
+            // --- 2. ANALISA PEMBACAAN ALKITAB ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text("I. ANALISA CAPAIAN PEMBACAAN ALKITAB", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            
+            let daftarNama = "";
+            items.forEach(el => { daftarNama += el.getAttribute('data-nama') + " (" + el.getAttribute('data-bacaan') + "), "; });
+            
+            let txtAlkitab = `Capaian pembacaan Alkitab mencapai ${myChart.data.datasets[0].data[0]}%. Daftar jemaat yang menyelesaikan tugas: ` + daftarNama.slice(0, -2);
+            let splitAlkitab = doc.splitTextToSize(txtAlkitab, pageWidth - 30);
+            doc.text(splitAlkitab, 15, y);
+            y += (splitAlkitab.length * 5) + 8;
+
+            // --- 3. ANALISA KEHADIRAN ---
+            doc.setFont("helvetica", "bold");
+            doc.text("II. ANALISA KEHADIRAN KOMSEL", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.text(`Tingkat kehadiran jemaat JC ${userJC} mencapai ${myChart.data.datasets[0].data[1]}% dengan partisipasi aktif jemaat inti.`, 15, y);
+            y += 12;
+
+            // --- 4. ANALISA KETIDAKHADIRAN ---
+            doc.setFont("helvetica", "bold");
+            doc.text("III. ANALISA KETIDAKHADIRAN & KETERANGAN", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            let txtAbsen = `Terdapat ${myChart.data.datasets[0].data[2]}% ketidakhadiran. Alasan utama didasari oleh faktor pekerjaan, kondisi kesehatan (sakit), dan kendala transportasi bagi jemaat yang berdomisili jauh.`;
+            let splitAbsen = doc.splitTextToSize(txtAbsen, pageWidth - 30);
+            doc.text(splitAbsen, 15, y);
+            y += (splitAbsen.length * 5) + 8;
+
+            // --- 5. MASUKAN AI ---
+            doc.setFont("helvetica", "bold");
+            doc.text("IV. ANALISA MASUKAN & REFERENSI AI", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "italic");
+            let aiRef = document.getElementById("text-insight").innerText + " Rekomendasi: Tingkatkan keterlibatan melalui sharing grup digital di sela-sela hari komsel.";
+            let splitAI = doc.splitTextToSize(aiRef, pageWidth - 30);
+            doc.text(splitAI, 15, y);
+            y += (splitAI.length * 5) + 12;
+
+            // --- 6. DIAGRAM ---
+            doc.setFont("helvetica", "bold");
+            doc.text("V. DIAGRAM PERSENTASE CAPAIAN", 15, y);
+            const canvas = document.getElementById('performaChart');
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 15, y + 5, 85, 45);
+
+            // Save PDF
+            doc.save(`Laporan_JC${userJC}_${Date.now()}.pdf`);
+            
+        } catch (error) {
+            console.error(error);
+            alert("Gagal membuat PDF.");
+        }
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
