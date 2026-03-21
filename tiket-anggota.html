@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiket Layanan - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --biru-tua: #003366;
+            --emas: #D4AF37;
+            --putih: #ffffff;
+        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 400px; background: var(--putih); padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid var(--emas); }
+        
+        h3 { color: var(--biru-tua); margin-bottom: 20px; text-transform: uppercase; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        .user-box { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 20px; text-align: left; border: 1px solid #ddd; }
+        .user-box div { font-size: 13px; color: #555; margin-bottom: 5px; }
+        .user-box b { color: var(--biru-tua); }
+
+        select, textarea { 
+            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ddd; 
+            margin-bottom: 15px; font-family: inherit; font-size: 14px; box-sizing: border-box; outline: none;
+        }
+        textarea { height: 120px; resize: none; background: #fafafa; }
+        
+        .btn-kirim { 
+            width: 100%; background: var(--biru-tua); color: white; border: none; 
+            padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px; 
+            cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-kirim:hover { background: #002244; transform: translateY(-2px); }
+        .btn-kirim:disabled { background: #ccc; cursor: not-allowed; }
+
+        .btn-back { display: block; margin-top: 20px; text-decoration: none; color: #888; font-size: 13px; }
+
+        /* Notifikasi Sukses */
+        #success-screen { display: none; }
+        .icon-check { font-size: 50px; color: #28a745; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="form-screen">
+        <h3><i class="fa-solid fa-ticket-alt"></i> Buat Tiket Baru</h3>
+        
+        <div class="user-box">
+            <div>Pengirim: <b id="txt-nama">Memuat...</b></div>
+            <div>Komsel: <b id="txt-komsel">Memuat...</b></div>
+        </div>
+
+        <select id="kategori-tiket">
+            <option value="Permohonan Doa">🙏 Permohonan Doa</option>
+            <option value="Konseling">🤝 Konseling / Curhat</option>
+            <option value="Laporan Masalah">⚠️ Masalah Aplikasi</option>
+            <option value="Saran/Masukan">💡 Saran & Masukan</option>
+        </select>
+
+        <textarea id="pesan-tiket" placeholder="Tuliskan detail permohonan atau laporan Anda..."></textarea>
+
+        <button class="btn-kirim" onclick="kirimTiket()" id="btn-submit">
+            <i class="fa-solid fa-paper-plane"></i> KIRIM TIKET
+        </button>
+
+        <a href="menu.html" class="btn-back"><i class="fa-solid fa-chevron-left"></i> Kembali</a>
+    </div>
+
+    <div id="success-screen">
+        <i class="fa-solid fa-circle-check icon-check"></i>
+        <h2 style="color: var(--biru-tua);">Tiket Terkirim!</h2>
+        <p style="color: #666; font-size: 14px;">Terima kasih. Permohonan Anda telah masuk ke sistem dan akan segera diproses oleh Admin.</p>
+        <p style="font-size: 12px; color: var(--emas);">Kembali ke menu dalam 3 detik...</p>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Ambil data identitas saat halaman dibuka
+    window.onload = function() {
+        const email = localStorage.getItem("userEmail");
+        if (!email) { window.location.href = "index.html"; return; }
+
+        db.collection("users").where("email", "==", email).get().then((snap) => {
+            if (!snap.empty) {
+                const user = snap.docs[0].data();
+                document.getElementById('txt-nama').innerText = user.nama;
+                document.getElementById('txt-komsel').innerText = "JC " + (user.komsel || "Pusat");
+            }
+        });
+    };
+
+    async function kirimTiket() {
+        const pesan = document.getElementById('pesan-tiket').value.trim();
+        const kategori = document.getElementById('kategori-tiket').value;
+        const btn = document.getElementById('btn-submit');
+        const email = localStorage.getItem("userEmail");
+        const nama = document.getElementById('txt-nama').innerText;
+        const komsel = document.getElementById('txt-komsel').innerText;
+
+        if (!pesan) return alert("Mohon isi pesan Anda!");
+
+        btn.disabled = true;
+        btn.innerHTML = "Mengirim...";
+
+        try {
+            // ALUR TIKETING: Simpan ke koleksi 'saran_masukan' (atau ganti jadi 'tickets' jika mau)
+            // Saya gunakan 'saran_masukan' agar sama dengan file admin sebelumnya
+            await db.collection("saran_masukan").add({
+                nama: nama,
+                email: email,
+                jc: komsel,
+                kategori: kategori,
+                isi_saran: pesan, // field disamakan dengan admin_dashboard
+                status: "open",   // Kunci Alur: Status Awal
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                tanggal_kirim: new Date().toLocaleDateString('id-ID'),
+                jam_kirim: new Date().toLocaleTimeString('id-ID')
+            });
+
+            document.getElementById('form-screen').style.display = "none";
+            document.getElementById('success-screen').style.display = "block";
+
+            setTimeout(() => { window.location.href = "menu.html"; }, 3500);
+
+        } catch (error) {
+            alert("Error: " + error.message);
+            btn.disabled = false;
+            btn.innerHTML = "KIRIM TIKET";
+        }
+    }
+</script>
+</body>
+</html>
