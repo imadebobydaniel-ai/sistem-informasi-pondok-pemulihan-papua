@@ -36,6 +36,9 @@
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
         input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 12px; box-sizing: border-box; font-size: 14px; }
+        /* Style tambahan untuk input readonly agar terlihat berbeda */
+        input[readonly] { background-color: #f0f2f5; color: #555; cursor: not-allowed; border: 1.5px solid #ccc; }
+
         .nav-bawah { position: fixed; bottom: 0; width: 100%; background: white; padding: 15px 0; display: flex; justify-content: center; box-shadow: 0 -3px 10px rgba(0,0,0,0.1); }
     </style>
 </head>
@@ -55,7 +58,8 @@
 <div id="modalInput" class="modal">
     <div class="modal-content">
         <h3 style="margin-top:0; color:var(--biru)">Form Tiket Doa</h3>
-        <input type="text" id="namaLengkap" placeholder="Nama Lengkap Pemohon">
+        <input type="text" id="namaLengkap" placeholder="Memuat nama pemohon...">
+        
         <select id="selectJC">
             <option value="">-- Pilih Komsel --</option>
             <option value="JC1">JC1</option><option value="JC2">JC2</option>
@@ -92,6 +96,19 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // FUNGSI OTOMATIS: Berjalan saat halaman dimuat
+    function initUser() {
+        const namaUser = localStorage.getItem('namaUser'); 
+        const inputNama = document.getElementById('namaLengkap');
+
+        if (namaUser) {
+            inputNama.value = namaUser;
+            inputNama.setAttribute('readonly', true); // Mengunci kolom
+        } else {
+            inputNama.placeholder = "Nama tidak ditemukan, silakan login ulang.";
+        }
+    }
+
     function bukaModal() { document.getElementById('modalInput').style.display = 'flex'; }
     function tutupModal() { document.getElementById('modalInput').style.display = 'none'; }
     function tutupVictory() { document.getElementById('popupVictory').style.display = 'none'; }
@@ -103,7 +120,6 @@
 
         if(!nama || !jc || !doa) return alert("Lengkapi data!");
 
-        // Penomoran otomatis berbasis count (sederhana)
         const snapshot = await db.collection("laporan_doa").get();
         const noUrut = snapshot.size + 1;
         const ticketID = `NK-DOA-${noUrut.toString().padStart(3, '0')}-2026`;
@@ -161,6 +177,9 @@
         });
         document.getElementById('popupVictory').style.display = 'flex';
     }
+
+    // Jalankan pengecekan nama saat window selesai dimuat
+    window.onload = initUser;
 </script>
 </body>
 </html>
