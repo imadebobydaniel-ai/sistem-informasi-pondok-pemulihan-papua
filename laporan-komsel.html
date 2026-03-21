@@ -58,6 +58,7 @@
             font-weight: 600;
             background-color: #fcfcfc;
             transition: 0.3s;
+            box-sizing: border-box;
         }
         select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; }
 
@@ -81,7 +82,6 @@
             font-weight: bold;
         }
 
-        /* MODAL LOG AKTIFITAS */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -183,6 +183,7 @@
             background: white;
             border-top: 1px solid #eee;
             z-index: 1000;
+            box-sizing: border-box;
         }
         .btn-back { 
             display: flex;
@@ -253,7 +254,7 @@
             <div style="font-size: 11px; border-left: 3px solid var(--success); padding: 5px; margin-bottom: 5px;"><strong>HI-GROWTH (>=80%):</strong> Sangat Sehat</div>
             <div style="font-size: 11px; border-left: 3px solid var(--warning); padding: 5px; margin-bottom: 5px;"><strong>STABLE (50-79%):</strong> Cukup Baik</div>
             <div style="font-size: 11px; border-left: 3px solid var(--danger); padding: 5px;"><strong>CRITICAL (<50%):</strong> Perlu Perhatian</div>
-            <button onclick="toggleLogicPopup()" style="width:100%; margin-top:10px; border:none; padding:8px; border-radius:8px; font-weight:bold;">MENGERTI</button>
+            <button onclick="toggleLogicPopup()" style="width:100%; margin-top:10px; border:none; padding:8px; border-radius:8px; font-weight:bold; cursor:pointer;">MENGERTI</button>
         </div>
     </div>
 
@@ -277,7 +278,7 @@
         <div style="position: relative;">
             <input type="password" id="pks-password" placeholder="Password PKS / Admin">
             <i class="fa-solid fa-eye" id="togglePass" onclick="togglePass()" 
-               style="position: absolute; right: 15px; top: 15px; color: #ccc;"></i>
+               style="position: absolute; right: 15px; top: 15px; color: #ccc; cursor: pointer;"></i>
         </div>
         <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RESMI
@@ -422,32 +423,40 @@
         else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up jemaat.";
     }
 
-   async function validateAndExport() {
-    const pass = document.getElementById("pks-password").value;
-    if(!pass) { 
-        alert("Masukkan password!"); 
-        return; 
-    }
+    async function validateAndExport() {
+        const pass = document.getElementById("pks-password").value;
+        const items = document.querySelectorAll(".mutasi-item");
 
-    if (pass === "rahasia123") {
+        if(!pass) { 
+            alert("Masukkan password!"); 
+            return; 
+        }
+
+        if (pass !== "rahasia123") {
+            alert("Password salah!");
+            return;
+        }
+
+        if (items.length === 0) {
+            alert("Tidak ada data aktifitas untuk diekspor pada periode ini.");
+            return;
+        }
+
         alert("Laporan PDF sedang diproses...");
         
         try {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Pengaturan Header PDF
+            // Header PDF
             doc.setFontSize(18);
             doc.text("LAPORAN ANALISA KOMSEL - " + userJC, 20, 20);
             doc.setFontSize(11);
             doc.text("Periode: " + document.getElementById("filter-periode").value + " Bulan Terakhir", 20, 30);
             doc.text("Tanggal Cetak: " + new Date().toLocaleDateString('id-ID'), 20, 35);
-            doc.line(20, 40, 190, 40); // Garis pembatas
+            doc.line(20, 40, 190, 40);
 
-            // Ambil data dari Log Aktifitas yang ada di mutasi-list
             let yPos = 50;
-            const items = document.querySelectorAll(".mutasi-item");
-            
             doc.setFontSize(12);
             doc.text("DETAIL AKTIFITAS JEMAAT:", 20, yPos);
             yPos += 10;
@@ -461,31 +470,19 @@
                 doc.text(`${index + 1}. [${tgl}] ${nama} - ${bacaan}`, 20, yPos);
                 yPos += 7;
 
-                // Tambah halaman baru jika konten terlalu panjang
                 if (yPos > 280) {
                     doc.addPage();
                     yPos = 20;
                 }
             });
 
-            // Perintah Download Otomatis
             doc.save(`Laporan_Komsel_${userJC}_${Date.now()}.pdf`);
             
         } catch (error) {
             console.error("Gagal generate PDF:", error);
             alert("Terjadi kesalahan saat membuat PDF.");
         }
-    } else {
-        alert("Password salah!");
     }
-       // Ganti bagian pengambilan data di fungsi export menjadi seperti ini:
-const items = document.querySelectorAll(".mutasi-item");
-
-if (items.length === 0) {
-    alert("Tidak ada data aktifitas untuk diekspor pada periode ini.");
-    return; // Berhenti jika tidak ada data
-}
-}
 
     window.onload = init;
 </script>
