@@ -172,6 +172,7 @@
             margin-top: 15px;
             box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
             text-transform: uppercase;
+            cursor: pointer;
         }
 
         .btn-back-container {
@@ -210,9 +211,39 @@
             width: 90%;
             left: 5%;
         }
+
+        /* Style Loading Spinner */
+        #loading-pdf {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: sans-serif;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+<div id="loading-pdf">
+    <div class="spinner"></div>
+    <p style="margin-top:20px; font-weight:bold;">Menyusun Laporan Resmi...</p>
+    <p style="font-size:12px; color:#ccc;">Mohon tunggu sebentar</p>
+</div>
 
 <div class="container">
     <div class="card" style="background: var(--primary); color: white; border: none;">
@@ -391,15 +422,12 @@
             .onSnapshot(snap => {
                 let html = "";
                 let countAlkitab = 0;
-                let listNamaAlkitab = [];
-
                 snap.forEach(doc => {
                     const d = doc.data();
                     countAlkitab++;
-                    listNamaAlkitab.push(`${d.nama} (${d.pasal_utama || 'Baca Firman'})`);
                     const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
                     html += `
-                        <div class="mutasi-item" data-nama="${d.nama}" data-bacaan="${d.pasal_utama}">
+                        <div class="mutasi-item" data-nama="${d.nama}" data-bacaan="${d.pasal_utama || 'Baca Firman'}">
                             <div class="mutasi-date">${tgl}</div>
                             <div class="mutasi-info">
                                 <div class="mutasi-name">${d.nama}</div>
@@ -413,8 +441,6 @@
                 
                 const target = 20 * (periode * 4); 
                 const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
-                
-                // Kalkulasi simulasi Kehadiran (Dapat diganti data Firestore Absensi jika sudah ada)
                 const persenHadir = Math.min(persenAlkitab + 15, 95); 
                 const persenAbsen = 100 - persenHadir;
 
@@ -434,17 +460,24 @@
 
     async function validateAndExport() {
         const pass = document.getElementById("pks-password").value;
+        const loader = document.getElementById("loading-pdf");
         const items = document.querySelectorAll(".mutasi-item");
 
         if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
         if (items.length === 0) { alert("Tidak ada data untuk laporan."); return; }
 
-        alert("Menghasilkan Laporan PDF Resmi...");
+        loader.style.display = "flex";
         
         try {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.getWidth();
+
+            // --- BAGIAN LOGO (MASUKKAN BASE64 ANDA DI SINI) ---
+            const logoBase64 = "DATA_BASE64_LOGO_ANDA_DI_SINI";
+            if(logoBase64.startsWith("data:image")) {
+                doc.addImage(logoBase64, 'PNG', 15, 8, 20, 20);
+            }
 
             // --- 1. KOP SURAT ---
             doc.setFont("helvetica", "bold");
@@ -453,10 +486,10 @@
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
             doc.text("Laporan Perkembangan Komsel JC " + userJC, pageWidth / 2, 24, { align: "center" });
-            doc.setLineWidth(1.2);
-            doc.line(15, 28, pageWidth - 15, 28); // Garis tebal bawah kop
+            doc.setLineWidth(1);
+            doc.line(15, 30, pageWidth - 15, 30);
 
-            let y = 38;
+            let y = 42;
 
             // --- 2. ANALISA PEMBACAAN ALKITAB ---
             doc.setFont("helvetica", "bold");
@@ -469,7 +502,7 @@
             let daftarNama = "";
             items.forEach(el => { daftarNama += el.getAttribute('data-nama') + " (" + el.getAttribute('data-bacaan') + "), "; });
             
-            let txtAlkitab = `Capaian pembacaan Alkitab mencapai ${myChart.data.datasets[0].data[0]}%. Daftar jemaat yang menyelesaikan tugas: ` + daftarNama.slice(0, -2);
+            let txtAlkitab = `Capaian pembacaan Alkitab mencapai ${myChart.data.datasets[0].data[0]}%. Daftar jemaat yang menyelesaikan tugas: ` + (daftarNama.slice(0, -2) || "N/A");
             let splitAlkitab = doc.splitTextToSize(txtAlkitab, pageWidth - 30);
             doc.text(splitAlkitab, 15, y);
             y += (splitAlkitab.length * 5) + 8;
@@ -505,14 +538,14 @@
             // --- 6. DIAGRAM ---
             doc.setFont("helvetica", "bold");
             doc.text("V. DIAGRAM PERSENTASE CAPAIAN", 15, y);
-            const canvas = document.getElementById('performaChart');
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = document.getElementById('performaChart').toDataURL('image/png', 0.6);
             doc.addImage(imgData, 'PNG', 15, y + 5, 85, 45);
 
-            // Save PDF
             doc.save(`Laporan_JC${userJC}_${Date.now()}.pdf`);
+            setTimeout(() => { loader.style.display = "none"; }, 1000);
             
         } catch (error) {
+            loader.style.display = "none";
             console.error(error);
             alert("Gagal membuat PDF.");
         }
