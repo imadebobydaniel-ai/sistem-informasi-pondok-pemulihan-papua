@@ -55,6 +55,7 @@
             display: block;
         }
 
+        /* Styling Input Manual */
         .target-box, .hikmat-box { 
             padding: 18px; 
             border-radius: 18px; 
@@ -62,6 +63,7 @@
             position: relative;
             transition: 0.3s;
             border: 1px solid rgba(0,0,0,0.05);
+            text-align: left;
         }
 
         .target-box { 
@@ -83,11 +85,19 @@
             margin-bottom: 5px; 
         }
 
-        .nama-pasal { 
-            font-size: 20px; 
-            font-weight: 900; 
-            color: var(--biru-tua); 
+        .input-pasal {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--biru-tua);
+            outline: none;
+            padding: 0;
+            font-family: inherit;
         }
+
+        .hikmat-box .input-pasal { color: var(--oranye-hikmat); }
 
         .check-item { 
             background: #f8f9fa; 
@@ -172,17 +182,17 @@
 </div>
 
 <div class="card">
-    <h3><i class="fa-solid fa-book-bible"></i> TARGET HARI INI</h3>
+    <h3><i class="fa-solid fa-book-bible"></i> SET TARGET BACAAN</h3>
     <span id="current-date"></span>
 
     <div class="target-box">
-        <span class="label-pasal">Pasal Utama:</span>
-        <span class="nama-pasal" id="pasal-utama">Memuat...</span>
+        <label class="label-pasal">Pasal Utama (4 Pasal):</label>
+        <input type="text" id="pasal-utama" class="input-pasal" placeholder="Ketik: Yohanes 5 - 8">
     </div>
 
     <div class="hikmat-box">
-        <span class="label-pasal">Pasal Hikmat:</span>
-        <span class="nama-pasal" id="pasal-hikmat" style="color: var(--oranye-hikmat);">Memuat...</span>
+        <label class="label-pasal">Pasal Hikmat (Amsal):</label>
+        <input type="text" id="pasal-hikmat" class="input-pasal" placeholder="Ketik: Amsal 20">
     </div>
 
     <div style="margin-top: 25px;">
@@ -219,52 +229,8 @@
     const db = firebase.firestore();
     const userEmail = localStorage.getItem("userEmail");
 
-    // FUNGSI MENDAPATKAN WAKTU PAPUA (WIT)
     function getWaktuPapua() {
         return new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Jayapura"}));
-    }
-
-    function updateTargetHarian() {
-        const sekarang = getWaktuPapua();
-        // Set ke jam 00:00:00 agar perhitungan hari presisi
-        const hariIni = new Date(sekarang.getFullYear(), sekarang.getMonth(), sekarang.getDate());
-        const tanggalMulai = new Date("2026-03-01"); 
-        
-        const selisihWaktu = hariIni.getTime() - tanggalMulai.getTime();
-        const hariKe = Math.floor(selisihWaktu / (1000 * 3600 * 24)) + 1;
-
-        const listTarget = [
-            { utama: "Matius 1 - 4", hikmat: "Amsal 1" },
-            { utama: "Matius 5 - 8", hikmat: "Amsal 2" },
-            { utama: "Matius 9 - 12", hikmat: "Amsal 3" },
-            { utama: "Matius 13 - 15", hikmat: "Amsal 4" },
-            { utama: "Matius 16 - 18", hikmat: "Amsal 5" },
-            { utama: "Matius 19 - 21", hikmat: "Amsal 6" },
-            { utama: "Matius 22 - 25", hikmat: "Amsal 7" },
-            { utama: "Matius 26 - 28", hikmat: "Amsal 8" },
-            { utama: "Markus 1 - 4", hikmat: "Amsal 9" },
-            { utama: "Markus 5 - 8", hikmat: "Amsal 10" },
-            { utama: "Markus 9 - 12", hikmat: "Amsal 11" },
-            { utama: "Markus 13 - 16", hikmat: "Amsal 12" },
-            { utama: "Lukas 1 - 4", hikmat: "Amsal 13" },
-            { utama: "Lukas 5 - 8", hikmat: "Amsal 14" },
-            { utama: "Lukas 9 - 12", hikmat: "Amsal 15" },
-            { utama: "Lukas 13 - 16", hikmat: "Amsal 16" },
-            { utama: "Lukas 17 - 20", hikmat: "Amsal 17" },
-            { utama: "Lukas 21 - 24", hikmat: "Amsal 18" },
-            { utama: "Yohanes 1 - 4", hikmat: "Amsal 19" }, 
-            { utama: "Yohanes 5 - 8", hikmat: "Amsal 20" }, 
-            { utama: "Matius 27 - 28 & Markus 1-2", hikmat: "Amsal 21" }
-        ];
-
-        const index = hariKe - 1;
-        if (listTarget[index]) {
-            document.getElementById("pasal-utama").innerText = listTarget[index].utama;
-            document.getElementById("pasal-hikmat").innerText = listTarget[index].hikmat;
-        } else {
-            document.getElementById("pasal-utama").innerText = "Selesai Siklus";
-            document.getElementById("pasal-hikmat").innerText = "Gbu";
-        }
     }
 
     function tampilkanPesanBlokir(pesan, icon, color) {
@@ -303,6 +269,14 @@
     }
 
     async function kirimLaporan() {
+        const utama = document.getElementById('pasal-utama').value.trim();
+        const hikmat = document.getElementById('pasal-hikmat').value.trim();
+
+        if(!utama || !hikmat) {
+            alert("Harap isi pasal yang dibaca hari ini.");
+            return;
+        }
+
         const btn = document.getElementById('btnKirim');
         btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengirim...";
         btn.disabled = true;
@@ -316,9 +290,15 @@
                 nama: u.nama || "Tanpa Nama",
                 email: userEmail,
                 komsel: String(u.komsel || "-"),
-                pasal_utama: document.getElementById('pasal-utama').innerText,
-                pasal_hikmat: document.getElementById('pasal-hikmat').innerText,
+                pasal_utama: utama,
+                pasal_hikmat: hikmat,
                 tanggal: firebase.firestore.Timestamp.now()
+            });
+
+            // Update status baca di profil user agar statistik ikut berubah
+            const userDocId = snapUser.docs[0].id;
+            await db.collection("users").doc(userDocId).update({
+                status_baca_hari_ini: true
             });
 
             tampilkanPesanBlokir("Terimakasih Atas Laporan Anda. Tuhan Yesus Memberkati!", "fa-circle-check", "#2ecc71");
@@ -334,8 +314,6 @@
         const sekarang = getWaktuPapua();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('current-date').innerText = sekarang.toLocaleDateString('id-ID', options);
-        
-        updateTargetHarian();
         cekLaporanHariIni();
     };
 </script>
