@@ -2,185 +2,140 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Komsel JC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --biru: #003366; --emas: #D4AF37; --bg: #f4f7fa; }
-        
-        /* Mengatur agar konten selalu di tengah layar */
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: var(--bg); 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            margin: 0; 
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 380px; text-align: center; }
+        .header-section { margin-bottom: 25px; }
+        .logo-main { width: 90px; height: auto; margin-bottom: 15px; }
+        #text-org { margin: 5px 0; font-size: 20px; color: #333; font-weight: bold; text-transform: uppercase; display: block; }
+        #text-system { margin: 8px 0; font-size: 18px; color: #FFD700; font-weight: bold; display: block; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+        #text-status { margin: 10px 0; font-size: 16px; color: #555; font-weight: normal; display: block; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
+        .btn-blue { background: #007bff; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .btn-blue:disabled { background: #ccc; cursor: not-allowed; }
+        .footer-links { margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; }
+        .link-regis { display: block; color: #007bff; text-decoration: none; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
+        .link-admin { display: block; color: #888; text-decoration: none; font-size: 12px; }
 
-        .login-card { 
-            background: white; 
-            padding: 40px 30px; 
-            border-radius: 20px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1); 
-            width: 90%; 
-            max-width: 380px; 
-            text-align: center; 
-            border-top: 6px solid var(--biru); 
-        }
-
-        /* Perbaikan Logo */
-        .logo-img { 
-            width: 100px; 
-            height: 100px; 
-            margin-bottom: 20px; 
-            border-radius: 50%; 
-            object-fit: cover;
-            border: 3px solid var(--bg);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-
-        h2 { 
-            color: var(--biru); 
-            margin-bottom: 25px; 
-            font-size: 22px; 
-            text-transform: uppercase; 
-            letter-spacing: 1px;
-            font-weight: 800;
-        }
-
-        .input-group { margin-bottom: 15px; text-align: left; }
-
-        input { 
-            width: 100%; 
-            padding: 14px; 
-            border: 1px solid #ddd; 
-            border-radius: 12px; 
-            box-sizing: border-box; 
-            outline: none; 
-            font-size: 15px;
-            transition: 0.3s;
-            background: #f9f9f9;
-        }
-
-        input:focus { 
-            border-color: var(--biru); 
-            background: white;
-            box-shadow: 0 0 8px rgba(0,51,102,0.15); 
-        }
-
-        button { 
-            width: 100%; 
-            padding: 14px; 
-            background: var(--biru); 
-            color: white; 
-            border: none; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin-top: 15px; 
-            border: 2px solid var(--emas); 
-            font-size: 16px;
-            text-transform: uppercase;
-            transition: 0.3s;
-        }
-
-        button:hover { background: #002244; transform: translateY(-2px); }
-        button:active { transform: scale(0.98); }
-
-        .error { 
-            color: #e74c3c; 
-            font-size: 13px; 
-            margin-top: 15px; 
-            display: none; 
-            font-weight: 600; 
-            background: #ffe6e6; 
-            padding: 10px; 
-            border-radius: 8px; 
-        }
+        /* Style Overlay Error */
+        #error-block { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .error-card { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
+        .btn-close-error { background: #dc3545; color: white; border: none; padding: 12px 0; width: 100%; border-radius: 10px; font-weight: bold; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="login-card">
-    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT78Z0M-B4CjR6iF9xX0D0M5_B_m9FfXW9vDw&s" class="logo-img" alt="Logo">
-    
-    <h2>PORTAL KOMSEL JC</h2>
-    
-    <div class="input-group">
-        <input type="email" id="email" placeholder="Email Terdaftar">
+<div class="login-box">
+    <div class="header-section">
+        <img src="logo_pondok.png" alt="Logo" class="logo-main">
+        <span id="text-org">PONDOK PEMULIHAN PAPUA</span>
+        <span id="text-system">Sistem Informasi Komsel JC</span>
+        <span id="text-status">Login Anggota Komsel</span>
     </div>
-    
-    <div class="input-group">
-        <input type="password" id="password" placeholder="Password">
+
+    <input type="email" id="email" placeholder="Email Anggota">
+    <input type="password" id="pass" placeholder="Password">
+    <button id="btn-login" class="btn-blue" onclick="prosesLogin()">MASUK</button>
+
+    <div class="footer-links">
+        <a href="registrasi.html" class="link-regis">BELUM PUNYA AKUN? DAFTAR SEKARANG</a>
+        <a href="login_admin.html" class="link-admin">
+            <i class="fa-solid fa-user-shield"></i> LOGIN ADMINISTRATOR
+        </a>
     </div>
-    
-    <button onclick="prosesLogin()">MASUK SISTEM</button>
-    
-    <div id="error-msg" class="error"></div>
+</div>
+
+<div id="error-block">
+    <div class="error-card">
+        <i class="fa-solid fa-circle-exclamation" style="font-size: 50px; color: #dc3545; margin-bottom: 15px;"></i>
+        <h3 style="margin:0; color:#333;">Login Gagal</h3>
+        <p id="error-text" style="font-size: 13px; color: #666; line-height: 1.5; margin: 10px 0; word-break: break-word;"></p>
+        <button class="btn-close-error" onclick="hideError()">COBA LAGI</button>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    const firebaseConfig = { 
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-        authDomain: "boby-apps-project.firebaseapp.com", 
-        projectId: "boby-apps-project", 
-        storageBucket: "boby-apps-project.appspot.com", 
-        messagingSenderId: "125984859692", 
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    // 1. Inisialisasi Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    firebase.initializeApp(firebaseConfig);
+    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
 
-    // Membersihkan data login lama
-    window.onload = function() { localStorage.clear(); };
-
+    // 2. Fungsi Login
     async function prosesLogin() {
         const emailInput = document.getElementById('email').value.trim();
-        const passInput = document.getElementById('password').value.trim();
-        const errorDiv = document.getElementById('error-msg');
-
-        errorDiv.style.display = "none";
+        const passInput = document.getElementById('pass').value;
+        const btn = document.getElementById('btn-login');
 
         if(!emailInput || !passInput) {
-            errorDiv.innerText = "Email dan Password wajib diisi!";
-            errorDiv.style.display = "block";
+            showError("Data Kosong: Harap isi email dan password Anda.");
             return;
         }
 
+        btn.innerText = "MEMPROSES...";
+        btn.disabled = true;
+
         try {
-            const userRef = db.collection("users")
-                             .where("email", "==", emailInput)
-                             .where("password", "==", passInput);
-            
-            const snapshot = await userRef.get();
+            // Cari user berdasarkan email
+            const snapshot = await db.collection("users")
+                .where("email", "==", emailInput)
+                .get();
 
             if (snapshot.empty) {
-                errorDiv.innerText = "Akun tidak ditemukan atau Password salah!";
-                errorDiv.style.display = "block";
-                return;
+                throw new Error("Akun tidak ditemukan. Pastikan email sudah terdaftar.");
             }
 
-            const userDoc = snapshot.docs[0];
-            const userData = userDoc.data();
+            const doc = snapshot.docs[0];
+            const userDoc = doc.data();
 
-            // Simpan data ke session HP
-            localStorage.setItem("userEmail", userData.email);
-            localStorage.setItem("userName", userData.nama);
-            
-            // Pindah ke menu utama
-            window.location.href = "menu.html";
+            // Validasi Password
+            if (userDoc.password === passInput) {
+                // Simpan ke LocalStorage
+                localStorage.setItem("userId", doc.id);
+                localStorage.setItem("userEmail", emailInput);
+                localStorage.setItem("userName", userDoc.nama);
+                localStorage.setItem("userJC", String(userDoc.komsel || "1")); 
+                
+                window.location.href = "menu.html";
+            } else {
+                throw new Error("Password salah. Silakan periksa kembali.");
+            }
 
         } catch (e) {
-            console.error(e);
-            errorDiv.innerText = "Gagal login. Periksa koneksi internet.";
-            errorDiv.style.display = "block";
+            console.error("Login Error:", e);
+            // Inilah bagian yang akan memblokir layar jika terjadi error teknis/salah password
+            showError(e.message);
+            
+            btn.innerText = "MASUK";
+            btn.disabled = false;
         }
     }
+
+    // 3. Fungsi Kendali UI Error
+    function showError(pesan) {
+        document.getElementById("error-text").innerText = pesan;
+        document.getElementById("error-block").style.display = "flex";
+    }
+
+    function hideError() {
+        document.getElementById("error-block").style.display = "none";
+    }
 </script>
+
 </body>
 </html>
