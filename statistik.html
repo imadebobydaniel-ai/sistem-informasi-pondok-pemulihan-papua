@@ -55,7 +55,6 @@
 
         .btn-footer { display: block; width: 100%; padding: 16px; background: white; border-radius: 18px; text-align: center; text-decoration: none; color: var(--biru-safir); font-weight: 800; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border: 1px solid #eee; margin-top: 10px; box-sizing: border-box; }
         
-        /* Modal Style */
         #modal-darah {
             display:none; position:fixed; z-index:999; left:0; top:0; width:100%; height:100%; 
             background:rgba(0,0,0,0.5); align-items:center; justify-content:center;
@@ -80,11 +79,11 @@
             <div class="filter-item">
                 <label>Periode</label>
                 <select id="per-alkitab" onchange="loadAlkitab()">
-                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option>
+                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="4">4 Bulan Terakhir</option><option value="5">5 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
                 </select>
             </div>
         </div>
-        <div class="stat-line"><span>Progres <span id="label-jc-baca">JC 5</span></span><span class="val-txt" id="txt-baca-jc">0.0%</span></div>
+        <div class="stat-line"><span>Progres <span id="label-jc-baca">Komsel JC 5</span></span><span class="val-txt" id="txt-baca-jc">0.0%</span></div>
         <div class="progress-bg"><div id="bar-baca-jc" class="progress-fill" style="background: linear-gradient(90deg, var(--biru-safir), var(--biru-muda)); width: 0%;"></div></div>
         <div class="detail-text" id="rincian-alkitab">Memuat data...</div>
     </div>
@@ -100,10 +99,12 @@
             </div>
             <div class="filter-item">
                 <label>Periode</label>
-                <select id="per-hadir" onchange="loadKehadiran()"><option value="1">1 Bulan Terakhir</option></select>
+                <select id="per-hadir" onchange="loadKehadiran()">
+                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="4">4 Bulan Terakhir</option><option value="5">5 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
+                </select>
             </div>
         </div>
-        <div class="stat-line"><span>Kehadiran <span id="label-jc-hadir">JC 5</span></span><span class="val-txt" style="color: var(--hijau-zamrud);" id="txt-hadir-jc">0%</span></div>
+        <div class="stat-line"><span>Kehadiran <span id="label-jc-hadir">Komsel JC 5</span></span><span class="val-txt" style="color: var(--hijau-zamrud);" id="txt-hadir-jc">0%</span></div>
         <div class="progress-bg"><div id="bar-hadir-jc" class="progress-fill" style="background: var(--hijau-zamrud); width: 0%;"></div></div>
         <div class="detail-text" id="rincian-hadir">Memuat data...</div>
     </div>
@@ -119,10 +120,12 @@
             </div>
             <div class="filter-item">
                 <label>Periode</label>
-                <select id="per-absen" onchange="loadAbsen()"><option value="1">1 Bulan Terakhir</option></select>
+                <select id="per-absen" onchange="loadAbsen()">
+                    <option value="1">1 Bulan Terakhir</option><option value="2">2 Bulan Terakhir</option><option value="3">3 Bulan Terakhir</option><option value="4">4 Bulan Terakhir</option><option value="5">5 Bulan Terakhir</option><option value="6">6 Bulan Terakhir</option>
+                </select>
             </div>
         </div>
-        <div class="stat-line"><span>Persentase <span id="label-jc-absen">JC 5</span></span><span class="val-txt" style="color: var(--merah-lux);" id="txt-absen-jc">0.0%</span></div>
+        <div class="stat-line"><span>Persentase <span id="label-jc-absen">Komsel JC 5</span></span><span class="val-txt" style="color: var(--merah-lux);" id="txt-absen-jc">0.0%</span></div>
         <div class="progress-bg"><div id="bar-absen-jc" class="progress-fill" style="background: var(--merah-lux); width: 0%;"></div></div>
         <div class="detail-text" id="rincian-absen">Memuat data...</div>
     </div>
@@ -172,12 +175,16 @@
     const db = firebase.firestore();
 
     const getCleanId = (val) => val.replace("JC ", "").trim();
+    const formatJC = (val) => {
+        const clean = val.replace("JC ", "").trim();
+        return "Komsel JC " + clean;
+    };
 
     // 1. REALTIME ALKITAB
     function loadAlkitab() {
         const jcSelected = getCleanId(document.getElementById('jc-alkitab').value);
         const periodeBulan = parseInt(document.getElementById('per-alkitab').value);
-        document.getElementById('label-jc-baca').innerText = "JC " + jcSelected;
+        document.getElementById('label-jc-baca').innerText = formatJC(jcSelected);
 
         db.collection("users").where("komsel", "==", jcSelected).onSnapshot(snapUser => {
             const jumlahAnggota = snapUser.size || 0;
@@ -193,10 +200,10 @@
         });
     }
 
-    // 2. REALTIME KEHADIRAN & ABSEN
+    // 2. REALTIME KEHADIRAN
     function loadKehadiran() {
         const jcId = getCleanId(document.getElementById('jc-hadir').value);
-        document.getElementById('label-jc-hadir').innerText = "JC " + jcId;
+        document.getElementById('label-jc-hadir').innerText = formatJC(jcId);
         db.collection("kehadiran").where("komsel", "==", jcId).onSnapshot(snap => {
             let totalHadir = 0; let totalData = snap.size;
             snap.forEach(doc => { if(doc.data().status === "Hadir") totalHadir++; });
@@ -207,9 +214,10 @@
         });
     }
 
+    // 3. REALTIME ABSEN
     function loadAbsen() {
         const jcId = getCleanId(document.getElementById('jc-absen').value);
-        document.getElementById('label-jc-absen').innerText = "JC " + jcId;
+        document.getElementById('label-jc-absen').innerText = formatJC(jcId);
         db.collection("kehadiran").where("komsel", "==", jcId).onSnapshot(snap => {
             let totalHadir = 0; let totalData = snap.size;
             snap.forEach(doc => { if(doc.data().status === "Hadir") totalHadir++; });
@@ -220,7 +228,7 @@
         });
     }
 
-    // 3. REALTIME GOLONGAN DARAH & POPUP
+    // 4. REALTIME GOLONGAN DARAH & POPUP
     function loadDarah() {
         const sel = document.getElementById('jc-darah').value;
         const types = ['A', 'B', 'O', 'AB'];
@@ -230,40 +238,4 @@
             q.onSnapshot(snap => {
                 const element = document.getElementById('count-' + tipe);
                 const jumlah = snap.size;
-                element.innerHTML = `<span onclick="showDetailDarah('${tipe}')" style="color:var(--biru-safir); text-decoration:underline; cursor:pointer; font-weight:800;">${jumlah} Orang</span>`;
-            });
-        });
-    }
-
-    function showDetailDarah(gol) {
-        const sel = document.getElementById('jc-darah').value;
-        const listContainer = document.getElementById('list-nama');
-        const modal = document.getElementById('modal-darah');
-        document.getElementById('title-gol').innerText = gol;
-        listContainer.innerHTML = "Memuat nama...";
-        modal.style.display = "flex";
-
-        let q = db.collection("users").where("golDarah", "==", gol);
-        if (sel !== "Semua") q = q.where("komsel", "==", getCleanId(sel));
-
-        q.get().then(snap => {
-            if (snap.empty) {
-                listContainer.innerHTML = "<p style='text-align:center;'>Tidak ada data.</p>";
-                return;
-            }
-            let html = "<ol style='padding-left:20px;'>";
-            snap.forEach(doc => {
-                const data = doc.data();
-                html += `<li style='margin-bottom:8px;'><b>${data.nama}</b><br><small style='color:#999;'>Komsel: ${data.komsel}</small></li>`;
-            });
-            html += "</ol>";
-            listContainer.innerHTML = html;
-        });
-    }
-
-    function tutupModal() { document.getElementById('modal-darah').style.display = "none"; }
-
-    window.onload = () => { loadAlkitab(); loadKehadiran(); loadAbsen(); loadDarah(); };
-</script>
-</body>
-</html>
+                element.innerHTML = `<span onclick="showDetailDarah('${tipe}')" style="color:var(--biru-safir); text-decoration
