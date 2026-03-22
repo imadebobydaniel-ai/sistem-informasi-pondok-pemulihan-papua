@@ -167,17 +167,16 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // --- SINKRONISASI DOA REALTIME (DIHUBUNGKAN KE SARAN_MASUKAN) ---
+    // --- SINKRONISASI DOA REALTIME ---
     function syncDoaRealtime() {
         const grupTerpilih = document.getElementById('select-komsel-doa').value;
         
-        let query = db.collection("saran_masukan");
+        // Sesuaikan nama koleksi dengan Firestore Anda (laporan_doa)
+        let query = db.collection("laporan_doa");
         
-        // Filter berdasarkan Grup JC jika bukan "Semua"
         if (grupTerpilih !== "Semua") {
-            // Kita asumsikan field di DB bernama 'grup_jc' atau 'komsel'
-            // Sesuaikan jika nama fieldnya berbeda (misal: "JC 5")
-            query = query.where("komsel", "==", grupTerpilih);
+            // Memastikan filter sesuai dengan field 'grupJC' di database
+            query = query.where("grupJC", "==", grupTerpilih);
         }
 
         query.onSnapshot(snap => {
@@ -189,7 +188,6 @@
                 const d = doc.data();
                 if(d.status === "Terjawab") {
                     terjawab++;
-                    // Hitung SLA jika ada timestamp input dan timestamp terjawab
                     if(d.tanggal_terjawab && d.timestamp) {
                         const durasi = d.tanggal_terjawab.toDate() - d.timestamp.toDate();
                         totalSLA += Math.floor(durasi / (1000 * 60 * 60 * 24));
@@ -200,7 +198,7 @@
             const persen = total > 0 ? (terjawab / total * 100) : 0;
             const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
 
-            // Update UI
+            // Update UI menggunakan ID yang benar
             document.getElementById("total-doa").innerText = total;
             document.getElementById("avg-sla").innerText = rataSLA + " Hari";
             document.getElementById("text-doa-persen").innerText = persen.toFixed(1) + "%";
@@ -210,7 +208,6 @@
         });
     }
 
-    // --- FUNGSI LAINNYA (Kehadiran, Goldar, Alkitab) ---
     function syncKehadiranRealtime() {
         const selKomselHadir = document.getElementById('select-komsel-hadir').value;
         const perHadir = parseInt(document.getElementById('select-periode-hadir').value);
@@ -223,13 +220,14 @@
         db.collection("kehadiran").onSnapshot(snap => {
             const data = snap.docs.map(d => d.data());
             const filteredHadir = data.filter(d => d.komsel === selKomselHadir && d.tanggal.toDate() >= startDateHadir);
-            const totalHadir = filteredHadir.filter(d => d.status === "Hadir").length;
-            const persenHadir = filteredHadir.length > 0 ? (totalHadir / filteredHadir.length) * 100 : 0;
+            const totalHadirCount = filteredHadir.filter(d => d.status === "Hadir").length;
+            const persenHadir = filteredHadir.length > 0 ? (totalHadirCount / filteredHadir.length) * 100 : 0;
             document.getElementById('text-hadir-komsel').innerText = persenHadir.toFixed(1) + "%";
             document.getElementById('bar-hadir-komsel').style.width = persenHadir + "%";
+            
             const filteredAbsen = data.filter(d => d.komsel === selKomselAbsen && d.tanggal.toDate() >= startDateAbsen);
-            const totalAbsen = filteredAbsen.filter(d => d.status === "Absen" || d.status === "Izin").length;
-            const persenAbsen = filteredAbsen.length > 0 ? (totalAbsen / filteredAbsen.length) * 100 : 0;
+            const totalAbsenCount = filteredAbsen.filter(d => d.status === "Absen" || d.status === "Izin").length;
+            const persenAbsen = filteredAbsen.length > 0 ? (totalAbsenCount / filteredAbsen.length) * 100 : 0;
             document.getElementById('text-absen-komsel').innerText = persenAbsen.toFixed(1) + "%";
             document.getElementById('bar-absen-komsel').style.width = persenAbsen + "%";
         });
