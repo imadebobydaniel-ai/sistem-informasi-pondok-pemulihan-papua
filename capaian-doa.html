@@ -8,7 +8,7 @@
     <style>
         :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f9; --putih: #ffffff; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
         /* Header & Control Panel */
         .header-fixed { background: var(--putih); z-index: 1000; position: sticky; top: 0; }
@@ -53,7 +53,7 @@
         }
 
         /* Konten */
-        .main-content { flex: 1; overflow-y: auto; padding: 15px; }
+        .main-content { flex: 1; padding: 15px; }
         .doa-card { background: var(--putih); border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; gap: 12px; border-left: 5px solid var(--emas); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .doa-checkbox { width: 20px; height: 20px; accent-color: var(--biru-tua); }
         .doa-info { flex: 1; }
@@ -64,7 +64,6 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
         .popup { background: var(--putih); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; border-top: 6px solid var(--emas); }
         
-        /* Style untuk Custom Alert/Confirm Modal */
         .modal-notif {
             display: none;
             position: fixed;
@@ -95,8 +94,33 @@
         .btn-confirm { background: var(--biru-tua); color: white; }
         .btn-cancel { background: #eee; color: #666; }
 
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--biru-tua); padding: 15px; text-align: center; }
-        .btn-back { color: white; text-decoration: none; font-size: 13px; }
+        /* PERBAIKAN: Container Navigasi Bawah dinaikkan */
+        .bottom-nav { 
+            width: 100%; 
+            background: var(--bg); 
+            padding: 15px 15px 40px 15px; /* Padding bawah ditambah menjadi 40px agar naik */
+            display: flex;
+            justify-content: center; 
+            margin-top: auto; /* Memastikan tetap di bawah jika konten sedikit */
+        }
+
+        /* Tombol Kembali agar sinkron */
+        .btn-back { 
+            width: 100%;
+            max-width: 600px; 
+            background: var(--biru-tua);
+            color: white; 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
@@ -168,7 +192,6 @@
     let userNama = "I Made Boby"; 
     let selectedIDs = [];
 
-    // --- FUNGSI CUSTOM MODAL ---
     function tampilModal({title, text, type, onConfirm}) {
         const modal = document.getElementById('custom-modal');
         const mTitle = document.getElementById('modal-title');
@@ -198,7 +221,6 @@
 
     function tutupModal() { document.getElementById('custom-modal').style.display = 'none'; }
 
-    // --- LOGIKA UTAMA ---
     function loadDoa() {
         db.collection("saran_masukan").orderBy("timestamp", "desc").onSnapshot(snap => {
             let h = "";
