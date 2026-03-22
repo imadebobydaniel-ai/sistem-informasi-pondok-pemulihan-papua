@@ -1,68 +1,246 @@
-<div id="form-tiket-doa" style="max-height: 90vh; display: flex; flex-direction: column;">
-    <h3 style="color: #003366; font-size: 16px; margin-bottom: 10px;">Form Tiket Doa</h3>
-    
-    <input type="text" id="nama-otomatis" readonly 
-           style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f9f9f9; margin-bottom: 10px;" 
-           value="Memuat Nama...">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Capaian Doa Komsel - Pondok Pemulihan</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; overflow-x: hidden; }
+        
+        /* Header & Sticky Control di Atas */
+        .header-app { background: var(--biru-tua); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .control-panel { display: flex; justify-content: space-around; background: white; padding: 10px; border-bottom: 2px solid var(--emas); position: sticky; top: 50px; z-index: 99; }
+        .btn-action { border: none; background: none; color: #555; font-size: 12px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; opacity: 0.4; pointer-events: none; }
+        .btn-action.active { opacity: 1; pointer-events: auto; color: var(--biru-tua); }
+        .btn-action i { font-size: 18px; margin-bottom: 3px; }
 
-    <select id="komsel-pilihan" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;">
-        <option value="">-- Pilih Komsel --</option>
-        <option value="JC1">JC1</option>
-        <option value="JC2">JC2</option>
-        <option value="JC3">JC3</option>
-        <option value="JC4">JC4</option>
-        <option value="JC5">JC5</option>
-    </select>
+        /* Main Content */
+        .container { padding: 15px; max-width: 500px; margin: auto; }
+        .btn-add { width: 100%; background: var(--emas); color: var(--biru-tua); border: none; padding: 12px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
-    <textarea id="isi-pergumulan" placeholder="Isi Pergumulan Doa..." 
-              style="width: 100%; height: 80px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none; margin-bottom: 15px;"></textarea>
+        /* Card Doa */
+        .doa-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; border-left: 5px solid var(--emas); display: flex; gap: 12px; }
+        .doa-checkbox { width: 20px; height: 20px; accent-color: var(--biru-tua); cursor: pointer; margin-top: 3px; }
+        .doa-content { flex: 1; }
+        .tiket-id { font-size: 10px; background: #e9ecef; padding: 2px 6px; border-radius: 4px; color: #666; font-weight: bold; }
+        .status-badge { float: right; font-size: 10px; color: var(--emas); font-weight: bold; }
+        .doa-user { font-weight: bold; font-size: 14px; margin: 8px 0 4px 0; color: var(--biru-tua); }
+        .doa-text { font-size: 13px; color: #444; line-height: 1.4; margin-bottom: 10px; }
+        .sla-info { font-size: 11px; color: #888; background: #f8f9fa; padding: 5px; border-radius: 5px; display: inline-block; }
 
-    <button onclick="kirimTiketSLA()" 
-            style="width: 100%; padding: 12px; background: #003366; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-        KIRIM TIKET
+        /* Popups (Block Display) */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .popup { background: white; width: 100%; max-width: 350px; border-radius: 20px; padding: 20px; position: relative; border-top: 5px solid var(--emas); max-height: 90vh; overflow-y: auto; }
+        .popup h3 { margin-top: 0; color: var(--biru-tua); font-size: 16px; text-align: center; }
+        .form-group { margin-bottom: 12px; text-align: left; }
+        .form-group label { font-size: 11px; color: #888; display: block; margin-bottom: 4px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fdfdfd; box-sizing: border-box; }
+        .form-group input[readonly] { background: #f0f2f5; color: #555; }
+        .btn-save { width: 100%; background: var(--biru-tua); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-cancel { display: block; text-align: center; margin-top: 15px; color: #888; font-size: 12px; cursor: pointer; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="header-app">CAPAIAN DOA KOMSEL</div>
+
+<div class="control-panel">
+    <button class="btn-action" id="btn-terjawab" onclick="prosesTerjawab()">
+        <i class="fa-solid fa-circle-check"></i>TERJAWAB
     </button>
-
-    <button onclick="tutupForm()" style="background: none; border: none; color: #888; margin-top: 10px; font-size: 13px; cursor: pointer;">
-        Batal
+    <button class="btn-action" id="btn-edit" onclick="bukaEditDoa()">
+        <i class="fa-solid fa-pen-to-square"></i>EDIT
+    </button>
+    <button class="btn-action" id="btn-delete" onclick="hapusDoa()">
+        <i class="fa-solid fa-trash"></i>HAPUS
     </button>
 </div>
 
+<div class="container">
+    <button class="btn-add" onclick="bukaPopupAdd()">
+        <i class="fa-solid fa-plus-circle"></i> ADD DOA BARU
+    </button>
+
+    <div id="list-doa-container">
+        </div>
+</div>
+
+<div id="popup-add" class="overlay">
+    <div class="popup">
+        <h3>Form Tiket Doa</h3>
+        <div class="form-group">
+            <label>Nomor Tiket (Otomatis)</label>
+            <input type="text" id="add-nomor" readonly>
+        </div>
+        <div class="form-group">
+            <label>Nama Lengkap (Paten)</label>
+            <input type="text" id="add-nama" readonly>
+        </div>
+        <div class="form-group">
+            <label>Komsel (Paten)</label>
+            <input type="text" id="add-jc" readonly>
+        </div>
+        <div class="form-group">
+            <label>Tanggal Input (Paten)</label>
+            <input type="text" id="add-tgl" readonly>
+        </div>
+        <div class="form-group">
+            <label>Pergumulan Doa</label>
+            <textarea id="add-doa" placeholder="Tulis doa Anda..."></textarea>
+        </div>
+        <button class="btn-save" onclick="simpanDoaBaru()">KIRIM TIKET</button>
+        <div class="btn-cancel" onclick="tutupPopup()">Batal</div>
+    </div>
+</div>
+
+<div id="popup-edit" class="overlay">
+    <div class="popup">
+        <h3>Edit Pergumulan Doa</h3>
+        <div class="form-group">
+            <label>Isi Doa yang Ingin Diubah</label>
+            <textarea id="edit-doa" style="height: 120px;"></textarea>
+        </div>
+        <button class="btn-save" onclick="updateDoa()">SIMPAN PERUBAHAN</button>
+        <div class="btn-cancel" onclick="tutupPopup()">Batal</div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <script>
-    // Fungsi untuk mengisi Nama Otomatis agar tidak "Nama tidak ditemukan"
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let userNama = "", userJC = "", selectedDoaId = null;
+
+    // 1. Ambil Identitas Paten & Load Data
     window.onload = function() {
-        const userEmail = localStorage.getItem("userEmail");
-        if (userEmail) {
-            db.collection("users").where("email", "==", userEmail).get().then((querySnapshot) => {
-                querySnapshot.forEach((doc) => {
-                    document.getElementById("nama-otomatis").value = doc.data().nama;
-                });
-            });
-        }
+        const email = localStorage.getItem("userEmail");
+        if (!email) return window.location.href = "index.html";
+
+        db.collection("users").where("email", "==", email).get().then(snap => {
+            if (!snap.empty) {
+                const d = snap.docs[0].data();
+                userNama = d.nama;
+                userJC = d.komsel || "JC5";
+                loadListDoa();
+            }
+        });
     };
 
-    // Fungsi Kirim sesuai Konsep Gambar 2 & SLA
-    async function kirimTiketSLA() {
-        const nama = document.getElementById("nama-otomatis").value;
-        const komsel = document.getElementById("komsel-pilihan").value;
-        const pesan = document.getElementById("isi-pergumulan").value;
-        const now = new Date();
+    // 2. Load List Doa dengan Checkbox
+    function loadListDoa() {
+        db.collection("saran_masukan").where("nama", "==", userNama).orderBy("timestamp", "desc").onSnapshot(snap => {
+            let html = "";
+            snap.forEach(doc => {
+                const data = doc.data();
+                const tglAwal = data.timestamp ? data.timestamp.toDate() : new Date();
+                const diff = Math.floor((new Date() - tglAwal) / (1000*60*60*24));
 
-        if(!komsel || !pesan) return alert("Lengkapi data!");
-
-        try {
-            await db.collection("saran_masukan").add({
-                nomor_tiket: `NK-DOA-${Math.floor(100+Math.random()*900)}-${now.getFullYear()}`,
-                nama: nama,
-                jc: komsel,
-                isi_saran: pesan,
-                status: "proses",
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                sla_days: 0
+                html += `
+                    <div class="doa-card">
+                        <input type="checkbox" class="doa-checkbox" value="${doc.id}" onchange="toggleControls()">
+                        <div class="doa-content">
+                            <span class="status-badge">${data.status}</span>
+                            <span class="tiket-id">${data.nomor_tiket}</span>
+                            <div class="doa-user">${data.nama} (${data.jc})</div>
+                            <div class="doa-text" id="text-${doc.id}">${data.isi_saran}</div>
+                            <div class="sla-info">SLA: ${diff} Hari sejak diinput</div>
+                            <input type="hidden" id="tgl-${doc.id}" value="${tglAwal.toISOString()}">
+                        </div>
+                    </div>`;
             });
-            alert("Tiket Doa Berhasil Dikirim!");
-            location.reload();
-        } catch (error) {
-            alert("Gagal mengirim: " + error.message);
+            document.getElementById('list-doa-container').innerHTML = html;
+        });
+    }
+
+    // 3. Kontrol Tombol Atas berdasarkan Checkbox
+    function toggleControls() {
+        const checked = document.querySelectorAll('.doa-checkbox:checked');
+        const btns = document.querySelectorAll('.btn-action');
+        
+        if (checked.length === 1) {
+            btns.forEach(b => b.classList.add('active'));
+            selectedDoaId = checked[0].value;
+        } else {
+            btns.forEach(b => b.classList.remove('active'));
+            selectedDoaId = null;
         }
     }
+
+    // 4. Popup ADD DOA dengan Data Paten
+    function bukaPopupAdd() {
+        document.getElementById('popup-add').style.display = 'flex';
+        document.getElementById('add-nama').value = userNama;
+        document.getElementById('add-jc').value = userJC;
+        document.getElementById('add-tgl').value = new Date().toLocaleDateString('id-ID');
+        
+        db.collection("saran_masukan").get().then(snap => {
+            const urut = (snap.size + 1).toString().padStart(3, '0');
+            document.getElementById('add-nomor').value = `NK-DOA-${userJC}-${urut}-${new Date().getFullYear()}`;
+        });
+    }
+
+    async function simpanDoaBaru() {
+        const doa = document.getElementById('add-doa').value;
+        if (!doa) return alert("Isi doa Anda!");
+
+        await db.collection("saran_masukan").add({
+            nomor_tiket: document.getElementById('add-nomor').value,
+            nama: userNama,
+            jc: userJC,
+            isi_saran: doa,
+            status: "proses",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            kategori: "Permohonan Doa"
+        });
+        tutupPopup();
+        document.getElementById('add-doa').value = "";
+    }
+
+    // 5. Doa Terjawab & Hitung Hari
+    function prosesTerjawab() {
+        const tglAwal = new Date(document.getElementById(`tgl-${selectedDoaId}`).value);
+        const diff = Math.ceil(Math.abs(new Date() - tglAwal) / (1000 * 60 * 60 * 24));
+        
+        alert(`Puji Tuhan Doa anda terjawab dalam kurun waktu ${diff} Hari`);
+        db.collection("saran_masukan").doc(selectedDoaId).update({ status: "Terjawab" });
+    }
+
+    // 6. Edit & Hapus
+    function bukaEditDoa() {
+        document.getElementById('popup-edit').style.display = 'flex';
+        document.getElementById('edit-doa').value = document.getElementById(`text-${selectedDoaId}`).innerText;
+    }
+
+    async function updateDoa() {
+        await db.collection("saran_masukan").doc(selectedDoaId).update({
+            isi_saran: document.getElementById('edit-doa').value
+        });
+        alert("Doa Telah disimpan");
+        tutupPopup();
+    }
+
+    async function hapusDoa() {
+        if (confirm("Hapus doa ini?")) {
+            await db.collection("saran_masukan").doc(selectedDoaId).delete();
+        }
+    }
+
+    function tutupPopup() { 
+        document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none'); 
+    }
 </script>
+</body>
+</html>
