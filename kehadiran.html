@@ -81,6 +81,7 @@
             border-radius: 10px; 
             background: #f8f9fa; 
             border: 1px solid #eee; 
+            animation: fadeIn 0.5s;
         }
         .btn-back { 
             display: inline-flex; 
@@ -119,7 +120,7 @@
 
     <div id="status-display">
         <strong id="status-title" style="color: #00a884; display: block; margin-bottom: 5px;"></strong>
-        <span id="status-desc" style="font-size: 12px; color: #888;"></span>
+        <span id="status-desc" style="font-size: 12px; color: #888; font-family: monospace;"></span>
     </div>
 
     <a href="menu.html" class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</a>
@@ -144,15 +145,27 @@
     const userName = localStorage.getItem("userName") || "User";
 
     function updateUIStatus(judul, deskripsi) {
-        document.getElementById("status-display").style.display = "block";
-        document.getElementById("status-title").innerText = judul;
-        document.getElementById("status-desc").innerText = deskripsi;
+        const display = document.getElementById("status-display");
+        const title = document.getElementById("status-title");
+        const desc = document.getElementById("status-desc");
+
+        display.style.display = "block";
+        title.innerText = judul;
+        desc.innerText = deskripsi;
         
+        // Mematikan tombol agar tidak melapor berkali-kali
         document.getElementById("btnHadir").disabled = true;
         document.getElementById("btnAbsen").disabled = true;
         document.getElementById("btnHadir").style.opacity = "0.5";
         document.getElementById("btnAbsen").style.opacity = "0.5";
         document.getElementById("reason-container").style.display = "none";
+        
+        // Atur warna judul berdasarkan pesan
+        if (judul.includes("Terimakasih")) {
+            title.style.color = "#00a884"; // Hijau
+        } else if (judul.includes("Tadi Sudah")) {
+            title.style.color = "#003366"; // Biru Tua
+        }
     }
 
     function tampilkanInputAlasan() {
@@ -170,12 +183,14 @@
             return;
         }
 
-        updateUIStatus("Sedang Melapor...", "Mengambil lokasi GPS...");
+        // Tampilkan loading sementara di block display
+        updateUIStatus("Sedang Memproses...", "Mengambil koordinat lokasi...");
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(async (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
+                const lokasiString = `Lokasi GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 
                 try {
                     await db.collection("kehadiran").add({
@@ -190,16 +205,18 @@
 
                     localStorage.setItem("lapor_" + todayStr, "true");
                     
-                    const pesan = tipe === 'HADIR' ? "Terimakasih Atas Kehadiran Anda" : "Laporan anda Sudah di Input";
-                    updateUIStatus(pesan, "Lokasi tercatat: " + lat.toFixed(4) + ", " + lon.toFixed(4));
-                    alert(pesan);
+                    // Pesan sesuai permintaan: "Terimakasih Atas Laporan Anda"
+                    const pesanJudul = "Terimakasih Atas Laporan Anda";
+                    updateUIStatus(pesanJudul, lokasiString);
 
                 } catch (e) {
-                    alert("Gagal mengirim laporan: " + e.message);
+                    updateUIStatus("Gagal Mengirim", e.message);
                 }
             }, () => {
-                alert("Gagal mengambil lokasi. Pastikan GPS aktif.");
+                updateUIStatus("GPS Tidak Aktif", "Mohon aktifkan lokasi pada HP Anda.");
             });
+        } else {
+            updateUIStatus("Error", "Browser tidak mendukung Geolocation.");
         }
     }
 
