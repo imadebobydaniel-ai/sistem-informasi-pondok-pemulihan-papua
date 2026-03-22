@@ -185,7 +185,7 @@
 
         modalBtn.onclick = () => modal.style.display = 'none';
 
-        // 3. Handle Login Utama (Firestore)
+        // 3. Handle Login Utama dengan LOGIKA DEBUG
         document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -196,28 +196,33 @@
             btnSubmit.disabled = true;
             btnSubmit.innerText = "Memverifikasi...";
 
-            // Mencari dokumen di koleksi "admins" yang field-nya cocok
+            console.log("Mencoba login untuk username:", userValue);
+
+            // Memastikan nama koleksi tepat "admins" sesuai dashboard
             db.collection("admins")
                 .where("username", "==", userValue)
                 .where("password", "==", passValue)
                 .get()
                 .then((querySnapshot) => {
+                    console.log("Koneksi berhasil. Data ditemukan:", querySnapshot.size);
+                    
                     if (!querySnapshot.empty) {
-                        // Login Berhasil
                         showNotification('success', 'Berhasil!', 'Selamat datang, Admin.');
                         setTimeout(() => {
                             window.location.href = "dashboard_admin.html";
                         }, 1500);
                     } else {
-                        // Gagal karena data tidak cocok
-                        showNotification('error', 'Gagal Login', 'Username atau Password salah sesuai database.');
+                        showNotification('error', 'Gagal Login', 'Username atau Password salah.');
                         btnSubmit.disabled = false;
                         btnSubmit.innerText = "MASUK SISTEM";
                     }
                 })
                 .catch((error) => {
-                    console.error("Error Firestore:", error);
-                    showNotification('error', 'Sistem Error', 'Gagal terhubung ke database. Cek Firebase Rules Anda.');
+                    // LOG DEBUG untuk melacak Permission Denied
+                    console.error("DEBUG FIREBASE - Code:", error.code);
+                    console.error("DEBUG FIREBASE - Message:", error.message);
+                    
+                    showNotification('error', 'Sistem Error', 'Akses ditolak (Permission Denied). Periksa tab Rules di Firebase.');
                     btnSubmit.disabled = false;
                     btnSubmit.innerText = "MASUK SISTEM";
                 });
