@@ -93,3 +93,121 @@
         storageBucket: "boby-apps-project.appspot.com",
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let userNama = "", userJC = "", selectedID = null;
+
+    window.onload = function() {
+        const email = localStorage.getItem("userEmail");
+        if(!email) return window.location.href="index.html";
+
+        db.collection("users").where("email", "==", email).get().then(snap => {
+            if(!snap.empty) {
+                const u = snap.docs[0].data();
+                userNama = u.nama;
+                userJC = u.komsel || "JC5";
+                loadDoa();
+            }
+        });
+    };
+
+    function loadDoa() {
+        if(!userNama) return;
+        db.collection("saran_masukan")
+          .where("nama", "==", userNama)
+          .orderBy("timestamp", "desc")
+          .onSnapshot(snap => {
+            let h = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                const tIn = d.timestamp ? d.timestamp.toDate() : new Date();
+                const sla = Math.floor((new Date() - tIn) / (1000*60*60*24));
+                h += `
+                <div class="doa-card">
+                    <input type="checkbox" class="doa-checkbox" value="${doc.id}" onchange="cek()">
+                    <div class="doa-info">
+                        <span class="tiket-label">${d.nomor_tiket}</span>
+                        <div class="user-label">${d.nama} (${d.jc})</div>
+                        <div class="text-label" id="t-${doc.id}">${d.isi_saran}</div>
+                        <span class="sla-label">SLA: ${sla} Hari sejak diinput</span>
+                        <input type="hidden" id="d-${doc.id}" value="${tIn.toISOString()}">
+                    </div>
+                </div>`;
+            });
+            document.getElementById("list-doa").innerHTML = h || "<p style='text-align:center; color:#999'>Belum ada daftar doa.</p>";
+        }, err => { console.log("Index Error: ", err); });
+    }
+
+    function bukaAdd() {
+        document.getElementById("pop-add").style.display = "flex";
+        document.getElementById("add-nama").value = userNama;
+        document.getElementById("add-jc").value = userJC;
+        document.getElementById("add-tgl").value = new Date().toLocaleDateString('id-ID');
+        
+        db.collection("saran_masukan").get().then(s => {
+            const num = (s.size + 1).toString().padStart(3, '0');
+            document.getElementById("add-tiket").value = `NK-DOA-${userJC}-${num}-2026`;
+        });
+    }
+
+    async function simpanBaru() {
+        const doa = document.getElementById("add-doa").value;
+        if(!doa) return alert("Isi doa tidak boleh kosong!");
+        await db.collection("saran_masukan").add({
+            nomor_tiket: document.getElementById("add-tiket").value,
+            nama: userNama, jc: userJC, isi_saran: doa, status: "proses",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        tutupPop();
+        document.getElementById("add-doa").value = "";
+    }
+
+    function cek() {
+        const checked = document.querySelectorAll(".doa-checkbox:checked");
+        const actions = document.querySelectorAll(".btn-action");
+        if(checked.length === 1) {
+            actions.forEach(el => el.classList.add("active"));
+            selectedID = checked[0].value;
+        } else {
+            actions.forEach(el => el.classList.remove("active"));
+            selectedID = null;
+        }
+    }
+
+    function prosesTerjawab() {
+        if(!selectedID) return;
+        const t = new Date(document.getElementById(`d-${selectedID}`).value);
+        const diff = Math.ceil(Math.abs(new Date() - t) / (1000 * 60 * 60 * 24));
+        alert("Puji Tuhan Doa anda terjawab dalam kurun waktu " + diff + " hari");
+        db.collection("saran_masukan").doc(selectedID).update({ status: "Terjawab" });
+    }
+
+    function prosesEdit() {
+        if(!selectedID) return;
+        document.getElementById("pop-edit").style.display = "flex";
+        document.getElementById("ed-doa").value = document.getElementById(`t-${selectedID}`).innerText;
+    }
+
+    async function simpanEdit() {
+        await db.collection("saran_masukan").doc(selectedID).update({ 
+            isi_saran: document.getElementById("ed-doa").value 
+        });
+        alert("Doa Telah disimpan"); 
+        tutupPop();
+    }
+
+    async function prosesHapus() {
+        if(!selectedID) return;
+        if(confirm("Apakah Anda yakin ingin menghapus doa ini?")) {
+            await db.collection("saran_masukan").doc(selectedID).delete();
+        }
+    }
+
+    function tutupPop() { 
+        document.querySelectorAll(".overlay").forEach(o => o.style.display="none"); 
+    }
+</script>
+</body>
+</html>
