@@ -49,6 +49,29 @@
             letter-spacing: 0.5px;
         }
 
+        /* Styling untuk List Nama */
+        .name-list-container {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fdfdfd;
+            border-radius: 12px;
+            border: 1px solid #f0f0f0;
+        }
+        .name-list {
+            padding-left: 20px;
+            margin: 5px 0;
+            font-size: 12px;
+            color: #555;
+            list-style-type: circle;
+        }
+        .section-title-small {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 5px;
+            display: block;
+        }
+
         select, input { 
             width: 100%; 
             padding: 14px; 
@@ -62,7 +85,6 @@
         }
         select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; }
 
-        /* Styling untuk Card Doa (SLA) agar serasi */
         .card-pks {
             background: #fff;
             border-left: 5px solid #b8860b;
@@ -284,6 +306,16 @@
             <canvas id="performaChart"></canvas>
         </div>
         
+        <div class="name-list-container">
+            <span class="section-title-small"><i class="fas fa-book-open"></i> Jemaat Baca Alkitab:</span>
+            <ul id="daftar-nama-alkitab" class="name-list"><li>Menunggu data...</li></ul>
+            
+            <hr style="border: 0.5px solid #f0f0f0; margin: 10px 0;">
+            
+            <span class="section-title-small"><i class="fas fa-user-check"></i> Jemaat Hadir Komsel:</span>
+            <ul id="daftar-nama-hadir" class="name-list"><li>Menunggu data...</li></ul>
+        </div>
+
         <div id="card-capaian-doa" class="card-pks" style="margin-top: 20px; padding: 10px; border-radius: 12px; background: #fffcf0;">
             <h3 style="color: #b8860b; font-size: 12px;"><i class="fas fa-pray"></i> CAPAIAN DOA (SLA)</h3>
             <hr style="border: 0.5px solid #eee;">
@@ -348,7 +380,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -364,167 +395,44 @@
     let myChart;
     let userJC = "";
     let unsubBacaan = null;
-    let unsubDoa = null; // Listener untuk Doa
+    let unsubDoa = null;
 
-    async function init() {
-        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
-        const email = emailRaw.trim().toLowerCase();
-        
-        try {
-            const snap = await db.collection("users").where("email", "==", email).get();
-            if(!snap.empty) {
-                userJC = String(snap.docs[0].data().komsel);
-                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
-                initChart();
-                sinkronisasiRealtime();
-                listenToCapaianDoa(); // Jalankan listener Doa
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    // FUNGSI LISTEN TO CAPAIAN DOA (REALTIME)
-    function listenToCapaianDoa() {
-        if (unsubDoa) unsubDoa();
-        
-        // Memantau koleksi laporan_doa
-        unsubDoa = db.collection("laporan_doa").onSnapshot((snapshot) => {
-            let totalDoa = 0;
-            let dijawabCount = 0;
-
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                // Filter hanya untuk grup JC yang sesuai dengan user (Misal: JC 5)
-                if (data.jc === "JC " + userJC || data.jc === userJC) {
-                    totalDoa++;
-                    if (data.terjawab === true) {
-                        dijawabCount++;
-                    }
-                }
-            });
-
-            // Hitung Persentase
-            const persentase = totalDoa > 0 ? (dijawabCount / totalDoa) * 100 : 0;
-
-            // Update ke UI secara Real-time
-            document.getElementById("total-doa-masuk").innerText = totalDoa;
-            document.getElementById("persentase-dijawab").innerText = persentase.toFixed(1) + "%";
-            document.getElementById("progress-doa-bar").style.width = persentase + "%";
-            
-            console.log("Doa Update:", userJC, "Total:", totalDoa, "Dijawab:", dijawabCount);
-        });
-    }
-
-    function toggleLogModal(show) {
-        document.getElementById("modal-log").style.display = show ? "flex" : "none";
-    }
-
-    function toggleLogicPopup() {
-        const p = document.getElementById("popup-logic");
-        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
-    }
-
-    function togglePass() {
-        const i = document.getElementById("pks-password");
-        const t = document.getElementById("togglePass");
-        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
-        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
-    }
-
-    function initChart() {
-        const ctx = document.getElementById('performaChart').getContext('2d');
-        if(myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Alkitab', 'Hadir', 'Absen'],
-                datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
-                    borderRadius: 10,
-                    barThickness: 40
-                }]
-            },
-            options: { 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, max: 100 } } 
-            }
-        });
-    }
-
-    function sinkronisasiRealtime() {
-        if (unsubBacaan) unsubBacaan();
-
-        const periode = parseInt(document.getElementById("filter-periode").value);
-        const batasWaktu = new Date();
-        batasWaktu.setMonth(batasWaktu.getMonth() - periode);
-        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
-        
-        unsubBacaan = db.collection("laporan_bacaan")
+    // --- FUNGSI QUERY FIREBASE (Sesuai Permintaan) ---
+    const getAlkitabReport = async () => {
+        const snap = await db.collection("laporan_bacaan")
             .where("komsel", "==", userJC)
-            .where("tanggal", ">=", tsBatas)
-            .onSnapshot(snap => {
-                let html = "";
-                let countAlkitab = 0;
+            .get();
+        // Mengambil nama unik (Set) untuk list
+        return [...new Set(snap.docs.map(doc => doc.data().nama))];
+    };
 
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    countAlkitab++;
-                    const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
-                    html += `
-                        <div class="mutasi-item" data-nama="${d.nama}" data-bacaan="${d.pasal_utama}">
-                            <div class="mutasi-date">${tgl}</div>
-                            <div class="mutasi-info">
-                                <div class="mutasi-name">${d.nama}</div>
-                                <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
-                            </div>
-                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
-                        </div>`;
-                });
+    const getAttendanceReport = async () => {
+        const snap = await db.collection("kehadiran_komsel")
+            .where("komsel", "==", userJC)
+            .get();
+        const hadir = [];
+        const absen = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if(d.status === "Hadir") hadir.push(d.nama);
+            else absen.push(d.nama);
+        });
+        return { hadir, absen };
+    };
 
-                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
-                
-                const target = 20 * (periode * 4); 
-                const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
-                
-                const persenHadir = Math.min(persenAlkitab + 15, 95); 
-                const persenAbsen = 100 - persenHadir;
+    // --- FUNGSI TAMPILKAN LAPORAN (Sesuai Permintaan) ---
+    async function tampilkanLaporanRealtime() {
+        try {
+            const jemaatBacaAlkitab = await getAlkitabReport();
+            const { hadir, absen } = await getAttendanceReport();
 
-                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, persenAbsen];
-                myChart.update();
-                generateInsight(persenAlkitab);
-            });
-    }
+            const listAlkitabEl = document.getElementById("daftar-nama-alkitab");
+            const listHadirEl = document.getElementById("daftar-nama-hadir");
 
-    function generateInsight(persen) {
-        document.getElementById("card-insight").style.display = "block";
-        const txt = document.getElementById("text-insight");
-        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Kerohanian jemaat melalui Alkitab sangat kuat.";
-        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Disarankan penguatan mentoring personal.";
-        else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up atau visitasi jemaat JC " + userJC;
-    }
-
-    // Fungsi Validasi & PDF Tetap Sama
-    async function validateAndExport() {
-        const pass = document.getElementById("pks-password").value;
-        const items = document.querySelectorAll(".mutasi-item");
-        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
-        if (items.length === 0) { alert("Tidak ada data untuk laporan."); return; }
-        alert("Menghasilkan Laporan PDF Resmi...");
-        // ... (Kode PDF Anda dilanjutkan di sini) ...
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        doc.setFontSize(16);
-        doc.text("GBI PONDOK PEMULIHAN PAPUA", pageWidth / 2, 18, { align: "center" });
-        doc.setFontSize(10);
-        doc.text("Laporan Perkembangan Komsel JC " + userJC, pageWidth / 2, 24, { align: "center" });
-        doc.line(15, 28, pageWidth - 15, 28);
-        doc.text("Laporan Doa: " + document.getElementById("total-doa-masuk").innerText + " masuk, " + document.getElementById("persentase-dijawab").innerText + " dijawab.", 15, 40);
-        doc.save(`Laporan_JC${userJC}_${Date.now()}.pdf`);
-    }
-
-    window.onload = init;
-</script>
-</body>
-</html>
+            listAlkitabEl.innerHTML = jemaatBacaAlkitab.length > 0 ? 
+                jemaatBacaAlkitab.map(nama => `<li>${nama}</li>`).join('') : "<li>Belum ada data</li>";
+            
+            listHadirEl.innerHTML = hadir.length > 0 ? 
+                hadir.map(nama => `<li>${nama}</li>`).join('') : "<li>Belum ada jemaat hadir</li>";
+            
+        } catch (error) {
