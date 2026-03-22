@@ -10,69 +10,61 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* Panel Atas (Tetap Diam) */
-        .header-fixed { background: var(--putih); z-index: 1000; position: sticky; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        
+        /* Header & Control Panel */
+        .header-fixed { background: var(--putih); z-index: 1000; position: sticky; top: 0; }
         .control-panel { display: flex; justify-content: space-around; padding: 10px; border-bottom: 2px solid var(--emas); }
-        .btn-action { border: none; background: none; color: #bbb; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; transition: 0.3s; }
-        .btn-action.active { color: var(--biru-tua); font-weight: bold; cursor: pointer; }
+        
+        .btn-action { border: none; background: none; color: #bbb; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; transition: 0.3s; pointer-events: none; }
+        .btn-action.active { color: var(--biru-tua); font-weight: bold; cursor: pointer; pointer-events: auto; }
         .btn-action i { font-size: 18px; }
 
-        /* Container Tombol ADD (Sticky/Freeze saat scroll) */
+        /* Bar Gold (Freeze/Sticky) */
         .sticky-add-bar { 
+            background: var(--emas); 
             display: flex; 
             align-items: center; 
-            padding: 10px 15px; 
-            background: var(--bg); 
-            gap: 10px;
+            padding: 8px 15px; 
             position: sticky;
-            top: 0; /* Menempel di bawah control panel */
+            top: 0; 
             z-index: 900;
+            min-height: 50px;
         }
 
-        .check-all-wrapper {
-            display: flex;
-            align-items: center;
-            background: var(--putih);
-            padding: 12px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
+        /* Checkbox All di dalam Padding Gold */
+        .check-all-box {
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
+            accent-color: var(--biru-tua);
+            cursor: pointer;
         }
 
         .btn-add-doa { 
             flex: 1;
-            background: var(--emas); 
+            background: none;
+            border: none;
             color: var(--biru-tua); 
-            border: none; 
-            padding: 14px; 
-            border-radius: 10px; 
             font-weight: bold; 
             cursor: pointer; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             gap: 10px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 14px;
         }
 
-        /* Daftar Doa (Bisa di-scroll) */
-        .main-content { flex: 1; overflow-y: auto; padding: 0 15px 100px 15px; }
-
-        .doa-card { background: var(--putih); border-radius: 15px; padding: 15px; margin-bottom: 12px; display: flex; gap: 12px; border-left: 5px solid var(--emas); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .doa-checkbox { width: 22px; height: 22px; accent-color: var(--biru-tua); cursor: pointer; }
+        /* Konten */
+        .main-content { flex: 1; overflow-y: auto; padding: 15px; }
+        .doa-card { background: var(--putih); border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; gap: 12px; border-left: 5px solid var(--emas); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .doa-checkbox { width: 20px; height: 20px; accent-color: var(--biru-tua); }
         .doa-info { flex: 1; }
-        .user-label { font-weight: bold; font-size: 14px; color: var(--biru-tua); margin-bottom: 5px; }
-        .text-label { font-size: 13px; color: #555; }
+        .user-label { font-weight: bold; color: var(--biru-tua); margin-bottom: 4px; display: block; }
+        .text-label { font-size: 13px; color: #555; line-height: 1.4; }
 
-        /* Popups */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
-        .popup { background: var(--putih); width: 100%; max-width: 380px; border-radius: 20px; padding: 20px; border-top: 6px solid var(--emas); }
-        .form-group { margin-bottom: 12px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; }
-        .btn-submit { width: 100%; background: var(--biru-tua); color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; }
-
+        .popup { background: var(--putih); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; border-top: 6px solid var(--emas); }
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background: var(--biru-tua); padding: 15px; text-align: center; }
-        .btn-back { color: white; text-decoration: none; font-size: 14px; }
+        .btn-back { color: white; text-decoration: none; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -85,15 +77,13 @@
     </div>
 
     <div class="sticky-add-bar">
-        <div class="check-all-wrapper">
-            <input type="checkbox" id="check-all" class="doa-checkbox" onchange="toggleCheckAll(this)">
-        </div>
+        <input type="checkbox" id="check-all" class="check-all-box" onchange="toggleCheckAll(this)">
         <button class="btn-add-doa" onclick="bukaAdd()"><i class="fa-solid fa-plus-circle"></i> ADD DOA BARU</button>
     </div>
 </div>
 
 <div class="main-content">
-    <div id="list-doa" style="margin-top: 15px;"></div>
+    <div id="list-doa"></div>
 </div>
 
 <div class="bottom-nav">
@@ -102,11 +92,20 @@
 
 <div id="pop-add" class="overlay">
     <div class="popup">
-        <h3 style="text-align:center;">Tambah Doa</h3>
-        <div class="form-group"><input type="text" id="add-nama" readonly placeholder="Nama Pelapor"></div>
-        <div class="form-group"><textarea id="add-doa" placeholder="Tulis doa Anda di sini..." style="height:100px"></textarea></div>
-        <button class="btn-submit" onclick="simpanBaru()">KIRIM DOA</button>
-        <p onclick="tutupPop()" style="text-align:center; color:red; cursor:pointer; margin-top:10px;">Batal</p>
+        <h3 style="text-align:center; color:var(--biru-tua)">Form Tiket Doa</h3>
+        <input type="text" id="add-nama" readonly style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <textarea id="add-doa" placeholder="Isi Pergumulan Doa..." style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd;"></textarea>
+        <button onclick="simpanBaru()" style="width:100%; padding:15px; background:var(--biru-tua); color:white; border:none; border-radius:10px; margin-top:10px; font-weight:bold;">KIRIM TIKET</button>
+        <p onclick="tutupPop()" style="text-align:center; cursor:pointer; color:#999; margin-top:10px;">Batal</p>
+    </div>
+</div>
+
+<div id="pop-edit" class="overlay">
+    <div class="popup">
+        <h3 style="text-align:center;">Edit Doa</h3>
+        <textarea id="ed-doa" style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd;"></textarea>
+        <button onclick="simpanEdit()" style="width:100%; padding:15px; background:var(--biru-tua); color:white; border:none; border-radius:10px; margin-top:10px; font-weight:bold;">SIMPAN PERUBAHAN</button>
+        <p onclick="tutupPop()" style="text-align:center; cursor:pointer; color:#999; margin-top:10px;">Batal</p>
     </div>
 </div>
 
@@ -114,7 +113,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -126,23 +124,25 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let userNama = "I Made Boby"; // Nama otomatis sesuai gambar Anda
+    let userNama = "I Made Boby"; 
+    let selectedIDs = [];
 
     function loadDoa() {
         db.collection("saran_masukan").orderBy("timestamp", "desc").onSnapshot(snap => {
-            let html = "";
+            let h = "";
             snap.forEach(doc => {
                 const d = doc.data();
-                html += `
+                h += `
                 <div class="doa-card">
                     <input type="checkbox" class="doa-checkbox item-check" value="${doc.id}" onchange="cekStatus()">
                     <div class="doa-info">
-                        <div class="user-label">${d.nama}</div>
+                        <span class="user-label">${d.nama}</span>
                         <div class="text-label" id="t-${doc.id}">${d.isi_saran}</div>
                     </div>
                 </div>`;
             });
-            document.getElementById("list-doa").innerHTML = html;
+            document.getElementById("list-doa").innerHTML = h || "<p style='text-align:center; color:#999'>Belum ada data.</p>";
+            cekStatus(); 
         });
     }
 
@@ -153,15 +153,13 @@
     }
 
     function cekStatus() {
-        const checkedCount = document.querySelectorAll('.item-check:checked').length;
-        const actions = document.querySelectorAll('.btn-action');
+        const checked = document.querySelectorAll('.item-check:checked');
+        selectedIDs = Array.from(checked).map(cb => cb.value);
         
-        if (checkedCount > 0) {
-            actions.forEach(a => a.classList.add('active'));
-        } else {
-            actions.forEach(a => a.classList.remove('active'));
-            document.getElementById('check-all').checked = false;
-        }
+        document.getElementById('act-terjawab').classList.toggle('active', selectedIDs.length > 0);
+        document.getElementById('act-hapus').classList.toggle('active', selectedIDs.length > 0);
+        // Edit hanya aktif jika TEPAT 1 item dipilih
+        document.getElementById('act-edit').classList.toggle('active', selectedIDs.length === 1);
     }
 
     function bukaAdd() {
@@ -170,15 +168,43 @@
     }
 
     async function simpanBaru() {
-        const isi = document.getElementById("add-doa").value;
-        if(!isi) return alert("Isi doa!");
+        const txt = document.getElementById("add-doa").value;
+        if(!txt) return alert("Isi doa kosong!");
         await db.collection("saran_masukan").add({
-            nama: userNama,
-            isi_saran: isi,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            nama: userNama, isi_saran: txt, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         tutupPop();
         document.getElementById("add-doa").value = "";
+    }
+
+    function prosesEdit() {
+        if(selectedIDs.length !== 1) return;
+        document.getElementById("pop-edit").style.display = "flex";
+        document.getElementById("ed-doa").value = document.getElementById(`t-${selectedIDs[0]}`).innerText;
+    }
+
+    async function simpanEdit() {
+        await db.collection("saran_masukan").doc(selectedIDs[0]).update({
+            isi_saran: document.getElementById("ed-doa").value
+        });
+        tutupPop();
+    }
+
+    async function prosesHapus() {
+        if(selectedIDs.length === 0) return;
+        if(confirm(`Hapus ${selectedIDs.length} doa terpilih?`)) {
+            for(let id of selectedIDs) {
+                await db.collection("saran_masukan").doc(id).delete();
+            }
+        }
+    }
+
+    async function prosesTerjawab() {
+        if(selectedIDs.length === 0) return;
+        alert(`${selectedIDs.length} Doa ditandai terjawab. Puji Tuhan!`);
+        for(let id of selectedIDs) {
+            await db.collection("saran_masukan").doc(id).update({ status: "Terjawab" });
+        }
     }
 
     function tutupPop() { document.querySelectorAll(".overlay").forEach(o => o.style.display="none"); }
