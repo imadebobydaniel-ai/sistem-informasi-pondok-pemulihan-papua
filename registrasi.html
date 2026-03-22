@@ -86,7 +86,7 @@
 
         <div class="form-group">
             <label>Foto Profil (Wajib)</label>
-            <input type="file" id="foto" accept="image/*" required>
+            <input type="file" id="foto" accept="image/jpeg,image/png,image/jpg" required>
         </div>
 
         <button type="button" id="btnSubmit" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
@@ -157,34 +157,33 @@
         }
     }
 
-    // --- SCRIPT UTAMA UNTUK REGISTRASI & FOTO ---
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
         const namaRaw = document.getElementById("nama").value.trim();
         const emailRaw = document.getElementById("email").value.trim().toLowerCase();
         const jcValue = document.getElementById("komsel").value;
         const nkBaru = document.getElementById("nk-display").value;
-        const fotoFile = document.getElementById("foto").files[0];
+        const fotoInput = document.getElementById("foto");
+        const fotoFile = fotoInput.files[0];
 
-        // 1. Validasi input awal
         if(!namaRaw || !emailRaw || !jcValue || !nkBaru || nkBaru === "Generating..." || !fotoFile) {
-            alert("Harap lengkapi semua data dan upload Foto Profil!");
+            alert("Harap lengkapi semua data dan pilih Foto Profil!");
             return;
         }
 
-        btn.innerText = "Memproses Foto & Data...";
+        btn.innerText = "Memproses... (Mohon Tunggu)";
         btn.disabled = true;
 
         try {
-            // 2. Normalisasi Nama
             const namaNormal = namaRaw.split(' ').map(word => 
                 word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
             ).join(' ');
 
-            // 3. Proses Membaca & Kompresi Foto (Agar tidak melebihi limit Firestore 1MB)
-            const base64Foto = await imageToResizedBase64(fotoFile, 400); 
+            // Proses Kompresi dengan Error Handling lebih ketat
+            const base64Foto = await imageToResizedBase64(fotoFile, 400).catch(e => {
+                throw new Error("Gagal memproses gambar. Coba foto lain.");
+            });
 
-            // 4. Susun Data User
             const userData = {
                 nama: namaNormal,
                 email: emailRaw,
@@ -200,22 +199,19 @@
                 tanggalDaftar: new Date().toLocaleString('id-ID')
             };
 
-            // 5. Simpan ke Firestore
             await db.collection("users").add(userData);
             
-            // 6. Tampilkan Pesan Sukses
             document.getElementById('pesan-sukses').innerHTML = `Berhasil!<br>Selamat Datang, <b>${namaNormal}</b><br>Nomor Komsel:<br><b>${nkBaru}</b>`;
             document.getElementById('blocking-message').style.display = 'flex';
 
         } catch (error) { 
             console.error("Detail Error:", error);
-            alert("Gagal Menyimpan: " + error.message); 
+            alert(error.message); 
             btn.innerText = "DAFTAR SEKARANG";
             btn.disabled = false;
         }
     }
 
-    // FUNGSI TAMBAHAN: Untuk kompres foto agar ringan di database
     function imageToResizedBase64(file, maxWidth) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -223,20 +219,31 @@
             reader.onload = (event) => {
                 const img = new Image();
                 img.src = event.target.result;
+                
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const scaleFactor = maxWidth / img.width;
-                    canvas.width = maxWidth;
-                    canvas.height = img.height * scaleFactor;
+                    
+                    // Pastikan scaleFactor tidak membuat gambar jadi lebih besar
+                    const finalScale = scaleFactor > 1 ? 1 : scaleFactor;
+                    
+                    canvas.width = img.width * finalScale;
+                    canvas.height = img.height * finalScale;
 
                     const ctx = canvas.getContext('2d');
+                    // Tambahkan filter smoothing untuk hasil resize lebih bagus di HP
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     
-                    const base64Resized = canvas.toDataURL('image/jpeg', 0.7);
+                    // Menggunakan format jpeg untuk kompresi maksimal
+                    const base64Resized = canvas.toDataURL('image/jpeg', 0.6);
                     resolve(base64Resized);
                 };
+                img.onerror = () => reject(new Error("File bukan gambar valid"));
             };
-            reader.onerror = error => reject(error);
+            reader.onerror = () => reject(new Error("Gagal membaca file"));
         });
     }
 </script>
