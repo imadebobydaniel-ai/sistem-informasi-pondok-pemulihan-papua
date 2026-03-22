@@ -24,6 +24,46 @@
             color: #333;
         }
 
+        /* --- STYLE MODAL LOGOUT --- */
+        .modal-overlay {
+            display: none; 
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            width: 320px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-ok { background-color: var(--biru-tua); color: white; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-cancel { background-color: #f0f0f0; color: #333; border: 1px solid #ccc; padding: 10px 25px; border-radius: 6px; cursor: pointer; }
+        /* -------------------------- */
+
         .top-info-bar { 
             background: var(--biru-tua); 
             display: flex; 
@@ -209,11 +249,20 @@
             <a href="saran.html" class="menu-box">
                 <i class="fa-solid fa-comment-dots"></i>Saran
             </a>
-    
-</a>
         </div>
 
         <div class="btn-logout" onclick="logoutDanHapusDevice()">KELUAR SISTEM</div>
+    </div>
+
+    <div id="logoutModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Konfirmasi</h3>
+            <p>Apakah Anda yakin ingin keluar sistem?</p>
+            <div class="modal-buttons">
+                <button id="confirmLogout" class="btn-ok">OK</button>
+                <button id="cancelLogout" class="btn-cancel">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -231,16 +280,18 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // Elemen Modal Logout
+        const modal = document.getElementById('logoutModal');
+        const confirmBtn = document.getElementById('confirmLogout');
+        const cancelBtn = document.getElementById('cancelLogout');
+
         // --- 1. INISIALISASI HALAMAN ---
         window.onload = function() {
-            // Cek Login
             const email = localStorage.getItem("userEmail");
             if (!email) {
                 window.location.href = "index.html"; 
                 return;
             }
-
-            // Jalankan Fungsi
             updateWaktuDanRunningText();
             setInterval(updateWaktuDanRunningText, 1000);
             syncUserData();
@@ -263,7 +314,7 @@
             if(runText) runText.innerText = `Shalom! ${dayName}, ${date} ${monthName} ${year} | ${time} WIT | SISTEM INFORMASI KOMSEL JC | TETAP SEMANGAT!`;
         }
 
-        // --- 3. SINKRONISASI DATA USER DARI FIREBASE ---
+        // --- 3. SINKRONISASI DATA USER ---
         function syncUserData() {
             const email = localStorage.getItem("userEmail");
             if (!email) return;
@@ -271,15 +322,12 @@
             db.collection("users").where("email", "==", email).onSnapshot((snap) => {
                 if (!snap.empty) {
                     const d = snap.docs[0].data();
-                    
-                    // Update Nama & Komsel
                     const elNama = document.getElementById('disp_nama');
                     const elKomsel = document.getElementById('disp_komsel');
                     
                     if(elNama) elNama.innerText = d.nama || "User";
                     if(elKomsel) elKomsel.innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                     
-                    // Update Foto
                     if (d.fotoUrl) {
                         const userPhoto = document.getElementById('user-photo');
                         const defIcon = document.getElementById('default-icon');
@@ -293,17 +341,28 @@
             });
         }
 
-        // --- 4. FUNGSI LOGOUT ---
+        // --- 4. FUNGSI LOGOUT (VERSI MODAL) ---
         function logoutDanHapusDevice() {
-            if (confirm("Apakah Anda yakin ingin keluar sistem?")) {
-                localStorage.clear();
-                window.location.href = "index.html";
-            }
+            // Tampilkan Modal
+            modal.style.display = 'flex';
         }
 
-        // --- 5. FUNGSI REFRESH (Opsional) ---
-        function refreshPage() {
-            window.location.reload();
+        // Klik Cancel pada modal
+        cancelBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        // Klik OK pada modal
+        confirmBtn.onclick = function() {
+            localStorage.clear();
+            window.location.href = "index.html";
+        }
+
+        // Tutup modal jika klik di area gelap (luar box)
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
         }
     </script>
 </body>
