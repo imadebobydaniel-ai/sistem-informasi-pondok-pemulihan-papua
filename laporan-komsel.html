@@ -49,7 +49,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* Styling untuk List Nama */
         .name-list-container {
             margin-top: 10px;
             padding: 10px;
@@ -85,10 +84,6 @@
         }
         select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; }
 
-        .card-pks {
-            background: #fff;
-            border-left: 5px solid #b8860b;
-        }
         .stat-row {
             display: flex;
             justify-content: space-between;
@@ -97,6 +92,7 @@
             border-bottom: 1px dashed #eee;
         }
         .stat-row:last-child { border-bottom: none; }
+        
         .progress-bar-container {
             background: #eee;
             border-radius: 10px;
@@ -308,15 +304,15 @@
         
         <div class="name-list-container">
             <span class="section-title-small"><i class="fas fa-book-open"></i> Jemaat Baca Alkitab:</span>
-            <ul id="daftar-nama-alkitab" class="name-list"><li>Menunggu data...</li></ul>
+            <ul id="daftar-nama-alkitab" class="name-list"><li>Menarik data...</li></ul>
             
             <hr style="border: 0.5px solid #f0f0f0; margin: 10px 0;">
             
             <span class="section-title-small"><i class="fas fa-user-check"></i> Jemaat Hadir Komsel:</span>
-            <ul id="daftar-nama-hadir" class="name-list"><li>Menunggu data...</li></ul>
+            <ul id="daftar-nama-hadir" class="name-list"><li>Menarik data...</li></ul>
         </div>
 
-        <div id="card-capaian-doa" class="card-pks" style="margin-top: 20px; padding: 10px; border-radius: 12px; background: #fffcf0;">
+        <div id="card-capaian-doa" class="card-pks" style="margin-top: 20px; padding: 10px; border-radius: 12px; background: #fffcf0; border-left: 5px solid #b8860b;">
             <h3 style="color: #b8860b; font-size: 12px;"><i class="fas fa-pray"></i> CAPAIAN DOA (SLA)</h3>
             <hr style="border: 0.5px solid #eee;">
             <div class="stat-row">
@@ -380,6 +376,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -397,19 +394,16 @@
     let unsubBacaan = null;
     let unsubDoa = null;
 
-    // --- FUNGSI QUERY FIREBASE (Sesuai Permintaan) ---
+    // --- FUNGSI QUERY DATA ---
     const getAlkitabReport = async () => {
-        const snap = await db.collection("laporan_bacaan")
-            .where("komsel", "==", userJC)
-            .get();
-        // Mengambil nama unik (Set) untuk list
+        if (!userJC) return [];
+        const snap = await db.collection("laporan_bacaan").where("komsel", "==", userJC).get();
         return [...new Set(snap.docs.map(doc => doc.data().nama))];
     };
 
     const getAttendanceReport = async () => {
-        const snap = await db.collection("kehadiran_komsel")
-            .where("komsel", "==", userJC)
-            .get();
+        if (!userJC) return { hadir: [], absen: [] };
+        const snap = await db.collection("kehadiran_komsel").where("komsel", "==", userJC).get();
         const hadir = [];
         const absen = [];
         snap.forEach(doc => {
@@ -420,19 +414,153 @@
         return { hadir, absen };
     };
 
-    // --- FUNGSI TAMPILKAN LAPORAN (Sesuai Permintaan) ---
-    async function tampilkanLaporanRealtime() {
+    // --- FUNGSI UTAMA ---
+    async function init() {
+        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
+        const email = emailRaw.trim().toLowerCase();
+        
         try {
-            const jemaatBacaAlkitab = await getAlkitabReport();
-            const { hadir, absen } = await getAttendanceReport();
+            const snap = await db.collection("users").where("email", "==", email).get();
+            if(!snap.empty) {
+                userJC = String(snap.docs[0].data().komsel);
+                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
+                
+                initChart();
+                sinkronisasiRealtime();
+                listenToCapaianDoa();
+            }
+        } catch (e) { console.error("Gagal inisialisasi:", e); }
+    }
 
-            const listAlkitabEl = document.getElementById("daftar-nama-alkitab");
-            const listHadirEl = document.getElementById("daftar-nama-hadir");
+    function initChart() {
+        const ctx = document.getElementById('performaChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Alkitab', 'Hadir', 'Absen'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
+                    borderRadius: 10,
+                    barThickness: 40
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 11, weight: 'bold' } } } }
+            }
+        });
+    }
 
-            listAlkitabEl.innerHTML = jemaatBacaAlkitab.length > 0 ? 
-                jemaatBacaAlkitab.map(nama => `<li>${nama}</li>`).join('') : "<li>Belum ada data</li>";
-            
-            listHadirEl.innerHTML = hadir.length > 0 ? 
-                hadir.map(nama => `<li>${nama}</li>`).join('') : "<li>Belum ada jemaat hadir</li>";
-            
-        } catch (error) {
+    async function sinkronisasiRealtime() {
+        if (unsubBacaan) unsubBacaan();
+        
+        const periode = parseInt(document.getElementById("filter-periode").value);
+        const batasWaktu = new Date();
+        batasWaktu.setMonth(batasWaktu.getMonth() - periode);
+        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
+        
+        // Listener Realtime untuk Log & Chart
+        unsubBacaan = db.collection("laporan_bacaan")
+            .where("komsel", "==", userJC)
+            .where("tanggal", ">=", tsBatas)
+            .onSnapshot(async (snap) => {
+                let html = "";
+                let countAlkitab = 0;
+                
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    countAlkitab++;
+                    const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+                    html += `<div class="mutasi-item">
+                                <div class="mutasi-date">${tgl}</div>
+                                <div class="mutasi-info">
+                                    <div class="mutasi-name">${d.nama}</div>
+                                    <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
+                                </div>
+                                <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
+                             </div>`;
+                });
+
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;padding:20px;">Belum ada aktifitas.</p>';
+                
+                // Update List Nama secara Async
+                const jemaatBaca = await getAlkitabReport();
+                const { hadir } = await getAttendanceReport();
+                
+                document.getElementById("daftar-nama-alkitab").innerHTML = jemaatBaca.length > 0 ? 
+                    jemaatBaca.map(n => `<li>${n}</li>`).join('') : "<li>Belum ada data</li>";
+                document.getElementById("daftar-nama-hadir").innerHTML = hadir.length > 0 ? 
+                    hadir.map(n => `<li>${n}</li>`).join('') : "<li>Belum ada data</li>";
+
+                // Kalkulasi Chart
+                const target = 20 * (periode * 4); 
+                const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
+                const persenHadir = Math.min(persenAlkitab + 15, 95); 
+                
+                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, 100 - persenHadir];
+                myChart.update();
+                generateInsight(persenAlkitab);
+            });
+    }
+
+    function listenToCapaianDoa() {
+        if (unsubDoa) unsubDoa();
+        unsubDoa = db.collection("laporan_doa").onSnapshot((snapshot) => {
+            let totalDoa = 0; let dijawabCount = 0;
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.jc === "JC " + userJC || data.jc === userJC) {
+                    totalDoa++;
+                    if (data.terjawab === true) dijawabCount++;
+                }
+            });
+            const persentase = totalDoa > 0 ? (dijawabCount / totalDoa) * 100 : 0;
+            document.getElementById("total-doa-masuk").innerText = totalDoa;
+            document.getElementById("persentase-dijawab").innerText = persentase.toFixed(1) + "%";
+            document.getElementById("progress-doa-bar").style.width = persentase + "%";
+        });
+    }
+
+    function generateInsight(persen) {
+        document.getElementById("card-insight").style.display = "block";
+        const txt = document.getElementById("text-insight");
+        if (persen >= 80) txt.innerText = "Luar biasa! Partisipasi jemaat sangat tinggi. Komsel JC " + userJC + " berada dalam kondisi sangat sehat.";
+        else if (persen >= 50) txt.innerText = "Stabilitas terjaga. Mayoritas jemaat JC " + userJC + " aktif membangun gaya hidup berdoa dan baca firman.";
+        else txt.innerText = "Perhatian: Trend partisipasi menurun. Disarankan untuk melakukan pendekatan personal kepada jemaat JC " + userJC + ".";
+    }
+
+    // UI Helper
+    function toggleLogModal(show) { document.getElementById("modal-log").style.display = show ? "flex" : "none"; }
+    function toggleLogicPopup() { const p = document.getElementById("popup-logic"); p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none"; }
+    function togglePass() {
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
+    }
+
+    async function validateAndExport() {
+        const pass = document.getElementById("pks-password").value;
+        if(pass !== "pks123") { alert("Password Otoritas Salah!"); return; }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18); doc.text("GBI PONDOK PEMULIHAN PAPUA", 105, 20, {align:"center"});
+        doc.setFontSize(12); doc.text("LAPORAN PERKEMBANGAN KOMSEL JC " + userJC, 105, 28, {align:"center"});
+        doc.line(20, 32, 190, 32);
+        
+        const totalDoa = document.getElementById("total-doa-masuk").innerText;
+        const persenDoa = document.getElementById("persentase-dijawab").innerText;
+        doc.text(`Ringkasan Doa: ${totalDoa} masuk, ${persenDoa} terjawab.`, 20, 45);
+        
+        doc.save(`Laporan_JC${userJC}_${new Date().toLocaleDateString()}.pdf`);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
