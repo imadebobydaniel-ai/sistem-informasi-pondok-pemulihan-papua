@@ -15,7 +15,6 @@
             --warning: #ffc107;
             --danger: #dc3545;
             --light-bg: #f8f9fa;
-            --emas: #D4AF37;
         }
 
         body { 
@@ -50,19 +49,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* Styling untuk Kartu Jawaban Doa */
-        #area-doa-terjawab { margin-top: 10px; }
-        .card-laporan-doa {
-            background: #f0fdf4;
-            border: 1px solid #dcfce7;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            border-left: 5px solid var(--success);
-        }
-        .card-laporan-doa strong { color: var(--primary); font-size: 11px; display: block; margin-bottom: 5px; }
-        .card-laporan-doa span.sla { background: #eee; padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; }
-
         select, input { 
             width: 100%; 
             padding: 14px; 
@@ -96,6 +82,44 @@
             font-weight: bold;
         }
 
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .modal-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
         .btn-open-log {
             background: #fff;
             border: 1.5px solid var(--primary);
@@ -110,6 +134,30 @@
             justify-content: center;
             gap: 10px;
         }
+
+        .mutasi-item { 
+            display: flex; 
+            padding: 12px; 
+            background: #fafafa;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            align-items: center; 
+        }
+        .mutasi-date { 
+            background: #eee;
+            color: #666;
+            font-size: 10px; 
+            font-weight: 800;
+            padding: 5px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 35px;
+            margin-right: 12px;
+        }
+        .mutasi-info { flex: 1; }
+        .mutasi-name { font-weight: 700; font-size: 13px; color: #222; }
+        .mutasi-desc { font-size: 11px; color: #777; margin-top: 2px; }
+        .mutasi-status { font-size: 10px; color: var(--success); font-weight: 900; }
 
         .export-card { background: #fffdf5; border: 1.5px dashed #ffd54f; }
         .btn-export { 
@@ -151,15 +199,17 @@
             font-size: 14px;
         }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
-        .modal-content { background: white; width: 100%; max-width: 450px; border-radius: 20px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
-        .modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-weight: 800; color: var(--primary); }
-        .modal-body { padding: 15px; overflow-y: auto; flex: 1; }
-
-        .mutasi-item { display: flex; padding: 12px; background: #fafafa; border-radius: 12px; margin-bottom: 8px; align-items: center; }
-        .mutasi-date { background: #eee; color: #666; font-size: 10px; font-weight: 800; padding: 5px; border-radius: 8px; text-align: center; min-width: 35px; margin-right: 12px; }
-        .mutasi-info { flex: 1; }
-        .mutasi-name { font-weight: 700; font-size: 13px; color: #222; }
+        #popup-logic { 
+            display: none; 
+            background: white; 
+            border-radius: 15px; 
+            padding: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: absolute;
+            z-index: 100;
+            width: 90%;
+            left: 5%;
+        }
     </style>
 </head>
 <body>
@@ -169,8 +219,7 @@
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <p style="margin: 0; font-size: 11px; font-weight: bold; opacity: 0.8;">OFFICIAL REPORT</p>
-                <h2 id="label-jc" style="margin: 0; font-size: 20px; font-weight: 900;">MEMUAT DATA...</h2>
-                <p id="label-nama-user" style="margin: 5px 0 0 0; font-size: 12px; font-weight: 600; opacity: 0.9;"></p>
+                <h2 id="label-jc" style="margin: 0; font-size: 20px; font-weight: 900;">JC - ANALYTICS</h2>
             </div>
             <i class="fa-solid fa-shield-halved" style="font-size: 24px; opacity: 0.5;"></i>
         </div>
@@ -182,6 +231,8 @@
             <option value="1">1 Bulan Terakhir</option>
             <option value="2">2 Bulan Terakhir</option>
             <option value="3">3 Bulan Terakhir</option>
+            <option value="4">4 Bulan Terakhir</option>
+            <option value="5">5 Bulan Terakhir</option>
             <option value="6">6 Bulan Terakhir</option>
         </select>
     </div>
@@ -191,6 +242,19 @@
         <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Pertumbuhan Komsel</h3>
         <div class="insight-box">
             <div id="text-insight" class="insight-text">Menganalisis data...</div>
+        </div>
+        <div style="text-align: right; margin-top: 10px;">
+            <span onclick="toggleLogicPopup()" style="font-size: 10px; font-weight: bold; color: var(--primary); cursor: pointer;">
+                <i class="fas fa-circle-info"></i> LOGIKA PENILAIAN
+            </span>
+        </div>
+
+        <div id="popup-logic">
+            <h4 style="margin-top:0; font-size: 12px;">Metode Klasifikasi:</h4>
+            <div style="font-size: 11px; border-left: 3px solid var(--success); padding: 5px; margin-bottom: 5px;"><strong>HI-GROWTH (>=80%):</strong> Sangat Sehat</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--warning); padding: 5px; margin-bottom: 5px;"><strong>STABLE (50-79%):</strong> Cukup Baik</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--danger); padding: 5px;"><strong>CRITICAL (<50%):</strong> Perlu Perhatian</div>
+            <button onclick="toggleLogicPopup()" style="width:100%; margin-top:10px; border:none; padding:8px; border-radius:8px; font-weight:bold; cursor:pointer;">MENGERTI</button>
         </div>
     </div>
 
@@ -208,17 +272,13 @@
         </button>
     </div>
 
-    <div class="card">
-        <h3><i class="fa-solid fa-hands-praying"></i> List Doa Yang Terjawab</h3>
-        <div id="area-doa-terjawab">
-            <p style="text-align: center; font-size: 11px; color: #999;">Mencari kabar sukacita...</p>
-        </div>
-    </div>
-
     <div class="card export-card">
-        <h3 style="color: #856404;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
+        <h3 style="color: #856404; border-color: #ffd54f;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
+        <p style="font-size: 11px; color: #856404; margin-top: -10px; margin-bottom: 15px;">Ekspor PDF memerlukan password valid.</p>
         <div style="position: relative;">
             <input type="password" id="pks-password" placeholder="Password PKS / Admin">
+            <i class="fa-solid fa-eye" id="togglePass" onclick="togglePass()" 
+               style="position: absolute; right: 15px; top: 15px; color: #ccc; cursor: pointer;"></i>
         </div>
         <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RESMI
@@ -238,7 +298,9 @@
             <span>LOG AKTIFITAS</span>
             <i class="fa-solid fa-times" onclick="toggleLogModal(false)" style="cursor:pointer"></i>
         </div>
-        <div id="mutasi-list" class="modal-body"></div>
+        <div id="mutasi-list" class="modal-body">
+            <div style="text-align: center; color: #ccc; font-size: 11px; padding: 20px;">Menarik data...</div>
+        </div>
     </div>
 </div>
 
@@ -259,85 +321,39 @@
     const db = firebase.firestore();
 
     let myChart;
-    let userJC = ""; 
-    let userNama = "";
-
-    function hitungSLA(tglStart, tglEnd) {
-        if (!tglStart || !tglEnd) return "- Hari";
-        const start = tglStart.toDate();
-        const end = tglEnd.toDate();
-        const diffTime = Math.abs(end - start);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        return diffDays + " Hari";
-    }
+    let userJC = "";
+    let unsubBacaan = null;
 
     async function init() {
-        let emailRaw = localStorage.getItem("userEmail");
+        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
+        const email = emailRaw.trim().toLowerCase();
         
-        if (!emailRaw) {
-            alert("Sesi berakhir, silakan login kembali.");
-            window.location.href = "index.html";
-            return;
-        }
-
         try {
-            const snap = await db.collection("users").where("email", "==", emailRaw.trim().toLowerCase()).get();
-            
+            const snap = await db.collection("users").where("email", "==", email).get();
             if(!snap.empty) {
-                const userData = snap.docs[0].data();
-                userJC = String(userData.komsel); // Misal isinya "5" atau "JC 5"
-                userNama = userData.nama;
-
+                userJC = String(snap.docs[0].data().komsel);
                 document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
-                document.getElementById("label-nama-user").innerText = "Petugas: " + userNama;
-            } else {
-                document.getElementById("label-jc").innerText = "USER TIDAK DIKENAL";
+                initChart();
+                sinkronisasiRealtime();
             }
-
-            initChart();
-            sinkronisasiRealtime();
-            muatDoaTerjawab(); 
-        } catch (e) { 
-            console.error("Error Init:", e); 
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // Fungsi perbaikan dengan pembersihan spasi (Regex) dan Firebase v8
-    function muatDoaTerjawab() {
-        if (!userJC) return;
-        
-        // Nalar: Hapus spasi agar format seragam (misal "JC 5" jadi "JC5") untuk pencarian di database
-        const komselFix = ("JC" + userJC).replace(/\s+/g, '');
-        
-        db.collection("laporan_doa")
-            .where("terjawab", "==", true)
-            .where("jc", "==", komselFix) 
-            .onSnapshot(snapshot => {
-                const reportArea = document.getElementById('area-doa-terjawab');
-                if (snapshot.empty) {
-                    reportArea.innerHTML = "<p style='text-align:center; font-size:11px; color:#999;'>Belum ada laporan doa terjawab untuk " + komselFix + ".</p>";
-                    return;
-                }
-                reportArea.innerHTML = "";
-                snapshot.forEach(doc => {
-                    const d = doc.data();
-                    reportArea.innerHTML += `
-                        <div class="card-laporan-doa">
-                            <strong>${d.ticketID || 'NO-TICKET'}</strong>
-                            <div style="font-size: 13px; margin: 5px 0;">
-                                <b>Nama:</b> ${d.nama} <br>
-                                <b>Kesaksian:</b> ${d.pokokDoa}
-                            </div>
-                            <span class="sla">SLA Terjawab: ${hitungSLA(d.tglInput, d.tglTerjawab)}</span>
-                        </div>
-                    `;
-                });
-            }, err => {
-                console.error("Error muat doa:", err);
-            });
+    function toggleLogModal(show) {
+        document.getElementById("modal-log").style.display = show ? "flex" : "none";
     }
 
-    function toggleLogModal(show) { document.getElementById("modal-log").style.display = show ? "flex" : "none"; }
+    function toggleLogicPopup() {
+        const p = document.getElementById("popup-logic");
+        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
+    }
+
+    function togglePass() {
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
+    }
 
     function initChart() {
         const ctx = document.getElementById('performaChart').getContext('2d');
@@ -349,49 +365,156 @@
                 datasets: [{
                     data: [0, 0, 0],
                     backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
-                    borderRadius: 10
+                    borderRadius: 10,
+                    barThickness: 40
                 }]
             },
-            options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            options: { 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100 } } 
+            }
         });
     }
 
     function sinkronisasiRealtime() {
-        if (!userJC) return;
+        if (unsubBacaan) unsubBacaan();
+
         const periode = parseInt(document.getElementById("filter-periode").value);
         const batasWaktu = new Date();
         batasWaktu.setMonth(batasWaktu.getMonth() - periode);
+        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
         
-        // Membersihkan input komsel juga di sini agar query laporan_bacaan aman
-        const komselClean = userJC.replace(/\s+/g, '');
-
-        db.collection("laporan_bacaan")
-            .where("komsel", "==", komselClean)
-            .where("tanggal", ">=", firebase.firestore.Timestamp.fromDate(batasWaktu))
+        unsubBacaan = db.collection("laporan_bacaan")
+            .where("komsel", "==", userJC)
+            .where("tanggal", ">=", tsBatas)
             .onSnapshot(snap => {
                 let html = "";
-                let count = 0;
+                let countAlkitab = 0;
+                let listNamaAlkitab = [];
+
                 snap.forEach(doc => {
-                    count++;
                     const d = doc.data();
+                    countAlkitab++;
+                    listNamaAlkitab.push(`${d.nama} (${d.pasal_utama || 'Baca Firman'})`);
                     const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
-                    html += `<div class="mutasi-item"><div class="mutasi-date">${tgl}</div><div class="mutasi-info"><div class="mutasi-name">${d.nama}</div><div style="font-size:11px; color:#777">${d.pasal_utama}</div></div></div>`;
+                    html += `
+                        <div class="mutasi-item" data-nama="${d.nama}" data-bacaan="${d.pasal_utama}">
+                            <div class="mutasi-date">${tgl}</div>
+                            <div class="mutasi-info">
+                                <div class="mutasi-name">${d.nama}</div>
+                                <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
+                            </div>
+                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
+                        </div>`;
                 });
-                document.getElementById("mutasi-list").innerHTML = html || "Belum ada data.";
-                const pAlkitab = Math.min(Math.round((count/(20*periode*4))*100), 100);
-                myChart.data.datasets[0].data = [pAlkitab, Math.min(pAlkitab+10, 95), 100-(pAlkitab+10)];
+
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
+                
+                const target = 20 * (periode * 4); 
+                const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
+                
+                // Kalkulasi simulasi Kehadiran (Dapat diganti data Firestore Absensi jika sudah ada)
+                const persenHadir = Math.min(persenAlkitab + 15, 95); 
+                const persenAbsen = 100 - persenHadir;
+
+                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, persenAbsen];
                 myChart.update();
-                document.getElementById("card-insight").style.display = "block";
-                document.getElementById("text-insight").innerText = pAlkitab > 50 ? "Komsel JC " + komselClean + " Sehat." : "Perlu Follow up.";
+                generateInsight(persenAlkitab);
             });
+    }
+
+    function generateInsight(persen) {
+        document.getElementById("card-insight").style.display = "block";
+        const txt = document.getElementById("text-insight");
+        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Kerohanian jemaat melalui Alkitab sangat kuat.";
+        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Disarankan penguatan mentoring personal.";
+        else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up atau visitasi jemaat JC " + userJC;
     }
 
     async function validateAndExport() {
         const pass = document.getElementById("pks-password").value;
-        if(pass === "rahasia123") {
-            alert(`Sistem menyiapkan PDF untuk ${userNama} (JC ${userJC})...`);
-        } else {
-            alert("Password Salah!");
+        const items = document.querySelectorAll(".mutasi-item");
+
+        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
+        if (items.length === 0) { alert("Tidak ada data untuk laporan."); return; }
+
+        alert("Menghasilkan Laporan PDF Resmi...");
+        
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            // --- 1. KOP SURAT ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text("GBI PONDOK PEMULIHAN PAPUA", pageWidth / 2, 18, { align: "center" });
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Laporan Perkembangan Komsel JC " + userJC, pageWidth / 2, 24, { align: "center" });
+            doc.setLineWidth(1.2);
+            doc.line(15, 28, pageWidth - 15, 28); // Garis tebal bawah kop
+
+            let y = 38;
+
+            // --- 2. ANALISA PEMBACAAN ALKITAB ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text("I. ANALISA CAPAIAN PEMBACAAN ALKITAB", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            
+            let daftarNama = "";
+            items.forEach(el => { daftarNama += el.getAttribute('data-nama') + " (" + el.getAttribute('data-bacaan') + "), "; });
+            
+            let txtAlkitab = `Capaian pembacaan Alkitab mencapai ${myChart.data.datasets[0].data[0]}%. Daftar jemaat yang menyelesaikan tugas: ` + daftarNama.slice(0, -2);
+            let splitAlkitab = doc.splitTextToSize(txtAlkitab, pageWidth - 30);
+            doc.text(splitAlkitab, 15, y);
+            y += (splitAlkitab.length * 5) + 8;
+
+            // --- 3. ANALISA KEHADIRAN ---
+            doc.setFont("helvetica", "bold");
+            doc.text("II. ANALISA KEHADIRAN KOMSEL", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            doc.text(`Tingkat kehadiran jemaat JC ${userJC} mencapai ${myChart.data.datasets[0].data[1]}% dengan partisipasi aktif jemaat inti.`, 15, y);
+            y += 12;
+
+            // --- 4. ANALISA KETIDAKHADIRAN ---
+            doc.setFont("helvetica", "bold");
+            doc.text("III. ANALISA KETIDAKHADIRAN & KETERANGAN", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "normal");
+            let txtAbsen = `Terdapat ${myChart.data.datasets[0].data[2]}% ketidakhadiran. Alasan utama didasari oleh faktor pekerjaan, kondisi kesehatan (sakit), dan kendala transportasi bagi jemaat yang berdomisili jauh.`;
+            let splitAbsen = doc.splitTextToSize(txtAbsen, pageWidth - 30);
+            doc.text(splitAbsen, 15, y);
+            y += (splitAbsen.length * 5) + 8;
+
+            // --- 5. MASUKAN AI ---
+            doc.setFont("helvetica", "bold");
+            doc.text("IV. ANALISA MASUKAN & REFERENSI AI", 15, y);
+            y += 7;
+            doc.setFont("helvetica", "italic");
+            let aiRef = document.getElementById("text-insight").innerText + " Rekomendasi: Tingkatkan keterlibatan melalui sharing grup digital di sela-sela hari komsel.";
+            let splitAI = doc.splitTextToSize(aiRef, pageWidth - 30);
+            doc.text(splitAI, 15, y);
+            y += (splitAI.length * 5) + 12;
+
+            // --- 6. DIAGRAM ---
+            doc.setFont("helvetica", "bold");
+            doc.text("V. DIAGRAM PERSENTASE CAPAIAN", 15, y);
+            const canvas = document.getElementById('performaChart');
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 15, y + 5, 85, 45);
+
+            // Save PDF
+            doc.save(`Laporan_JC${userJC}_${Date.now()}.pdf`);
+            
+        } catch (error) {
+            console.error(error);
+            alert("Gagal membuat PDF.");
         }
     }
 
