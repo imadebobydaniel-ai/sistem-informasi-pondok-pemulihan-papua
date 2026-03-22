@@ -29,18 +29,25 @@
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
         #nk-display { background: #fff3cd !important; border: 2px solid #ffc107 !important; color: #856404; font-weight: bold; }
 
-        /* Perbaikan Tombol Kamera Agar Tembus/Bisa Diklik */
-        .file-input-wrapper { position: relative; width: 100%; height: 55px; margin-bottom: 15px; }
-        .btn-file { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            border: 2px dashed #28a745; color: #28a745; background: #fff; 
-            border-radius: 12px; font-weight: bold; display: flex; 
-            align-items: center; justify-content: center; gap: 10px; z-index: 1; 
+        /* Style Baru Tombol Kamera (Tanpa Tumpukan Absolut) */
+        .custom-file-upload {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 15px;
+            background-color: #fff;
+            color: #28a745;
+            border: 2px dashed #28a745;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: 0.3s;
         }
-        .file-input-wrapper input[type=file] { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            opacity: 0; cursor: pointer; z-index: 2; /* Input menutupi tombol visual */
-        }
+        .custom-file-upload:active { background-color: #e8f5e9; transform: scale(0.98); }
+        #foto { display: none; } /* Sembunyikan input asli sepenuhnya */
     </style>
 </head>
 <body>
@@ -95,17 +102,15 @@
         <div class="form-group" id="group-nk" style="border: 1px dashed #ccc; padding: 10px; border-radius: 10px;">
             <label>Nomor Komsel (NK) Otomatis</label>
             <input type="text" id="nk-display" readonly placeholder="Pilih Komsel Dahulu">
-            <small id="nk-loading-text" style="display:none; color: orange;">Sedang memproses...</small>
         </div>
 
         <div class="form-group">
             <label>Foto Profil (Wajib)</label>
-            <div class="file-input-wrapper">
-                <div class="btn-file">
-                    <i class="fa-solid fa-camera"></i> <span id="text-foto">Ambil / Pilih Foto</span>
-                </div>
-                <input type="file" id="foto" accept="image/*" capture="environment" required onchange="previewFileName()">
+            <div class="custom-file-upload" onclick="document.getElementById('foto').click()">
+                <i class="fa-solid fa-camera"></i>
+                <span id="text-foto">Ambil / Pilih Foto</span>
             </div>
+            <input type="file" id="foto" accept="image/*" required onchange="previewFileName()">
         </div>
 
         <button type="button" id="btnSubmit" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
@@ -144,15 +149,19 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    // Fungsi menampilkan nama file terpilih
     function previewFileName() {
-        const file = document.getElementById('foto').files[0];
-        if(file) { document.getElementById('text-foto').innerText = "Foto Terpilih: " + file.name.substring(0,15) + "..."; }
+        const fileInput = document.getElementById('foto');
+        const textDisplay = document.getElementById('text-foto');
+        if(fileInput.files.length > 0) {
+            textDisplay.innerText = "Terpilih: " + fileInput.files[0].name.substring(0, 15) + "...";
+            textDisplay.style.color = "#28a745";
+        }
     }
 
     document.getElementById('eyeIcon').addEventListener('click', function() {
         const passInput = document.getElementById('pass');
-        const type = passInput.type === 'password' ? 'text' : 'password';
-        passInput.type = type;
+        passInput.type = passInput.type === 'password' ? 'text' : 'password';
         this.classList.toggle('fa-eye');
         this.classList.toggle('fa-eye-slash');
     });
@@ -171,16 +180,10 @@
 
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
-        const fotoInput = document.getElementById("foto");
-        const file = fotoInput.files[0];
+        const file = document.getElementById("foto").files[0];
 
         if(!document.getElementById("nama").value || !file) {
             alert("Harap lengkapi Nama dan Foto Profil!");
-            return;
-        }
-
-        if (file.size > 15 * 1024 * 1024) {
-            alert("File terlalu besar (Maks 15MB). Coba gunakan foto lain.");
             return;
         }
 
@@ -188,12 +191,9 @@
         btn.disabled = true;
 
         try {
-            const namaRaw = document.getElementById("nama").value.trim();
-            const namaNormal = namaRaw.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
             const base64Foto = await imageToResizedBase64(file, 400);
-
             const userData = {
-                nama: namaNormal,
+                nama: document.getElementById("nama").value,
                 email: document.getElementById("email").value.trim().toLowerCase(),
                 whatsapp: document.getElementById("hp").value,
                 password: document.getElementById("pass").value,
@@ -208,11 +208,8 @@
             };
 
             await db.collection("users").add(userData);
-            document.getElementById('pesan-sukses').innerHTML = `Berhasil!<br>Selamat Datang, <b>${namaNormal}</b>`;
             document.getElementById('blocking-message').style.display = 'flex';
-
         } catch (error) { 
-            console.error(error);
             alert("Gagal: " + error.message); 
             btn.innerText = "DAFTAR SEKARANG";
             btn.disabled = false;
@@ -233,14 +230,10 @@
                     canvas.width = Math.floor(img.width * finalScale);
                     canvas.height = Math.floor(img.height * finalScale);
                     const ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     resolve(canvas.toDataURL('image/jpeg', 0.6));
                 };
-                img.onerror = () => reject(new Error("File rusak"));
             };
-            reader.onerror = () => reject(new Error("Gagal baca file"));
         });
     }
 </script>
