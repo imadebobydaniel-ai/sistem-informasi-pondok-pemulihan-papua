@@ -21,15 +21,16 @@
         .btn-submit { width: 100%; padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
         .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
         .btn-back-login { display: block; text-align: center; text-decoration: none; color: #666; font-size: 14px; font-weight: bold; padding: 10px; border: 1px solid #ddd; border-radius: 10px; }
+        
+        /* Modal & UI Feedback */
         #blocking-message { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .modal-box i { font-size: 50px; color: #28a745; margin-bottom: 15px; }
-        .modal-box p { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px; }
         .password-container { position: relative; }
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
         #nk-display { background: #fff3cd !important; border: 2px solid #ffc107 !important; color: #856404; font-weight: bold; }
 
-        /* Tombol Kamera Baru: Lebih Bersahabat untuk HP */
+        /* Tombol Upload & Preview (Optimasi Galeri HP) */
         .custom-upload-label {
             display: flex;
             flex-direction: column;
@@ -37,7 +38,7 @@
             justify-content: center;
             gap: 10px;
             width: 100%;
-            padding: 20px;
+            padding: 25px 20px;
             background-color: #fff;
             color: #28a745;
             border: 2px dashed #28a745;
@@ -46,9 +47,25 @@
             cursor: pointer;
             box-sizing: border-box;
             transition: 0.3s;
+            text-align: center;
+            touch-action: manipulation;
         }
         .custom-upload-label:active { background-color: #e8f5e9; transform: scale(0.98); }
-        #foto { display: none; } /* Input asli disembunyikan secara visual */
+        #foto { display: none; } 
+
+        #preview-container {
+            display: none;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        #img-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #28a745;
+            background-color: #eee;
+        }
     </style>
 </head>
 <body>
@@ -103,19 +120,25 @@
             </select>
         </div>
 
-        <div class="form-group" id="group-nk" style="border: 1px dashed #ccc; padding: 10px; border-radius: 10px;">
+        <div class="form-group" id="group-nk">
             <label>Nomor Komsel (NK) Otomatis</label>
             <input type="text" id="nk-display" readonly placeholder="Pilih Komsel Dahulu">
         </div>
 
         <div class="form-group">
-            <label>Foto Profil (Wajib)</label>
-            <label for="foto" class="custom-upload-label">
-                <i class="fa-solid fa-camera fa-2x"></i>
-                <span id="text-foto">Ambil / Pilih Foto</span>
-                <small style="font-weight: normal; color: #666;">Klik area ini untuk membuka kamera</small>
+            <label>Foto Profil (Wajib - Ambil dari Galeri)</label>
+            
+            <div id="preview-container">
+                <img id="img-preview" src="" alt="Preview">
+                <p style="font-size: 11px; color: #28a745; margin-top: 5px;">Foto terpilih!</p>
+            </div>
+
+            <label for="foto" class="custom-upload-label" id="label-foto">
+                <i class="fa-solid fa-image fa-2x"></i>
+                <span id="text-foto">KLIK UNTUK KE GALERI</span>
+                <small style="font-weight: normal; color: #666;">Pilih foto terbaik dari HP kamu</small>
             </label>
-            <input type="file" id="foto" accept="image/*" capture="environment" required onchange="previewFileName()">
+            <input type="file" id="foto" accept="image/jpeg, image/png, image/jpg" required onchange="handleFileSelect(this)">
         </div>
 
         <button type="button" id="btnSubmit" onclick="handleRegistrasi()" class="btn-submit">DAFTAR SEKARANG</button>
@@ -154,12 +177,25 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    function previewFileName() {
-        const fileInput = document.getElementById('foto');
+    // Fungsi Handle Galeri & Preview
+    function handleFileSelect(input) {
         const textDisplay = document.getElementById('text-foto');
-        if(fileInput.files.length > 0) {
-            textDisplay.innerText = "Terpilih: " + fileInput.files[0].name.substring(0, 15) + "...";
-            textDisplay.style.color = "#28a745";
+        const previewContainer = document.getElementById('preview-container');
+        const imgPreview = document.getElementById('img-preview');
+        const label = document.getElementById('label-foto');
+
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            textDisplay.innerText = "Terpilih: " + file.name.substring(0, 15) + "...";
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imgPreview.src = e.target.result;
+                previewContainer.style.display = 'block';
+                label.style.borderColor = "#28a745";
+                label.style.background = "#e8f5e9";
+            };
+            reader.readAsDataURL(file);
         }
     }
 
@@ -184,15 +220,14 @@
 
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
-        const fileInput = document.getElementById("foto");
-        const file = fileInput.files[0];
+        const file = document.getElementById("foto").files[0];
 
         if(!document.getElementById("nama").value || !file) {
             alert("Harap lengkapi Nama dan Foto Profil!");
             return;
         }
 
-        btn.innerText = "Memproses... (Sabar ya)";
+        btn.innerText = "Memproses... (Mohon Tunggu)";
         btn.disabled = true;
 
         try {
