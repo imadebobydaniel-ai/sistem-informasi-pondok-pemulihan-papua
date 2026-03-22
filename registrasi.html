@@ -29,10 +29,18 @@
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
         #nk-display { background: #fff3cd !important; border: 2px solid #ffc107 !important; color: #856404; font-weight: bold; }
 
-        /* Custom Style for File Input */
-        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
-        .btn-file { border: 2px dashed #28a745; color: #28a745; background: #fff; padding: 15px; border-radius: 12px; width: 100%; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
-        .file-input-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        /* Perbaikan Tombol Kamera Agar Tembus/Bisa Diklik */
+        .file-input-wrapper { position: relative; width: 100%; height: 55px; margin-bottom: 15px; }
+        .btn-file { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            border: 2px dashed #28a745; color: #28a745; background: #fff; 
+            border-radius: 12px; font-weight: bold; display: flex; 
+            align-items: center; justify-content: center; gap: 10px; z-index: 1; 
+        }
+        .file-input-wrapper input[type=file] { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            opacity: 0; cursor: pointer; z-index: 2; /* Input menutupi tombol visual */
+        }
     </style>
 </head>
 <body>
@@ -93,10 +101,10 @@
         <div class="form-group">
             <label>Foto Profil (Wajib)</label>
             <div class="file-input-wrapper">
-                <div class="btn-file" id="label-foto">
+                <div class="btn-file">
                     <i class="fa-solid fa-camera"></i> <span id="text-foto">Ambil / Pilih Foto</span>
                 </div>
-                <input type="file" id="foto" accept="image/*" required onchange="previewFileName()">
+                <input type="file" id="foto" accept="image/*" capture="environment" required onchange="previewFileName()">
             </div>
         </div>
 
@@ -117,7 +125,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -129,7 +136,6 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // --- UI FUNCTIONS ---
     function updateClock() {
         const now = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -163,32 +169,27 @@
         } catch (e) { nkInput.value = "Error koneksi"; }
     }
 
-    // --- LOGIKA REGISTRASI ---
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
         const fotoInput = document.getElementById("foto");
         const file = fotoInput.files[0];
 
-        // Validasi Dasar
         if(!document.getElementById("nama").value || !file) {
             alert("Harap lengkapi Nama dan Foto Profil!");
             return;
         }
 
-        // Proteksi Ukuran File (>15MB)
         if (file.size > 15 * 1024 * 1024) {
             alert("File terlalu besar (Maks 15MB). Coba gunakan foto lain.");
             return;
         }
 
-        btn.innerText = "Mengompres Foto... (Sabar ya)";
+        btn.innerText = "Memproses... (Mohon Tunggu)";
         btn.disabled = true;
 
         try {
             const namaRaw = document.getElementById("nama").value.trim();
             const namaNormal = namaRaw.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-
-            // Proses Kompresi
             const base64Foto = await imageToResizedBase64(file, 400);
 
             const userData = {
@@ -207,13 +208,12 @@
             };
 
             await db.collection("users").add(userData);
-            
             document.getElementById('pesan-sukses').innerHTML = `Berhasil!<br>Selamat Datang, <b>${namaNormal}</b>`;
             document.getElementById('blocking-message').style.display = 'flex';
 
         } catch (error) { 
             console.error(error);
-            alert("Gagal menyimpan: " + error.message); 
+            alert("Gagal: " + error.message); 
             btn.innerText = "DAFTAR SEKARANG";
             btn.disabled = false;
         }
@@ -230,15 +230,12 @@
                     const canvas = document.createElement('canvas');
                     const scale = maxWidth / img.width;
                     const finalScale = scale > 1 ? 1 : scale;
-                    
                     canvas.width = Math.floor(img.width * finalScale);
                     canvas.height = Math.floor(img.height * finalScale);
-
                     const ctx = canvas.getContext('2d');
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    
                     resolve(canvas.toDataURL('image/jpeg', 0.6));
                 };
                 img.onerror = () => reject(new Error("File rusak"));
