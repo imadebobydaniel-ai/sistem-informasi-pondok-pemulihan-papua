@@ -66,9 +66,10 @@
             margin-top: 10px;
         }
 
+        .btn-admin:disabled { background: #ccc; cursor: not-allowed; }
+
         .back-link { display: block; margin-top: 20px; color: #888; text-decoration: none; font-size: 13px; }
 
-        /* STYLE MODAL NOTIFIKASI */
         .modal-overlay {
             display: none; 
             position: fixed;
@@ -86,11 +87,6 @@
             text-align: center;
             width: 85%;
             max-width: 320px;
-            animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
-        @keyframes popIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
         }
         .btn-modal { 
             width: 100%; padding: 12px; border: none; border-radius: 8px; 
@@ -131,7 +127,6 @@
     </div>
 
     <script>
-        // === KONFIGURASI FIREBASE ===
         const firebaseConfig = {
             apiKey: "AIzaSy...", 
             authDomain: "laporan-pembacaan-alkitab.firebaseapp.com",
@@ -141,13 +136,11 @@
             appId: "..."
         };
 
-        // Inisialisasi Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
 
-        // 1. Fungsi Lihat Password
         function toggleAdminPass() {
             const passInput = document.getElementById('adminPass');
             const eyeIcon = document.getElementById('toggleEye');
@@ -160,7 +153,6 @@
             }
         }
 
-        // 2. Fungsi Modal Notifikasi
         const modal = document.getElementById('statusModal');
         const modalIcon = document.getElementById('modalIcon');
         const modalTitle = document.getElementById('modalTitle');
@@ -170,7 +162,6 @@
         function showNotification(type, title, message) {
             modalMsg.innerText = message;
             modalTitle.innerText = title;
-            
             if (type === 'success') {
                 modalIcon.className = "fa-solid fa-circle-check";
                 modalIcon.style.color = "#2ecc71";
@@ -185,10 +176,8 @@
 
         modalBtn.onclick = () => modal.style.display = 'none';
 
-        // 3. Handle Login Utama dengan LOGIKA DEBUG
         document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const btnSubmit = document.getElementById('btnSubmit');
             const userValue = document.getElementById('adminUser').value.trim();
             const passValue = document.getElementById('adminPass').value.trim();
@@ -196,33 +185,26 @@
             btnSubmit.disabled = true;
             btnSubmit.innerText = "Memverifikasi...";
 
-            console.log("Mencoba login untuk username:", userValue);
-
-            // Memastikan nama koleksi tepat "admins" sesuai dashboard
+            // Mencari di koleksi 'admins'
             db.collection("admins")
                 .where("username", "==", userValue)
                 .where("password", "==", passValue)
                 .get()
                 .then((querySnapshot) => {
-                    console.log("Koneksi berhasil. Data ditemukan:", querySnapshot.size);
-                    
                     if (!querySnapshot.empty) {
                         showNotification('success', 'Berhasil!', 'Selamat datang, Admin.');
                         setTimeout(() => {
                             window.location.href = "dashboard_admin.html";
                         }, 1500);
                     } else {
-                        showNotification('error', 'Gagal Login', 'Username atau Password salah.');
+                        showNotification('error', 'Gagal Login', 'Username atau Password salah sesuai database.');
                         btnSubmit.disabled = false;
                         btnSubmit.innerText = "MASUK SISTEM";
                     }
                 })
                 .catch((error) => {
-                    // LOG DEBUG untuk melacak Permission Denied
-                    console.error("DEBUG FIREBASE - Code:", error.code);
-                    console.error("DEBUG FIREBASE - Message:", error.message);
-                    
-                    showNotification('error', 'Sistem Error', 'Akses ditolak (Permission Denied). Periksa tab Rules di Firebase.');
+                    console.error("Error:", error);
+                    showNotification('error', 'Sistem Error', 'Gagal memproses login.');
                     btnSubmit.disabled = false;
                     btnSubmit.innerText = "MASUK SISTEM";
                 });
