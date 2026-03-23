@@ -19,7 +19,9 @@
         .data-label { font-size: 10px; font-weight: 800; color: var(--biru-safir); text-transform: uppercase; margin-bottom: 4px; }
         .data-value { font-size: 15px; color: var(--biru-tua); font-weight: 700; }
         .btn-back { background: var(--biru-tua); color: white; border: 2px solid var(--emas-lux); padding: 15px; border-radius: 50px; font-weight: 800; cursor: pointer; text-align: center; text-decoration: none; display: block; width: 85%; margin: 20px auto 0; }
-        #fileInput { display: none; }
+        
+        /* Input file disembunyikan agar tidak merusak tampilan */
+        #inputFoto { display: none; }
         #debug-msg { color: red; font-size: 12px; text-align: center; padding: 10px; font-weight: bold; }
     </style>
 </head>
@@ -31,13 +33,14 @@
     <div id="debug-msg"></div>
 
     <div class="photo-section">
-        <div class="photo-circle" onclick="document.getElementById('fileInput').click()">
+        <div class="photo-circle" onclick="document.getElementById('inputFoto').click()">
             <img id="view-foto" src="https://via.placeholder.com/150" alt="Foto Profil">
         </div>
-        <div class="edit-badge" onclick="document.getElementById('fileInput').click()">
+        <div class="edit-badge" onclick="document.getElementById('inputFoto').click()">
             <i class="fa-solid fa-camera"></i>
         </div>
-        <input type="file" id="fileInput" accept="image/*" onchange="uploadFoto(this)">
+        
+        <input type="file" id="inputFoto" accept="image/*" onchange="uploadFoto(this)">
     </div>
 
     <div class="info-section">
@@ -75,20 +78,14 @@
     if (!userEmail) {
         debug.innerText = "⚠️ ERROR: Silakan login ulang.";
     } else {
-        // SINKRONISASI REAL-TIME DENGAN PENGECEKAN FIELD GANDA
         db.collection("users").where("email", "==", userEmail).onSnapshot((querySnapshot) => {
             if (!querySnapshot.empty) {
                 const d = querySnapshot.docs[0].data();
                 
-                // Debugging internal (cek di console browser)
-                console.log("Data Firestore Terdeteksi:", d);
-
-                // Foto Profil
                 if (d.foto_profil) { 
                     document.getElementById('view-foto').src = d.foto_profil; 
                 }
                 
-                // Data Teks (dengan fallback jika field berbeda)
                 document.getElementById("no_komsel").innerText = d.nomor_komsel || d.nk || "-";
                 document.getElementById("nama_lengkap").innerText = d.nama || "Nama Kosong";
                 document.getElementById("jabatan").innerText = d.jabatan || d.peran || "-";
@@ -96,18 +93,14 @@
                 document.getElementById("no_hp").innerText = d.whatsapp || d.nomor_hp || "-";
                 document.getElementById("lokasi_komsel").innerText = d.komsel ? "JC " + d.komsel : "-";
                 
-                // PERBAIKAN GOLONGAN DARAH
                 const gd = d.goldarah || d.golongan_darah || d.gol_darah || "-";
                 document.getElementById("gol_darah").innerText = gd;
-                
                 document.getElementById("alamat").innerText = d.alamat || "-";
                 
                 debug.innerText = "";
             } else {
                 debug.innerText = "❌ Data profil tidak ditemukan.";
             }
-        }, (err) => {
-            debug.innerText = "❌ Database Error: " + err.message;
         });
     }
 
