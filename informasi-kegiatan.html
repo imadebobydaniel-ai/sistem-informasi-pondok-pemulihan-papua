@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pesan Informasi - Komsel JC</title>
+    <title>Portal Komsel JC</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -15,33 +15,97 @@
             --emas-lux: #D4AF37;
             --putih-bg: #f4f7fa;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--putih-bg); display: flex; justify-content: center; padding: 20px; }
-        .card-pesan { background: white; width: 100%; max-width: 400px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; border-top: 5px solid var(--emas-lux); }
-        .header { background: var(--biru-tua); color: white; padding: 20px; text-align: center; }
-        .isi-pesan { padding: 25px; color: #333; line-height: 1.6; }
-        .footer { padding: 15px; text-align: center; background: #eee; }
-        .btn-kembali { background: var(--biru-tua); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+
+        /* Styling Modal Popup */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 20px;
+            overflow: hidden;
+            border-top: 6px solid var(--emas-lux);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            background: var(--biru-tua);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .modal-body { padding: 25px; color: #333; line-height: 1.6; }
+
+        .btn-tutup {
+            background: var(--biru-tua);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Icon Email di Profil */
+        .notif-email-container {
+            position: absolute;
+            top: 15px; left: 15px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        .shake-active {
+            animation: shake 1s infinite;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(0); }
+            20% { transform: rotate(10deg); }
+            40% { transform: rotate(-10deg); }
+            60% { transform: rotate(10deg); }
+        }
     </style>
 </head>
 <body>
-    <div class="card-pesan">
-        <div class="header">
-            <i class="fa-solid fa-envelope-open-text" style="font-size: 40px;"></i>
-            <h3>Pengumuman Baru</h3>
-        </div>
-        <div id="konten-pengumuman" class="isi-pesan">
-            <p><strong>Shalom Boby!</strong></p>
-            <p>Sedang memuat informasi terbaru...</p>
-        </div>
-        <div class="footer">
-            <a href="menu.html" class="btn-kembali">Kembali ke Menu</a>
+
+    <div id="modalPesan" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fa-solid fa-envelope-open-text" style="font-size: 40px;"></i>
+                <h3 style="margin: 10px 0 0 0;">Pengumuman Baru</h3>
+            </div>
+            <div id="konten-pengumuman" class="modal-body">
+                <p>Sedang mengambil pesan terbaru...</p>
+            </div>
+            <div style="padding: 15px; text-align: center; background: #f4f4f4;">
+                <button class="btn-tutup" onclick="tutupModal()">Tutup</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Konfigurasi Firebase Anda (Gunakan data yang sama dengan input-kegiatan.html)
+        // 1. PASTIKAN CONFIG INI SAMA DENGAN input-kegiatan.html
         const firebaseConfig = {
-            apiKey: "AIzaSy...",
+            apiKey: "AIzaSy...", 
             authDomain: "komsel-jc.firebaseapp.com",
             databaseURL: "https://komsel-jc-default-rtdb.firebaseio.com",
             projectId: "komsel-jc",
@@ -50,43 +114,50 @@
             appId: "..."
         };
 
-        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Fungsi untuk mengambil informasi kegiatan terbaru
-        function ambilInformasiTerbaru() {
+        // 2. Fungsi Buka Modal & Ambil Data
+        function bukaPesanKegiatan() {
+            document.getElementById('modalPesan').style.display = 'flex';
             const kontenDiv = document.getElementById('konten-pengumuman');
-            
-            // Mengambil data terakhir dari tabel 'kegiatan'
-            database.ref('kegiatan').limitToLast(1).on('value', (snapshot) => {
+
+            // Kita ambil data dari path 'kegiatan'
+            // Gunakan .once agar tidak terus-menerus loading saat modal terbuka
+            database.ref('kegiatan').limitToLast(1).once('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
                     const id = Object.keys(data)[0];
                     const info = data[id];
 
                     kontenDiv.innerHTML = `
-                        <p style="color: var(--emas-lux); font-weight: bold; font-size: 1.2em;">
+                        <p><strong>Shalom Boby!</strong></p>
+                        <p style="color: var(--emas-lux); font-weight: 800; font-size: 1.1em;">
                             [${info.kategori}] ${info.judul}
                         </p>
                         <hr style="border: 0.5px solid #eee; margin: 15px 0;">
-                        <p><strong><i class="fa-solid fa-location-dot"></i> Lokasi:</strong> ${info.lokasi || '-'}</p>
-                        <p><strong><i class="fa-solid fa-file-lines"></i> Detail:</strong><br>${info.detail}</p>
-                        <p style="font-size: 0.8em; color: gray; margin-top: 20px;">
-                            <i class="fa-regular fa-clock"></i> Dikirim pada: ${info.timestamp || 'Baru saja'}
+                        <p><i class="fa-solid fa-location-dot"></i> <b>Lokasi:</b> ${info.lokasi || '-'}</p>
+                        <p><i class="fa-solid fa-file-lines"></i> <b>Detail:</b><br>${info.detail}</p>
+                        <p style="font-size: 0.75em; color: gray; margin-top: 15px;">
+                           Diterima pada: ${info.timestamp || 'Baru saja'}
                         </p>
                     `;
                 } else {
-                    kontenDiv.innerHTML = "<p>Belum ada pengumuman terbaru.</p>";
+                    kontenDiv.innerHTML = "<p>Tidak ada pesan untuk saat ini.</p>";
                 }
-            }, (error) => {
-                console.error("Gagal mengambil data:", error);
-                kontenDiv.innerHTML = "<p>Gagal memuat informasi. Periksa koneksi atau database.</p>";
             });
         }
 
-        // Jalankan fungsi
-        ambilInformasiTerbaru();
+        function tutupModal() {
+            document.getElementById('modalPesan').style.display = 'none';
+        }
+
+        // Close modal jika klik area luar
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('modalPesan')) {
+                tutupModal();
+            }
+        }
     </script>
 </body>
 </html>
