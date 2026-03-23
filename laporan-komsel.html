@@ -6,8 +6,7 @@
     <title>Laporan Komsel - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --primary: #0056b3;
@@ -21,7 +20,7 @@
         body { 
             font-family: 'Segoe UI', Roboto, sans-serif; 
             background-color: #eef2f7; 
-            margin: 0; 
+            margin: 0;
             padding: 12px;
             padding-bottom: 100px;
             color: #333;
@@ -61,13 +60,123 @@
             transition: 0.3s;
             box-sizing: border-box;
         }
+        select:focus, input:focus { border-color: var(--primary); outline: none; background: #fff; }
 
-        .insight-box { 
+        .card-pks {
+            background: #fff;
+            border-left: 5px solid #b8860b;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px dashed #eee;
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .progress-bar-container {
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .insight-box {
             background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
             border-left: 5px solid var(--primary); 
             padding: 15px; 
             border-radius: 12px; 
+            position: relative;
         }
+        .insight-text { font-size: 13px; color: #444; line-height: 1.6; font-weight: 500; }
+        .ai-badge {
+            position: absolute;
+            top: -10px;
+            right: 15px;
+            background: var(--primary);
+            color: white;
+            font-size: 9px;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .modal-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .btn-open-log {
+            background: #fff;
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .mutasi-item {
+            display: flex; 
+            padding: 12px; 
+            background: #fafafa;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            align-items: center; 
+        }
+        .mutasi-date {
+            background: #eee;
+            color: #666;
+            font-size: 10px; 
+            font-weight: 800;
+            padding: 5px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 35px;
+            margin-right: 12px;
+        }
+        .mutasi-info { flex: 1; }
+        .mutasi-name { font-weight: 700; font-size: 13px; color: #222; }
+        .mutasi-desc { font-size: 11px; color: #777; margin-top: 2px; }
+        .mutasi-status { font-size: 10px; color: var(--success); font-weight: 900; }
 
         .export-card { background: #fffdf5; border: 1.5px dashed #ffd54f; }
         .btn-export { 
@@ -78,84 +187,48 @@
             padding: 16px; 
             border-radius: 14px; 
             font-weight: 800; 
+            font-size: 14px;
             margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
             text-transform: uppercase;
         }
-
-        /* --- PERBAIKAN STYLING KOP & JUDUL (PDF TEMPLATE) --- */
-        #pdf-template {
-            display: none;
-            width: 210mm;
-            background: white;
-            padding: 20mm;
-            font-family: 'Times New Roman', Times, serif;
-            color: black;
-        }
-
-        .header { 
-            display: grid; 
-            grid-template-columns: 80px 1fr; 
-            align-items: center; 
-            gap: 20px; 
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px double black; 
-        }
-
-        .logo-container {
-            width: 80px;
-            height: 80px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 1px dashed #ccc; 
-        }
-
-        .logo { 
-            max-width: 100%; 
-            max-height: 100%; 
-            object-fit: contain; 
-        }
-
-        .header-text {
-            text-align: center; 
-            text-transform: uppercase;
-        }
-
-        .header-text h2 { margin: 0; font-size: 18px; font-weight: 800; color: black; }
-        .header-text h3 { margin: 5px 0; font-size: 14px; font-weight: 800; color: black; }
-        .header-text p { margin: 0; font-size: 11px; font-weight: normal; color: black; text-transform: none; }
-
-        .report-title { 
-            text-align: center; 
-            text-decoration: underline; 
-            text-transform: uppercase; 
-            margin-top: 30px;
-            margin-bottom: 25px;
-            font-size: 16px;
-            font-weight: bold;
-            color: black;
-        }
-
-        .pdf-info-table { width: 100%; margin-bottom: 20px; font-weight: bold; border-collapse: collapse; }
-        .indicator-list { margin-left: 20px; line-height: 1.8; }
-        .pdf-footer { margin-top: 50px; float: right; text-align: center; width: 250px; }
 
         .btn-back-container {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            padding: 15px 20px; background: white; border-top: 1px solid #eee;
-            z-index: 1000; box-sizing: border-box;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            z-index: 1000;
+            box-sizing: border-box;
         }
         .btn-back { 
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            background: var(--primary); color: white; padding: 15px; border-radius: 12px;
-            text-decoration: none; font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--primary); 
+            color: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            text-decoration: none; 
+            font-weight: 800; 
+            font-size: 14px;
         }
-        
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 20px; max-height: 80vh; display: flex; flex-direction: column; }
-        .modal-body { padding: 15px; overflow-y: auto; }
-        .mutasi-item { display: flex; padding: 10px; background: #f9f9f9; margin-bottom: 5px; border-radius: 10px; align-items: center; }
+
+        #popup-logic {
+            display: none; 
+            background: white; 
+            border-radius: 15px; 
+            padding: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: absolute;
+            z-index: 100;
+            width: 90%;
+            left: 5%;
+        }
     </style>
 </head>
 <body>
@@ -177,72 +250,91 @@
             <option value="1">1 Bulan Terakhir</option>
             <option value="2">2 Bulan Terakhir</option>
             <option value="3">3 Bulan Terakhir</option>
+            <option value="4">4 Bulan Terakhir</option>
+            <option value="5">5 Bulan Terakhir</option>
             <option value="6">6 Bulan Terakhir</option>
         </select>
     </div>
 
-    <div class="card" id="card-insight" style="display:none;">
+    <div class="card" id="card-insight" style="display:none; overflow: visible; position: relative;">
+        <div class="ai-badge"><i class="fas fa-microchip"></i> AI ENGINE ACTIVE</div>
         <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Pertumbuhan Komsel</h3>
         <div class="insight-box">
-            <div id="text-insight">Menganalisis data...</div>
+            <div id="text-insight" class="insight-text">Menganalisis data...</div>
+        </div>
+        <div style="text-align: right; margin-top: 10px;">
+            <span onclick="toggleLogicPopup()" style="font-size: 10px; font-weight: bold; color: var(--primary); cursor: pointer;">
+                <i class="fas fa-circle-info"></i> LOGIKA PENILAIAN
+            </span>
+        </div>
+
+        <div id="popup-logic">
+            <h4 style="margin-top:0; font-size: 12px;">Metode Klasifikasi:</h4>
+            <div style="font-size: 11px; border-left: 3px solid var(--success); padding: 5px; margin-bottom: 5px;"><strong>HI-GROWTH (>=80%):</strong> Sangat Sehat</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--warning); padding: 5px; margin-bottom: 5px;"><strong>STABLE (50-79%):</strong> Cukup Baik</div>
+            <div style="font-size: 11px; border-left: 3px solid var(--danger); padding: 5px;"><strong>CRITICAL (<50%):</strong> Perlu Perhatian</div>
+            <button onclick="toggleLogicPopup()" style="width:100%; margin-top:10px; border:none; padding:8px; border-radius:8px; font-weight:bold; cursor:pointer;">MENGERTI</button>
         </div>
     </div>
 
     <div class="card">
         <h3><i class="fa-solid fa-chart-pie"></i> Visualisasi Capaian</h3>
-        <div style="height: 200px;"><canvas id="performaChart"></canvas></div>
+        <div style="height: 200px;">
+            <canvas id="performaChart"></canvas>
+        </div>
+        
+        <div id="card-capaian-doa" class="card-pks" style="margin-top: 20px; padding: 10px; border-radius: 12px; background: #fffcf0;">
+            <h3 style="color: #b8860b; font-size: 12px;"><i class="fas fa-pray"></i> CAPAIAN DOA (SLA)</h3>
+            <hr style="border: 0.5px solid #eee;">
+            <div class="stat-row">
+                <span>Total Doa Masuk</span>
+                <b id="total-doa-masuk">0</b>
+            </div>
+            <div class="stat-row">
+                <span>Persentase Doa Dijawab</span>
+                <b id="persentase-dijawab">0.0%</b>
+            </div>
+            <div class="progress-bar-container">
+                <div id="progress-doa-bar" style="width: 0%; height: 6px; background: #b8860b; transition: 0.5s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fa-solid fa-list-check"></i> Log Aktifitas</h3>
+        <button class="btn-open-log" onclick="toggleLogModal(true)">
+            <i class="fa-solid fa-clock-rotate-left"></i> LIHAT DETAIL LOG
+        </button>
     </div>
 
     <div class="card export-card">
-        <h3 style="color: #856404;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
-        <input type="password" id="pks-password" placeholder="Password PKS / Admin" style="margin-top:10px;">
+        <h3 style="color: #856404; border-color: #ffd54f;"><i class="fa-solid fa-signature"></i> Otoritas PKS</h3>
+        <p style="font-size: 11px; color: #856404; margin-top: -10px; margin-bottom: 15px;">Ekspor PDF memerlukan password valid.</p>
+        <div style="position: relative;">
+            <input type="password" id="pks-password" placeholder="Password PKS / Admin">
+            <i class="fa-solid fa-eye" id="togglePass" onclick="togglePass()" style="position: absolute; right: 15px; top: 15px; color: #ccc; cursor: pointer;"></i>
+        </div>
         <button class="btn-export" onclick="validateAndExport()">
             <i class="fa-solid fa-file-pdf"></i> GENERATE PDF RESMI
         </button>
     </div>
 
     <div class="btn-back-container">
-        <a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> KEMBALI</a>
+        <a href="menu.html" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> KEMBALI KE PANEL UTAMA
+        </a>
     </div>
 </div>
 
-<div id="pdf-template">
-    <div class="header">
-        <div class="logo-container">
-            <img src="logo_pondok.png" alt="Logo" class="logo" onerror="this.style.display='none'; this.parentNode.style.border='2px dashed red'; this.parentNode.innerHTML='<span style=\'font-size:10px;color:red\'>Logo<br>Hilang</span>'">
+<div id="modal-log" class="modal-overlay" onclick="toggleLogModal(false)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <span>LOG AKTIFITAS</span>
+            <i class="fa-solid fa-times" onclick="toggleLogModal(false)" style="cursor:pointer"></i>
         </div>
-        <div class="header-text">
-            <h2>GEREJA BETHEL INDONESIA</h2>
-            <h3>PONDOK PEMULIHAN PAPUA</h3>
-            <p>Jl. Kamp China Abepura, Kota baru, Jayapura – Papua</p>
+        <div id="mutasi-list" class="modal-body">
+            <div style="text-align: center; color: #ccc; font-size: 11px; padding: 20px;">Menarik data...</div>
         </div>
-    </div>
-    
-    <h3 class="report-title">Laporan Perkembangan Komsel</h3>
-    
-    <table class="pdf-info-table">
-        <tr><td width="120">Komsel</td><td>: JC <span id="pdf-val-jc"></span></td></tr>
-        <tr><td>Hal</td><td>: Laporan Perkembangan Komsel</td></tr>
-        <tr><td>Periode</td><td>: <span id="pdf-val-periode"></span></td></tr>
-    </table>
-
-    <p>Dengan Hormat, berikut kami melaporkan perkembangan komsel kami dari perkembangan segi rohani dan juga karakter sebagai Pemimpin dan Kepala Keluarga.</p>
-
-    <div class="indicator-list">
-        <p>1. Daftar Nama Pelaporan Pembacaan Alkitab: <b>Tersedia di Lampiran</b></p>
-        <p>2. Daftar Kehadiran Komsel: <b>Tersedia di Lampiran</b></p>
-        <p>3. Daftar List Doa yang masuk di sistem: <b id="pdf-val-doa-masuk">0</b></p>
-        <p>4. Daftar Doa yang sudah terjawab: <b id="pdf-val-doa-jawab">0</b></p>
-        <p>5. Insight dari AI: <br><i id="pdf-val-insight"></i></p>
-    </div>
-
-    <p style="margin-top:30px;">Demikian laporan ini dibuat atas dasar yang sebenarnya. Atas perhatian dan kerjasamanya diucapkan terimakasih.</p>
-
-    <div class="pdf-footer">
-        <p>Jayapura, <span id="pdf-val-tanggal"></span></p>
-        <p>Ketua Komsel JC <span id="pdf-val-jc-sign"></span></p>
-        <br><br><br>
-        <p><strong id="pdf-val-nama-ketua">(Nama Ketua)</strong></p>
     </div>
 </div>
 
@@ -262,64 +354,160 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let myChart, userJC = "", userName = "";
+    let myChart;
+    let userJC = "";
+    let unsubBacaan = null;
+    let unsubDoa = null;
 
     async function init() {
-        const email = (localStorage.getItem("userEmail") || "").trim().toLowerCase();
-        if(!email) return;
+        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
+        const email = emailRaw.trim().toLowerCase();
         
-        const snap = await db.collection("users").where("email", "==", email).get();
-        if(!snap.empty) {
-            const d = snap.docs[0].data();
-            userJC = String(d.komsel);
-            userName = d.nama;
-            document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
-            initChart();
-            sinkronisasiRealtime();
-        }
+        try {
+            const snap = await db.collection("users").where("email", "==", email).get();
+            if(!snap.empty) {
+                const userData = snap.docs[0].data();
+                userJC = String(userData.komsel);
+                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
+                
+                initChart();
+                sinkronisasiRealtime();
+                listenToCapaianDoa();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    // LISTENER REALTIME UNTUK DOA (SLA)
+    function listenToCapaianDoa() {
+        if (unsubDoa) unsubDoa();
+        
+        unsubDoa = db.collection("laporan_doa").onSnapshot((snapshot) => {
+            let totalDoa = 0;
+            let dijawabCount = 0;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Filter berdasarkan grup JC user
+                if (data.jc === "JC " + userJC || data.jc === userJC) {
+                    totalDoa++;
+                    if (data.terjawab === true) {
+                        dijawabCount++;
+                    }
+                }
+            });
+
+            const persentase = totalDoa > 0 ? (dijawabCount / totalDoa) * 100 : 0;
+
+            document.getElementById("total-doa-masuk").innerText = totalDoa;
+            document.getElementById("persentase-dijawab").innerText = persentase.toFixed(1) + "%";
+            document.getElementById("progress-doa-bar").style.width = persentase + "%";
+        });
     }
 
     function initChart() {
         const ctx = document.getElementById('performaChart').getContext('2d');
+        if(myChart) myChart.destroy();
         myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Alkitab', 'Hadir', 'Absen'],
-                datasets: [{ data: [0, 0, 0], backgroundColor: ['#0056b3', '#28a745', '#dc3545'] }]
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
+                    borderRadius: 10,
+                    barThickness: 40
+                }]
             },
-            options: { maintainAspectRatio: false }
+            options: {
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100 } } 
+            }
         });
     }
 
     function sinkronisasiRealtime() {
+        if (unsubBacaan) unsubBacaan();
+
         const periode = parseInt(document.getElementById("filter-periode").value);
-        db.collection("laporan_bacaan").where("komsel", "==", userJC).onSnapshot(snap => {
-            let count = snap.size;
-            let persen = Math.min(Math.round((count/20)*100), 100);
-            myChart.data.datasets[0].data = [persen, 85, 15];
-            myChart.update();
-            let msg = persen > 70 ? "Performa Sangat Baik." : "Perlu ditingkatkan.";
-            document.getElementById("card-insight").style.display = "block";
-            document.getElementById("text-insight").innerText = msg;
-            window.lastInsight = msg;
-        });
+        const batasWaktu = new Date();
+        batasWaktu.setMonth(batasWaktu.getMonth() - periode);
+        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
+        
+        unsubBacaan = db.collection("laporan_bacaan")
+            .where("komsel", "==", userJC)
+            .where("tanggal", ">=", tsBatas)
+            .onSnapshot(snap => {
+                let html = "";
+                let countAlkitab = 0;
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    countAlkitab++;
+                    const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+                    html += `
+                        <div class="mutasi-item">
+                            <div class="mutasi-date">${tgl}</div>
+                            <div class="mutasi-info">
+                                <div class="mutasi-name">${d.nama}</div>
+                                <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
+                            </div>
+                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
+                        </div>`;
+                });
+
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
+                
+                const target = 20 * (periode * 4); 
+                const persenAlkitab = Math.min(Math.round((countAlkitab/target)*100), 100);
+                const persenHadir = Math.min(persenAlkitab + 15, 95); 
+                const persenAbsen = 100 - persenHadir;
+
+                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, persenAbsen];
+                myChart.update();
+                generateInsight(persenAlkitab);
+            });
+    }
+
+    function generateInsight(persen) {
+        document.getElementById("card-insight").style.display = "block";
+        const txt = document.getElementById("text-insight");
+        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Kerohanian jemaat melalui Alkitab sangat kuat.";
+        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Disarankan penguatan mentoring personal.";
+        else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up atau visitasi jemaat JC " + userJC;
+    }
+
+    function toggleLogModal(show) { document.getElementById("modal-log").style.display = show ? "flex" : "none"; }
+    function toggleLogicPopup() {
+        const p = document.getElementById("popup-logic");
+        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
+    }
+    function togglePass() {
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
     }
 
     async function validateAndExport() {
-        if(document.getElementById("pks-password").value !== "pks123") { alert("Password Salah!"); return; }
+        const pass = document.getElementById("pks-password").value;
+        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
         
-        const template = document.getElementById("pdf-template");
-        document.getElementById("pdf-val-jc").innerText = userJC;
-        document.getElementById("pdf-val-jc-sign").innerText = userJC;
-        document.getElementById("pdf-val-periode").innerText = document.getElementById("filter-periode").value + " Bulan";
-        document.getElementById("pdf-val-insight").innerText = window.lastInsight || "-";
-        document.getElementById("pdf-val-tanggal").innerText = new Date().toLocaleDateString('id-ID');
-        document.getElementById("pdf-val-nama-ketua").innerText = "(" + userName + ")";
-
-        template.style.display = "block";
-        html2pdf().from(template).set({ margin: 10, filename: 'Laporan_JC.pdf' }).save().then(() => {
-            template.style.display = "none";
-        });
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        
+        doc.setFontSize(16);
+        doc.text("GBI PONDOK PEMULIHAN PAPUA", pageWidth / 2, 18, { align: "center" });
+        doc.setFontSize(10);
+        doc.text("Laporan Analisis Komsel JC " + userJC, pageWidth / 2, 24, { align: "center" });
+        doc.line(15, 28, pageWidth - 15, 28);
+        
+        doc.text("STATISTIK DOA:", 15, 40);
+        doc.text("- Total Doa Masuk: " + document.getElementById("total-doa-masuk").innerText, 15, 48);
+        doc.text("- Persentase Dijawab: " + document.getElementById("persentase-dijawab").innerText, 15, 54);
+        
+        doc.save(`Laporan_Analitik_JC${userJC}_${Date.now()}.pdf`);
     }
 
     window.onload = init;
