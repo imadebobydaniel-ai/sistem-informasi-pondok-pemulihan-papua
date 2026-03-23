@@ -29,30 +29,37 @@
         .btn-save { background: var(--biru-utama); color: white; width: 100%; padding: 15px; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.3s; }
         .btn-save:active { transform: scale(0.98); }
 
-        /* TOMBOL SIMPAN PREFERENSI (KOTAK MERAH) */
         .btn-pref-save { background: white; color: var(--biru-utama); width: 100%; padding: 12px; border: 2px solid var(--biru-utama); border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-pref-save:hover { background: var(--biru-utama); color: white; }
         
         .btn-wa-new { background-color: var(--hijau-wa); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; transition: 0.3s; }
-        .btn-wa-new:active { transform: scale(0.98); background-color: #27ae60; }
-
+        
         .btn-delete { background: none; color: var(--merah-bahaya); width: 100%; padding: 12px; border: 1px solid var(--merah-bahaya); border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; transition: 0.3s; }
         .btn-delete:hover { background: #fff5f5; }
 
-        /* Toast Notification */
+        /* Toast & Modal Notification */
         #notif-block {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.95); color: white; padding: 30px; border-radius: 15px;
-            text-align: center; z-index: 10000; width: 80%; max-width: 300px; border: 2px solid var(--biru-utama);
+            text-align: center; z-index: 10000; width: 85%; max-width: 320px; border: 2px solid var(--biru-utama);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
+        .confirm-actions { display: none; margin-top: 20px; gap: 10px; }
+        .btn-confirm-yes { background: var(--merah-bahaya); color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer; }
+        .btn-confirm-no { background: #555; color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="notif-block">
-    <i id="notif-icon" class="fa-solid fa-circle-check" style="font-size: 40px; color: #2ecc71; margin-bottom: 15px;"></i>
-    <p id="notif-text" style="margin: 0; font-weight: bold;">Berhasil diupdate</p>
-    <p id="notif-subtext" style="font-size: 12px; margin-top: 10px; color: #ccc;">Silakan login ulang...</p>
+    <i id="notif-icon" class="fa-solid fa-circle-check" style="font-size: 45px; color: #2ecc71; margin-bottom: 15px;"></i>
+    <p id="notif-text" style="margin: 0; font-weight: bold; font-size: 1.1rem;">Berhasil</p>
+    <p id="notif-subtext" style="font-size: 13px; margin-top: 10px; color: #ccc;">Deskripsi pesan.</p>
+    
+    <div id="confirm-actions" class="confirm-actions">
+        <button class="btn-confirm-yes" onclick="eksekusiHapus()">Ya, Hapus</button>
+        <button class="btn-confirm-no" onclick="tutupNotif()">Tidak</button>
+    </div>
 </div>
 
 <div class="setting-container">
@@ -94,7 +101,7 @@
             <i class="fab fa-whatsapp"></i> KIRIM LINK DESKTOP
         </button>
 
-        <button class="btn-delete" onclick="hapusAkunPermanen()">
+        <button class="btn-delete" onclick="konfirmasiHapus()">
             <i class="fa-solid fa-trash-can"></i> HAPUS AKUN PERMANEN
         </button>
     </div>
@@ -119,71 +126,84 @@
     const db = firebase.firestore();
     const userEmail = localStorage.getItem("userEmail");
 
-    // Load data saat halaman dibuka
     window.onload = function() {
         document.getElementById("notifSound").checked = localStorage.getItem("setSuara") === "true";
         document.getElementById("timerLogout").value = localStorage.getItem("setTimer") || "0";
     };
 
-    // FUNGSI 1: SIMPAN PREFERENSI (LOKAL)
-    function updatePreferensi() {
-        const suara = document.getElementById("notifSound").checked;
-        const timer = document.getElementById("timerLogout").value;
+    // --- FUNGSI TAMPILAN NOTIFIKASI KUSTOM ---
+    function jalankanNotif(icon, warna, judul, sub, modeConfirm = false) {
+        document.getElementById("notif-icon").className = "fa-solid " + icon;
+        document.getElementById("notif-icon").style.color = warna;
+        document.getElementById("notif-text").innerText = judul;
+        document.getElementById("notif-subtext").innerText = sub;
         
-        localStorage.setItem("setSuara", suara);
-        localStorage.setItem("setTimer", timer);
+        document.getElementById("confirm-actions").style.display = modeConfirm ? "flex" : "none";
+        document.getElementById("notif-block").style.display = "block";
 
-        // Tampilkan feedback singkat
-        alert("Preferensi aplikasi berhasil disimpan!");
+        if (!modeConfirm) {
+            setTimeout(() => { tutupNotif(); }, 2500);
+        }
     }
 
-    // FUNGSI 2: UPDATE AKUN (FIREBASE)
+    function tutupNotif() {
+        document.getElementById("notif-block").style.display = "none";
+    }
+
+    // --- 1. SIMPAN PREFERENSI ---
+    function updatePreferensi() {
+        localStorage.setItem("setSuara", document.getElementById("notifSound").checked);
+        localStorage.setItem("setTimer", document.getElementById("timerLogout").value);
+        
+        jalankanNotif("fa-sliders", "#2ecc71", "Preferensi Disimpan", "Pengaturan suara & waktu logout berhasil diperbarui.");
+    }
+
+    // --- 2. UPDATE AKUN (EMAIL & PASSWORD) ---
     async function updateAkun() {
         const nEmail = document.getElementById("newEmail").value;
         const nPass = document.getElementById("newPassword").value;
-        if (!nEmail || !nPass) { alert("Harap isi Email dan Password baru!"); return; }
+        if (!nEmail || !nPass) { 
+            jalankanNotif("fa-circle-exclamation", "#f1c40f", "Data Kosong", "Harap isi Email dan Password!"); 
+            return; 
+        }
         
         try {
             const snap = await db.collection("users").where("email", "==", userEmail).get();
             if (!snap.empty) {
                 await db.collection("users").doc(snap.docs[0].id).update({ email: nEmail, password: nPass });
-                
-                // Munculkan Overlay Sukses
-                document.getElementById("notif-block").style.display = "block";
-                
-                // Logout otomatis setelah 3.5 detik untuk re-login
-                setTimeout(() => { 
-                    localStorage.clear(); 
-                    window.location.replace("index.html"); 
-                }, 3500);
+                jalankanNotif("fa-user-check", "#2ecc71", "Update Berhasil", "Silakan login ulang dengan data baru.");
+                setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3000);
             }
-        } catch (e) { alert("Gagal update database: " + e.message); }
+        } catch (e) { jalankanNotif("fa-circle-xmark", "#dc3545", "Gagal", e.message); }
+    }
+
+    // --- 3. PROSES HAPUS AKUN ---
+    function konfirmasiHapus() {
+        jalankanNotif("fa-triangle-exclamation", "#dc3545", "Hapus Akun?", "Apakah anda yakin akan menghapus akun secara permanen?", true);
+    }
+
+    async function eksekusiHapus() {
+        const inputVerif = prompt("Untuk memverifikasi, ketik kata 'HAPUS':");
+        if (inputVerif === "HAPUS") {
+            try {
+                const snap = await db.collection("users").where("email", "==", userEmail).get();
+                if (!snap.empty) {
+                    await db.collection("users").doc(snap.docs[0].id).delete();
+                    tutupNotif();
+                    jalankanNotif("fa-trash-can", "#dc3545", "Akun Dihapus", "Seluruh data Anda telah dihapus.");
+                    setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3000);
+                }
+            } catch (e) { alert("Gagal: " + e.message); }
+        } else {
+            alert("Verifikasi gagal.");
+            tutupNotif();
+        }
     }
 
     function kirimLinkDesktop() {
         const urlBaru = "https://imadebobydaniel-ai.github.io/sistem-informasi-komsel-jc-/";
-        const pesan = encodeURIComponent("Shalom! Ini adalah link Sistem Informasi Komsel JC untuk dibuka di Desktop/Laptop: " + urlBaru);
+        const pesan = encodeURIComponent("Shalom! Link Sistem Informasi Komsel JC: " + urlBaru);
         window.open("https://wa.me/?text=" + pesan, "_blank");
-    }
-
-    async function hapusAkunPermanen() {
-        if (confirm("⚠️ PERINGATAN: Seluruh data laporan akan hilang permanen. Yakin?")) {
-            const konfirmasi = prompt("Ketik kata 'HAPUS' untuk konfirmasi:");
-            if (konfirmasi === "HAPUS") {
-                try {
-                    const snap = await db.collection("users").where("email", "==", userEmail).get();
-                    if (!snap.empty) {
-                        await db.collection("users").doc(snap.docs[0].id).delete();
-                        document.getElementById("notif-icon").className = "fa-solid fa-trash-can";
-                        document.getElementById("notif-icon").style.color = "#dc3545";
-                        document.getElementById("notif-text").innerText = "Akun Dihapus";
-                        document.getElementById("notif-subtext").innerText = "Data Anda telah dibersihkan.";
-                        document.getElementById("notif-block").style.display = "block";
-                        setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3000);
-                    }
-                } catch (e) { alert("Gagal: " + e.message); }
-            }
-        }
     }
 </script>
 </body>
