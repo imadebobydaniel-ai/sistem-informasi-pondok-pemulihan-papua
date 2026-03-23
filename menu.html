@@ -24,7 +24,7 @@
             color: #333;
         }
 
-        /* --- STYLE MODAL LOGOUT (UPDATE) --- */
+        /* --- STYLE MODAL LOGOUT --- */
         .modal-overlay {
             display: none; 
             position: fixed;
@@ -79,7 +79,6 @@
             cursor: pointer;
             font-weight: bold;
         }
-        /* -------------------------- */
 
         .top-info-bar { 
             background: var(--biru-tua); 
@@ -298,86 +297,5 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Elemen Modal Logout
         const modal = document.getElementById('logoutModal');
         const confirmBtn = document.getElementById('confirmLogout');
-        const cancelBtn = document.getElementById('cancelLogout');
-
-        // --- 1. INISIALISASI HALAMAN ---
-        window.onload = function() {
-            const email = localStorage.getItem("userEmail");
-            if (!email) {
-                window.location.href = "index.html"; 
-                return;
-            }
-            updateWaktuDanRunningText();
-            setInterval(updateWaktuDanRunningText, 1000);
-            syncUserData();
-        };
-
-        // --- 2. FUNGSI WAKTU & RUNNING TEXT ---
-        function updateWaktuDanRunningText() {
-            const now = new Date();
-            const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            const dayName = days[now.getDay()], date = now.getDate(), monthName = months[now.getMonth()], year = now.getFullYear();
-            const time = now.toLocaleTimeString('id-ID', { hour12: false });
-            
-            const displayTgl = document.getElementById('display-tanggal');
-            const displayJam = document.getElementById('digital-clock');
-            const runText = document.getElementById('running-text');
-
-            if(displayTgl) displayTgl.innerText = `${dayName}, ${date} ${monthName} ${year}`;
-            if(displayJam) displayJam.innerText = `${time} WIT`;
-            if(runText) runText.innerText = `Shalom! ${dayName}, ${date} ${monthName} ${year} | ${time} WIT | SISTEM INFORMASI KOMSEL JC | TETAP SEMANGAT!`;
-        }
-
-        // --- 3. SINKRONISASI DATA USER ---
-        function syncUserData() {
-            const email = localStorage.getItem("userEmail");
-            if (!email) return;
-
-            db.collection("users").where("email", "==", email).onSnapshot((snap) => {
-                if (!snap.empty) {
-                    const d = snap.docs[0].data();
-                    const elNama = document.getElementById('disp_nama');
-                    const elKomsel = document.getElementById('disp_komsel');
-                    
-                    if(elNama) elNama.innerText = d.nama || "User";
-                    if(elKomsel) elKomsel.innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                    
-                    if (d.fotoUrl) {
-                        const userPhoto = document.getElementById('user-photo');
-                        const defIcon = document.getElementById('default-icon');
-                        if(userPhoto) {
-                            userPhoto.src = d.fotoUrl;
-                            userPhoto.style.display = "block";
-                        }
-                        if(defIcon) defIcon.style.display = "none";
-                    }
-                }
-            });
-        }
-
-        // --- 4. FUNGSI LOGOUT (VERSI MODAL) ---
-        function logoutDanHapusDevice() {
-            modal.style.display = 'flex';
-        }
-
-        cancelBtn.onclick = function() {
-            modal.style.display = 'none';
-        }
-
-        confirmBtn.onclick = function() {
-            localStorage.clear();
-            window.location.href = "index.html";
-        }
-
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
-    </script>
-</body>
-</html>
