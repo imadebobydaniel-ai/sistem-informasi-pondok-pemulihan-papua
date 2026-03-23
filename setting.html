@@ -28,9 +28,9 @@
 
         .btn-save { background: var(--biru-utama); color: white; width: 100%; padding: 15px; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 20px; }
         
-        /* Tombol WhatsApp Desktop */
-        .btn-wa { background: #25D366; color: white; width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; font-size: 14px; transition: 0.3s; }
-        .btn-wa:active { transform: scale(0.98); background: #1ebe57; }
+        /* Tombol WhatsApp Desktop Baru */
+        .btn-wa-new { background-color: #2ecc71; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; transition: 0.3s; }
+        .btn-wa-new:active { transform: scale(0.98); background-color: #27ae60; }
 
         /* Tombol Hapus Akun */
         .btn-delete { background: none; color: var(--merah-bahaya); width: 100%; padding: 12px; border: 1px solid var(--merah-bahaya); border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 13px; transition: 0.3s; }
@@ -48,7 +48,7 @@
 
 <div id="notif-block">
     <i id="notif-icon" class="fa-solid fa-circle-check" style="font-size: 40px; color: #2ecc71; margin-bottom: 15px;"></i>
-    <p id="notif-text" style="margin: 0; font-weight: bold;">Password dan Email Berhasil diupdate</p>
+    <p id="notif-text" style="margin: 0; font-weight: bold;">Berhasil diupdate</p>
     <p id="notif-subtext" style="font-size: 12px; margin-top: 10px; color: #ccc;">Silakan login ulang...</p>
 </div>
 
@@ -84,7 +84,7 @@
             </select>
         </div>
 
-        <button class="btn-wa" onclick="kirimLinkDesktop()">
+        <button class="btn-wa-new" onclick="kirimLinkDesktop()">
             <i class="fab fa-whatsapp"></i> KIRIM LINK DESKTOP
         </button>
 
@@ -123,44 +123,29 @@
         localStorage.setItem("setTimer", document.getElementById("timerLogout").value);
     }
 
+    // FUNGSI KIRIM LINK TERBARU (Sesuai Rename Repositori)
     function kirimLinkDesktop() {
-        const urlAplikasi = "https://imadebobydaniel-ai.github.io/laporan-pembacaan-alkitab-/";
-        const pesan = encodeURIComponent(`Shalom! Gunakan link ini untuk membuka aplikasi Laporan Alkitab di Laptop/Desktop Anda: ${urlAplikasi}`);
-        window.open(`https://wa.me/?text=${pesan}`, '_blank');
+        const urlBaru = "https://imadebobydaniel-ai.github.io/sistem-informasi-komsel-jc-/";
+        const pesan = encodeURIComponent("Shalom! Ini adalah link Sistem Informasi Komsel JC untuk dibuka di Desktop/Laptop: " + urlBaru);
+        window.open("https://wa.me/?text=" + pesan, "_blank");
     }
 
-    // FUNGSI HAPUS AKUN PERMANEN
     async function hapusAkunPermanen() {
-        const konfirmasi1 = confirm("⚠️ PERINGATAN: Menghapus akun akan menghilangkan seluruh data laporan Anda secara permanen. Apakah Anda yakin?");
-        
-        if (konfirmasi1) {
+        if (confirm("⚠️ PERINGATAN: Menghapus akun akan menghilangkan seluruh data laporan Anda secara permanen. Apakah Anda yakin?")) {
             const konfirmasi2 = prompt("Untuk memverifikasi, ketik kata 'HAPUS' di bawah ini:");
-            
             if (konfirmasi2 === "HAPUS") {
                 try {
                     const snap = await db.collection("users").where("email", "==", userEmail).get();
                     if (!snap.empty) {
                         await db.collection("users").doc(snap.docs[0].id).delete();
-                        
-                        // Tampilkan Notifikasi Sukses Hapus
                         document.getElementById("notif-icon").className = "fa-solid fa-trash-check";
                         document.getElementById("notif-icon").style.color = "#dc3545";
                         document.getElementById("notif-text").innerText = "Akun Telah Dihapus";
-                        document.getElementById("notif-subtext").innerText = "Data Anda telah dibersihkan dari server.";
+                        document.getElementById("notif-subtext").innerText = "Data Anda telah dibersihkan.";
                         document.getElementById("notif-block").style.display = "block";
-
-                        setTimeout(() => {
-                            localStorage.clear();
-                            window.location.replace("index.html");
-                        }, 3000);
-                    } else {
-                        alert("Data akun tidak ditemukan.");
+                        setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3000);
                     }
-                } catch (e) {
-                    alert("Gagal menghapus akun: " + e.message);
-                }
-            } else if (konfirmasi2 !== null) {
-                alert("Kata verifikasi salah. Penghapusan dibatalkan.");
+                } catch (e) { alert("Gagal: " + e.message); }
             }
         }
     }
@@ -168,22 +153,13 @@
     async function updateAkun() {
         const nEmail = document.getElementById("newEmail").value;
         const nPass = document.getElementById("newPassword").value;
-
         if (!nEmail || !nPass) { alert("Harap isi Email dan Password!"); return; }
-
         try {
             const snap = await db.collection("users").where("email", "==", userEmail).get();
             if (!snap.empty) {
-                await db.collection("users").doc(snap.docs[0].id).update({
-                    email: nEmail,
-                    password: nPass
-                });
-
+                await db.collection("users").doc(snap.docs[0].id).update({ email: nEmail, password: nPass });
                 document.getElementById("notif-block").style.display = "block";
-                setTimeout(() => {
-                    localStorage.clear();
-                    window.location.replace("index.html");
-                }, 3500);
+                setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3500);
             }
         } catch (e) { alert("Gagal: " + e.message); }
     }
