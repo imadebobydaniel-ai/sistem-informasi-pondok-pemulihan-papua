@@ -69,35 +69,33 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
     
-    // CEK EMAIL DI LOCALSTORAGE
     const userEmail = localStorage.getItem("userEmail");
     const debug = document.getElementById("debug-msg");
 
     if (!userEmail) {
-        debug.innerText = "⚠️ ERROR: Email tidak ditemukan di sistem. Silakan login ulang.";
-        // window.location.replace("index.html"); // Aktifkan ini jika ingin otomatis tendang ke login
+        debug.innerText = "⚠️ ERROR: Silakan login ulang.";
     } else {
-        debug.style.color = "green";
-        debug.innerText = "Email terdeteksi: " + userEmail;
-
+        // Menggunakan onSnapshot agar data sinkron secara Real-time
         db.collection("users").where("email", "==", userEmail).onSnapshot((querySnapshot) => {
             if (!querySnapshot.empty) {
                 const d = querySnapshot.docs[0].data();
-                debug.innerText = "✅ Data berhasil ditarik dari Firebase!";
-                setTimeout(() => { debug.innerText = ""; }, 2000);
                 
-                if (d.fotoUrl) { document.getElementById('view-foto').src = d.fotoUrl; }
+                // Menampilkan foto (field: foto_profil)
+                if (d.foto_profil) { 
+                    document.getElementById('view-foto').src = d.foto_profil; 
+                }
                 
-                document.getElementById("no_komsel").innerText = d.nomor_komsel || d.nk || "-";
-                document.getElementById("nama_lengkap").innerText = d.nama || d.nama_lengkap || "Nama Kosong";
+                // Menampilkan data teks sesuai field di Firebase
+                document.getElementById("no_komsel").innerText = d.nomor_komsel || "-";
+                document.getElementById("nama_lengkap").innerText = d.nama || "Nama Kosong";
                 document.getElementById("jabatan").innerText = d.jabatan || "-";
                 document.getElementById("email_aktif").innerText = d.email || "-";
-                document.getElementById("no_hp").innerText = d.no_hp || "-";
+                document.getElementById("no_hp").innerText = d.whatsapp || "-";
                 document.getElementById("lokasi_komsel").innerText = d.komsel ? "JC " + d.komsel : "-";
-                document.getElementById("gol_darah").innerText = d.golDarah || "-";
+                document.getElementById("gol_darah").innerText = d.goldarah || "-";
                 document.getElementById("alamat").innerText = d.alamat || "-";
             } else {
-                debug.innerText = "❌ Email " + userEmail + " tidak ada di koleksi 'users'.";
+                debug.innerText = "❌ Data profil tidak ditemukan.";
             }
         }, (err) => {
             debug.innerText = "❌ Database Error: " + err.message;
@@ -107,24 +105,39 @@
     async function uploadFoto(input) {
         const file = input.files[0];
         if (!file || !userEmail) return;
+        
+        const debug = document.getElementById("debug-msg");
+        debug.style.color = "blue";
+        debug.innerText = "Sedang memproses foto...";
+
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = new Image();
             img.onload = async function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width, height = img.height, max_size = 500;
+                
+                // Resize gambar agar tidak terlalu berat saat disimpan di Firestore
                 if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
                 else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+                
                 canvas.width = width; canvas.height = height;
                 canvas.getContext('2d').drawImage(img, 0, 0, width, height);
                 const base64 = canvas.toDataURL('image/jpeg', 0.6);
+
                 try {
                     const snap = await db.collection("users").where("email", "==", userEmail).get();
                     if (!snap.empty) {
-                        await db.collection("users").doc(snap.docs[0].id).update({ fotoUrl: base64 });
-                        alert("Puji Tuhan, Foto berhasil diganti!");
+                        // Simpan ke field 'foto_profil' agar sinkron dengan data registrasi
+                        await db.collection("users").doc(snap.docs[0].id).update({ foto_profil: base64 });
+                        debug.style.color = "green";
+                        debug.innerText = "✅ Foto berhasil diperbarui!";
+                        setTimeout(() => { debug.innerText = ""; }, 3000);
                     }
-                } catch (e) { debug.innerText = "Gagal upload: " + e.message; }
+                } catch (e) { 
+                    debug.style.color = "red";
+                    debug.innerText = "Gagal upload: " + e.message; 
+                }
             };
             img.src = e.target.result;
         };
