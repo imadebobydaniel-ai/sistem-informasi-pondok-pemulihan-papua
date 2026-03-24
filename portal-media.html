@@ -119,10 +119,9 @@
         }
 
         .badge-gambar { background: #e3f2fd; color: #1976d2; }
-        .badge-video { background: #fff3e0; color: #f57c00; }
-        .badge-mp4_player { background: #e8f5e9; color: #2e7d32; }
-        .badge-avi_player { background: #f3e5f5; color: #7b1fa2; }
-        .badge-avsec_player { background: #ffebee; color: #c62828; }
+        .badge-video_youtube { background: #fff3e0; color: #f57c00; }
+        .badge-video_player { background: #e8f5e9; color: #2e7d32; }
+        .badge-audio_player { background: #f3e5f5; color: #7b1fa2; }
         .badge-teks { background: #eeeeee; color: #333333; }
 
         .btn-action {
@@ -163,10 +162,9 @@
                 <label>Tipe Media</label>
                 <select id="tipeMedia" onchange="updateInputMedia()">
                     <option value="gambar">Gambar (Poster/Upload)</option>
-                    <option value="video">Video (YouTube/Link URL)</option>
-                    <option value="mp4_player">MP4 Player (Upload Video)</option>
-                    <option value="avi_player">AVI Player (Upload Video)</option>
-                    <option value="avsec_player">AVSEC Player (Upload Video)</option>
+                    <option value="video_youtube">Video (YouTube/Link URL)</option>
+                    <option value="video_player">Video Player (Upload MP4/AVI/AVSEC)</option>
+                    <option value="audio_player">Audio Player (Upload MP3/WAV)</option>
                     <option value="teks">Text World (Artikel/Berita)</option>
                 </select>
             </div>
@@ -234,34 +232,29 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // 1. UPDATE INPUT DINAMIS BERDASARKAN TIPE
     function updateInputMedia() {
         const tipe = document.getElementById('tipeMedia').value;
         const wrapper = document.getElementById('inputMediaWrapper');
         const label = document.getElementById('labelMedia');
 
-        wrapper.innerHTML = ''; // Reset
+        wrapper.innerHTML = ''; 
 
         switch (tipe) {
-            case 'video':
+            case 'video_youtube':
                 label.innerText = "Link URL YouTube";
                 wrapper.innerHTML = `<input type="text" id="inputMedia" placeholder="https://www.youtube.com/watch?v=..." required>`;
                 break;
             case 'gambar':
-                label.innerText = "Upload File Poster/Gambar (.jpg, .png)";
+                label.innerText = "Upload File Poster/Gambar (.jpg, .png, .webp)";
                 wrapper.innerHTML = `<input type="file" id="inputMedia" accept="image/*" required>`;
                 break;
-            case 'mp4_player':
-                label.innerText = "Upload File Video MP4";
-                wrapper.innerHTML = `<input type="file" id="inputMedia" accept="video/mp4" required>`;
+            case 'video_player':
+                label.innerText = "Upload File Video (MP4, AVI, AVSEC)";
+                wrapper.innerHTML = `<input type="file" id="inputMedia" accept="video/mp4, video/x-msvideo, video/*" required>`;
                 break;
-            case 'avi_player':
-                label.innerText = "Upload File Video AVI";
-                wrapper.innerHTML = `<input type="file" id="inputMedia" accept=".avi" required>`;
-                break;
-            case 'avsec_player':
-                label.innerText = "Upload File Video AVSEC";
-                wrapper.innerHTML = `<input type="file" id="inputMedia" accept="video/*" required>`;
+            case 'audio_player':
+                label.innerText = "Upload File Audio (MP3, WAV)";
+                wrapper.innerHTML = `<input type="file" id="inputMedia" accept="audio/mpeg, audio/wav" required>`;
                 break;
             case 'teks':
                 label.innerText = "Isi Artikel Lengkap";
@@ -270,7 +263,6 @@
         }
     }
 
-    // 2. FUNGSI SIMPAN DATA (UPLOAD KE STORAGE & SIMPAN FIRESTORE)
     document.getElementById('mediaForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btnSubmit');
@@ -284,21 +276,17 @@
         let finalUrl = "";
 
         try {
-            // Logika jika input berupa FILE (bukan YouTube/Teks)
             if (inputElement.files && inputElement.files[0]) {
                 const file = inputElement.files[0];
                 const fileName = Date.now() + "_" + file.name;
                 const storageRef = storage.ref('portal_media/' + fileName);
                 
-                // Upload ke Storage
                 await storageRef.put(file);
                 finalUrl = await storageRef.getDownloadURL();
             } else {
-                // Ambil nilai teks (untuk YouTube atau Teks Artikel)
                 finalUrl = inputElement.value;
             }
 
-            // Simpan ke Firestore
             await db.collection("portal_media").add({
                 judul: judul,
                 tipe: tipe,
@@ -308,12 +296,11 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            alert("Konten berhasil diunggah!");
+            alert("Konten berhasil dipublikasikan!");
             e.target.reset();
             updateInputMedia();
             loadMedia();
         } catch (error) {
-            console.error(error);
             alert("Gagal mengunggah: " + error.message);
         } finally {
             btn.disabled = false;
@@ -321,7 +308,6 @@
         }
     });
 
-    // 3. FUNGSI LOAD DATA KE TABEL
     async function loadMedia() {
         const list = document.getElementById('mediaList');
         try {
@@ -357,7 +343,6 @@
         }
     }
 
-    // 4. FUNGSI HAPUS DATA
     async function deleteMedia(id) {
         if(confirm("Hapus konten ini?")) {
             try {
