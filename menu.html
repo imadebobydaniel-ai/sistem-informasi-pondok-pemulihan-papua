@@ -36,7 +36,7 @@
            border-bottom: 2px solid var(--emas-lux);
             color: white;
         }
-       #display-tanggal { color: var(--emas-lux); }
+        #display-tanggal { color: var(--emas-lux); }
         #digital-clock { color: var(--biru-muda); }
  
         /* Running Text Header */
@@ -51,7 +51,7 @@
            align-items: center; 
            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-       .running-content { 
+        .running-content { 
             display: inline-block; 
            padding-left: 100%; 
             animation: marquee 30s linear infinite; 
@@ -70,7 +70,7 @@
             color: var(--biru-tua); 
            text-transform: uppercase; 
             font-size: 18px;
-           letter-spacing: 1px;
+            letter-spacing: 1px;
         }
  
         /* Profile Section */
@@ -167,7 +167,7 @@
             padding: 25px;
             color: #333;
             background: #fff;
-            text-align: left; /* Agar info-item rapi */
+            text-align: left;
         }
 
         .info-item {
@@ -195,7 +195,6 @@
             transform: translateY(-2px);
         }
 
-        /* Grid Menu & Elements */
         .setting-icon-profile { position: absolute; top: 18px; right: 18px; color: var(--biru-tua); font-size: 22px; transition: 0.3s; }
         .setting-icon-profile:hover { transform: rotate(90deg); color: var(--emas-lux); }
         
@@ -337,22 +336,24 @@
     </div>
  
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script> <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
  
     <script>
         // CONFIG FIREBASE
         const firebaseConfig = { 
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-           authDomain: "boby-apps-project.firebaseapp.com", 
+            authDomain: "boby-apps-project.firebaseapp.com", 
             projectId: "boby-apps-project", 
-           storageBucket: "boby-apps-project.appspot.com", 
-           messagingSenderId: "125984859692", 
+            storageBucket: "boby-apps-project.appspot.com", 
+            messagingSenderId: "125984859692", 
             appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
         };
+
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const database = firebase.database(); // Inisialisasi Realtime Database untuk script popup
- 
+        const database = firebase.database();
+
         // 1. FUNGSI UPDATE WAKTU
         function updateWaktuDanRunningText() {
             const now = new Date();
@@ -365,14 +366,14 @@
             const year = now.getFullYear();
             const time = now.toLocaleTimeString('id-ID', { hour12: false });
             
-           document.getElementById('display-tanggal').innerText = `${dayName}, ${date} ${monthName} ${year}`;
-           document.getElementById('digital-clock').innerText = `${time} WIT`;
+            document.getElementById('display-tanggal').innerText = `${dayName}, ${date} ${monthName} ${year}`;
+            document.getElementById('digital-clock').innerText = `${time} WIT`;
             
             const runningContent = `Shalom! ${dayName}, ${date} ${monthName} ${year} | ${time} WIT | SISTEM INFORMASI KOMSEL JC - PONDOK PEMULIHAN PAPUA | TETAP SEMANGAT MELAYANI TUHAN!`;
-           document.getElementById('running-text').innerText = runningContent;
+            document.getElementById('running-text').innerText = runningContent;
         }
 
-        /* --- FUNGSI MODAL POPUP --- */
+        // 2. FUNGSI MODAL POPUP
         function bukaPesanKegiatan() {
             const modal = document.getElementById('modalPengumuman');
             const konten = document.getElementById('isiModal');
@@ -381,121 +382,129 @@
             const notifContainer = document.querySelector('.notif-email-container');
             if(notifContainer) notifContainer.classList.remove('shake-active');
 
-            // Ambil data terbaru dari Firebase Realtime Database
             database.ref('kegiatan').limitToLast(1).once('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    const key = Object.keys(data)[0];
-                    const info = data[key];
-                    
+                if (snapshot.exists()) {
+                    let info;
+                    snapshot.forEach((childSnapshot) => {
+                        info = childSnapshot.val();
+                    });
+
                     konten.innerHTML = `
                         <div class="info-item">
-                            <small style="color: var(--emas-lux); font-weight: bold;">KATEGORI</small>
-                            <div style="font-weight: bold; font-size: 1.1em;">${info.kategori}</div>
+                            <small style="color: var(--emas-lux); font-weight: bold;">[${info.kategori || 'PENGUMUMAN'}]</small>
+                            <div style="font-weight: bold; font-size: 1.1em; margin-top: 5px;">${info.judul || info.judul_informasi}</div>
                         </div>
                         <div class="info-item">
-                            <small style="color: var(--emas-lux); font-weight: bold;">JUDUL</small>
-                            <div style="font-weight: bold;">${info.judul}</div>
-                        </div>
-                        <div class="info-item">
-                            <small style="color: var(--emas-lux); font-weight: bold;">LOKASI & DETAIL</small>
-                            <div style="font-size: 0.95em;">${info.lokasi || '-'}<br><i>${info.detail}</i></div>
+                            <div style="font-size: 0.95em;">
+                                <strong>Lokasi:</strong> ${info.lokasi || info.lokasi_kegiatan || '-'}<br>
+                                <hr style="border: 0.5px solid #ddd; margin: 8px 0;">
+                                ${info.detail || info.detail_informasi}
+                            </div>
                         </div>
                         <p style="font-size: 0.7em; color: #999; text-align: right; margin: 0;">
-                            <i class="fa-regular fa-clock"></i> ${info.timestamp || ''}
+                            <i class="fa-regular fa-clock"></i> ${info.timestamp || 'Baru saja'}
                         </p>
                     `;
                 } else {
                     konten.innerHTML = "<p style='text-align:center;'>Belum ada pengumuman terbaru.</p>";
                 }
+            }, (error) => {
+                console.error(error);
+                konten.innerHTML = "<p style='text-align:center; color:red;'>Gagal memuat data.</p>";
             });
         }
 
         function tutupModal() {
             document.getElementById('modalPengumuman').style.display = 'none';
         }
- 
-        // 2. FUNGSI TRACKING GPS
+
+        // 3. FUNGSI TRACKING GPS
         function aktifkanTrackingOtomatis() {
             if (navigator.geolocation) {
-               navigator.geolocation.watchPosition(async (position) => {
-                   const userEmail = localStorage.getItem("userEmail");
-                   const userName = localStorage.getItem("userName");
-                   const userJC = localStorage.getItem("userJC");
- 
+                navigator.geolocation.watchPosition(async (position) => {
+                    const userEmail = localStorage.getItem("userEmail");
+                    const userName = localStorage.getItem("userName");
+                    const userJC = localStorage.getItem("userJC");
+
                     if (userEmail && userName) {
-                       await db.collection("live_tracking").doc(userEmail).set({
-                           nama: userName,
-                           lat: position.coords.latitude,
-                           lng: position.coords.longitude,
-                           komsel: userJC || "1",
-                           lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-                       }, { merge: true });
+                        await db.collection("live_tracking").doc(userEmail).set({
+                            nama: userName,
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            komsel: userJC || "1",
+                            lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
                     }
                 }, (error) => {
-                   console.warn("GPS Warning: " + error.message);
+                    console.warn("GPS Warning: " + error.message);
                 }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 27000 });
             }
         }
- 
-        // 3. SYNC DATA PROFIL
+
+        // 4. SYNC DATA PROFIL
         function syncUserData() {
             const userEmail = localStorage.getItem("userEmail");
             if (!userEmail) { window.location.href = "index.html"; return; }
- 
-           db.collection("users").where("email", "==", userEmail).onSnapshot((querySnapshot) => {
+
+            db.collection("users").where("email", "==", userEmail).onSnapshot((querySnapshot) => {
                 if (!querySnapshot.empty) {
-                   const data = querySnapshot.docs[0].data();
-                   localStorage.setItem("userName", data.nama);
-                   localStorage.setItem("userJC", data.komsel);
- 
-                   document.getElementById('disp_nama').innerText = data.nama || "User";
-                   document.getElementById('disp_komsel').innerText = data.komsel ? "JC " + data.komsel : "KOMSEL JC";
+                    const data = querySnapshot.docs[0].data();
+                    localStorage.setItem("userName", data.nama);
+                    localStorage.setItem("userJC", data.komsel);
+
+                    document.getElementById('disp_nama').innerText = data.nama || "User";
+                    document.getElementById('disp_komsel').innerText = data.komsel ? "JC " + data.komsel : "KOMSEL JC";
                     
-                   const photoImg = document.getElementById('user-photo');
-                   const defaultIcon = document.getElementById('default-icon');
+                    const photoImg = document.getElementById('user-photo');
+                    const defaultIcon = document.getElementById('default-icon');
                     if (data.fotoUrl) { 
-                       photoImg.src = data.fotoUrl; 
-                       photoImg.style.display = "block"; 
-                       defaultIcon.style.display = "none"; 
+                        photoImg.src = data.fotoUrl; 
+                        photoImg.style.display = "block"; 
+                        defaultIcon.style.display = "none"; 
                     } else { 
-                       photoImg.style.display = "none"; 
-                       defaultIcon.style.display = "block"; 
+                        photoImg.style.display = "none"; 
+                        defaultIcon.style.display = "block"; 
                     }
-                   aktifkanTrackingOtomatis();
+                    aktifkanTrackingOtomatis();
                 }
             });
         }
- 
-        // 4. FUNGSI LOGOUT
+
+        // 5. FUNGSI LOGOUT
         async function logoutDanHapusDevice() {
             const userEmail = localStorage.getItem("userEmail");
             const currentDeviceId = localStorage.getItem("myDeviceId");
- 
+
             if (confirm("Apakah Anda yakin ingin keluar?")) {
                 try {
                     if (userEmail && currentDeviceId) {
-                       const snapshot = await db.collection("users").where("email", "==", userEmail).get();
-                       if (!snapshot.empty) {
-                           const docId = snapshot.docs[0].id;
-                           await db.collection("users").doc(docId).update({
+                        const snapshot = await db.collection("users").where("email", "==", userEmail).get();
+                        if (!snapshot.empty) {
+                            const docId = snapshot.docs[0].id;
+                            await db.collection("users").doc(docId).update({
                                 deviceIds: firebase.firestore.FieldValue.arrayRemove(currentDeviceId)
-                           });
-                       }
+                            });
+                        }
                     }
                 } catch (e) {
-                   console.error("Logout error:", e);
+                    console.error("Logout error:", e);
                 } finally {
-                   localStorage.clear();
-                   window.location.href = "index.html";
+                    localStorage.clear();
+                    window.location.href = "index.html";
                 }
             }
         }
- 
-        // JALANKAN SEMUA FUNGSI
-       setInterval(updateWaktuDanRunningText, 1000);
-       updateWaktuDanRunningText();
-       syncUserData();
+
+        // JALANKAN SEMUA FUNGSI SAAT LOAD
+        setInterval(updateWaktuDanRunningText, 1000);
+        updateWaktuDanRunningText();
+        syncUserData();
+
+        // Close modal jika klik area luar
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalPengumuman');
+            if (event.target == modal) { tutupModal(); }
+        }
     </script>
 </body>
 </html>
