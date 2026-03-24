@@ -172,13 +172,32 @@
 
         .info-item {
             margin-bottom: 15px;
-            padding: 10px;
+            padding: 15px;
             background: #f8f9fa;
             border-radius: 12px;
             border-left: 4px solid var(--emas-lux);
         }
 
+        .btn-action-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            padding-bottom: 25px;
+        }
+
         .btn-close-popup {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-open-full {
             background: var(--biru-tua);
             color: white;
             border: none;
@@ -188,12 +207,11 @@
             cursor: pointer;
             transition: 0.3s;
             box-shadow: 0 4px 15px rgba(0,51,102,0.3);
+            text-decoration: none;
+            font-size: 14px;
         }
 
-        .btn-close-popup:hover {
-            background: var(--emas-lux);
-            transform: translateY(-2px);
-        }
+        .btn-open-full:hover { background: var(--biru-safir); transform: translateY(-2px); }
 
         .setting-icon-profile { position: absolute; top: 18px; right: 18px; color: var(--biru-tua); font-size: 22px; transition: 0.3s; }
         .setting-icon-profile:hover { transform: rotate(90deg); color: var(--emas-lux); }
@@ -327,10 +345,13 @@
                 <h3 style="margin: 0; letter-spacing: 1px;">Pesan Untuk Boby</h3>
             </div>
             <div id="isiModal" class="modal-body">
-                <p id="pesan-isi" style="text-align:center;">Memuat pesan surgawi...</p>
+                <div class="info-item">
+                    <p id="pesan-isi" style="text-align:center;">Memuat pesan surgawi...</p>
+                </div>
             </div>
-            <div style="padding-bottom: 25px; text-align: center;">
-                <button class="btn-close-popup" onclick="tutupModal()">Tutup Pesan</button>
+            <div class="btn-action-container">
+                <button id="btn-buka-full" class="btn-open-full" style="display: none;">Baca Selengkapnya</button>
+                <button class="btn-close-popup" onclick="tutupModal()">Tutup</button>
             </div>
         </div>
     </div>
@@ -373,7 +394,7 @@
             document.getElementById('running-text').innerText = runningContent;
         }
 
-        // 2. FUNGSI MODAL POPUP (DENGAN SNAPSHOT FIRESTORE)
+        // 2. FUNGSI MODAL POPUP DENGAN INTEGRASI SCRIPT FIRESTORE BARU
         function bukaPesanKegiatan() {
             const modal = document.getElementById('modalPengumuman');
             modal.style.display = 'flex';
@@ -381,32 +402,37 @@
             const notifContainer = document.querySelector('.notif-email-container');
             if(notifContainer) notifContainer.classList.remove('shake-active');
 
-            // INTEGRASI SCRIPT BARU KAMU:
-            db.collection("pengumuman_komsel").orderBy("lastUpdate", "desc").limit(1).onSnapshot((querySnapshot) => {
-                const displayArea = document.getElementById('isiModal');
-                
+            // --- INTEGRASI SCRIPT BARU KAMU ---
+            db.collection("pengumuman_komsel")
+              .orderBy("lastUpdate", "desc")
+              .limit(1)
+              .onSnapshot((querySnapshot) => {
+                const pesanIsiEl = document.getElementById('pesan-isi');
+                const btnFull = document.getElementById('btn-buka-full');
+
                 if (!querySnapshot.empty) {
                     querySnapshot.forEach((doc) => {
                         const data = doc.data();
-                        // Format tampilan agar lebih rapi di dalam modal
-                        displayArea.innerHTML = `
-                            <div class="info-item">
-                                <small style="color: var(--emas-lux); font-weight: bold;">PENGUMUMAN TERBARU</small>
-                                <div style="font-size: 0.95em; margin-top: 10px; line-height: 1.6;">
-                                    ${data.detail}
-                                </div>
-                            </div>
-                            <p style="font-size: 0.7em; color: #999; text-align: right; margin: 0;">
-                                <i class="fa-regular fa-clock"></i> Diperbarui: ${data.lastUpdate ? new Date(data.lastUpdate.seconds * 1000).toLocaleString('id-ID') : '-'}
-                            </p>
-                        `;
+                        const docId = doc.id;
+                        
+                        // Menampilkan potongan teks (Preview)
+                        const previewTeks = data.detail.length > 100 ? data.detail.substring(0, 100) + "..." : data.detail;
+                        pesanIsiEl.innerText = previewTeks;
+
+                        // Tampilkan tombol buka utuh
+                        btnFull.style.display = 'inline-block';
+                        btnFull.onclick = function() {
+                            localStorage.setItem('pesan_terakhir_id', docId);
+                            window.location.href = `informasi-kegiatan.html?id=${docId}`;
+                        };
                     });
                 } else {
-                    displayArea.innerHTML = "<p style='text-align:center;'>Belum ada pengumuman baru.</p>";
+                    pesanIsiEl.innerText = "Belum ada pengumuman baru.";
+                    btnFull.style.display = 'none';
                 }
             }, (error) => {
-                console.error("Error mengambil data: ", error);
-                document.getElementById('isiModal').innerHTML = "<p style='text-align:center; color:red;'>Gagal memuat data.</p>";
+                console.error("Firestore Error:", error);
+                document.getElementById('pesan-isi').innerText = "Gagal memuat pesan.";
             });
         }
 
