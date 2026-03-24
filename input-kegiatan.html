@@ -193,12 +193,23 @@
         document.getElementById('login-overlay').style.display = 'none';
     }
 
-    // 4. FUNGSI PROSES DATA (KIRIM/EDIT)
+    // 4. FUNGSI PROSES DATA (KIRIM/EDIT) - VERSI PROTEKSI KETAT
     async function prosesData() {
-        if (sessionStorage.getItem("akses_komsel") !== "true") {
+        // --- PROTEKSI KETAT DI MULAI DI SINI ---
+        const isLogin = sessionStorage.getItem("akses_komsel");
+        
+        if (isLogin !== "true") {
+            // Jika belum login atau mencoba bypass, paksa munculkan overlay password
             document.getElementById('login-overlay').style.display = 'flex';
-            return;
+            tampilkanModal({ 
+                judul: "Akses Terkunci", 
+                pesan: "Silakan masukkan password terlebih dahulu untuk mengirim data.", 
+                ikon: "fa-lock", 
+                warnaIkon: "var(--merah-notif)" 
+            });
+            return; // Hentikan fungsi agar data tidak terkirim
         }
+        // --- PROTEKSI KETAT SELESAI ---
 
         const kategori = document.getElementById('kategori').value;
         const judul = document.getElementById('judul').value;
