@@ -129,8 +129,11 @@
         .badge-video_player { background: #f3e5f5; color: #7b1fa2; }
         .badge-audio_player { background: #e8f5e9; color: #2e7d32; }
         
-        .btn-action { border: none; background: none; cursor: pointer; font-size: 16px; }
+        .btn-action { border: none; background: none; cursor: pointer; font-size: 18px; transition: 0.2s; }
+        .btn-action:hover { transform: scale(1.2); }
+        .btn-play { color: var(--success); }
         .btn-delete { color: var(--danger); }
+        
         .btn-nav {
             background: #f8f9fa;
             border: 1px solid #ddd;
@@ -258,7 +261,6 @@
         const labelUrl = document.getElementById('label_url');
         const inputUrl = document.getElementById('url_media');
 
-        // Reset view
         urlContainer.style.display = "block";
         teksContainer.style.display = "none";
 
@@ -344,7 +346,10 @@
                                    style="width: 50px; padding: 2px;">
                         </td>
                         <td style="text-align: center;">
-                            <button class="btn-action btn-delete" onclick="deleteMedia('${id}')">
+                            <button class="btn-action btn-play" onclick="playSekarang('${id}')" title="Putar Sekarang">
+                                <i class="fas fa-play-circle"></i>
+                            </button>
+                            <button class="btn-action btn-delete" onclick="deleteMedia('${id}')" title="Hapus">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </td>
@@ -352,6 +357,19 @@
                 `;
             });
         } catch (e) { console.error(e); }
+    }
+
+    // FITUR PUTAR SEKARANG (PUSH KE FIREBASE)
+    async function playSekarang(id) {
+        try {
+            await db.collection("config").doc("playlist").update({
+                activeContentId: id,
+                triggerChange: Date.now() 
+            });
+            alert("Konten segera diputar di monitor!");
+        } catch (e) {
+            alert("Gagal memicu putar: " + e.message);
+        }
     }
 
     // FUNGSI URUTAN, DURASI, DELETE
@@ -385,7 +403,7 @@
 
     async function saveGlobalConfig() {
         const mode = document.getElementById('modePutar').value;
-        await db.collection("config").doc("playlist").set({ mode: mode });
+        await db.collection("config").doc("playlist").set({ mode: mode }, { merge: true });
         alert("Mode Putar Disimpan!");
     }
 
