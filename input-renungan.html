@@ -35,7 +35,6 @@
 
         hr { border: 0; border-top: 2px solid #eee; margin: 30px 0; }
 
-        /* Style List Renungan */
         .list-container { margin-top: 20px; }
         .renungan-item { background: #f9f9f9; padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--emas-lux); position: relative; }
         .renungan-item h4 { margin: 0 0 5px 0; color: var(--biru-tua); }
@@ -46,11 +45,15 @@
         .fa-trash { color: #e11d48; }
         .fa-file-pdf { color: #f43f5e; }
 
-        /* Area tersembunyi untuk proses cetak PDF */
         #pdf-template { position: absolute; left: -9999px; width: 500px; padding: 40px; background: white; }
     </style>
 </head>
 <body>
+
+<div id="custom-notification" style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 9999; border-left: 5px solid #ff0040; text-align: center;">
+    <p id="notif-message" style="margin: 0; font-weight: bold; color: #333;"></p>
+    <button onclick="closeNotif()" style="margin-top: 10px; background: var(--biru-tua); color: white; border: none; padding: 8px 25px; border-radius: 50px; cursor: pointer; font-weight: bold;">OK</button>
+</div>
 
 <div class="container">
     <h2 id="form-title"><i class="fa-solid fa-pen-to-square"></i> Renungan Komsel JC</h2>
@@ -99,16 +102,12 @@
         <p><em id="pdf-ayat" style="color:#2ecc71;"></em></p>
         <div id="pdf-isi" style="line-height:1.6; text-align:justify; margin-top:20px;"></div>
     </div>
-    <div style="margin-top:40px; border-top:1px solid #eee; padding-top:10px; font-size:12px; text-align:center; color:#999;">
-        Dibuat secara otomatis melalui Sistem Informasi Komsel JC
-    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase kamu
     const firebaseConfig = { 
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
@@ -120,29 +119,45 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 1. FUNGSI SIMPAN DATA
+    // --- FUNGSI NOTIFIKASI (BLOCK DISPLAY) ---
+    function tampilNotif(pesan, warna = "#ff0040") {
+        const notifBox = document.getElementById('custom-notification');
+        const notifText = document.getElementById('notif-message');
+        notifText.innerText = pesan;
+        notifBox.style.borderLeftColor = warna;
+        notifBox.style.display = "block";
+        setTimeout(() => { closeNotif(); }, 5000);
+    }
+
+    function closeNotif() {
+        document.getElementById('custom-notification').style.display = "none";
+    }
+
+    // --- FUNGSI SIMPAN ---
     async function simpanRenungan() {
         const tgl = document.getElementById('tgl-renungan').value;
         const judul = document.getElementById('judul').value;
         const ayat = document.getElementById('ayat').value;
         const isi = document.getElementById('isi').value;
 
-        if(!tgl || !judul || !isi) { alert("Mohon lengkapi data!"); return; }
+        if(!tgl || !judul || !isi) { 
+            tampilNotif("⚠️ Mohon lengkapi semua data!", "#D4AF37"); 
+            return; 
+        }
 
         try {
             await db.collection("renungan_harian").add({
-                tanggal: tgl,
-                judul: judul,
-                ayat: ayat,
-                isi: isi,
+                tanggal: tgl, judul: judul, ayat: ayat, isi: isi,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            alert("Renungan berhasil diposting!");
+            tampilNotif("✅ Renungan berhasil diposting!", "#2ecc71");
             resetForm();
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            tampilNotif("❌ Gagal menyimpan!", "#ff0040"); 
+        }
     }
 
-    // 2. FUNGSI TAMPILKAN LIST DATA (REALTIME)
+    // --- FUNGSI TAMPIL LIST ---
     function loadRenungan() {
         db.collection("renungan_harian").orderBy("tanggal", "desc").onSnapshot((querySnapshot) => {
             const listDiv = document.getElementById('list-renungan');
@@ -154,31 +169,28 @@
                         <h4>${data.judul}</h4>
                         <p><i class="fa-regular fa-calendar"></i> ${data.tanggal} | <i class="fa-solid fa-book-bible"></i> ${data.ayat}</p>
                         <div class="action-icons">
-                            <i class="fa-solid fa-pen-to-square" onclick="prepareEdit('${doc.id}', '${data.tanggal}', '${data.judul}', '${data.ayat}', \`${data.isi}\`)"></i>
+                            <i class="fa-solid fa-pen-to-square" onclick="prepareEdit('${doc.id}', '${data.tanggal}', \`${data.judul}\`, \`${data.ayat}\`, \`${data.isi}\`)"></i>
                             <i class="fa-solid fa-trash" onclick="hapusRenungan('${doc.id}')"></i>
-                            <i class="fa-solid fa-file-pdf" title="Download E-book PDF" onclick="downloadEbook(\`${data.judul}\`, '${data.tanggal}', '${data.ayat}', \`${data.isi}\`)"></i>
+                            <i class="fa-solid fa-file-pdf" onclick="downloadEbook(\`${data.judul}\`, '${data.tanggal}', \`${data.ayat}\`, \`${data.isi}\`)"></i>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
         });
     }
 
-    // 3. FUNGSI PREPARE EDIT
+    // --- FUNGSI EDIT ---
     function prepareEdit(id, tgl, judul, ayat, isi) {
         document.getElementById('edit-id').value = id;
         document.getElementById('tgl-renungan').value = tgl;
         document.getElementById('judul').value = judul;
         document.getElementById('ayat').value = ayat;
         document.getElementById('isi').value = isi;
-
         document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-edit"></i> Edit Renungan';
         document.getElementById('btn-save').style.display = "none";
         document.getElementById('btn-update').style.display = "inline-block";
         window.scrollTo(0,0);
     }
 
-    // 4. FUNGSI UPDATE
     async function updateRenungan() {
         const id = document.getElementById('edit-id').value;
         const dataUpdate = {
@@ -187,24 +199,24 @@
             ayat: document.getElementById('ayat').value,
             isi: document.getElementById('isi').value
         };
-
         try {
             await db.collection("renungan_harian").doc(id).update(dataUpdate);
-            alert("Data berhasil diperbarui!");
+            tampilNotif("✅ Data berhasil diperbarui!", "#2ecc71");
             resetForm();
-        } catch (e) { alert("Gagal update!"); }
+        } catch (e) { tampilNotif("❌ Gagal update!", "#ff0040"); }
     }
 
-    // 5. FUNGSI HAPUS
+    // --- FUNGSI HAPUS ---
     async function hapusRenungan(id) {
         if(confirm("Hapus renungan ini?")) {
             await db.collection("renungan_harian").doc(id).delete();
+            tampilNotif("🗑️ Renungan telah dihapus", "#666");
         }
     }
 
-    // 6. FUNGSI DOWNLOAD E-BOOK PDF
+    // --- FUNGSI PDF ---
     async function downloadEbook(judul, tgl, ayat, isi) {
-        // Isi template tersembunyi
+        tampilNotif("⏳ Menyiapkan PDF...", "#0056b3");
         document.getElementById('pdf-judul').innerText = judul;
         document.getElementById('pdf-tgl').innerText = "Tanggal: " + tgl;
         document.getElementById('pdf-ayat').innerText = "Nas: " + ayat;
@@ -216,13 +228,12 @@
         
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgProps = pdf.getImageProperties(imgData);
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`Renungan_${tgl}.pdf`);
-        alert("E-book PDF sedang diunduh!");
+        tampilNotif("✅ PDF Berhasil diunduh!", "#2ecc71");
     }
 
     function resetForm() {
@@ -233,12 +244,10 @@
         document.getElementById('isi').value = "";
         document.getElementById('btn-save').style.display = "inline-block";
         document.getElementById('btn-update').style.display = "none";
-        document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Input Renungan';
+        document.getElementById('form-title').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Renungan Komsel JC';
     }
 
-    // Jalankan load data saat halaman dibuka
     loadRenungan();
 </script>
-
 </body>
 </html>
