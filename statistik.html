@@ -154,7 +154,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase
+    // Konfigurasi Firebase Anda (Tetap Gunakan yang Lama)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -167,78 +167,78 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 1. FUNGSI GOLONGAN DARAH REALTIME
+    // FUNGSI PEMBANTU: Konversi Tanggal agar Aman
+    function safeToDate(dateField) {
+        if (!dateField) return new Date(0); // Tanggal purba jika kosong
+        if (typeof dateField.toDate === 'function') return dateField.toDate();
+        return new Date(dateField);
+    }
+
+    // 1. GOLONGAN DARAH REALTIME (DIOPTIMALKAN)
     function syncGoldarRealtime() {
-        const filter = document.getElementById('select-komsel-goldar').value;
+        const filter = document.getElementById('select-komsel-goldar').value.trim().toUpperCase();
+        
         db.collection("users").onSnapshot((snapshot) => {
             let counts = { A: 0, B: 0, O: 0, AB: 0 };
             let usersData = [];
+            
             snapshot.forEach(doc => {
                 const data = doc.data();
-                usersData.push(data);
-                const kUser = String(data.komsel || "").includes("JC") ? data.komsel : "JC " + data.komsel;
-                if (filter === "Semua Komsel" || kUser === filter) {
+                if (!data) return;
+
+                // Normalisasi nama komsel: Pastikan "JC 5" atau "5" diperlakukan sama
+                let rawKomsel = String(data.komsel || "").toUpperCase().trim();
+                let normalizedKomsel = rawKomsel.startsWith("JC") ? rawKomsel : "JC " + rawKomsel;
+
+                if (filter === "SEMUA KOMSEL" || normalizedKomsel === filter) {
+                    usersData.push(data);
                     const g = (data.golongan_darah || data.golDarah || "").toUpperCase().trim();
                     if (counts.hasOwnProperty(g)) counts[g]++;
                 }
             });
-            for (let type in counts) {
+
+            // Update UI
+            ["A", "B", "O", "AB"].forEach(type => {
                 const el = document.getElementById('count-' + type);
                 if (el) {
-                    el.innerText = counts[type] + " Orang";
+                    el.innerText = (counts[type] || 0) + " Orang";
                     el.onclick = () => openUserDetail(type, filter, usersData);
                 }
-            }
-        });
-    }
-
-    // 2. FUNGSI DETAIL MODAL
-    function openUserDetail(goldarType, filterKomsel, allUsers) {
-        const modal = document.getElementById('modal-goldar');
-        const listBody = document.getElementById('modal-list-user');
-        document.getElementById('modal-title').innerText = "Anggota Golongan Darah " + goldarType;
-        let html = "";
-        const filtered = allUsers.filter(u => {
-            const kUser = String(u.komsel || "").includes("JC") ? u.komsel : "JC " + u.komsel;
-            const gUser = (u.golongan_darah || u.golDarah || "").toUpperCase().trim();
-            return gUser === goldarType && (filterKomsel === "Semua Komsel" || kUser === filterKomsel);
-        });
-        if (filtered.length === 0) { html = "<p style='text-align:center; padding:20px; color:#888;'>Tidak ada anggota.</p>"; }
-        else {
-            filtered.forEach(u => {
-                html += `<div class="user-list-item">
-                    <img src="${u.profileImage || u.foto || 'https://via.placeholder.com/150'}">
-                    <div class="user-info-text"><p class="user-name">${u.nama || "Tanpa Nama"}</p><p class="user-jc">${String(u.komsel || "").includes("JC") ? u.komsel : "JC " + u.komsel}</p></div>
-                </div>`;
             });
-        }
-        listBody.innerHTML = html; modal.style.display = "flex";
+        }, (error) => console.error("Error Goldar:", error));
     }
 
-    // 3. FUNGSI DOA REALTIME
+    // 2. CAPAIAN DOA (SLA) REALTIME
     function syncDoaRealtime() {
         const selectedKomsel = document.getElementById("select-komsel-doa").value;
-        let query = db.collection("laporan_doa");
-        if (selectedKomsel !== "Semua") { query = query.where("jc", "==", selectedKomsel); }
-
-        query.onSnapshot(snap => {
-            let totalMasuk = snap.size;
+        
+        db.collection("laporan_doa").onSnapshot(snap => {
+            let totalMasuk = 0;
             let countTerjawab = 0;
             let totalSLADays = 0;
+
             snap.forEach(doc => {
                 const data = doc.data();
-                if (data.terjawab === true || data.status === "Selesai" || data.status === "Terjawab") {
+                // Filter Komsel di sisi klien untuk stabilitas snapshot
+                if (selectedKomsel !== "Semua" && data.jc !== selectedKomsel) return;
+
+                totalMasuk++;
+                const isTerjawab = data.terjawab === true || ["SELESAI", "TERJAWAB"].includes(String(data.status || "").toUpperCase());
+
+                if (isTerjawab) {
                     countTerjawab++;
                     if (data.tglInput && data.tglTerjawab) {
-                        const start = data.tglInput.toDate();
-                        const end = data.tglTerjawab.toDate();
+                        const start = safeToDate(data.tglInput);
+                        const end = safeToDate(data.tglTerjawab);
                         const diff = Math.floor(Math.abs(end - start) / (1000 * 60 * 60 * 24));
                         totalSLADays += diff;
                     }
                 }
             });
+
             const rataSLA = countTerjawab > 0 ? Math.round(totalSLADays / countTerjawab) : 0;
             const persenDijawab = totalMasuk > 0 ? ((countTerjawab / totalMasuk) * 100).toFixed(1) : "0.0";
+            
             document.getElementById("stat-sla-hari").innerText = rataSLA + " Hari";
             document.getElementById("stat-total-masuk").innerText = totalMasuk;
             document.getElementById("stat-persen-dijawab").innerText = persenDijawab + "%";
@@ -246,43 +246,101 @@
         });
     }
 
-    // 4. FUNGSI KEHADIRAN & ABSENSI
+    // 3. KEHADIRAN & ABSENSI REALTIME
     function syncKehadiranRealtime() {
-        const selKomselHadir = document.getElementById('select-komsel-hadir').value;
+        const selHadir = document.getElementById('select-komsel-hadir').value;
         const perHadir = parseInt(document.getElementById('select-periode-hadir').value);
-        const selKomselAbsen = document.getElementById('select-komsel-absen').value;
+        const selAbsen = document.getElementById('select-komsel-absen').value;
         const perAbsen = parseInt(document.getElementById('select-periode-absen').value);
-        const now = new Date();
-        const startDateHadir = new Date(); startDateHadir.setMonth(now.getMonth() - perHadir);
-        const startDateAbsen = new Date(); startDateAbsen.setMonth(now.getMonth() - perAbsen);
+        
+        const limitHadir = new Date(); limitHadir.setMonth(limitHadir.getMonth() - perHadir);
+        const limitAbsen = new Date(); limitAbsen.setMonth(limitAbsen.getMonth() - perAbsen);
 
         db.collection("kehadiran").onSnapshot(snap => {
-            const data = snap.docs.map(d => d.data());
-            const fHadir = data.filter(d => d.komsel === selKomselHadir && d.tanggal.toDate() >= startDateHadir);
-            const tHadir = fHadir.filter(d => d.status === "Hadir").length;
-            const pHadir = fHadir.length > 0 ? (tHadir / fHadir.length) * 100 : 0;
+            let listHadir = [], listAbsen = [];
+            
+            snap.forEach(doc => {
+                const d = doc.data();
+                const tgl = safeToDate(d.tanggal);
+
+                if (d.komsel === selHadir && tgl >= limitHadir) listHadir.push(d);
+                if (d.komsel === selAbsen && tgl >= limitAbsen) listAbsen.push(d);
+            });
+
+            // Hitung Persentase Hadir
+            const totalHadir = listHadir.filter(x => x.status === "Hadir").length;
+            const pHadir = listHadir.length > 0 ? (totalHadir / listHadir.length) * 100 : 0;
             document.getElementById('text-hadir-komsel').innerText = pHadir.toFixed(1) + "%";
             document.getElementById('bar-hadir-komsel').style.width = pHadir + "%";
-            
-            const fAbsen = data.filter(d => d.komsel === selKomselAbsen && d.tanggal.toDate() >= startDateAbsen);
-            const tAbsen = fAbsen.filter(d => d.status === "Absen" || d.status === "Izin").length;
-            const pAbsen = fAbsen.length > 0 ? (tAbsen / fAbsen.length) * 100 : 0;
+
+            // Hitung Persentase Absen/Izin
+            const totalAbsen = listAbsen.filter(x => ["ABSEN", "IZIN"].includes(String(x.status || "").toUpperCase())).length;
+            const pAbsen = listAbsen.length > 0 ? (totalAbsen / listAbsen.length) * 100 : 0;
             document.getElementById('text-absen-komsel').innerText = pAbsen.toFixed(1) + "%";
             document.getElementById('bar-absen-komsel').style.width = pAbsen + "%";
         });
     }
 
-    // 5. FUNGSI CAPAIAN ALKITAB (Disederhanakan)
+    // 4. CAPAIAN ALKITAB REALTIME
     function syncCapaianRealtime() {
         const selKomsel = document.getElementById('select-komsel-alkitab').value;
-        // Simulasi Logika Capaian - Ganti dengan perhitungan database Alkitab Anda jika perlu
+        const periode = parseInt(document.getElementById('select-periode-alkitab').value);
+        const limit = new Date(); limit.setMonth(limit.getMonth() - periode);
+
         db.collection("laporan_bacaan").onSnapshot(snap => {
-            // Logika kustom perhitungan Alkitab diletakkan di sini
-            console.log("Sync Alkitab Running...");
+            let komselTotal = 0, komselSelesai = 0;
+            let globalTotal = 0, globalSelesai = 0;
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                const tgl = safeToDate(d.tanggal || d.tglInput);
+                const isSelesai = d.status === "Selesai" || d.capaian >= 100;
+
+                if (tgl >= limit) {
+                    globalTotal++;
+                    if (isSelesai) globalSelesai++;
+
+                    if (d.komsel === selKomsel) {
+                        komselTotal++;
+                        if (isSelesai) komselSelesai++;
+                    }
+                }
+            });
+
+            const pKomsel = komselTotal > 0 ? (komselSelesai / komselTotal * 100).toFixed(1) : "0.0";
+            const pGlobal = globalTotal > 0 ? (globalSelesai / globalTotal * 100).toFixed(1) : "0.0";
+
+            document.getElementById('text-capaian-komsel').innerText = pKomsel + "%";
+            document.getElementById('bar-capaian-komsel').style.width = pKomsel + "%";
+            document.getElementById('text-capaian-global').innerText = pGlobal + "%";
+            document.getElementById('bar-capaian-global').style.width = pGlobal + "%";
         });
     }
 
-    // INIT SEMUA FUNGSI
+    // Modal Detail (Tetap Sama dengan sedikit perbaikan normalisasi)
+    function openUserDetail(goldarType, filterKomsel, allUsers) {
+        const modal = document.getElementById('modal-goldar');
+        const listBody = document.getElementById('modal-list-user');
+        document.getElementById('modal-title').innerText = "Anggota Golongan Darah " + goldarType;
+        
+        let filtered = allUsers.filter(u => {
+            let rawK = String(u.komsel || "").toUpperCase().trim();
+            let normK = rawK.startsWith("JC") ? rawK : "JC " + rawK;
+            let gUser = (u.golongan_darah || u.golDarah || "").toUpperCase().trim();
+            return gUser === goldarType && (filterKomsel === "SEMUA KOMSEL" || normK === filterKomsel);
+        });
+
+        let html = filtered.length === 0 ? "<p style='text-align:center; padding:20px; color:#888;'>Tidak ada anggota.</p>" : "";
+        filtered.forEach(u => {
+            html += `<div class="user-list-item">
+                <img src="${u.profileImage || u.foto || 'https://via.placeholder.com/150'}">
+                <div class="user-info-text"><p class="user-name">${u.nama || "Tanpa Nama"}</p><p class="user-jc">${u.komsel}</p></div>
+            </div>`;
+        });
+        listBody.innerHTML = html; modal.style.display = "flex";
+    }
+
+    // JALANKAN SEMUA SAAT LOAD
     window.onload = () => {
         syncGoldarRealtime();
         syncDoaRealtime();
