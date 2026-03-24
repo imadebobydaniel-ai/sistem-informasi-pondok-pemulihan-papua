@@ -138,39 +138,50 @@
             } catch (e) { console.error("Error loading media: ", e); }
         }
 
-        // 4. PLAYER UTAMA (Logika Video / Teks / Gambar)
+        // 4. PLAYER UTAMA (Logika Video / Teks / Gambar) - SUDAH DIPERBARUI
         function updateMainPlayer(data) {
             const container = document.getElementById('youtube-player-container'); 
             const muteBtn = document.getElementById('muteBtn');
+            
+            // Sembunyikan tombol mute secara default
             muteBtn.style.display = 'none';
 
-            // Kondisi 1: VIDEO YOUTUBE
-            if (data.tipe && data.tipe.toLowerCase().includes('video')) {
-                container.innerHTML = `<div id="player"></div>`; 
+            // Logika pengecekan tipe
+            const tipeKonten = data.tipe ? data.tipe.toLowerCase() : "";
+
+            // 1. CEK JIKA TIPE ADALAH VIDEO
+            if (tipeKonten.includes('video')) {
+                container.innerHTML = `<div id="player"></div>`;
                 const vidId = extractVideoID(data.url);
                 initYouTube(vidId);
                 muteBtn.style.display = 'block';
             } 
-            // Kondisi 2: TEKS (ARTIKEL)
-            else if (data.tipe && data.tipe.toLowerCase() === 'teks') {
+            
+            // 2. CEK JIKA TIPE ADALAH TEKS / TEXT WORLD
+            else if (tipeKonten.includes('teks') || tipeKonten.includes('text')) {
+                // Ambil isi dari field yang mungkin Anda gunakan di Firestore
+                const isiBerita = data.isi_artikel || data.deskripsi || data.isi || "Isi artikel tidak ditemukan di database.";
+                
                 container.innerHTML = `
                     <div style="
                         width: 100%; height: 100%; 
                         background: linear-gradient(135deg, #001f3f 0%, #007bff 100%); 
-                        color: white; padding: 25px; display: flex; 
+                        color: white; padding: 20px; display: flex; 
                         flex-direction: column; justify-content: center; 
                         box-sizing: border-box; text-align: left;
+                        border-radius: 20px;
                     ">
-                        <div style="font-size: 13px; line-height: 1.6; overflow-y: auto; max-height: 160px;">
-                            ${data.isi_artikel || data.deskripsi || "Tidak ada isi artikel."}
+                        <div style="font-size: 14px; line-height: 1.5; overflow-y: auto; max-height: 160px; padding-right: 5px;">
+                            ${isiBerita}
                         </div>
                     </div>`;
             } 
-            // Kondisi 3: GAMBAR (DEFAULT)
+            
+            // 3. JIKA TIPE ADALAH GAMBAR (Kondisi default lainnya)
             else {
                 container.innerHTML = `
                     <img src="${data.url}" 
-                         style="width: 100%; height: 100%; object-fit: cover;" 
+                         style="width: 100%; height: 100%; object-fit: cover; border-radius: 20px;" 
                          alt="${data.judul}">
                 `;
             }
@@ -179,7 +190,6 @@
         // 5. INIT YOUTUBE API
         function initYouTube(videoId) {
             if (typeof YT === 'undefined' || !YT.loaded) {
-                // Tunggu API ready jika belum
                 window.onYouTubeIframeAPIReady = () => createPlayer(videoId);
             } else {
                 createPlayer(videoId);
