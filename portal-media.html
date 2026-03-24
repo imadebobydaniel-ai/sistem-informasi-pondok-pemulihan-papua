@@ -57,7 +57,7 @@
             margin-bottom: 30px;
         }
 
-        .card h2 {
+        .card h2, .card h3 {
             margin-top: 0;
             font-size: 1.2rem;
             display: flex;
@@ -67,7 +67,17 @@
             padding-bottom: 10px;
         }
 
-        /* --- Style Baru untuk Playlist --- */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
         .playlist-config {
             background: #fff3cd;
             padding: 15px;
@@ -79,27 +89,6 @@
             align-items: center;
             font-size: 14px;
             border: 1px solid #ffeeba;
-        }
-
-        .btn-nav {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            padding: 5px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .btn-nav:hover { background: #e2e6ea; }
-
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
-        
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
         }
 
         .btn-submit {
@@ -137,9 +126,19 @@
         .badge-gambar { background: #e3f2fd; color: #1976d2; }
         .badge-video_youtube { background: #fff3e0; color: #f57c00; }
         .badge-teks { background: #eeeeee; color: #333333; }
+        .badge-video_player { background: #f3e5f5; color: #7b1fa2; }
+        .badge-audio_player { background: #e8f5e9; color: #2e7d32; }
         
         .btn-action { border: none; background: none; cursor: pointer; font-size: 16px; }
         .btn-delete { color: var(--danger); }
+        .btn-nav {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -156,38 +155,42 @@
     </div>
 
     <div class="card">
-        <h2><i class="fas fa-plus-circle" style="color: var(--success);"></i> Tambah Konten Baru</h2>
-        <form id="mediaForm">
-            <div class="form-group">
-                <label>Judul Konten / Berita</label>
-                <input type="text" id="judul" placeholder="Contoh: Kegiatan Ibadah Raya Minggu..." required>
-            </div>
-            
-            <div class="form-group">
-                <label>Tipe Media</label>
-                <select id="tipeMedia" onchange="updateInputMedia()">
-                    <option value="gambar">Gambar (Poster/Upload)</option>
-                    <option value="video_youtube">Video (YouTube/Link URL)</option>
-                    <option value="teks">Text World (Artikel/Berita)</option>
-                </select>
-            </div>
+        <h3><i class="fa-solid fa-circle-plus"></i> Tambah Konten Baru</h3>
+        
+        <div class="form-group">
+            <label>Judul Konten / Berita</label>
+            <input type="text" id="judul" placeholder="Contoh: Kegiatan Ibadah Raya Minggu...">
+        </div>
 
-            <div class="form-group">
-                <label id="labelMedia">Upload File Gambar</label>
-                <div id="inputMediaWrapper">
-                    <input type="file" id="inputMedia" accept="image/*" required>
-                </div>
-            </div>
+        <div class="form-group">
+            <label>Tipe Media</label>
+            <select id="tipe_media" onchange="toggleInputFields()" style="background: #f9f9f9;">
+                <option value="gambar">Gambar (Poster/Foto)</option>
+                <option value="video_youtube">Video (YouTube Link)</option>
+                <option value="video_player">Video MP4 (Upload/Link URL)</option>
+                <option value="audio_player">Audio (MP3/Podcast)</option>
+                <option value="teks">Text World (Artikel/Berita)</option>
+            </select>
+        </div>
 
-            <div class="form-group">
-                <label>Deskripsi Singkat</label>
-                <textarea id="deskripsi" placeholder="Tuliskan keterangan singkat konten di sini..."></textarea>
-            </div>
+        <div id="input_url_container" class="form-group">
+            <label id="label_url">Link / URL Gambar</label>
+            <input type="text" id="url_media" placeholder="https://...">
+        </div>
 
-            <button type="submit" class="btn-submit" id="btnSubmit">
-                <i class="fas fa-paper-plane"></i> Publikasikan ke Portal
-            </button>
-        </form>
+        <div id="input_teks_container" class="form-group" style="display:none;">
+            <label>Isi Artikel Lengkap</label>
+            <textarea id="isi_artikel" rows="5"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Deskripsi Singkat</label>
+            <textarea id="deskripsi" rows="2" placeholder="Tuliskan keterangan singkat konten di sini..."></textarea>
+        </div>
+
+        <button onclick="uploadKePortal()" id="btnPublish" class="btn-submit">
+            <i class="fa-solid fa-paper-plane"></i> Publikasikan ke Portal
+        </button>
     </div>
 
     <div class="card">
@@ -232,7 +235,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
 <script>
     // Konfigurasi Firebase
@@ -247,28 +249,70 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
-    const storage = firebase.storage();
 
-    // Fungsi Update Input Berdasarkan Tipe
-    function updateInputMedia() {
-        const tipe = document.getElementById('tipeMedia').value;
-        const wrapper = document.getElementById('inputMediaWrapper');
-        const label = document.getElementById('labelMedia');
-        wrapper.innerHTML = ''; 
+    // FUNGSI TOGGLE INPUT DINAMIS
+    function toggleInputFields() {
+        const tipe = document.getElementById('tipe_media').value;
+        const urlContainer = document.getElementById('input_url_container');
+        const teksContainer = document.getElementById('input_teks_container');
+        const labelUrl = document.getElementById('label_url');
+        const inputUrl = document.getElementById('url_media');
 
-        if (tipe === 'video_youtube') {
-            label.innerText = "Link URL YouTube";
-            wrapper.innerHTML = `<input type="text" id="inputMedia" placeholder="https://www.youtube.com/watch?v=..." required>`;
+        // Reset view
+        urlContainer.style.display = "block";
+        teksContainer.style.display = "none";
+
+        if (tipe === 'gambar') {
+            labelUrl.innerText = "Link / URL Gambar";
+            inputUrl.placeholder = "https://link-gambar.jpg";
+        } else if (tipe === 'video_youtube') {
+            labelUrl.innerText = "Link Video YouTube";
+            inputUrl.placeholder = "https://www.youtube.com/watch?v=...";
+        } else if (tipe === 'video_player') {
+            labelUrl.innerText = "URL File Video (MP4)";
+            inputUrl.placeholder = "https://server-anda.com/video.mp4";
+        } else if (tipe === 'audio_player') {
+            labelUrl.innerText = "URL File Audio (MP3)";
+            inputUrl.placeholder = "https://server-anda.com/lagu.mp3";
         } else if (tipe === 'teks') {
-            label.innerText = "Isi Artikel Lengkap";
-            wrapper.innerHTML = `<textarea id="inputMedia" rows="5" placeholder="Tulis artikel..." required></textarea>`;
-        } else {
-            label.innerText = "Upload File Media";
-            wrapper.innerHTML = `<input type="file" id="inputMedia" required>`;
+            urlContainer.style.display = "none";
+            teksContainer.style.display = "block";
         }
     }
 
-    // Fungsi Load Data
+    // FUNGSI UPLOAD KE FIREBASE
+    async function uploadKePortal() {
+        const btn = document.getElementById('btnPublish');
+        const judul = document.getElementById('judul').value;
+        if(!judul) { alert("Judul harus diisi!"); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Sedang Mengunggah...";
+
+        const snapshot = await db.collection("portal_media").get();
+        const data = {
+            judul: judul,
+            tipe: document.getElementById('tipe_media').value,
+            url: document.getElementById('url_media').value,
+            isi_artikel: document.getElementById('isi_artikel').value,
+            deskripsi: document.getElementById('deskripsi').value,
+            urutan: snapshot.size + 1,
+            durasi: parseInt(document.getElementById('defaultDurasi').value),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await db.collection("portal_media").add(data);
+            alert("Berhasil dipublikasikan!");
+            location.reload();
+        } catch (e) {
+            alert("Gagal: " + e.message);
+            btn.disabled = false;
+            btn.innerHTML = "Publikasikan ke Portal";
+        }
+    }
+
+    // FUNGSI LOAD DATA TABEL
     async function loadMedia() {
         const list = document.getElementById('mediaList');
         try {
@@ -293,7 +337,7 @@
                             <button class="btn-nav" onclick="pindahUrutan('${id}', 1)"><i class="fas fa-chevron-down"></i></button>
                         </td>
                         <td><strong>${data.judul}</strong></td>
-                        <td><span class="badge ${badgeClass}">${data.tipe}</span></td>
+                        <td><span class="badge ${badgeClass}">${data.tipe.replace('_', ' ')}</span></td>
                         <td>
                             <input type="number" value="${data.durasi || 10}" 
                                    onchange="updateDurasi('${id}', this.value)" 
@@ -310,45 +354,7 @@
         } catch (e) { console.error(e); }
     }
 
-    // Fungsi Simpan Konten Baru
-    document.getElementById('mediaForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('btnSubmit');
-        btn.disabled = true;
-        
-        const judul = document.getElementById('judul').value;
-        const tipe = document.getElementById('tipeMedia').value;
-        const inputElement = document.getElementById('inputMedia');
-        const snapshot = await db.collection("portal_media").get();
-        
-        let finalUrl = "";
-        try {
-            if (inputElement.files && inputElement.files[0]) {
-                const file = inputElement.files[0];
-                const storageRef = storage.ref('portal_media/' + Date.now() + "_" + file.name);
-                await storageRef.put(file);
-                finalUrl = await storageRef.getDownloadURL();
-            } else {
-                finalUrl = inputElement.value;
-            }
-
-            await db.collection("portal_media").add({
-                judul: judul,
-                tipe: tipe,
-                url: finalUrl,
-                urutan: snapshot.size + 1,
-                durasi: parseInt(document.getElementById('defaultDurasi').value),
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            alert("Berhasil!");
-            e.target.reset();
-            loadMedia();
-        } catch (err) { alert(err.message); }
-        btn.disabled = false;
-    });
-
-    // Fungsi Tambahan (Urutan, Durasi, Config)
+    // FUNGSI URUTAN, DURASI, DELETE
     async function pindahUrutan(id, arah) {
         const ref = db.collection("portal_media");
         const doc = await ref.doc(id).get();
@@ -370,17 +376,17 @@
         await db.collection("portal_media").doc(id).update({ durasi: parseInt(menit) });
     }
 
+    async function deleteMedia(id) {
+        if(confirm("Hapus konten ini?")) {
+            await db.collection("portal_media").doc(id).delete();
+            loadMedia();
+        }
+    }
+
     async function saveGlobalConfig() {
         const mode = document.getElementById('modePutar').value;
         await db.collection("config").doc("playlist").set({ mode: mode });
         alert("Mode Putar Disimpan!");
-    }
-
-    async function deleteMedia(id) {
-        if(confirm("Hapus?")) {
-            await db.collection("portal_media").doc(id).delete();
-            loadMedia();
-        }
     }
 
     window.onload = loadMedia;
