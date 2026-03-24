@@ -7,7 +7,6 @@
     <title>Menu Utama - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* CSS Anda tetap sama seperti sebelumnya */
         :root { --biru-tua: #003366; --biru-safir: #0056b3; --biru-muda: #00e6e6; --hijau-zamrud: #2ecc71; --emas-lux: #D4AF37; --putih-bg: #f4f7fa; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--putih-bg); margin: 0; padding: 0; color: #333; }
         .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
@@ -112,7 +111,7 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let ytPlayer; // Variabel global untuk player
+        let ytPlayer; 
 
         // 2. FUNGSI EKSTRAK ID YOUTUBE
         function extractVideoID(url) {
@@ -128,34 +127,75 @@
                 if (snapshot.empty) return;
 
                 const data = snapshot.docs[0].data();
+                
+                // Update Judul & Label
                 document.getElementById('newsTitle').innerText = data.judul || "";
                 document.getElementById('newsLabel').innerText = "BERITA TERKINI";
 
-                if (data.tipe.toLowerCase().includes('video')) {
-                    const vidId = extractVideoID(data.url);
-                    initYouTube(vidId);
-                    document.getElementById('muteBtn').style.display = 'block';
-                } else {
-                    document.getElementById('youtube-player-container').innerHTML = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover;">`;
-                }
-            } catch (e) { console.error(e); }
+                // PANGGIL FUNGSI PLAYER UTAMA
+                updateMainPlayer(data);
+
+            } catch (e) { console.error("Error loading media: ", e); }
         }
 
-        // 4. INIT YOUTUBE PLAYER API
+        // 4. PLAYER UTAMA (Logika Video / Teks / Gambar)
+        function updateMainPlayer(data) {
+            const container = document.getElementById('youtube-player-container'); 
+            const muteBtn = document.getElementById('muteBtn');
+            muteBtn.style.display = 'none';
+
+            // Kondisi 1: VIDEO YOUTUBE
+            if (data.tipe && data.tipe.toLowerCase().includes('video')) {
+                container.innerHTML = `<div id="player"></div>`; 
+                const vidId = extractVideoID(data.url);
+                initYouTube(vidId);
+                muteBtn.style.display = 'block';
+            } 
+            // Kondisi 2: TEKS (ARTIKEL)
+            else if (data.tipe && data.tipe.toLowerCase() === 'teks') {
+                container.innerHTML = `
+                    <div style="
+                        width: 100%; height: 100%; 
+                        background: linear-gradient(135deg, #001f3f 0%, #007bff 100%); 
+                        color: white; padding: 25px; display: flex; 
+                        flex-direction: column; justify-content: center; 
+                        box-sizing: border-box; text-align: left;
+                    ">
+                        <div style="font-size: 13px; line-height: 1.6; overflow-y: auto; max-height: 160px;">
+                            ${data.isi_artikel || data.deskripsi || "Tidak ada isi artikel."}
+                        </div>
+                    </div>`;
+            } 
+            // Kondisi 3: GAMBAR (DEFAULT)
+            else {
+                container.innerHTML = `
+                    <img src="${data.url}" 
+                         style="width: 100%; height: 100%; object-fit: cover;" 
+                         alt="${data.judul}">
+                `;
+            }
+        }
+
+        // 5. INIT YOUTUBE API
         function initYouTube(videoId) {
-            window.onYouTubeIframeAPIReady = function() {
-                ytPlayer = new YT.Player('player', {
-                    height: '100%', width: '100%',
-                    videoId: videoId,
-                    playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'loop': 1, 'playlist': videoId },
-                    events: { 'onReady': (e) => e.target.playVideo() }
-                });
-            };
-            // Jika API sudah terlanjur load
-            if (typeof YT !== 'undefined' && YT.loaded) { onYouTubeIframeAPIReady(); }
+            if (typeof YT === 'undefined' || !YT.loaded) {
+                // Tunggu API ready jika belum
+                window.onYouTubeIframeAPIReady = () => createPlayer(videoId);
+            } else {
+                createPlayer(videoId);
+            }
         }
 
-        // 5. LOGIKA UNMUTE
+        function createPlayer(videoId) {
+            ytPlayer = new YT.Player('player', {
+                height: '100%', width: '100%',
+                videoId: videoId,
+                playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'loop': 1, 'playlist': videoId },
+                events: { 'onReady': (e) => e.target.playVideo() }
+            });
+        }
+
+        // 6. LOGIKA UNMUTE
         function handleToggleMute() {
             if (ytPlayer && ytPlayer.isMuted()) {
                 ytPlayer.unMute();
@@ -167,7 +207,7 @@
             }
         }
 
-        // 6. UI & TIME LOGIC
+        // 7. UI & TIME LOGIC
         const btnToggle = document.getElementById('toggleProfile');
         const profileCard = document.getElementById('profileCard');
         btnToggle.addEventListener('click', () => {
