@@ -14,20 +14,20 @@
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
         .btn-send { background: var(--merah-notif); color: white; border: none; padding: 15px; width: 100%; border-radius: 50px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         
-        /* Accordion Style */
-        .accordion-item { background: white; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
-        .accordion-header { padding: 15px; background: #fff5f5; cursor: pointer; display: flex; justify-content: space-between; border-left: 5px solid var(--merah-notif); }
-        .accordion-content { padding: 15px; display: none; background: #fff; border-top: 1px solid #eee; font-size: 13px; }
-        .accordion-content.active { display: block; }
+        /* Riwayat Informasi Styling */
+        .history-item { background: #fff; border-left: 5px solid var(--merah-notif); padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .history-item h4 { margin: 0 0 5px 0; color: var(--merah-notif); }
+        .history-item p { margin: 5px 0; font-size: 14px; color: #333; }
+        .history-item .meta { font-size: 11px; color: #888; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 id="form-title"><i class="fa-solid fa-bullhorn"></i> Info Kegiatan Baru</h2>
+    <h2><i class="fa-solid fa-bullhorn"></i> Info Kegiatan Baru</h2>
     
     <div class="form-group">
-        <label>Kategori</label>
+        <label>Kategori Kegiatan</label>
         <select id="kategori">
             <option value="Ibadah">Ibadah Komsel</option>
             <option value="Penting">Pesan Penting</option>
@@ -36,28 +36,26 @@
     </div>
 
     <div class="form-group">
-        <label>Judul</label>
-        <input type="text" id="judul" placeholder="Judul informasi">
+        <label>Judul Informasi</label>
+        <input type="text" id="judul" placeholder="Contoh: Perubahan Jam Ibadah">
     </div>
 
     <div class="form-group">
-        <label>Lokasi</label>
-        <input type="text" id="lokasi" placeholder="Lokasi kegiatan">
+        <label>Lokasi (Opsional)</label>
+        <input type="text" id="lokasi" placeholder="Contoh: di rumah Boby">
     </div>
 
     <div class="form-group">
-        <label>Detail</label>
-        <textarea id="detail" rows="4" placeholder="Detail pengumuman"></textarea>
+        <label>Detail Informasi</label>
+        <textarea id="detail" rows="4" placeholder="Tuliskan detail pengumuman di sini..."></textarea>
     </div>
 
-    <button class="btn-send" id="btn-submit" onclick="prosesData()">
-        <i class="fa-solid fa-paper-plane"></i> <span id="btn-text">KIRIM SEKARANG</span>
+    <button class="btn-send" onclick="prosesData()">
+        <i class="fa-solid fa-paper-plane"></i> KIRIM SEKARANG
     </button>
-    
-    <button id="btn-cancel-edit" style="display:none; background:#666; margin-top:10px;" class="btn-send" onclick="resetForm()">BATAL EDIT</button>
 
-    <div class="history-section" style="margin-top:30px;">
-        <h3>Riwayat Informasi</h3>
+    <div style="margin-top: 30px;">
+        <h3><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Informasi</h3>
         <div id="list-pengumuman">Memuat data...</div>
     </div>
 </div>
@@ -66,7 +64,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
 <script>
-    // 1. FIREBASE INITIALIZATION
+    // 1. CONFIG FIREBASE ANDA
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -77,85 +75,63 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    let editID = null;
 
-    // 2. FUNGSI UTAMA (KIRIM DATA + CEK PASSWORD)
+    // 2. FUNGSI KIRIM (PASSWORD BARU MUNCUL DI SINI)
     async function prosesData() {
         const judul = document.getElementById('judul').value;
         const detail = document.getElementById('detail').value;
 
         if(!judul || !detail) {
-            alert("Harap isi Judul dan Detail!");
+            alert("Judul dan Detail tidak boleh kosong!");
             return;
         }
 
-        // --- PASSWORD MUNCUL DI SINI (SETELAH KLIK KIRIM) ---
-        const passwordInput = prompt("Silakan masukkan password Admin/PKS untuk mengirim:");
+        // MUNCULKAN KOTAK PASSWORD SAAT KLIK KIRIM
+        const passwordInput = prompt("Data siap dikirim. Masukkan password Admin/PKS:");
 
         if (passwordInput === "bukadong821" || passwordInput === "PKS") {
             try {
-                const dataObj = {
+                await db.collection("pengumuman_komsel").add({
                     kategori: document.getElementById('kategori').value,
                     judul: judul,
                     lokasi: document.getElementById('lokasi').value,
                     detail: detail,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-                if (editID) {
-                    await db.collection("pengumuman_komsel").doc(editID).update(dataObj);
-                    alert("✅ Informasi Berhasil Diperbarui!");
-                } else {
-                    dataObj.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                    await db.collection("pengumuman_komsel").add(dataObj);
-                    alert("✅ Informasi Berhasil Dikirim!");
-                }
-                resetForm();
+                });
+                alert("✅ Berhasil! Informasi telah diterbitkan.");
+                location.reload(); // Refresh halaman agar form bersih
             } catch (error) {
-                alert("Gagal: " + error.message);
+                alert("Gagal mengirim ke database: " + error.message);
             }
-        } else if (passwordInput === null) {
-            // User menekan batal
-        } else {
-            alert("⚠️ Password Salah! Pengiriman dibatalkan.");
+        } else if (passwordInput !== null) {
+            alert("⚠️ Password SALAH! Akses ditolak.");
         }
     }
 
-    // 3. LOAD RIWAYAT
+    // 3. MENAMPILKAN RIWAYAT
     function loadHistory() {
         db.collection("pengumuman_komsel").orderBy("lastUpdate", "desc").onSnapshot(snap => {
             const listDiv = document.getElementById('list-pengumuman');
             listDiv.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
+                const tgl = d.lastUpdate ? new Date(d.lastUpdate.seconds * 1000).toLocaleString('id-ID') : 'Baru saja';
+                
                 listDiv.innerHTML += `
-                    <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <strong>[${d.kategori}] ${d.judul}</strong>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </div>
-                        <div class="accordion-content">
-                            <p>${d.detail}</p>
-                            <button onclick="hapusInfo('${doc.id}')" style="color:red; border:none; background:none; cursor:pointer;">Hapus</button>
-                        </div>
+                    <div class="history-item">
+                        <h4>[${d.kategori}] ${d.judul}</h4>
+                        <p><i class="fa-solid fa-location-dot"></i> ${d.lokasi || '-'}</p>
+                        <p>${d.detail}</p>
+                        <div class="meta">${tgl}</div>
                     </div>`;
             });
         });
     }
 
-    async function hapusInfo(id) {
-        const pass = prompt("Masukkan password untuk menghapus:");
-        if (pass === "bukadong821" || pass === "PKS") {
-            await db.collection("pengumuman_komsel").doc(id).delete();
-        } else {
-            alert("Password salah!");
-        }
-    }
-
-    function toggleAccordion(el) { el.nextElementSibling.classList.toggle('active'); }
-    function resetForm() { location.reload(); }
-
+    // Jalankan load riwayat saat halaman dibuka
     window.onload = loadHistory;
 </script>
+
 </body>
 </html>
