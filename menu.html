@@ -58,8 +58,8 @@
            font-weight: 900; 
             font-size: 13px; 
             color: var(--biru-tua);
-           text-transform: uppercase;
-           letter-spacing: 1px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
  
@@ -327,7 +327,7 @@
                 <h3 style="margin: 0; letter-spacing: 1px;">Pesan Untuk Boby</h3>
             </div>
             <div id="isiModal" class="modal-body">
-                <p style="text-align:center;">Memuat pesan surgawi...</p>
+                <p id="pesan-isi" style="text-align:center;">Memuat pesan surgawi...</p>
             </div>
             <div style="padding-bottom: 25px; text-align: center;">
                 <button class="btn-close-popup" onclick="tutupModal()">Tutup Pesan</button>
@@ -373,44 +373,40 @@
             document.getElementById('running-text').innerText = runningContent;
         }
 
-        // 2. FUNGSI MODAL POPUP
+        // 2. FUNGSI MODAL POPUP (DENGAN SNAPSHOT FIRESTORE)
         function bukaPesanKegiatan() {
             const modal = document.getElementById('modalPengumuman');
-            const konten = document.getElementById('isiModal');
-            
             modal.style.display = 'flex';
+            
             const notifContainer = document.querySelector('.notif-email-container');
             if(notifContainer) notifContainer.classList.remove('shake-active');
 
-            database.ref('kegiatan').limitToLast(1).once('value', (snapshot) => {
-                if (snapshot.exists()) {
-                    let info;
-                    snapshot.forEach((childSnapshot) => {
-                        info = childSnapshot.val();
-                    });
-
-                    konten.innerHTML = `
-                        <div class="info-item">
-                            <small style="color: var(--emas-lux); font-weight: bold;">[${info.kategori || 'PENGUMUMAN'}]</small>
-                            <div style="font-weight: bold; font-size: 1.1em; margin-top: 5px;">${info.judul || info.judul_informasi}</div>
-                        </div>
-                        <div class="info-item">
-                            <div style="font-size: 0.95em;">
-                                <strong>Lokasi:</strong> ${info.lokasi || info.lokasi_kegiatan || '-'}<br>
-                                <hr style="border: 0.5px solid #ddd; margin: 8px 0;">
-                                ${info.detail || info.detail_informasi}
+            // INTEGRASI SCRIPT BARU KAMU:
+            db.collection("pengumuman_komsel").orderBy("lastUpdate", "desc").limit(1).onSnapshot((querySnapshot) => {
+                const displayArea = document.getElementById('isiModal');
+                
+                if (!querySnapshot.empty) {
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        // Format tampilan agar lebih rapi di dalam modal
+                        displayArea.innerHTML = `
+                            <div class="info-item">
+                                <small style="color: var(--emas-lux); font-weight: bold;">PENGUMUMAN TERBARU</small>
+                                <div style="font-size: 0.95em; margin-top: 10px; line-height: 1.6;">
+                                    ${data.detail}
+                                </div>
                             </div>
-                        </div>
-                        <p style="font-size: 0.7em; color: #999; text-align: right; margin: 0;">
-                            <i class="fa-regular fa-clock"></i> ${info.timestamp || 'Baru saja'}
-                        </p>
-                    `;
+                            <p style="font-size: 0.7em; color: #999; text-align: right; margin: 0;">
+                                <i class="fa-regular fa-clock"></i> Diperbarui: ${data.lastUpdate ? new Date(data.lastUpdate.seconds * 1000).toLocaleString('id-ID') : '-'}
+                            </p>
+                        `;
+                    });
                 } else {
-                    konten.innerHTML = "<p style='text-align:center;'>Belum ada pengumuman terbaru.</p>";
+                    displayArea.innerHTML = "<p style='text-align:center;'>Belum ada pengumuman baru.</p>";
                 }
             }, (error) => {
-                console.error(error);
-                konten.innerHTML = "<p style='text-align:center; color:red;'>Gagal memuat data.</p>";
+                console.error("Error mengambil data: ", error);
+                document.getElementById('isiModal').innerHTML = "<p style='text-align:center; color:red;'>Gagal memuat data.</p>";
             });
         }
 
