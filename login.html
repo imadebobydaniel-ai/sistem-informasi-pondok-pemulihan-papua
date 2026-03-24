@@ -13,7 +13,50 @@
         #text-org { margin: 5px 0; font-size: 20px; color: #333; font-weight: bold; text-transform: uppercase; display: block; }
         #text-system { margin: 8px 0; font-size: 18px; color: #FFD700; font-weight: bold; display: block; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
         #text-status { margin: 10px 0; font-size: 16px; color: #555; font-weight: normal; display: block; }
+        
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
+        
+        /* Container untuk input password agar ikon bisa diposisikan absolut */
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+
+        /* Penyesuaian input password agar teks tidak tertutup ikon */
+        .password-container input {
+            width: 100%;
+            padding-right: 40px; 
+            box-sizing: border-box; 
+        }
+
+        /* Styling Ikon Mata */
+        .toggle-password {
+            position: absolute;
+            right: 15px; 
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888; 
+            font-size: 18px;
+            z-index: 10; 
+            transition: color 0.2s;
+        }
+
+        .toggle-password:hover {
+            color: #333; 
+        }
+
+        /* LOGIKA ANIMASI BERKEDIP */
+        @keyframes eyeBlink {
+            0%, 100% { opacity: 1; }  
+            20% { opacity: 0; }       
+            40% { opacity: 1; }       
+        }
+
+        .eye-blinking {
+            animation: eyeBlink 3s infinite; 
+        }
+
         .btn-blue { background: #007bff; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
         .btn-blue:disabled { background: #ccc; cursor: not-allowed; }
         .footer-links { margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; }
@@ -37,7 +80,12 @@
     </div>
 
     <input type="email" id="email" placeholder="Email Anggota">
-    <input type="password" id="pass" placeholder="Password">
+
+    <div class="password-container">
+        <input type="password" id="pass" placeholder="Password">
+        <i class="fa-solid fa-eye toggle-password" id="toggle-icon"></i>
+    </div>
+
     <button id="btn-login" class="btn-blue" onclick="prosesLogin()">MASUK</button>
 
     <div class="footer-links">
@@ -76,7 +124,33 @@
     }
     const db = firebase.firestore();
 
-    // 2. Fungsi Login
+    // 2. LOGIKA TOGGLE PASSWORD (SCRIPT BARU)
+    document.addEventListener("DOMContentLoaded", function() {
+        const passwordInput = document.getElementById('pass'); // Menggunakan ID 'pass' sesuai HTML Anda
+        const toggleIcon = document.getElementById('toggle-icon');
+
+        if (passwordInput && toggleIcon) {
+            // Tambahkan class animasi berkedip saat halaman dimuat
+            toggleIcon.classList.add('eye-blinking');
+
+            // Logika Klik untuk Tampilkan/Sembunyikan Password
+            toggleIcon.addEventListener('click', function() {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleIcon.classList.remove('fa-eye');
+                    toggleIcon.classList.add('fa-eye-slash');
+                    toggleIcon.classList.remove('eye-blinking'); 
+                } else {
+                    passwordInput.type = 'password';
+                    toggleIcon.classList.remove('fa-eye-slash');
+                    toggleIcon.classList.add('fa-eye');
+                    toggleIcon.classList.add('eye-blinking');
+                }
+            });
+        }
+    });
+
+    // 3. Fungsi Login
     async function prosesLogin() {
         const emailInput = document.getElementById('email').value.trim();
         const passInput = document.getElementById('pass').value;
@@ -91,7 +165,6 @@
         btn.disabled = true;
 
         try {
-            // Cari user berdasarkan email
             const snapshot = await db.collection("users")
                 .where("email", "==", emailInput)
                 .get();
@@ -103,9 +176,7 @@
             const doc = snapshot.docs[0];
             const userDoc = doc.data();
 
-            // Validasi Password
             if (userDoc.password === passInput) {
-                // Simpan ke LocalStorage
                 localStorage.setItem("userId", doc.id);
                 localStorage.setItem("userEmail", emailInput);
                 localStorage.setItem("userName", userDoc.nama);
@@ -118,15 +189,12 @@
 
         } catch (e) {
             console.error("Login Error:", e);
-            // Inilah bagian yang akan memblokir layar jika terjadi error teknis/salah password
             showError(e.message);
-            
             btn.innerText = "MASUK";
             btn.disabled = false;
         }
     }
 
-    // 3. Fungsi Kendali UI Error
     function showError(pesan) {
         document.getElementById("error-text").innerText = pesan;
         document.getElementById("error-block").style.display = "flex";
