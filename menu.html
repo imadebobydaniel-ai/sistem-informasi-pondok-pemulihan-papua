@@ -114,7 +114,6 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         
-        /* Barisan kontrol (Checklist all & Hapus) */
         .inbox-controls {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 20px; background: #f8f9fa; border-bottom: 1px solid #eee;
@@ -124,7 +123,6 @@
             padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;
         }
 
-        /* Container Pesan dengan Scrollbar Custom */
         .list-pesan-container { 
             overflow-y: auto; flex-grow: 1; 
         }
@@ -139,7 +137,6 @@
         .msg-item:hover { background: #f9fbff; }
         .msg-checkbox { margin-right: 15px; transform: scale(1.2); cursor: pointer; }
 
-        /* Sisanya (Menu Grid, Profile, dll) */
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.6s; }
         .news-slider { width: 100%; height: 100%; background: var(--biru-tua); position: relative; z-index: 1; }
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
@@ -262,6 +259,8 @@
 
             if (snapshot.empty) {
                 listDiv.innerHTML = "<p style='text-align:center; padding:20px;'>Tidak ada pesan.</p>";
+                document.getElementById('email-badge').style.display = "none";
+                document.getElementById('icon-mail').classList.remove('vibrate');
                 return;
             }
 
@@ -270,16 +269,18 @@
                 const id = doc.id;
                 unread++;
                 
-                const kontenPesan = data.isi || data.pesan || "Tidak ada detail pesan.";
-                const judulPesan = data.judul || "Tanpa Judul";
+                // PENGAMAN: Jika field kosong, jangan tampilkan 'undefined'
+                const judulPesan = (data.judul || "Tanpa Judul").replace(/'/g, "\\'");
+                const isiPesan = (data.isi || data.pesan || "Tidak ada detail pesan.").replace(/'/g, "\\'");
                 let tanggalPesan = data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : "Baru";
 
                 const item = document.createElement('div');
                 item.className = "msg-item";
+                // Gunakan stopPropagation pada checkbox agar tidak memicu klik baris
                 item.innerHTML = `
                     <input type="checkbox" class="msg-checkbox" data-id="${id}" onclick="event.stopPropagation()">
-                    <div style="display: flex; flex-direction: column; width: 100%;" onclick="openDetail('${judulPesan}', '${kontenPesan}')">
-                        <strong style="color: var(--biru-tua); font-size: 14px;">${judulPesan}</strong>
+                    <div style="display: flex; flex-direction: column; width: 100%;" onclick="openDetail('${judulPesan}', '${isiPesan}')">
+                        <strong style="color: var(--biru-tua); font-size: 14px;">${data.judul || 'Tanpa Judul'}</strong>
                         <small style="color: #888; margin-top: 4px;">${tanggalPesan}</small>
                     </div>
                 `;
@@ -289,9 +290,10 @@
             document.getElementById('email-badge').innerText = unread;
             document.getElementById('email-badge').style.display = unread > 0 ? "block" : "none";
             if(unread > 0) document.getElementById('icon-mail').classList.add('vibrate');
+            else document.getElementById('icon-mail').classList.remove('vibrate');
         });
 
-        // Fungsi Buka Detail
+        // Fungsi Buka Detail Modal
         function openDetail(title, body) {
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-body').innerText = body;
@@ -310,12 +312,17 @@
             if (selected.length === 0) return alert("Pilih pesan yang ingin dihapus!");
 
             if (confirm(`Hapus ${selected.length} pesan terpilih?`)) {
-                for (let box of selected) {
-                    const id = box.getAttribute('data-id');
-                    await db.collection("pengumuman_komsel").doc(id).delete();
+                try {
+                    for (let box of selected) {
+                        const id = box.getAttribute('data-id');
+                        await db.collection("pengumuman_komsel").doc(id).delete();
+                    }
+                    document.getElementById('selectAll').checked = false;
+                    alert("Pesan berhasil dihapus.");
+                } catch (error) {
+                    console.error("Error menghapus:", error);
+                    alert("Gagal menghapus beberapa pesan.");
                 }
-                document.getElementById('selectAll').checked = false;
-                alert("Pesan berhasil dihapus.");
             }
         });
 
@@ -351,7 +358,9 @@
                     ytPlayer = new YT.Player('player', {
                         height: '100%', width: '100%', videoId: vId,
                         playerVars: { 'autoplay': 1, 'mute': 1, 'loop': 1, 'playlist': vId },
-                        events: { 'onReady': () => document.getElementById('muteBtn').style.display = 'block' }
+                        events: { 'onReady': () => {
+                            if(document.getElementById('muteBtn')) document.getElementById('muteBtn').style.display = 'block';
+                        }}
                     });
                 }
             });
@@ -378,8 +387,13 @@
             document.getElementById('logout-btn').addEventListener('click', () => { localStorage.clear(); window.location.href = "login.html"; });
             
             document.getElementById('muteBtn').addEventListener('click', () => {
-                if (ytPlayer.isMuted()) { ytPlayer.unMute(); document.getElementById('muteIcon').className = "fa-solid fa-volume-high"; }
-                else { ytPlayer.mute(); document.getElementById('muteIcon').className = "fa-solid fa-volume-xmark"; }
+                if (ytPlayer && ytPlayer.isMuted()) { 
+                    ytPlayer.unMute(); 
+                    document.getElementById('muteIcon').className = "fa-solid fa-volume-high"; 
+                } else if (ytPlayer) { 
+                    ytPlayer.mute(); 
+                    document.getElementById('muteIcon').className = "fa-solid fa-volume-xmark"; 
+                }
             });
         };
     </script>
