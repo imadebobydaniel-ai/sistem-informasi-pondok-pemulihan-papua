@@ -27,12 +27,21 @@
 
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--putih-bg); margin: 0; padding: 0; color: #333; overflow-x: hidden; }
         
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        @keyframes shake { 0% { transform: rotate(0deg); } 10% { transform: rotate(-10deg); } 20% { transform: rotate(10deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(10deg); } 50% { transform: rotate(0deg); } }
+
         /* Utility */
         .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
         
         header { background: var(--biru-tua); border-bottom: 3px solid var(--hijau-zamrud); padding: 12px 0; overflow: hidden; white-space: nowrap; display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .running-content { display: inline-block; padding-left: 100%; animation: marqueeTop 30s linear infinite; font-weight: 900; font-size: 13px; color: white; text-transform: uppercase; }
-        @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
 
         .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
         
@@ -47,7 +56,6 @@
         .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
         #email-badge { position: absolute; top: -8px; right: -8px; background: red; color: white; font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none; }
         .vibrate { animation: shake 0.5s infinite; color: var(--emas-lux) !important; }
-        @keyframes shake { 0% { transform: rotate(0deg); } 10% { transform: rotate(-10deg); } 20% { transform: rotate(10deg); } 30% { transform: rotate(-10deg); } 40% { transform: rotate(10deg); } 50% { transform: rotate(0deg); } }
 
         .popup-inbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; }
         .inbox-content { background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; }
@@ -90,7 +98,7 @@
                 <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px; color:red;"></i>
             </div>
             
-            <div style="text-align: left; padding: 5px 0; display: flex; align-items: center; gap: 10px;">
+            <div id="inbox-controls" style="text-align: left; padding: 5px 0; display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                 <label for="selectAll" style="font-size: 12px; font-weight: bold;">Pilih Semua</label>
             </div>
@@ -101,7 +109,7 @@
 
             <div class="inbox-footer">
                 <span style="font-size: 11px; color: #666;">Pondok Pemulihan Papua</span>
-                <button class="btn-delete-selected" onclick="hapusPesanTerpilih()">
+                <button class="btn-delete-selected" id="btn-hapus-footer" onclick="hapusPesanTerpilih()">
                     <i class="fas fa-trash"></i> Hapus
                 </button>
             </div>
@@ -191,6 +199,9 @@
 
         // --- FUNGSI INBOX ---
         function monitorEmailInbox(userJC, userEmail) {
+            // Simpan data di global atau localStorage untuk tombol kembali
+            localStorage.setItem("userKomsel", userJC);
+
             db.collection("pengumuman_komsel")
               .orderBy("timestamp", "desc")
               .onSnapshot(snapshot => {
@@ -198,6 +209,10 @@
                 const listDiv = document.getElementById('list-pesan');
                 if(!listDiv) return;
                 listDiv.innerHTML = "";
+                
+                // Reset controls view
+                document.getElementById('inbox-controls').style.display = 'flex';
+                document.getElementById('btn-hapus-footer').style.display = 'block';
 
                 // Pesan Sambutan Virtual
                 const hasReadWelcome = localStorage.getItem("welcomeRead_" + userEmail);
@@ -246,6 +261,46 @@
             });
         }
 
+        // --- FUNGSI DETAIL PESAN (Popup Mode) ---
+        async function bacaDetailPesan(docId, userEmail) {
+            try {
+                // 1. Update status sudah dibaca di database
+                await db.collection("pengumuman_komsel").doc(docId).update({
+                    sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
+                });
+
+                // 2. Ambil konten pesan untuk ditampilkan di Popup
+                const doc = await db.collection("pengumuman_komsel").doc(docId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    const tgl = data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : '-';
+                    
+                    // Sembunyikan kontrol checkbox saat baca detail
+                    document.getElementById('inbox-controls').style.display = 'none';
+                    document.getElementById('btn-hapus-footer').style.display = 'none';
+
+                    // 3. Ubah isi Inbox menjadi tampilan Detail Pesan secara dinamis
+                    const listDiv = document.getElementById('list-pesan');
+                    listDiv.innerHTML = `
+                        <div style="animation: fadeIn 0.3s; text-align: left;">
+                            <button onclick="monitorEmailInbox('${localStorage.getItem('userKomsel')}', '${userEmail}')" 
+                                    style="background:none; border:none; color:var(--biru-safir); cursor:pointer; font-weight:bold; padding:0; margin-bottom:15px; font-size:13px;">
+                                <i class="fas fa-arrow-left"></i> Kembali ke Daftar
+                            </button>
+                            <h3 style="margin:0 0 5px 0; color:var(--biru-tua); font-size:16px;">${data.judul}</h3>
+                            <small style="color:#888; display:block; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                                ${tgl} • Oleh: Admin
+                            </small>
+                            <div style="font-size:14px; line-height:1.6; color:#333; white-space:pre-wrap;">${data.isi || data.pesan || "Tidak ada detail pesan."}</div>
+                        </div>
+                    `;
+                }
+            } catch (e) { 
+                console.error("Gagal memuat pesan:", e);
+                alert("Gagal memuat detail pesan.");
+            }
+        }
+
         function toggleSelectAll(source) {
             const checkboxes = document.querySelectorAll('.msg-checkbox');
             checkboxes.forEach(cb => cb.checked = source.checked);
@@ -264,17 +319,6 @@
             localStorage.setItem("welcomeRead_" + userEmail, "true");
             alert("Selamat Datang Di Aplikasi Komsel JC. Semoga Diberkati!");
             location.reload(); 
-        }
-
-        // --- FUNGSI DETAIL PESAN (Sudah Diperbaiki) ---
-        async function bacaDetailPesan(docId, userEmail) {
-            try {
-                await db.collection("pengumuman_komsel").doc(docId).update({
-                    sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
-                });
-                // Mengarahkan ke file pengumuman-email.html
-                window.location.href = "pengumuman-email.html?id=" + docId; 
-            } catch (e) { console.error(e); }
         }
 
         function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
@@ -336,7 +380,6 @@
             setInterval(updateTime, 1000); 
             syncUser(); 
             
-            // Toggle Profile logic
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
             btnToggle.addEventListener('click', () => {
