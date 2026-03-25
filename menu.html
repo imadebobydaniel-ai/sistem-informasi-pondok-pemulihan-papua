@@ -269,14 +269,13 @@
                 const id = doc.id;
                 unread++;
                 
-                // PENGAMAN: Jika field kosong, jangan tampilkan 'undefined'
+                // ANTI-UNDEFINED: Pengecekan field agar tidak muncul teks 'undefined'
                 const judulPesan = (data.judul || "Tanpa Judul").replace(/'/g, "\\'");
-                const isiPesan = (data.isi || data.pesan || "Tidak ada detail pesan.").replace(/'/g, "\\'");
+                const isiPesan = (data.isi || data.pesan || data.konten || "Tidak ada detail pesan.").replace(/'/g, "\\'");
                 let tanggalPesan = data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : "Baru";
 
                 const item = document.createElement('div');
                 item.className = "msg-item";
-                // Gunakan stopPropagation pada checkbox agar tidak memicu klik baris
                 item.innerHTML = `
                     <input type="checkbox" class="msg-checkbox" data-id="${id}" onclick="event.stopPropagation()">
                     <div style="display: flex; flex-direction: column; width: 100%;" onclick="openDetail('${judulPesan}', '${isiPesan}')">
@@ -293,20 +292,17 @@
             else document.getElementById('icon-mail').classList.remove('vibrate');
         });
 
-        // Fungsi Buka Detail Modal
         function openDetail(title, body) {
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-body').innerText = body;
             document.getElementById('message-modal').style.display = 'block';
         }
 
-        // Checklist All Logic
         document.getElementById('selectAll').addEventListener('change', function() {
             const boxes = document.querySelectorAll('.msg-checkbox');
             boxes.forEach(box => box.checked = this.checked);
         });
 
-        // Bulk Delete Logic
         document.getElementById('bulkDeleteBtn').addEventListener('click', async () => {
             const selected = document.querySelectorAll('.msg-checkbox:checked');
             if (selected.length === 0) return alert("Pilih pesan yang ingin dihapus!");
@@ -321,12 +317,11 @@
                     alert("Pesan berhasil dihapus.");
                 } catch (error) {
                     console.error("Error menghapus:", error);
-                    alert("Gagal menghapus beberapa pesan.");
                 }
             }
         });
 
-        // --- SISTEM UTILITAS LAINNYA ---
+        // --- SINKRONISASI USER ---
         function syncUser() {
             const email = localStorage.getItem("userEmail");
             const isAdmin = localStorage.getItem("adminLoggedIn");
@@ -350,18 +345,28 @@
             }
         }
 
+        // --- YOUTUBE PLAYER LOGIC ---
+        function getYoutubeId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length == 11) ? match[2] : null;
+        }
+
         function onYouTubeIframeAPIReady() {
             db.collection("portal_media").orderBy("timestamp", "desc").limit(1).get().then(snap => {
                 if(!snap.empty) {
                     const data = snap.docs[0].data();
-                    const vId = data.url.split('v=')[1]?.split('&')[0] || data.url.split('/').pop();
-                    ytPlayer = new YT.Player('player', {
-                        height: '100%', width: '100%', videoId: vId,
-                        playerVars: { 'autoplay': 1, 'mute': 1, 'loop': 1, 'playlist': vId },
-                        events: { 'onReady': () => {
-                            if(document.getElementById('muteBtn')) document.getElementById('muteBtn').style.display = 'block';
-                        }}
-                    });
+                    const vId = getYoutubeId(data.url);
+                    
+                    if (vId) {
+                        ytPlayer = new YT.Player('player', {
+                            height: '100%', width: '100%', videoId: vId,
+                            playerVars: { 'autoplay': 1, 'mute': 1, 'loop': 1, 'playlist': vId },
+                            events: { 'onReady': () => {
+                                if(document.getElementById('muteBtn')) document.getElementById('muteBtn').style.display = 'block';
+                            }}
+                        });
+                    }
                 }
             });
         }
