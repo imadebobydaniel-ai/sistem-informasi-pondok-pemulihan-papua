@@ -182,102 +182,118 @@
         </div>
     </div>
 
-    <script>
-        // Data login default
-        const VALID_USERNAME = "admin";
-        const VALID_PASSWORD = "bukadong821";
+   <script>
+    // 1. Data login default (Hapus jika nanti sudah pakai Firebase sepenuhnya untuk login)
+    const VALID_USERNAME = "admin";
+    const VALID_PASSWORD = "bukadong821";
 
-        function togglePasswordVisibility(inputId, eyeId) {
-            const passInput = document.getElementById(inputId);
-            const eyeIcon = document.getElementById(eyeId);
-            if (passInput.type === 'password') {
-                passInput.type = 'text';
-                eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                passInput.type = 'password';
-                eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
+    // 2. Fungsi Toggle Mata (Password)
+    function togglePasswordVisibility(inputId, eyeId) {
+        const passInput = document.getElementById(inputId);
+        const eyeIcon = document.getElementById(eyeId);
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            passInput.type = 'password';
+            eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
+    // 3. Fungsi Modal
+    function openGenModal() { document.getElementById('genModal').style.display = 'flex'; }
+    
+    function closeGenModal() { 
+        document.getElementById('genModal').style.display = 'none';
+        document.getElementById('resultLog').style.display = 'none';
+        document.getElementById('newName').value = "";
+        document.getElementById('newAdminUser').value = "";
+        document.getElementById('newAdminPass').value = "";
+        document.getElementById('confirmPass').value = "";
+    }
+
+    // 4. Fungsi GENERATE ADMIN (Kirim ke Firebase)
+    async function generateSimpel() {
+        const nama = document.getElementById('newName').value;
+        const user = document.getElementById('newAdminUser').value;
+        const pass = document.getElementById('newAdminPass').value;
+        const confirm = document.getElementById('confirmPass').value;
+        const logBox = document.getElementById('resultLog');
+
+        if (!nama || !user || !pass) {
+            alert("Mohon lengkapi semua kolom!");
+            return;
         }
 
-        function openGenModal() { document.getElementById('genModal').style.display = 'flex'; }
-        
-        function closeGenModal() { 
-            document.getElementById('genModal').style.display = 'none';
-            document.getElementById('resultLog').style.display = 'none';
-            // Reset form input
-            document.getElementById('newName').value = "";
-            document.getElementById('newAdminUser').value = "";
-            document.getElementById('newAdminPass').value = "";
-            document.getElementById('confirmPass').value = "";
+        if (pass !== confirm) {
+            alert("Password tidak cocok!");
+            return;
         }
 
-        // FUNGSI GENERATE SIMPEL (Sesuai Permintaan)
-        function generateSimpel() {
-            const nama = document.getElementById('newName').value;
-            const user = document.getElementById('newAdminUser').value;
-            const pass = document.getElementById('newAdminPass').value;
-            const confirm = document.getElementById('confirmPass').value;
-            const logBox = document.getElementById('resultLog');
+        try {
+            // KIRIM KE FIREBASE
+            // Pastikan koleksi 'admin_users' sesuai dengan Firestore kamu
+            await db.collection("admin_users").add({
+                nama: nama,
+                username: user,
+                password: pass,
+                createdAt: new Date()
+            });
 
-            if (!nama || !user || !pass) {
-                alert("Mohon lengkapi semua kolom!");
-                return;
-            }
-
-            if (pass !== confirm) {
-                alert("Password tidak cocok! Masukan password yang sama.");
-                return;
-            }
-
-            // Isi data ke Log
+            // Tampilkan ke Log Visual
             document.getElementById('logName').innerText = nama;
             document.getElementById('logUser').innerText = user;
             document.getElementById('logPass').innerText = pass;
-            
-            // Tampilkan Log
             logBox.style.display = 'block';
+
+        } catch (error) {
+            console.error("Firebase Error: ", error);
+            alert("Gagal koneksi ke database!");
         }
+    }
 
-        function showCyberNotification(type, title, message) {
-            const modal = document.getElementById('cyberModal');
-            const modalIcon = document.getElementById('modalIcon');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalMsg = document.getElementById('modalMsg');
-            const modalBtn = document.getElementById('closeModal');
-            const modalBorder = document.getElementById('modalBorder');
+    // 5. Notifikasi Cyber
+    function showCyberNotification(type, title, message) {
+        const modal = document.getElementById('cyberModal');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMsg = document.getElementById('modalMsg');
+        const modalBtn = document.getElementById('closeModal');
+        const modalBorder = document.getElementById('modalBorder');
 
-            modalMsg.innerText = message;
-            modalTitle.innerText = title;
+        modalMsg.innerText = message;
+        modalTitle.innerText = title;
 
-            if (type === 'success') {
-                modalIcon.className = "fa-solid fa-shield-check";
-                modalIcon.style.color = "#2ecc71";
-                modalBtn.style.backgroundColor = "#2ecc71";
-                modalBorder.style.borderColor = "#2ecc71";
-            } else {
-                modalIcon.className = "fa-solid fa-bug";
-                modalIcon.style.color = "#e74c3c";
-                modalBtn.style.backgroundColor = "#e74c3c";
-                modalBorder.style.borderColor = "#e74c3c";
-            }
-            modal.style.display = 'flex';
+        if (type === 'success') {
+            modalIcon.className = "fa-solid fa-shield-check";
+            modalIcon.style.color = "#2ecc71";
+            modalBtn.style.backgroundColor = "#2ecc71";
+            modalBorder.style.borderColor = "#2ecc71";
+        } else {
+            modalIcon.className = "fa-solid fa-bug";
+            modalIcon.style.color = "#e74c3c";
+            modalBtn.style.backgroundColor = "#e74c3c";
+            modalBorder.style.borderColor = "#e74c3c";
         }
+        modal.style.display = 'flex';
+    }
 
-        document.getElementById('closeModal').onclick = () => document.getElementById('cyberModal').style.display = 'none';
+    document.getElementById('closeModal').onclick = () => document.getElementById('cyberModal').style.display = 'none';
 
-        // LOGIN SUBMIT
-        document.getElementById('cyberLoginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const user = document.getElementById('cyberUser').value.trim();
-            const pass = document.getElementById('cyberPass').value.trim();
+    // 6. LOGIN SUBMIT
+    document.getElementById('cyberLoginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const user = document.getElementById('cyberUser').value.trim();
+        const pass = document.getElementById('cyberPass').value.trim();
 
-            if (user === VALID_USERNAME && pass === VALID_PASSWORD) {
-                showCyberNotification('success', 'Access Granted', 'Administrator verified. Redirecting...');
-                setTimeout(() => { window.location.href = "menu.html"; }, 2000);
-            } else {
-                showCyberNotification('error', 'Access Denied', 'Authentication failed.');
-            }
-        });
-    </script>
+        // Sementara masih pakai variabel statis, ganti dengan query Firestore jika ingin full DB
+        if (user === VALID_USERNAME && pass === VALID_PASSWORD) {
+            showCyberNotification('success', 'Access Granted', 'Administrator verified. Redirecting...');
+            setTimeout(() => { window.location.href = "menu.html"; }, 2000);
+        } else {
+            showCyberNotification('error', 'Access Denied', 'Authentication failed.');
+        }
+    });
+</script>
 </body>
 </html>
