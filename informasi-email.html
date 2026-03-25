@@ -72,13 +72,8 @@
             font-weight: bold; 
             transition: 0.3s;
         }
-        .btn-back:hover {
-            background: #002244;
-        }
-        .loading { 
-            text-align: center; 
-            color: #666; 
-        }
+        .btn-back:hover { background: #002244; }
+        .loading { text-align: center; color: #666; }
     </style>
 </head>
 <body>
@@ -100,7 +95,7 @@
 </div>
 
 <script>
-    // Konfigurasi Firebase (Sesuai dengan project Boby Apps)
+    // 1. Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -110,12 +105,12 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    // Inisialisasi Firebase
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
 
+    // 2. Fungsi Mengambil Data
     async function loadInformasiEmail() {
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
@@ -126,32 +121,26 @@
         }
 
         try {
-            // Mengambil data dari koleksi pengumuman_komsel sesuai database Anda
             const doc = await db.collection("pengumuman_komsel").doc(id).get();
             
             if (doc.exists) {
                 const data = doc.data();
                 
-                // Isi data ke elemen HTML
-                document.getElementById('view-judul').innerText = data.judul;
+                document.getElementById('view-judul').innerText = data.judul || "Tanpa Judul";
                 document.getElementById('view-tanggal').innerText = data.timestamp ? 
                     data.timestamp.toDate().toLocaleString('id-ID', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
                     }) : '-';
-                document.getElementById('view-isi').innerText = data.detail;
                 
-                // Cek jika ada lampiran file
+                // Menggunakan data.detail atau data.isi (sesuaikan field di Firebase Anda)
+                document.getElementById('view-isi').innerText = data.detail || data.isi || "Tidak ada detail konten.";
+                
                 if (data.fileUrl) {
                     document.getElementById('view-file').style.display = 'block';
                     document.getElementById('file-link').href = data.fileUrl;
                 }
 
-                // Sembunyikan loader dan tampilkan konten
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('display-area').style.display = 'block';
             } else {
@@ -159,13 +148,12 @@
             }
         } catch (error) {
             console.error("Kesalahan Firebase:", error);
-            document.getElementById('loader').innerText = "Gagal memuat informasi-email.html";
+            document.getElementById('loader').innerText = "Gagal memuat data dari Firebase.";
         }
     }
 
-  // Ganti yang sebelumnya mengarah ke detail-pengumuman.html
-// Menjadi informasi-email.html
-   window.location.href = `informasi-email.html?id=${docId}`;
+    // 3. Jalankan fungsi saat halaman dimuat
+    window.onload = loadInformasiEmail;
 </script>
 
 </body>
