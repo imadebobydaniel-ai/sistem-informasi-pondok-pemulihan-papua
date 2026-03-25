@@ -198,14 +198,8 @@
             <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>Statistik</a>
             <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>Peringkat JC</a>
             <a href="laporan-komsel.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>Laporan Komsel</a>
-            
-            <a href="lacak-domba.html" class="menu-box">
-                <i class="fa-solid fa-map-location-dot"></i>Lacak Domba
-            </a>
-            <a href="capaian-doa.html" class="menu-box">
-                <i class="fa-solid fa-hands-praying"></i>Capaian Doa
-            </a>
-
+            <a href="lacak-domba.html" class="menu-box"><i class="fa-solid fa-map-location-dot"></i>Lacak Domba</a>
+            <a href="capaian-doa.html" class="menu-box"><i class="fa-solid fa-hands-praying"></i>Capaian Doa</a>
             <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
             <a href="saran.html" class="menu-box"><i class="fa-solid fa-comment-dots"></i>Saran</a>
         </div>
@@ -218,6 +212,7 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
+        // Konfigurasi Firebase Boby
         const firebaseConfig = { 
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
             authDomain: "boby-apps-project.firebaseapp.com", 
@@ -229,9 +224,8 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         let ytPlayer; 
-        let currentUserJC = ""; // Akan diisi otomatis saat syncUser
 
-        // 1. MONITORING EMAIL & GETARAN
+        // 1. FUNGSI MONITORING INBOX
         function monitorEmailInbox(userJC, userEmail) {
             db.collection("pengumuman_komsel")
               .where("target_jc", "array-contains", userJC)
@@ -251,7 +245,6 @@
 
                     if (isUnread) unreadCount++;
 
-                    // Render ke list Inbox
                     listDiv.innerHTML += `
                         <div class="msg-item" onclick="bacaDetailPesan('${doc.id}', '${userEmail}')" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : ''}">
                             <b>${data.judul}</b>
@@ -275,18 +268,16 @@
         }
 
         async function bacaDetailPesan(docId, userEmail) {
-            // Tandai sudah dibaca di Firestore
             await db.collection("pengumuman_komsel").doc(docId).update({
                 sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
             });
-            // Arahkan ke halaman detail (file lama Anda)
             window.location.href = "detail-pengumuman.html?id=" + docId;
         }
 
         function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
         function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
 
-        // 2. LOGIKA USER & MEDIA (SISA SCRIPT ASLI ANDA)
+        // 2. LOGIKA USER & MEDIA
         function syncUser() {
             const email = localStorage.getItem("userEmail");
             const isAdmin = localStorage.getItem("adminLoggedIn");
@@ -307,9 +298,8 @@
                         const d = s.docs[0].data();
                         document.getElementById('disp_nama').innerText = d.nama || "User";
                         document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                        currentUserJC = d.komsel;
                         
-                        // MULAI MONITOR EMAIL SETELAH DAPAT DATA JC
+                        // Aktifkan Inbox Monitor
                         monitorEmailInbox(String(d.komsel), email);
 
                         if (d.fotoUrl) { 
@@ -328,12 +318,13 @@
             const tipe = data.tipe ? data.tipe.toLowerCase() : "";
             muteBtn.style.display = 'none';
             container.innerHTML = "";
+            
             if (tipe.includes('video')) {
                 container.innerHTML = `<div id="player"></div>`;
                 initYouTube(extractVideoID(data.url));
                 muteBtn.style.display = 'block';
             } else if (tipe.includes('audio')) {
-                container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #003366, #0056b3); color:white; border-radius:20px; padding:20px;"><i class="fa-solid fa-music" style="font-size:50px; margin-bottom:15px; color:var(--emas-lux);"></i><audio controls style="width:100%;"><source src="${data.url}" type="audio/mpeg"></audio><p style="margin-top:10px; font-size:12px;">Konten Audio Pondok Pemulihan</p></div>`;
+                container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #003366, #0056b3); color:white; border-radius:20px; padding:20px;"><i class="fa-solid fa-music" style="font-size:50px; margin-bottom:15px; color:var(--emas-lux);"></i><audio controls style="width:100%;"><source src="${data.url}" type="audio/mpeg"></audio><p style="margin-top:10px; font-size:12px;">Konten Audio</p></div>`;
             } else if (tipe.includes('teks') || tipe.includes('artikel')) {
                 const isi = data.isi_artikel || data.deskripsi || "Tidak ada detail teks.";
                 container.innerHTML = `<div style="width:100%; height:100%; background:white; color:#333; padding:15px; overflow-y:auto; border-radius:20px; text-align:left; font-size:13px; line-height:1.5; border:1px solid #ddd;">${isi}</div>`;
@@ -343,8 +334,8 @@
         }
 
         async function loadMedia() {
-            const myCustomText = "Selamat Datang di Sistem Informasi & Integrasi Komsel JC | Ini adalah Salah Satu Digitalisasi didalam Monitoring Pertumbuhan Iman Secara Realtime | Copyright @imadeboby 2026";
-            document.getElementById('running-text').innerText = myCustomText;
+            const runningText = "Selamat Datang di Sistem Informasi & Integrasi Komsel JC | Digitalisasi Monitoring Pertumbuhan Iman Realtime | Copyright @imadeboby 2026";
+            document.getElementById('running-text').innerText = runningText;
             try {
                 const snapshot = await db.collection("portal_media").orderBy("timestamp", "desc").limit(1).get();
                 if (!snapshot.empty) {
