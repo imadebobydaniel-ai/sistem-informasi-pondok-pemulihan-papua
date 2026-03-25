@@ -75,7 +75,6 @@
         }
         .vibrate { animation: shake 0.5s infinite; color: var(--emas-lux) !important; }
 
-        /* --- STYLES INBOX --- */
         .popup-inbox {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 3000; justify-content: center; align-items: center;
@@ -89,21 +88,29 @@
             background: var(--biru-tua); color: white; padding: 15px 20px;
             display: flex; justify-content: space-between; align-items: center;
         }
-        .list-pesan-container { overflow-y: auto; flex-grow: 1; padding: 10px; }
+        .list-pesan-container { overflow-y: auto; flex-grow: 1; }
         
         .msg-item {
-            display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #f1f1f1;
+            display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f1f1f1;
             cursor: pointer; transition: 0.2s; text-align: left;
         }
         .msg-item:hover { background: #f9fbff; }
 
-        /* Styles Modal Pesan Terbuka */
+        /* MODAL PESAN (SCRIPT BARU) */
         #message-modal {
             display: none; position: fixed; z-index: 4000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
         }
         .modal-inner {
-            background: white; margin: 15% auto; padding: 25px; width: 85%; max-width: 350px; border-radius: 20px; border-top: 6px solid var(--biru-safir);
+            background: white; margin: 15% auto; padding: 20px; width: 80%; border-radius: 15px; border-top: 5px solid var(--biru-safir);
         }
+
+        .btn-toggle-side { 
+            position: absolute; left: 0; top: 50%; transform: translateY(-50%); 
+            z-index: 10; background: #ff0000; color: white; border: none; 
+            width: 30px; height: 60px; border-radius: 0 15px 15px 0; 
+            cursor: pointer; transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .news-slider { width: 100%; height: 100%; background: var(--biru-tua); position: relative; z-index: 1; }
 
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
@@ -111,16 +118,17 @@
         .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); }
+        #admin-badge { display: none; background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div id="message-modal">
         <div class="modal-inner">
-            <h3 id="modal-title" style="margin-top:0; color: var(--biru-tua);"></h3>
-            <hr style="border:0; border-top:1px solid #eee;">
-            <div id="modal-body" style="font-size:14px; color:#555; line-height:1.6; max-height:250px; overflow-y:auto;"></div> <br>
-            <button onclick="closeModal()" style="padding: 10px; width:100%; cursor: pointer; background: var(--biru-tua); color:white; border:none; border-radius:10px; font-weight:bold;">Tutup</button>
+            <h3 id="modal-title" style="margin-top:0;"></h3>
+            <hr>
+            <div id="modal-body" style="font-size:14px; line-height:1.5;"></div> <br>
+            <button onclick="closeModal()" style="padding: 10px 20px; width:100%; background:var(--biru-tua); color:white; border:none; border-radius:8px;">Tutup</button>
         </div>
     </div>
 
@@ -131,36 +139,51 @@
                 <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px;"></i>
             </div>
             <div id="inbox-list" class="list-pesan-container">
-                </div>
+                <p style="text-align:center; padding:20px;">Memuat pesan...</p>
+            </div>
         </div>
     </div>
 
     <div class="top-info-bar">
-        <div id="display-tanggal">Memuat Tanggal...</div>
+        <div id="display-tanggal">Memuat...</div>
         <div id="digital-clock">00:00:00 WIT</div>
     </div>
+
     <header>
         <div id="running-text" class="running-content">Memuat data sistem...</div>
     </header>
 
     <div class="container">
         <h3 style="text-transform: uppercase; color: var(--biru-tua); margin-bottom: 20px;">Portal Komsel JC</h3>
+
         <div class="top-section-container">
             <div id="profileCard" class="profile-card">
                 <div class="email-btn" onclick="bukaInbox()">
                     <i class="fas fa-envelope email-icon" id="icon-mail"></i>
                     <span id="email-badge">0</span>
                 </div>
+
                 <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--emas-lux); background: white; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-circle-user" id="default-icon" style="font-size: 70px; color: var(--biru-safir);"></i>
                     <img id="user-photo" src="" style="display: none; width:100%; height:100%; object-fit:cover;">
                 </div>
                 <h2 id="disp_nama" style="margin: 5px 0 0 0; font-size: 18px;">Memuat...</h2>
+                <div id="admin-badge">ADMIN ACCESS</div>
                 <div id="disp_email" style="font-size: 11px; color: #666;">...</div>
                 <p id="disp_komsel" style="color: var(--hijau-zamrud); font-weight: bold; font-size: 12px;">KOMSEL JC</p>
             </div>
+
+            <button id="toggleProfile" class="btn-toggle-side">
+                <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+            </button>
+
             <div id="media-display-area" class="news-slider">
-                <div id="youtube-player-container" style="width: 100%; height: 100%;"></div>
+                <div id="youtube-player-container" style="width: 100%; height: 100%;">
+                    <div id="player"></div> 
+                </div>
+                <div id="muteBtn" onclick="handleToggleMute()" style="display:none; position: absolute; bottom: 15px; right: 15px; z-index: 10; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 50%; color: white; cursor: pointer;">
+                    <i class="fa-solid fa-volume-xmark" id="muteIcon"></i>
+                </div>
             </div>
         </div>
 
@@ -170,13 +193,19 @@
             <a href="baca-alkitab.html" class="menu-box"><i class="fa-solid fa-book-bible"></i>Laporan Baca</a>
             <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>Statistik</a>
             <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>Peringkat JC</a>
+            <a href="laporan-komsel.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>Laporan Komsel</a>
+            <a href="lacak-domba.html" class="menu-box"><i class="fa-solid fa-map-location-dot"></i>Lacak Domba</a>
+            <a href="capaian-doa.html" class="menu-box"><i class="fa-solid fa-hands-praying"></i>Capaian Doa</a>
             <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
+            <a href="saran.html" class="menu-box"><i class="fa-solid fa-comment-dots"></i>Saran</a>
         </div>
+
         <a href="javascript:void(0)" onclick="executeLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Keluar</a>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
         const firebaseConfig = { 
@@ -189,47 +218,29 @@
         };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        let ytPlayer;
 
-        // --- KODE LOGIKA INBOX (SCRIPT YANG ANDA MINTA) ---
-        
+        // --- MANAJEMEN INBOX ---
         db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-            const inboxList = document.getElementById('inbox-list');
-            inboxList.innerHTML = ""; 
-            let unreadCount = 0;
+            const listDiv = document.getElementById('inbox-list');
+            listDiv.innerHTML = "";
+            let unread = 0;
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                const id = doc.id;
+                unread++;
                 
-                // Hitung pesan belum dibaca (opsional untuk badge)
-                unreadCount++;
-
-                const messageRow = document.createElement('div');
-                messageRow.className = "msg-item";
-                messageRow.innerHTML = `
-                    <div style="background: #eef2f7; padding: 10px; border-radius: 50%; margin-right: 15px;">
-                        <i class="fas fa-envelope" style="color: var(--biru-safir);"></i>
-                    </div>
-                    <div>
-                        <strong style="font-size:14px;">${data.judul}</strong> <br>
-                        <small style="color: #888;">${data.timestamp ? data.timestamp.toDate().toLocaleDateString() : 'Baru'}</small>
-                    </div>
-                `;
-                
-                messageRow.onclick = () => {
-                    tampilkanDetail(data.judul, data.isi || data.isi_pesan);
-                };
-                
-                inboxList.appendChild(messageRow);
+                const item = document.createElement('div');
+                item.className = "msg-item";
+                item.innerHTML = `<strong>${data.judul}</strong><br><small>${data.timestamp ? data.timestamp.toDate().toLocaleDateString() : 'Baru'}</small>`;
+                item.onclick = () => tampilkanDetail(data.judul, data.isi || data.isi_pesan);
+                listDiv.appendChild(item);
             });
 
-            // Update Badge
             const badge = document.getElementById('email-badge');
-            const icon = document.getElementById('icon-mail');
-            if(unreadCount > 0) {
-                badge.style.display = "block";
-                badge.innerText = unreadCount;
-                icon.classList.add('vibrate');
+            if(unread > 0) { 
+                badge.style.display = "block"; badge.innerText = unread;
+                document.getElementById('icon-mail').classList.add('vibrate');
             }
         });
 
@@ -239,39 +250,82 @@
             document.getElementById('message-modal').style.display = 'block';
         }
 
-        function closeModal() {
-            document.getElementById('message-modal').style.display = 'none';
-        }
-
+        function closeModal() { document.getElementById('message-modal').style.display = 'none'; }
         function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
         function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
 
-        // --- SISTEM UTILITAS LAINNYA ---
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }) + " WIT";
-        }
-
+        // --- SISTEM UTILITAS ---
         function syncUser() {
             const email = localStorage.getItem("userEmail");
-            if (email) {
-                document.getElementById('disp_email').innerText = email;
+            const isAdmin = localStorage.getItem("adminLoggedIn");
+            if (isAdmin === "true") {
+                document.getElementById('disp_nama').innerText = "Administrator";
+                document.getElementById('admin-badge').style.display = "inline-block";
+            } else if (email) {
                 db.collection("users").where("email", "==", email).onSnapshot(s => {
                     if (!s.empty) {
                         const d = s.docs[0].data();
                         document.getElementById('disp_nama').innerText = d.nama || "User";
-                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                        document.getElementById('disp_email').innerText = email;
+                        document.getElementById('disp_komsel').innerText = "JC " + (d.komsel || "");
+                        if (d.fotoUrl) {
+                            document.getElementById('user-photo').src = d.fotoUrl;
+                            document.getElementById('user-photo').style.display = "block";
+                            document.getElementById('default-icon').style.display = "none";
+                        }
                     }
                 });
             }
         }
 
+        // YouTube Logic
+        function onYouTubeIframeAPIReady() {
+            db.collection("portal_media").orderBy("timestamp", "desc").limit(1).get().then(snap => {
+                if(!snap.empty) {
+                    const data = snap.docs[0].data();
+                    const vId = extractVideoID(data.url);
+                    if(vId) {
+                        ytPlayer = new YT.Player('player', {
+                            height: '100%', width: '100%', videoId: vId,
+                            playerVars: { 'autoplay': 1, 'mute': 1, 'loop': 1, 'playlist': vId },
+                            events: { 'onReady': () => document.getElementById('muteBtn').style.display = 'block' }
+                        });
+                    }
+                }
+            });
+        }
+
+        function extractVideoID(url) {
+            const reg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const m = url.match(reg); return (m && m[2].length == 11) ? m[2] : null;
+        }
+
+        function handleToggleMute() {
+            if (ytPlayer.isMuted()) {
+                ytPlayer.unMute(); document.getElementById('muteIcon').className = "fa-solid fa-volume-high";
+            } else {
+                ytPlayer.mute(); document.getElementById('muteIcon').className = "fa-solid fa-volume-xmark";
+            }
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
+        }
+
         function executeLogout() { localStorage.clear(); window.location.href = "login.html"; }
 
-        window.onload = () => { 
-            updateTime(); setInterval(updateTime, 1000); syncUser(); 
-            document.getElementById('running-text').innerText = "Selamat Datang di Sistem Informasi Komsel JC | Digitalisasi Monitoring Pertumbuhan Iman | 2026";
+        window.onload = () => {
+            updateTime(); setInterval(updateTime, 1000); syncUser();
+            document.getElementById('running-text').innerText = "Selamat Datang di Sistem Informasi Komsel JC Papua | Copyright 2026";
+            
+            const btn = document.getElementById('toggleProfile');
+            const card = document.getElementById('profileCard');
+            btn.onclick = () => {
+                card.classList.toggle('closed');
+                document.getElementById('toggleIcon').className = card.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+            };
         };
     </script>
 </body>
