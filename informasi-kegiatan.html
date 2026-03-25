@@ -11,7 +11,12 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <style>
-        :root { --primary: #007bff; --dark: #333; --light: #f4f7f6; }
+        :root { 
+            --primary: #007bff; 
+            --dark: #333; 
+            --light: #f4f7f6; 
+            --success: #28a745;
+        }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 20px; }
         .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: var(--dark); }
@@ -24,9 +29,32 @@
         .media-upload-area { background: #f9f9f9; padding: 15px; border: 2px dashed #ccc; border-radius: 10px; text-align: center; }
         .file-info { font-size: 12px; color: #666; margin-top: 5px; }
 
+        /* Style Progress Bar */
+        .progress-container {
+            display: none;
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 12px;
+            background-color: var(--success);
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+
         .btn-send { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        .btn-send:disabled { background: #ccc; }
-        .btn-outline-primary { border: 2px solid var(--primary); color: var(--primary); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; background: none; }
+        .btn-send:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-outline-primary { border: 2px solid var(--primary); color: var(--primary); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; background: none; transition: 0.3s; }
         .btn-active { background: var(--primary) !important; color: white !important; }
         .d-flex { display: flex; gap: 10px; }
     </style>
@@ -47,6 +75,7 @@
             <option value="Penting">Penting</option>
             <option value="Kegiatan">Kegiatan</option>
             <option value="Umum">Umum</option>
+            <option value="Mendesak">Mendesak</option>
         </select>
     </div>
 
@@ -89,8 +118,18 @@
         <textarea id="detail" placeholder="Tuliskan detail informasi di sini..."></textarea>
     </div>
 
-    <button id="btnSubmit" class="btn-send" onclick="kirimData()"><i class="fas fa-paper-plane"></i> Publikasikan Sekarang</button>
-    <a href="admin.html" style="display:block; text-align:center; margin-top:15px; text-decoration:none; color:#777;">Kembali ke Dashboard</a>
+    <div id="progressArea" class="progress-container">
+        <div id="progressBar" class="progress-bar"></div>
+        <div id="progressText" class="progress-text">Mengunggah: 0%</div>
+    </div>
+
+    <button id="btnSubmit" class="btn-send" onclick="kirimData()">
+        <i class="fas fa-paper-plane"></i> Publikasikan Sekarang
+    </button>
+    
+    <a href="admin.html" style="display:block; text-align:center; margin-top:15px; text-decoration:none; color:#777;">
+        <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+    </a>
 </div>
 
 <script>
@@ -102,7 +141,8 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
     const storage = firebase.storage();
 
@@ -110,10 +150,17 @@
     const btnAllJC = document.getElementById('btnAllJC');
     const selectJC = document.getElementById('targetJC');
 
-    btnAllJC.onclick = () => { targetStatus = "Semua JC"; btnAllJC.classList.add('btn-active'); selectJC.value = ""; };
-    selectJC.onchange = () => { targetStatus = ""; btnAllJC.classList.remove('btn-active'); };
+    btnAllJC.onclick = () => { 
+        targetStatus = "Semua JC"; 
+        btnAllJC.classList.add('btn-active'); 
+        selectJC.value = ""; 
+    };
 
-    // Fungsi mengatur input file berdasarkan tipe media
+    selectJC.onchange = () => { 
+        targetStatus = ""; 
+        btnAllJC.classList.remove('btn-active'); 
+    };
+
     function toggleUploadInput() {
         const tipe = document.getElementById('tipeMedia').value;
         const section = document.getElementById('uploadSection');
@@ -132,6 +179,10 @@
 
     async function kirimData() {
         const btn = document.getElementById('btnSubmit');
+        const progressArea = document.getElementById('progressArea');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
         const judul = document.getElementById('judul').value;
         const kategori = document.getElementById('kategori').value;
         const detail = document.getElementById('detail').value;
@@ -140,24 +191,42 @@
         const targetFinal = targetStatus || selectJC.value;
 
         if(!judul || !detail || !targetFinal) {
-            alert("Lengkapi Judul, Detail, dan Target!");
+            alert("Harap lengkapi Judul, Detail, dan Target Pengiriman!");
+            return;
+        }
+
+        if(tipeMedia !== 'text' && !file) {
+            alert("Silakan pilih file terlebih dahulu!");
             return;
         }
 
         btn.disabled = true;
-        btn.innerHTML = "Sedang Mengirim...";
-
+        btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Memproses...";
         let mediaUrl = "";
 
         try {
-            // Proses Upload File jika bukan teks
             if (tipeMedia !== 'text' && file) {
+                progressArea.style.display = 'block';
                 const storageRef = storage.ref(`media_pengumuman/${Date.now()}_${file.name}`);
-                await storageRef.put(file);
-                mediaUrl = await storageRef.getDownloadURL();
+                const uploadTask = storageRef.put(file);
+
+                await new Promise((resolve, reject) => {
+                    uploadTask.on('state_changed', 
+                        (snapshot) => {
+                            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            progressBar.style.width = progress + '%';
+                            progressText.innerText = "Mengunggah: " + Math.round(progress) + "%";
+                        }, 
+                        (error) => { reject(error); }, 
+                        async () => {
+                            mediaUrl = await uploadTask.snapshot.ref.getDownloadURL();
+                            resolve();
+                        }
+                    );
+                });
             }
 
-            // Simpan ke Firestore
+            progressText.innerText = "Finalisasi Data...";
             await db.collection("pengumuman_komsel").add({
                 judul, kategori, detail, target: targetFinal,
                 tipeMedia, mediaUrl,
@@ -165,13 +234,14 @@
                 sudahDibaca: false
             });
 
-            alert("Berhasil dipublikasikan!");
+            alert("Informasi berhasil dipublikasikan ke " + targetFinal);
             location.reload();
         } catch (error) {
             console.error(error);
-            alert("Terjadi kesalahan.");
+            alert("Terjadi kesalahan sistem.");
             btn.disabled = false;
-            btn.innerHTML = "Publikasikan Sekarang";
+            btn.innerHTML = "<i class='fas fa-paper-plane'></i> Publikasikan Sekarang";
+            progressArea.style.display = 'none';
         }
     }
 </script>
