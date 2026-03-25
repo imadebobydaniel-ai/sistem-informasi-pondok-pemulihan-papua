@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detail Pengumuman - Komsel JC</title>
+    <title>Input Informasi Kegiatan - Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -11,87 +11,110 @@
 
     <style>
         :root {
-            --biru-tua: #003366;
-            --emas-lux: #D4AF37;
-            --putih-bg: #f4f7fa;
+            --primary: #007bff;
+            --dark: #333;
+            --light: #f4f7f6;
+            --success: #28a745;
         }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--putih-bg); margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 20px; }
         .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: var(--biru-tua); margin-bottom: 10px; font-size: 24px; }
-        #kategori-tag { background: var(--emas-lux); color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        #isi-pengumuman-full { margin-top: 25px; line-height: 1.8; color: #444; white-space: pre-wrap; font-size: 16px; }
-        .btn-back { display: inline-block; margin-top: 30px; text-decoration: none; color: var(--biru-tua); font-weight: bold; border: 2px solid var(--biru-tua); padding: 10px 20px; border-radius: 8px; transition: 0.3s; }
-        .btn-back:hover { background: var(--biru-tua); color: white; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        
+        h2 { color: var(--dark); margin-bottom: 20px; text-align: center; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input, select, textarea { 
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; 
+            box-sizing: border-box; font-size: 14px;
+        }
+        textarea { height: 120px; resize: vertical; }
+
+        .btn-send { 
+            width: 100%; padding: 12px; background: var(--primary); color: white; 
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; 
+            font-size: 16px; transition: 0.3s;
+        }
+        .btn-send:hover { background: #0056b3; }
+        .btn-back { 
+            display: block; text-align: center; margin-top: 15px; 
+            text-decoration: none; color: #777; font-size: 14px; 
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <span id="kategori-tag">Memuat...</span>
-        <h1 id="judul-pengumuman">Sedang Memuat Judul...</h1>
-        <hr>
-        <p id="isi-pengumuman-full">Memuat isi pengumuman surgawi...</p>
-        
-        <a href="admin.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i> Kembali ke Menu</a>
+<div class="container">
+    <h2><i class="fas fa-bullhorn"></i> Kirim Informasi Kegiatan</h2>
+    
+    <div class="form-group">
+        <label>Judul Pengumuman</label>
+        <input type="text" id="judul" placeholder="Contoh: Jadwal Ibadah Raya">
     </div>
 
-    <script>
-        // 1. Konfigurasi Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSy...", 
-            authDomain: "boby-apps-project.firebaseapp.com",
-            projectId: "boby-apps-project",
-            storageBucket: "boby-apps-project.appspot.com",
-            messagingSenderId: "125984859692",
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-        };
+    <div class="form-group">
+        <label>Kategori</label>
+        <select id="kategori">
+            <option value="Penting">Penting</option>
+            <option value="Kegiatan">Kegiatan</option>
+            <option value="Umum">Umum</option>
+            <option value="Mendesak">Mendesak</option>
+        </select>
+    </div>
 
-        // Inisialisasi Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+    <div class="form-group">
+        <label>Isi Detail Informasi</label>
+        <textarea id="detail" placeholder="Tuliskan detail informasi di sini..."></textarea>
+    </div>
+
+    <button class="btn-send" onclick="kirimData()"><i class="fas fa-paper-plane"></i> Publikasikan Sekarang</button>
+    
+    <a href="admin.html" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+</div>
+
+<script>
+    // Konfigurasi Firebase Anda
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.firestore();
+
+    async function kirimData() {
+        const judul = document.getElementById('judul').value;
+        const kategori = document.getElementById('kategori').value;
+        const detail = document.getElementById('detail').value;
+
+        if(!judul || !detail) {
+            alert("Harap isi judul dan detail informasi!");
+            return;
         }
 
-        const db = firebase.firestore(); 
-
-        // 2. Ambil ID dari URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const pesanId = urlParams.get('id');
-
-        if (pesanId) {
-            // Ambil dokumen spesifik dari koleksi 'pengumuman_komsel'
-            db.collection("pengumuman_komsel").doc(pesanId).get().then((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    
-                    // Masukkan data ke elemen HTML
-                    document.getElementById('judul-pengumuman').innerText = data.judul || "Tanpa Judul";
-                    document.getElementById('kategori-tag').innerText = data.kategori || "Umum";
-                    document.getElementById('isi-pengumuman-full').innerText = data.detail || "Tidak ada detail.";
-
-                    // --- FITUR BARU: Tandai sebagai sudah dibaca ---
-                    db.collection("pengumuman_komsel").doc(pesanId).update({
-                        sudahDibaca: true
-                    }).then(() => {
-                        console.log("Status: Pengumuman telah dibaca.");
-                    }).catch((err) => {
-                        console.warn("Gagal update status baca:", err);
-                    });
-                    // -----------------------------------------------
-
-                } else {
-                    document.getElementById('isi-pengumuman-full').innerText = "Maaf, pengumuman tidak ditemukan di database.";
-                    document.getElementById('kategori-tag').innerText = "Error";
-                    document.getElementById('judul-pengumuman').innerText = "Tidak Ditemukan";
-                }
-            }).catch((error) => {
-                console.error("Error Firestore:", error);
-                document.getElementById('isi-pengumuman-full').innerText = "Terjadi kesalahan saat mengambil data.";
+        try {
+            await db.collection("pengumuman_komsel").add({
+                judul: judul,
+                kategori: kategori,
+                detail: detail,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                sudahDibaca: false
             });
-        } else {
-            document.getElementById('isi-pengumuman-full').innerText = "ID Pesan tidak valid. Silakan kembali ke menu.";
-            document.getElementById('kategori-tag').innerText = "Kosong";
+
+            alert("Informasi berhasil dipublikasikan!");
+            // Reset form
+            document.getElementById('judul').value = "";
+            document.getElementById('detail').value = "";
+            
+        } catch (error) {
+            console.error("Error menambahkan dokumen: ", error);
+            alert("Gagal mengirim data.");
         }
-    </script>
+    }
+</script>
+
 </body>
 </html>
