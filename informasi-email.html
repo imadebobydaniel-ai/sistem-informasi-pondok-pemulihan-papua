@@ -2,159 +2,422 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detail Informasi Email - Komsel JC</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com https://www.youtube.com https://s.ytimg.com 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https://www.youtube.com">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Menu Utama - Pondok Pemulihan Papua</title>
     
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const isMember = localStorage.getItem("userEmail");
+        const isAdmin = localStorage.getItem("adminLoggedIn");
+        if (!isMember && isAdmin !== "true") {
+            window.location.href = "login.html"; 
+        }
+    </script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { 
-            --primary: #003366; 
-            --bg: #f4f7f6; 
+            --biru-tua: #003366; 
+            --biru-safir: #0056b3; 
+            --biru-muda: #00e6e6; 
+            --hijau-zamrud: #2ecc71; 
+            --emas-lux: #D4AF37; 
+            --putih-bg: #f4f7fa; 
         }
-        body { 
-            font-family: 'Poppins', sans-serif; 
-            background: var(--bg); 
-            margin: 0; 
+
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--putih-bg); margin: 0; padding: 0; color: #333; overflow-x: hidden; }
+        .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
+        
+        header { 
+            background: var(--biru-tua); 
+            border-bottom: 3px solid var(--hijau-zamrud); 
+            padding: 12px 0; 
+            overflow: hidden; 
+            white-space: nowrap; 
             display: flex; 
-            justify-content: center; 
             align-items: center; 
-            min-height: 100vh; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
         }
-        .container { 
-            width: 90%; 
-            max-width: 500px; 
-            background: white; 
-            padding: 25px; 
-            border-radius: 15px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-            border-top: 6px solid var(--primary); 
-        }
-        h1 { 
-            color: var(--primary); 
-            font-size: 20px; 
-            margin-bottom: 5px; 
-        }
-        .date { 
-            font-size: 12px; 
-            color: #888; 
-            margin-bottom: 20px; 
-        }
-        .content { 
-            line-height: 1.6; 
-            color: #444; 
-            font-size: 15px; 
-            white-space: pre-wrap; 
-        }
-        .attachment { 
-            margin-top: 20px; 
-            padding: 10px; 
-            background: #eef2f7; 
-            border-radius: 8px; 
+        .running-content { 
+            display: inline-block; 
+            padding-left: 100%; 
+            animation: marqueeTop 30s linear infinite; 
+            font-weight: 900; 
             font-size: 13px; 
-        }
-        .attachment a { 
-            color: var(--primary); 
-            font-weight: bold; 
-            text-decoration: none; 
-        }
-        .btn-back { 
-            display: block; 
-            text-align: center; 
-            margin-top: 30px; 
-            padding: 12px; 
-            background: var(--primary); 
             color: white; 
-            border-radius: 8px; 
-            text-decoration: none; 
-            font-weight: bold; 
-            transition: 0.3s;
+            text-transform: uppercase; 
         }
-        .btn-back:hover { background: #002244; }
-        .loading { text-align: center; color: #666; }
+        @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
+        .top-section-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto 30px auto; height: 220px; overflow: hidden; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
+        
+        .profile-card { 
+            position: absolute; width: 100%; height: 100%; 
+            background: linear-gradient(145deg, #ffffff, #e6e6e6); 
+            border-radius: 25px; z-index: 5; 
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            border-top: 4px solid var(--biru-safir); 
+        }
+        .profile-card.closed { transform: translateX(-100%); }
+
+        .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
+        .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
+        #email-badge {
+            position: absolute; top: -8px; right: -8px; background: red; color: white;
+            font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none;
+        }
+        @keyframes shake {
+            0% { transform: rotate(0deg); } 10% { transform: rotate(-10deg); } 20% { transform: rotate(10deg); }
+            30% { transform: rotate(-10deg); } 40% { transform: rotate(10deg); } 50% { transform: rotate(0deg); }
+        }
+        .vibrate { animation: shake 0.5s infinite; color: var(--emas-lux) !important; }
+
+        .popup-inbox {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center;
+        }
+        .inbox-content {
+            background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 80vh; overflow-y: auto;
+        }
+        .msg-item {
+            padding: 12px; border-bottom: 1px solid #eee; text-align: left; cursor: pointer; transition: 0.2s;
+        }
+        .msg-item:hover { background: #f1f1f1; }
+        .msg-item b { display: block; color: var(--biru-tua); font-size: 14px; }
+        .msg-item small { color: #888; font-size: 11px; }
+
+        .btn-toggle-side { 
+            position: absolute; left: 0; top: 50%; transform: translateY(-50%); 
+            z-index: 10; background: #ff0000; color: white; border: none; 
+            width: 30px; height: 60px; border-radius: 0 15px 15px 0; 
+            cursor: pointer; transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .profile-card.closed ~ .btn-toggle-side { left: 0; }
+        .news-slider { width: 100%; height: 100%; background: var(--biru-tua); position: relative; z-index: 1; }
+
+        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .menu-box:active { transform: scale(0.95); }
+        .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); }
+        #admin-badge { display: none; background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="container" id="main-container">
-    <div id="loader" class="loading">Menghubungkan ke sistem informasi-email...</div>
-    
-    <div id="display-area" style="display:none;">
-        <h1 id="view-judul"></h1>
-        <div class="date" id="view-tanggal"></div>
-        <div class="content" id="view-isi"></div>
-        
-        <div id="view-file" class="attachment" style="display:none;">
-            📎 Lampiran: <a id="file-link" target="_blank">Lihat File Lampiran</a>
+    <div id="modal-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 4000; justify-content: center; align-items: center; padding: 20px;">
+        <div style="background: white; width: 100%; max-width: 320px; border-radius: 15px; text-align: center; padding: 20px;">
+            <i class="fa-solid fa-right-from-bracket" style="font-size: 40px; color: #dc3545; margin-bottom: 15px;"></i>
+            <h3 style="margin: 0;">Konfirmasi Keluar</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Apakah Anda yakin ingin keluar?</p>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeLogoutModal()" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; background: white;">Batal</button>
+                <button onclick="executeLogout()" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #dc3545; color: white; font-weight: bold;">Keluar</button>
+            </div>
         </div>
-        
-        <a href="menu.html" class="btn-back">Tutup Informasi</a>
     </div>
-</div>
 
-<script>
-    // 1. Konfigurasi Firebase
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
+    <div id="popup-inbox" class="popup-inbox">
+        <div class="inbox-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas-lux); padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin:0; color:var(--biru-tua);"><i class="fas fa-envelope-open"></i> Inbox JC</h3>
+                <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px; color:red;"></i>
+            </div>
+            <div id="list-pesan">
+                <p style="font-size:12px; color:#999;">Memuat pesan...</p>
+            </div>
+        </div>
+    </div>
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
+    <div class="top-info-bar">
+        <div id="display-tanggal">Memuat Tanggal...</div>
+        <div id="digital-clock">00:00:00 WIT</div>
+    </div>
 
-    // 2. Fungsi Mengambil Data
-    async function loadInformasiEmail() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const id = urlParams.get('id');
+    <header>
+        <div id="running-text" class="running-content">Memuat data sistem...</div>
+    </header>
 
-        if (!id) {
-            document.getElementById('loader').innerText = "Error: ID Informasi tidak ditemukan.";
-            return;
-        }
+    <div class="container">
+        <h3 style="text-transform: uppercase; color: var(--biru-tua); margin-bottom: 20px;">Portal Komsel JC</h3>
 
-        try {
-            const doc = await db.collection("pengumuman_komsel").doc(id).get();
-            
-            if (doc.exists) {
-                const data = doc.data();
-                
-                document.getElementById('view-judul').innerText = data.judul || "Tanpa Judul";
-                document.getElementById('view-tanggal').innerText = data.timestamp ? 
-                    data.timestamp.toDate().toLocaleString('id-ID', { 
-                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                    }) : '-';
-                
-                // Menggunakan data.detail atau data.isi (sesuaikan field di Firebase Anda)
-                document.getElementById('view-isi').innerText = data.detail || data.isi || "Tidak ada detail konten.";
-                
-                if (data.fileUrl) {
-                    document.getElementById('view-file').style.display = 'block';
-                    document.getElementById('file-link').href = data.fileUrl;
+        <div class="top-section-container">
+            <div id="profileCard" class="profile-card">
+                <div class="email-btn" onclick="bukaInbox()">
+                    <i class="fas fa-envelope email-icon" id="icon-mail"></i>
+                    <span id="email-badge">0</span>
+                </div>
+
+                <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--emas-lux); background: white; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-circle-user" id="default-icon" style="font-size: 70px; color: var(--biru-safir);"></i>
+                    <img id="user-photo" src="" style="display: none; width:100%; height:100%; object-fit:cover;">
+                </div>
+                <h2 id="disp_nama" style="margin: 5px 0 0 0; font-size: 18px;">Memuat...</h2>
+                <div id="admin-badge">ADMIN ACCESS</div>
+                <div id="disp_email" style="font-size: 11px; color: #666;">...</div>
+                <p id="disp_komsel" style="color: var(--hijau-zamrud); font-weight: bold; font-size: 12px;">KOMSEL JC</p>
+            </div>
+
+            <button id="toggleProfile" class="btn-toggle-side">
+                <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+            </button>
+
+            <div id="media-display-area" class="news-slider">
+                <div id="youtube-player-container" style="width: 100%; height: 100%;">
+                    <div id="player"></div> 
+                </div>
+                <div id="newsOverlay" style="position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 10px; text-align: left; color: white; z-index: 2; pointer-events: none;">
+                    <small id="newsLabel" style="color: #ffc107; font-weight: bold;"></small>
+                    <h3 id="newsTitle" style="margin: 0; font-size: 14px;"></h3>
+                </div>
+                <div id="muteBtn" onclick="handleToggleMute()" style="display:none; position: absolute; bottom: 50px; right: 15px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 50%; color: white; cursor: pointer;">
+                    <i class="fa-solid fa-volume-xmark" id="muteIcon"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-grid">
+            <a href="profil.html" class="menu-box"><i class="fa-solid fa-user-shield"></i>Profil Saya</a>
+            <a href="kehadiran.html" class="menu-box"><i class="fa-solid fa-calendar-check"></i>Kehadiran</a>
+            <a href="baca-alkitab.html" class="menu-box"><i class="fa-solid fa-book-bible"></i>Laporan Baca</a>
+            <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>Statistik</a>
+            <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>Peringkat JC</a>
+            <a href="laporan-komsel.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>Laporan Komsel</a>
+            <a href="lacak-domba.html" class="menu-box"><i class="fa-solid fa-map-location-dot"></i>Lacak Domba</a>
+            <a href="capaian-doa.html" class="menu-box"><i class="fa-solid fa-hands-praying"></i>Capaian Doa</a>
+            <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
+            <a href="saran.html" class="menu-box"><i class="fa-solid fa-comment-dots"></i>Saran</a>
+        </div>
+
+        <a href="javascript:void(0)" onclick="confirmLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Keluar</a>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script>
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+            authDomain: "boby-apps-project.firebaseapp.com", 
+            projectId: "boby-apps-project", 
+            storageBucket: "boby-apps-project.appspot.com", 
+            messagingSenderId: "125984859692", 
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let ytPlayer; 
+
+        function handleToggleMute() {
+            if (ytPlayer && typeof ytPlayer.isMuted === 'function') {
+                if (ytPlayer.isMuted()) {
+                    ytPlayer.unMute();
+                    document.getElementById('muteIcon').className = "fa-solid fa-volume-high";
+                } else {
+                    ytPlayer.mute();
+                    document.getElementById('muteIcon').className = "fa-solid fa-volume-xmark";
                 }
-
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('display-area').style.display = 'block';
-            } else {
-                document.getElementById('loader').innerText = "Informasi tidak ditemukan di database.";
             }
-        } catch (error) {
-            console.error("Kesalahan Firebase:", error);
-            document.getElementById('loader').innerText = "Gagal memuat data dari Firebase.";
         }
-    }
 
-    // 3. Jalankan fungsi saat halaman dimuat
-    window.onload = loadInformasiEmail;
-</script>
+        // --- MONITOR INBOX DENGAN VIRTUAL WELCOME MESSAGE ---
+        function monitorEmailInbox(userJC, userEmail) {
+            db.collection("pengumuman_komsel")
+              .orderBy("timestamp", "desc")
+              .onSnapshot(snapshot => {
+                let unreadCount = 0;
+                const listDiv = document.getElementById('list-pesan');
+                if(!listDiv) return;
+                listDiv.innerHTML = "";
 
+                // 1. Tambahkan Pesan Sambutan Default (Virtual)
+                const hasReadWelcome = localStorage.getItem("welcomeRead_" + userEmail);
+                if (!hasReadWelcome) unreadCount++;
+
+                const welcomeItem = `
+                    <div class="msg-item" onclick="bacaWelcome('${userEmail}')" 
+                         style="${!hasReadWelcome ? 'background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;' : 'background:#fff; border-left:4px solid #eee;'}">
+                        <b>Selamat Datang! ${!hasReadWelcome ? '<span style="color:red; font-size:9px;">(BARU)</span>' : ''}</b>
+                        <small>Sistem • ${!hasReadWelcome ? 'Belum Dibaca' : 'Sudah Dibaca'}</small>
+                    </div>`;
+                
+                listDiv.innerHTML += welcomeItem;
+
+                // 2. Muat Pesan dari Firestore
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const target = data.target || data.target_jc; 
+                    
+                    if (target === "Semua JC" || target === userJC || (Array.isArray(target) && target.includes(userJC))) {
+                        const sudahDibaca = data.sudahDibaca || [];
+                        const isUnread = !sudahDibaca.includes(userEmail);
+                        
+                        if (isUnread) unreadCount++;
+
+                        const itemStyle = isUnread 
+                            ? "background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;" 
+                            : "background:#fff; border-left:4px solid #eee;";
+
+                        listDiv.innerHTML += `
+                            <div class="msg-item" onclick="bacaDetailPesan('${doc.id}', '${userEmail}')" style="${itemStyle}">
+                                <b>${data.judul} ${isUnread ? '<span style="color:red; font-size:9px;">(BARU)</span>' : ''}</b>
+                                <small>${data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : '-'} • ${isUnread ? 'Belum Dibaca' : 'Sudah Dibaca'}</small>
+                            </div>`;
+                    }
+                });
+
+                // Update Badge & Getar
+                const icon = document.getElementById('icon-mail');
+                const badge = document.getElementById('email-badge');
+                if (unreadCount > 0) {
+                    icon.classList.add('vibrate');
+                    badge.style.display = 'block';
+                    badge.innerText = unreadCount;
+                } else {
+                    icon.classList.remove('vibrate');
+                    badge.style.display = 'none';
+                }
+            });
+        }
+
+        // Fungsi khusus untuk membaca pesan sambutan pertama kali
+        function bacaWelcome(userEmail) {
+            localStorage.setItem("welcomeRead_" + userEmail, "true");
+            alert("Selamat Datang Di Aplikasi Sistem Informasi Integrasi Komsel JC. Semoga Anda Diberkati Dengan Adanya Aplikasi Ini. Tuhan Yesus Memberkati.");
+            location.reload(); 
+        }
+
+        async function bacaDetailPesan(docId, userEmail) {
+            try {
+                await db.collection("pengumuman_komsel").doc(docId).update({
+                    sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
+                });
+            } catch (e) { console.error("Gagal update status baca:", e); }
+            
+            window.location.href = "detail-pengumuman.html?id=" + docId;
+        }
+
+        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
+        function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
+
+        function syncUser() {
+            const email = localStorage.getItem("userEmail");
+            const isAdmin = localStorage.getItem("adminLoggedIn");
+            const imgElement = document.getElementById('user-photo');
+            const iconElement = document.getElementById('default-icon');
+
+            if (isAdmin === "true") {
+                document.getElementById('disp_nama').innerText = "Administrator";
+                document.getElementById('disp_email').innerText = "System Access Active";
+                document.getElementById('admin-badge').style.display = "inline-block";
+                document.getElementById('disp_komsel').innerText = "ALL KOMSEL";
+                imgElement.style.display = "none";
+                iconElement.style.display = "block";
+                
+                // Admin juga bisa lihat inbox (semua pesan)
+                monitorEmailInbox("Semua JC", "admin@system.com");
+                
+            } else if (email) {
+                document.getElementById('disp_email').innerText = email;
+                db.collection("users").where("email", "==", email).onSnapshot(s => {
+                    if (!s.empty) {
+                        const d = s.docs[0].data();
+                        document.getElementById('disp_nama').innerText = d.nama || "User";
+                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                        
+                        monitorEmailInbox(String(d.komsel), email);
+
+                        if (d.fotoUrl) { 
+                            imgElement.src = d.fotoUrl; 
+                            imgElement.style.display = "block";
+                            iconElement.style.display = "none";
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateMainPlayer(data) {
+            const container = document.getElementById('youtube-player-container'); 
+            const muteBtn = document.getElementById('muteBtn');
+            const tipe = data.tipe ? data.tipe.toLowerCase() : "";
+            muteBtn.style.display = 'none';
+            container.innerHTML = "";
+            
+            if (tipe.includes('video')) {
+                container.innerHTML = `<div id="player"></div>`;
+                initYouTube(extractVideoID(data.url));
+                muteBtn.style.display = 'block';
+            } else if (tipe.includes('audio')) {
+                container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #003366, #0056b3); color:white; border-radius:20px; padding:20px;"><i class="fa-solid fa-music" style="font-size:50px; margin-bottom:15px; color:var(--emas-lux);"></i><audio controls style="width:100%;"><source src="${data.url}" type="audio/mpeg"></audio></div>`;
+            } else {
+                container.innerHTML = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover; border-radius:20px;">`;
+            }
+        }
+
+        async function loadMedia() {
+            try {
+                const snapshot = await db.collection("portal_media").orderBy("timestamp", "desc").limit(1).get();
+                if (!snapshot.empty) {
+                    const data = snapshot.docs[0].data();
+                    document.getElementById('newsTitle').innerText = data.judul || "";
+                    document.getElementById('newsLabel').innerText = "BERITA TERKINI";
+                    updateMainPlayer(data);
+                }
+                document.getElementById('running-text').innerText = "Selamat Datang di Sistem Informasi & Integrasi Komsel JC | Digitalisasi Monitoring Pertumbuhan Iman Realtime | Copyright @imadeboby 2026";
+            } catch (e) { console.error("Error loading media:", e); }
+        }
+
+        function extractVideoID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length == 11) ? match[2] : null;
+        }
+
+        function initYouTube(videoId) {
+            if (typeof YT === 'undefined' || !YT.loaded) {
+                window.onYouTubeIframeAPIReady = () => createPlayer(videoId);
+            } else { createPlayer(videoId); }
+        }
+
+        function createPlayer(videoId) {
+            ytPlayer = new YT.Player('player', {
+                height: '100%', width: '100%', videoId: videoId,
+                playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'loop': 1, 'playlist': videoId },
+                events: { 'onReady': (e) => e.target.playVideo() }
+            });
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', options);
+            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }) + " WIT";
+        }
+
+        function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
+        function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
+        function executeLogout() { localStorage.clear(); window.location.href = "login.html"; }
+
+        window.onload = () => { 
+            updateTime(); 
+            setInterval(updateTime, 1000); 
+            syncUser(); 
+            loadMedia(); 
+
+            const btnToggle = document.getElementById('toggleProfile');
+            const profileCard = document.getElementById('profileCard');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            btnToggle.addEventListener('click', () => {
+                profileCard.classList.toggle('closed');
+                toggleIcon.className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+            });
+        };
+    </script>
 </body>
 </html>
