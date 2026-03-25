@@ -31,9 +31,8 @@
         /* Bar Atas & Header */
         .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
         
-        /* Perbaikan Header & Running Text Putih */
         header { 
-            background: var(--biru-tua); /* Diubah agar kontras dengan teks putih */
+            background: var(--biru-tua); 
             border-bottom: 3px solid var(--hijau-zamrud); 
             padding: 12px 0; 
             overflow: hidden; 
@@ -48,7 +47,7 @@
             animation: marqueeTop 30s linear infinite; 
             font-weight: 900; 
             font-size: 13px; 
-            color: white; /* Diubah menjadi putih */
+            color: white; 
             text-transform: uppercase; 
         }
         @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
@@ -152,16 +151,15 @@
             <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>Statistik</a>
             <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>Peringkat JC</a>
             <a href="laporan-komsel.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>Laporan Komsel</a>
-            <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
-            <a href="lacak-domba.html" class="menu-card">
-    <i class="fa-solid fa-map-location-dot"></i>
-    <p>Lacak Domba</p>
-</a>
+            
+            <a href="lacak-domba.html" class="menu-box">
+                <i class="fa-solid fa-map-location-dot"></i>Lacak Domba
+            </a>
+            <a href="capaian-doa.html" class="menu-box">
+                <i class="fa-solid fa-hands-praying"></i>Capaian Doa
+            </a>
 
-<a href="capaian-doa.html" class="menu-card">
-    <i class="fa-solid fa-hands-praying"></i>
-    <p>Capaian Doa</p>
-</a>
+            <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
             <a href="saran.html" class="menu-box"><i class="fa-solid fa-comment-dots"></i>Saran</a>
         </div>
 
@@ -185,7 +183,6 @@
         const db = firebase.firestore();
         let ytPlayer; 
 
-        // 1. Fungsi Sinkronisasi User (Perbaikan Ikon Admin)
         function syncUser() {
             const email = localStorage.getItem("userEmail");
             const isAdmin = localStorage.getItem("adminLoggedIn");
@@ -197,8 +194,6 @@
                 document.getElementById('disp_email').innerText = "System Access Active";
                 document.getElementById('admin-badge').style.display = "inline-block";
                 document.getElementById('disp_komsel').innerText = "ALL KOMSEL";
-                
-                // Pastikan ikon default admin muncul
                 imgElement.style.display = "none";
                 iconElement.style.display = "block";
             } else if (email) {
@@ -218,7 +213,6 @@
             }
         }
 
-        // 2. Fungsi Utama Pemutar Media
         function updateMainPlayer(data) {
             const container = document.getElementById('youtube-player-container'); 
             const muteBtn = document.getElementById('muteBtn');
@@ -232,45 +226,29 @@
                 initYouTube(extractVideoID(data.url));
                 muteBtn.style.display = 'block';
             } else if (tipe.includes('audio')) {
-                container.innerHTML = `
-                    <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #003366, #0056b3); color:white; border-radius:20px; padding:20px;">
-                        <i class="fa-solid fa-music" style="font-size:50px; margin-bottom:15px; color:var(--emas-lux);"></i>
-                        <audio controls style="width:100%;">
-                            <source src="${data.url}" type="audio/mpeg">
-                        </audio>
-                        <p style="margin-top:10px; font-size:12px;">Konten Audio Pondok Pemulihan</p>
-                    </div>`;
+                container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #003366, #0056b3); color:white; border-radius:20px; padding:20px;"><i class="fa-solid fa-music" style="font-size:50px; margin-bottom:15px; color:var(--emas-lux);"></i><audio controls style="width:100%;"><source src="${data.url}" type="audio/mpeg"></audio><p style="margin-top:10px; font-size:12px;">Konten Audio Pondok Pemulihan</p></div>`;
             } else if (tipe.includes('teks') || tipe.includes('artikel')) {
                 const isi = data.isi_artikel || data.deskripsi || "Tidak ada detail teks.";
-                container.innerHTML = `
-                    <div style="width:100%; height:100%; background:white; color:#333; padding:15px; overflow-y:auto; border-radius:20px; text-align:left; font-size:13px; line-height:1.5; border:1px solid #ddd;">
-                        ${isi}
-                    </div>`;
+                container.innerHTML = `<div style="width:100%; height:100%; background:white; color:#333; padding:15px; overflow-y:auto; border-radius:20px; text-align:left; font-size:13px; line-height:1.5; border:1px solid #ddd;">${isi}</div>`;
             } else {
                 container.innerHTML = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover; border-radius:20px;">`;
             }
         }
 
-        // 3. Fungsi Ambil Data dari Firestore & Custom Running Text
         async function loadMedia() {
-            // Pasang Running Text Kustom Anda
             const myCustomText = "Selamat Datang di Sistem Informasi & Integrasi Komsel JC | Ini adalah Salah Satu Digitalisasi didalam Monitoring Pertumbuhan Iman Secara Realtime | Copyright @imadeboby 2026";
             document.getElementById('running-text').innerText = myCustomText;
-
             try {
                 const snapshot = await db.collection("portal_media").orderBy("timestamp", "desc").limit(1).get();
                 if (!snapshot.empty) {
                     const data = snapshot.docs[0].data();
                     document.getElementById('newsTitle').innerText = data.judul || "";
                     document.getElementById('newsLabel').innerText = "BERITA TERKINI";
-                    // Jika ada judul berita, bisa digabung ke running text atau biarkan teks kustom saja
-                    // document.getElementById('running-text').innerText = data.judul + " | " + myCustomText;
                     updateMainPlayer(data);
                 }
             } catch (e) { console.error("Error loading media:", e); }
         }
 
-        // 4. Utility Functions (YouTube & Time)
         function extractVideoID(url) {
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
             const match = url.match(regExp);
@@ -312,14 +290,12 @@
         function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
         function executeLogout() { localStorage.clear(); window.location.href = "login.html"; }
 
-        // 5. Window Load Initialization
         window.onload = () => { 
             updateTime(); 
             setInterval(updateTime, 1000); 
             syncUser(); 
             loadMedia(); 
 
-            // Logic Toggle Kartu Profil
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
             const toggleIcon = document.getElementById('toggleIcon');
