@@ -7,7 +7,6 @@
     <title>Menu Utama - Pondok Pemulihan Papua</title>
     
     <script>
-        // Proteksi Halaman: Cek Login
         const isMember = localStorage.getItem("userEmail");
         const isAdmin = localStorage.getItem("adminLoggedIn");
         if (!isMember && isAdmin !== "true") {
@@ -27,8 +26,6 @@
         }
 
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--putih-bg); margin: 0; padding: 0; color: #333; overflow-x: hidden; }
-        
-        /* Bar Atas & Header */
         .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
         
         header { 
@@ -52,10 +49,7 @@
         }
         @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
 
-        /* Container Utama */
         .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
-
-        /* Area Profil & Media */
         .top-section-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto 30px auto; height: 220px; overflow: hidden; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
         
         .profile-card { 
@@ -68,7 +62,6 @@
         }
         .profile-card.closed { transform: translateX(-100%); }
 
-        /* FITUR EMAIL BERGETAR */
         .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
         .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
         #email-badge {
@@ -90,9 +83,9 @@
             background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 80vh; overflow-y: auto;
         }
         .msg-item {
-            padding: 12px; border-bottom: 1px solid #eee; text-align: left; cursor: pointer;
+            padding: 12px; border-bottom: 1px solid #eee; text-align: left; cursor: pointer; transition: 0.2s;
         }
-        .msg-item:hover { background: #f9f9f9; }
+        .msg-item:hover { background: #f1f1f1; }
         .msg-item b { display: block; color: var(--biru-tua); font-size: 14px; }
         .msg-item small { color: #888; font-size: 11px; }
 
@@ -105,7 +98,6 @@
         .profile-card.closed ~ .btn-toggle-side { left: 0; }
         .news-slider { width: 100%; height: 100%; background: var(--biru-tua); position: relative; z-index: 1; }
 
-        /* Grid Menu */
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
         .menu-box:active { transform: scale(0.95); }
@@ -209,7 +201,6 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // Konfigurasi Firebase
         const firebaseConfig = { 
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
             authDomain: "boby-apps-project.firebaseapp.com", 
@@ -221,8 +212,6 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         let ytPlayer; 
-
-        // --- FUNGSI GLOBAL SCRIPT BARU ---
 
         function handleToggleMute() {
             if (ytPlayer && typeof ytPlayer.isMuted === 'function') {
@@ -236,6 +225,7 @@
             }
         }
 
+        // --- MONITOR INBOX DENGAN PENANDA BACA ---
         function monitorEmailInbox(userJC, userEmail) {
             db.collection("pengumuman_komsel")
               .orderBy("timestamp", "desc")
@@ -257,13 +247,18 @@
                     if (target === "Semua JC" || target === userJC || (Array.isArray(target) && target.includes(userJC))) {
                         const sudahDibaca = data.sudahDibaca || [];
                         const isUnread = !sudahDibaca.includes(userEmail);
+                        
                         if (isUnread) unreadCount++;
 
+                        // STYLE DINAMIS: Jika belum dibaca kasih background kuning & border emas
+                        const itemStyle = isUnread 
+                            ? "background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;" 
+                            : "background:#fff; border-left:4px solid #eee;";
+
                         listDiv.innerHTML += `
-                            <div class="msg-item" onclick="bacaDetailPesan('${doc.id}', '${userEmail}')" 
-                                 style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : ''}">
-                                <b>${data.judul}</b>
-                                <small>${data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : '-'} ${isUnread ? '(BARU)' : ''}</small>
+                            <div class="msg-item" onclick="bacaDetailPesan('${doc.id}', '${userEmail}')" style="${itemStyle}">
+                                <b>${data.judul} ${isUnread ? '<span style="color:red; font-size:9px;">(BARU)</span>' : ''}</b>
+                                <small>${data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : '-'} • ${isUnread ? 'Belum Dibaca' : 'Sudah Dibaca'}</small>
                             </div>`;
                     }
                 });
@@ -281,12 +276,14 @@
             });
         }
 
-        // --- FUNGSI PENDUKUNG ---
-
         async function bacaDetailPesan(docId, userEmail) {
-            await db.collection("pengumuman_komsel").doc(docId).update({
-                sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
-            });
+            // Update status ke Firestore sebelum pindah halaman
+            try {
+                await db.collection("pengumuman_komsel").doc(docId).update({
+                    sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
+                });
+            } catch (e) { console.error("Gagal update status baca:", e); }
+            
             window.location.href = "detail-pengumuman.html?id=" + docId;
         }
 
@@ -314,7 +311,6 @@
                         document.getElementById('disp_nama').innerText = d.nama || "User";
                         document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                         
-                        // Aktifkan Inbox Monitor dengan data user
                         monitorEmailInbox(String(d.komsel), email);
 
                         if (d.fotoUrl) { 
