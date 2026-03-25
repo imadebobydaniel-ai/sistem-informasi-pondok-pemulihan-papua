@@ -214,7 +214,6 @@
         const db = firebase.firestore();
         let ytPlayer; 
 
-        // Notifikasi Izin
         if (Notification.permission !== 'granted') {
             Notification.requestPermission();
         }
@@ -231,7 +230,6 @@
             }
         }
 
-        // --- MONITOR INBOX DENGAN NOTIFIKASI SUARA & BANNER ---
         function monitorEmailInbox(userJC, userEmail) {
             db.collection("pengumuman_komsel")
               .orderBy("timestamp", "desc")
@@ -241,7 +239,6 @@
                 if(!listDiv) return;
                 listDiv.innerHTML = "";
 
-                // Pesan Sambutan
                 const hasReadWelcome = localStorage.getItem("welcomeRead_" + userEmail);
                 if (!hasReadWelcome) unreadCount++;
 
@@ -251,22 +248,15 @@
                         <b>Selamat Datang! ${!hasReadWelcome ? '<span style="color:red; font-size:9px;">(BARU)</span>' : ''}</b>
                         <small>Sistem • ${!hasReadWelcome ? 'Belum Dibaca' : 'Sudah Dibaca'}</small>
                     </div>`;
-                
                 listDiv.innerHTML += welcomeItem;
 
-                // Logika Deteksi Perubahan Data Baru untuk Notif Banner & Suara
                 snapshot.docChanges().forEach(change => {
                     if (change.type === "added") {
                         const data = change.doc.data();
                         const target = data.target || data.target_jc;
-                        
-                        // Cek apakah user adalah target pengumuman
                         if (target === "Semua JC" || target === userJC) {
-                             // Jalankan Suara
                              const sound = document.getElementById('notifSound');
                              if(sound) sound.play().catch(e => console.log("Audio play blocked"));
-
-                             // Jalankan Banner Notifikasi
                              if (Notification.permission === 'granted') {
                                 new Notification("Info JC Baru!", {
                                     body: data.judul,
@@ -277,20 +267,14 @@
                     }
                 });
 
-                // Muat Pesan dari Firestore ke UI
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const target = data.target || data.target_jc; 
-                    
                     if (target === "Semua JC" || target === userJC || (Array.isArray(target) && target.includes(userJC))) {
                         const sudahDibaca = data.sudahDibaca || [];
                         const isUnread = !sudahDibaca.includes(userEmail);
-                        
                         if (isUnread) unreadCount++;
-
-                        const itemStyle = isUnread 
-                            ? "background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;" 
-                            : "background:#fff; border-left:4px solid #eee;";
+                        const itemStyle = isUnread ? "background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;" : "background:#fff; border-left:4px solid #eee;";
 
                         listDiv.innerHTML += `
                             <div class="msg-item" onclick="bacaDetailPesan('${doc.id}', '${userEmail}')" style="${itemStyle}">
@@ -300,7 +284,6 @@
                     }
                 });
 
-                // Update Badge & Getar Icon Mail
                 const icon = document.getElementById('icon-mail');
                 const badge = document.getElementById('email-badge');
                 if (unreadCount > 0) {
@@ -316,7 +299,7 @@
 
         function bacaWelcome(userEmail) {
             localStorage.setItem("welcomeRead_" + userEmail, "true");
-            alert("Selamat Datang Di Aplikasi Sistem Informasi Integrasi Komsel JC. Semoga Anda Diberkati Dengan Adanya Aplikasi Ini. Tuhan Yesus Memberkati.");
+            alert("Selamat Datang Di Aplikasi Sistem Informasi Integrasi Komsel JC. Semoga Anda Diberkati.");
             location.reload(); 
         }
 
