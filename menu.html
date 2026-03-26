@@ -41,7 +41,6 @@
         .profile-card.closed { transform: translateX(-100%); }
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; }
 
-        /* Media Display Styles */
         #media-display-area { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
         #other-media { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; color: white; text-align: center; }
         #other-media img, #other-media video { width: 100%; height: 100%; object-fit: contain; }
@@ -159,6 +158,13 @@
         const db = firebase.firestore();
         let ytPlayer; 
 
+        // --- UTILITY SAKTI ---
+        function extractYouTubeID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
         // --- MULTI-MEDIA PLAYER LOGIC ---
         function onYouTubeIframeAPIReady() {
             db.collection("portal_media").limit(1).onSnapshot(snapshot => {
@@ -167,10 +173,9 @@
 
                 if (!snapshot.empty) {
                     const data = snapshot.docs[0].data();
-                    const type = data.type || "youtube"; // Ambil tipe dari Firestore
+                    const type = data.type || "youtube";
                     const content = data.url || data.linkVideo || data.content || "";
 
-                    // Reset Visibility
                     otherMedia.style.display = 'none';
                     ytContainer.style.display = 'none';
                     otherMedia.innerHTML = '';
@@ -199,25 +204,34 @@
         }
 
         function playYouTube(rawUrl) {
-            let videoId = "";
-            if (rawUrl.includes("v=")) videoId = rawUrl.split("v=")[1].split("&")[0];
-            else if (rawUrl.includes("youtu.be/")) videoId = rawUrl.split("youtu.be/")[1].split("?")[0];
-            else if (rawUrl.length === 11) videoId = rawUrl;
+            const videoId = extractYouTubeID(rawUrl);
 
             if (videoId) {
+                console.log("Memutar Video ID: " + videoId);
                 if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
                     ytPlayer.loadVideoById(videoId);
                 } else {
                     ytPlayer = new YT.Player('player', {
                         videoId: videoId,
-                        playerVars: { 'autoplay': 1, 'mute': 1, 'loop': 1, 'playlist': videoId, 'controls': 0, 'rel': 0, 'modestbranding': 1 },
+                        playerVars: { 
+                            'autoplay': 1, 
+                            'mute': 1, 
+                            'loop': 1, 
+                            'playlist': videoId, 
+                            'controls': 0, 
+                            'rel': 0, 
+                            'modestbranding': 1 
+                        },
                         events: { 'onReady': (e) => e.target.playVideo() }
                     });
                 }
+            } else {
+                console.error("ID Video tidak ditemukan!");
+                document.getElementById('player').innerHTML = "<div style='color:white;text-align:center;padding:20px;'>Link YouTube tidak valid</div>";
             }
         }
 
-        // --- FUNGSI INBOX & USER SYNC (TETAP SAMA) ---
+        // --- FUNGSI INBOX & USER SYNC ---
         function monitorEmailInbox(userJC, userEmail) {
             db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 let unreadCount = 0;
@@ -235,8 +249,10 @@
                     }
                 });
                 const badge = document.getElementById('email-badge');
-                if (unreadCount > 0) { badge.style.display = 'block'; badge.innerText = unreadCount; } 
-                else { badge.style.display = 'none'; }
+                if (badge) {
+                    if (unreadCount > 0) { badge.style.display = 'block'; badge.innerText = unreadCount; } 
+                    else { badge.style.display = 'none'; }
+                }
             });
         }
 
