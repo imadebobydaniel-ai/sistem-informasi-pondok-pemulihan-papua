@@ -3,232 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin - Pondok Pemulihan Papua</title>
+    <title>Master Admin - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { 
             --primary: #003366; --accent: #007bff; --dark: #333; 
-            --light: #f4f7f6; --success: #28a745; --emas: #D4AF37; --danger: #dc3545; --warning: #ffc107;
+            --light: #f4f7f6; --success: #28a745; --emas: #D4AF37; 
+            --danger: #dc3545; --purple: #6f42c1; --orange: #fd7e14;
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); margin: 0; padding: 10px; color: var(--dark); }
-        .admin-container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 15px; }
+        .admin-container { max-width: 1500px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         
-        /* Header & Nav */
-        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas); padding-bottom: 15px; margin-bottom: 20px; }
-        .header-section h2 { margin: 0; color: var(--primary); font-size: 1.5rem; }
-        .btn-logout { background: var(--danger); color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; transition: 0.3s; }
+        /* Header */
+        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--emas); padding-bottom: 15px; margin-bottom: 25px; }
+        .header-section h2 { margin: 0; color: var(--primary); font-size: 1.8rem; letter-spacing: 1px; }
 
-        /* Utilitas */
-        .search-box { position: relative; margin-bottom: 15px; }
-        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; outline: none; box-sizing: border-box; }
-        .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
+        /* --- STATISTIK GLOBAL (NEW) --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { padding: 20px; border-radius: 15px; color: white; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 3rem; opacity: 0.2; }
+        .stat-card h3 { margin: 0; font-size: 12px; text-transform: uppercase; }
+        .stat-card p { margin: 10px 0 0; font-size: 24px; font-weight: bold; }
+        .bg-gradient-blue { background: linear-gradient(135deg, #007bff, #003366); }
+        .bg-gradient-green { background: linear-gradient(135deg, #28a745, #1e7e34); }
+        .bg-gradient-purple { background: linear-gradient(135deg, #6f42c1, #4b2394); }
+        .bg-gradient-orange { background: linear-gradient(135deg, #fd7e14, #d35400); }
 
-        /* Tabel Responsif */
-        .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid #eee; margin-bottom: 30px; background: #fff; }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 12px; position: sticky; top: 0; }
-        table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 12px; }
-        .freeze-col { position: sticky; left: 0; z-index: 2; background: white !important; border-right: 2px solid #eee; font-weight: bold; }
+        /* Main Grid */
+        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .admin-card { background: white; padding: 20px; border-radius: 15px; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 20px; }
+        .admin-card h3 { color: var(--primary); margin-top: 0; border-bottom: 2px solid #f8f9fa; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
 
-        /* Grid System */
-        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 20px; }
-        .admin-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .admin-card h3 { color: var(--primary); margin: 0 0 15px; font-size: 16px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        /* --- ABSENSI GLOBAL (NEW) --- */
+        .absensi-list { max-height: 300px; overflow-y: auto; }
+        .absensi-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #f0f0f0; align-items: center; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; color: white; }
+        .pill-hadir { background: var(--success); }
+        .pill-ijin { background: var(--warning); color: #333; }
 
-        /* Form Elements */
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #666; text-transform: uppercase; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; box-sizing: border-box; font-family: inherit; }
-        
-        .btn-action { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-primary-blue { background: var(--accent); color: white; }
-        .btn-success-green { background: var(--success); color: white; }
-        .btn-warning-orange { background: #e67e22; color: white; }
+        /* --- DOA GLOBAL (NEW) --- */
+        .doa-container { background: #fff5f5; border-radius: 12px; padding: 15px; border-left: 5px solid var(--danger); }
+        .doa-scroll { max-height: 250px; overflow-y: auto; margin-top: 10px; }
+        .doa-item { background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .doa-item b { color: var(--danger); font-size: 13px; }
+        .doa-item p { margin: 5px 0; font-size: 12px; font-style: italic; }
 
-        /* Playlist Styles */
-        .playlist-box { max-height: 400px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 8px; padding: 5px; }
-        .media-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f9f9f9; gap: 12px; }
-        .media-item:last-child { border: none; }
-        .media-info { flex: 1; }
-        .media-info h4 { margin: 0; font-size: 13px; color: var(--dark); }
-        .media-info span { font-size: 10px; color: white; background: var(--accent); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
-        
-        .badge { padding: 3px 7px; border-radius: 4px; font-size: 10px; color: white; font-weight: bold; }
-        .bg-penting { background: var(--danger); }
-        .bg-kegiatan { background: var(--accent); }
-        .bg-umum { background: #6c757d; }
+        /* Form styling */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; }
 
-        /* Modal */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); overflow-y: auto; }
-        .modal-content { background: white; margin: 30px auto; padding: 25px; border-radius: 15px; width: 90%; max-width: 550px; position: relative; }
-        .close-modal { position: absolute; right: 20px; top: 15px; font-size: 24px; cursor: pointer; color: #aaa; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        table th { background: #f8f9fa; padding: 12px; text-align: left; color: var(--primary); border-bottom: 2px solid #eee; }
+        table td { padding: 12px; border-bottom: 1px solid #eee; }
 
-        @media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1000px) { .main-layout { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
 <div class="admin-container">
     <div class="header-section">
-        <div>
-            <h2>Dashboard Administrator</h2>
-            <p style="font-size: 11px; color: #666; margin: 3px 0 0;">Pondok Pemulihan Papua - Sistem Manajemen Terpadu</p>
-        </div>
-        <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Keluar</a>
-    </div>
-
-    <div class="admin-card" style="margin-bottom: 25px;">
-        <h3><i class="fas fa-database"></i> Database Anggota Jemaat</h3>
-        <div class="search-box">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari nama, JC, atau email anggota...">
-            <i class="fas fa-search"></i>
-        </div>
-        <div class="table-responsive">
-            <table id="adminTable">
-                <thead>
-                    <tr>
-                        <th class="freeze-col">Nama Anggota</th>
-                        <th>WhatsApp</th>
-                        <th>Email</th>
-                        <th>JC</th>
-                        <th>Jabatan</th>
-                        <th>Alamat</th>
-                        <th style="text-align:center">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="memberData">
-                    <tr><td colspan="7" style="text-align:center; padding:20px;">Memuat data jemaat...</td></tr>
-                </tbody>
-            </table>
+        <h2><i class="fas fa-shield-alt"></i> Portal Administrator</h2>
+        <div style="display:flex; gap:10px;">
+            <button onclick="window.location.reload()" class="btn-primary" style="background:#6c757d; width:auto; padding:8px 15px;"><i class="fas fa-sync"></i> Refresh</button>
+            <a href="login.html" class="btn-primary" style="background:var(--danger); width:auto; text-decoration:none; padding:8px 15px;">Keluar</a>
         </div>
     </div>
 
-    <div class="admin-grid">
-        <div class="admin-card">
-            <h3><i class="fas fa-bullhorn" style="color:var(--accent)"></i> Broadcast Informasi</h3>
-            <form id="formInfo">
-                <input type="hidden" id="info_id">
-                <div class="form-group">
-                    <label>Judul Pengumuman</label>
-                    <input type="text" id="info_judul" placeholder="Contoh: Ibadah Padang" required>
-                </div>
-                <div class="form-group">
-                    <label>Kategori & Target</label>
-                    <div style="display:flex; gap:10px;">
-                        <select id="info_kategori" style="flex:1;">
-                            <option value="Penting">Penting</option>
-                            <option value="Kegiatan">Kegiatan</option>
-                            <option value="Umum">Umum</option>
-                        </select>
-                        <select id="info_target" style="flex:1;">
-                            <option value="Semua JC">Semua JC</option>
-                            <option value="JC1">JC 1</option><option value="JC2">JC 2</option>
-                            <option value="JC3">JC 3</option><option value="JC4">JC 4</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Isi Detail Informasi</label>
-                    <textarea id="info_detail" rows="4" placeholder="Tulis rincian kegiatan..." required></textarea>
-                </div>
-                <button type="submit" id="btnSubmitInfo" class="btn-action btn-primary-blue">
-                    <i class="fas fa-paper-plane"></i> PUBLIKASIKAN SEKARANG
-                </button>
-            </form>
+    <div class="stats-grid">
+        <div class="stat-card bg-gradient-blue">
+            <h3>Total Anggota</h3>
+            <p id="stat_total_anggota">0</p>
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-card bg-gradient-green">
+            <h3>Kehadiran Hari Ini</h3>
+            <p id="stat_hadir">0</p>
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        <div class="stat-card bg-gradient-purple">
+            <h3>Pokok Doa Aktif</h3>
+            <p id="stat_doa">0</p>
+            <i class="fas fa-hands-praying"></i>
+        </div>
+        <div class="stat-card bg-gradient-orange">
+            <h3>Total JC (Komsel)</h3>
+            <p id="stat_jc">0</p>
+            <i class="fas fa-church"></i>
+        </div>
+    </div>
 
-            <div style="margin-top: 20px;">
-                <label style="font-size: 11px; font-weight: bold; color: #888;">LOG PENGIRIMAN TERAKHIR</label>
-                <div id="logBroadcast" style="font-size: 12px; margin-top: 10px;"></div>
+    <div class="main-layout">
+        <div class="left-col">
+            <div class="admin-card">
+                <h3><i class="fas fa-fingerprint" style="color:var(--success)"></i> Absensi Global (Real-Time)</h3>
+                <div class="absensi-list" id="absensiData">
+                    <p style="text-align:center; color:#999; padding:20px;">Memuat data absensi...</p>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h3><i class="fas fa-database"></i> Database Anggota</h3>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nama</th>
+                                <th>JC</th>
+                                <th>Jabatan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memberData"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <div class="admin-card">
-            <h3><i class="fas fa-tv" style="color:var(--warning)"></i> Konten Media Display</h3>
-            
-            <div style="background: #fff9e6; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ffeeba;">
-                <label style="font-size: 10px; font-weight: bold; color: #856404;">TEKS BERJALAN (MONITOR)</label>
-                <div style="display:flex; gap:5px; margin-top:5px;">
-                    <input type="text" id="running_text_input" placeholder="Teks promo/welcome..." style="flex:1; padding:8px; border-radius:5px; border:1px solid #ddd; font-size:12px;">
-                    <button onclick="saveRunningText()" class="btn-action btn-warning-orange" style="width:auto; padding:0 15px;"><i class="fas fa-save"></i></button>
-                </div>
-            </div>
-
-            <form id="formAddMedia">
-                <div class="form-group">
-                    <label>Judul Media</label>
-                    <input type="text" id="m_judul" placeholder="Judul yang tampil di monitor" required>
-                </div>
-                <div class="form-group">
-                    <div style="display:flex; gap:10px;">
-                        <div style="flex:1;">
-                            <label>Tipe</label>
-                            <select id="m_tipe">
-                                <option value="video_youtube">YouTube</option>
-                                <option value="gambar">Gambar/Poster</option>
-                                <option value="teks">Artikel Teks</option>
-                            </select>
+        <div class="right-col">
+            <div class="admin-card">
+                <h3><i class="fas fa-heart" style="color:var(--danger)"></i> Doa Global</h3>
+                <div class="doa-container">
+                    <form id="formDoa">
+                        <div class="form-group">
+                            <label>Tambah Pokok Doa Baru</label>
+                            <textarea id="doa_isi" rows="2" placeholder="Tulis permohonan doa..." required></textarea>
                         </div>
-                        <div style="flex:1;">
-                            <label>Durasi (Menit)</label>
-                            <input type="number" id="m_durasi" value="10">
+                        <button type="submit" class="btn-primary" style="background:var(--danger)">KIRIM DOA</button>
+                    </form>
+                    <div class="doa-scroll" id="doaData">
                         </div>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h3><i class="fas fa-play-circle" style="color:var(--orange)"></i> Konten Monitor</h3>
+                <form id="formAddMedia">
+                    <div class="form-group">
+                        <label>Judul Media</label>
+                        <input type="text" id="m_judul" required>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Link URL / Isi Pesan</label>
-                    <textarea id="m_isi" rows="3" placeholder="URL link atau konten artikel..." required></textarea>
-                </div>
-                <button type="submit" class="btn-action btn-warning-orange">
-                    <i class="fas fa-plus-circle"></i> TAMBAH KE PLAYLIST
-                </button>
-            </form>
-        </div>
-
-        <div class="admin-card">
-            <h3><i class="fas fa-list-ol"></i> Urutan Putar Monitor</h3>
-            <div class="playlist-box" id="playlistData">
-                <p style="text-align:center; padding:20px; color:#999;">Memuat playlist...</p>
-            </div>
-            
-            <div style="margin-top: 15px; background: #f8f9fa; padding: 10px; border-radius: 8px;">
-                <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 8px;">MODE PUTAR:</label>
-                <select id="play_mode_select" onchange="updatePlayMode()" style="width: 100%; padding: 8px; border-radius: 5px;">
-                    <option value="berurutan">Berurutan (Normal)</option>
-                    <option value="acak">Acak (Shuffle)</option>
-                    <option value="loop">Loop 1 Konten</option>
-                </select>
+                    <div class="form-group">
+                        <label>URL / Link</label>
+                        <input type="text" id="m_isi" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="background:var(--orange)">TAMBAH KE MONITOR</button>
+                </form>
             </div>
         </div>
-    </div>
-</div>
-
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <span class="close-modal" onclick="closeEditModal()">&times;</span>
-        <h3 style="margin-top:0; color:var(--primary);"><i class="fas fa-user-edit"></i> Perbarui Profil Anggota</h3>
-        <form id="formUpdateUser">
-            <input type="hidden" id="edit_id">
-            <div class="form-group"><label>Nama Lengkap</label><input type="text" id="edit_nama" required></div>
-            <div class="form-group"><label>Nomor WhatsApp</label><input type="text" id="edit_wa" required></div>
-            <div class="form-group"><label>Email (Username)</label><input type="email" id="edit_email" required></div>
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex:1;">
-                    <label>JC</label>
-                    <input type="number" id="edit_komsel">
-                </div>
-                <div class="form-group" style="flex:2;">
-                    <label>Jabatan</label>
-                    <select id="edit_jabatan">
-                        <option value="Anggota">Anggota</option>
-                        <option value="Ketua Komsel">Ketua Komsel</option>
-                        <option value="Pengurus">Pengurus</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group"><label>Alamat</label><textarea id="edit_alamat" rows="2"></textarea></div>
-            <button type="submit" class="btn-action btn-success-green">SIMPAN PERUBAHAN</button>
-        </form>
     </div>
 </div>
 
@@ -248,211 +173,101 @@
     const db = firebase.firestore();
 
     window.onload = function() {
+        loadStats();
         loadUsers();
-        loadPlaylist();
-        loadBroadcastLog();
-        loadRunningText();
-        loadConfig();
+        loadAbsensi();
+        loadDoa();
     };
 
-    // --- MANAJEMEN USER ---
+    // --- FITUR STATISTIK GLOBAL ---
+    function loadStats() {
+        db.collection("users").onSnapshot(snap => {
+            document.getElementById("stat_total_anggota").innerText = snap.size;
+            // Contoh logic sederhana untuk jumlah JC unik
+            const jcSet = new Set();
+            snap.forEach(doc => jcSet.add(doc.data().komsel));
+            document.getElementById("stat_jc").innerText = jcSet.size;
+        });
+        db.collection("absensi").where("tanggal", "==", new Date().toISOString().split('T')[0]).onSnapshot(snap => {
+            document.getElementById("stat_hadir").innerText = snap.size;
+        });
+        db.collection("doa_global").onSnapshot(snap => {
+            document.getElementById("stat_doa").innerText = snap.size;
+        });
+    }
+
+    // --- FITUR ABSENSI GLOBAL ---
+    function loadAbsensi() {
+        db.collection("absensi").orderBy("waktu", "desc").limit(10).onSnapshot(snap => {
+            const container = document.getElementById("absensiData");
+            container.innerHTML = "";
+            if(snap.empty) container.innerHTML = "<p style='text-align:center; font-size:12px; color:#999;'>Belum ada absensi hari ini</p>";
+            snap.forEach(doc => {
+                const a = doc.data();
+                container.innerHTML += `
+                    <div class="absensi-item">
+                        <div>
+                            <strong style="font-size:13px;">${a.nama}</strong><br>
+                            <small style="color:#888;">JC ${a.komsel} • ${a.waktu}</small>
+                        </div>
+                        <span class="status-pill pill-hadir">HADIR</span>
+                    </div>`;
+            });
+        });
+    }
+
+    // --- FITUR DOA GLOBAL ---
+    document.getElementById("formDoa").onsubmit = async (e) => {
+        e.preventDefault();
+        const text = document.getElementById("doa_isi").value;
+        await db.collection("doa_global").add({
+            pengirim: "Admin",
+            isi: text,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById("formDoa").reset();
+    };
+
+    function loadDoa() {
+        db.collection("doa_global").orderBy("timestamp", "desc").onSnapshot(snap => {
+            const container = document.getElementById("doaData");
+            container.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `
+                    <div class="doa-item">
+                        <b><i class="fas fa-pray"></i> ${d.pengirim}</b>
+                        <p>"${d.isi}"</p>
+                        <small style="font-size:9px; color:#aaa;">${d.timestamp?.toDate().toLocaleString() || 'Baru saja'}</small>
+                        <i class="fas fa-trash" style="float:right; color:#ddd; cursor:pointer;" onclick="deleteDoa('${doc.id}')"></i>
+                    </div>`;
+            });
+        });
+    }
+
+    function deleteDoa(id) { if(confirm("Hapus pokok doa ini?")) db.collection("doa_global").doc(id).delete(); }
+
+    // --- MANAJEMEN USER (EXISTING) ---
     function loadUsers() {
-        db.collection("users").onSnapshot((snapshot) => {
+        db.collection("users").limit(10).onSnapshot((snapshot) => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 tableBody.innerHTML += `
                     <tr>
-                        <td class="freeze-col">${data.nama || '-'}</td>
-                        <td>${data.whatsapp || '-'}</td>
-                        <td>${data.email || '-'}</td>
+                        <td><b>${data.nama || '-'}</b></td>
                         <td>JC ${data.komsel || '-'}</td>
-                        <td>${data.jabatan || 'Anggota'}</td>
-                        <td>${data.alamat || '-'}</td>
-                        <td style="text-align:center">
-                            <i class="fas fa-edit" style="color:var(--accent);cursor:pointer" onclick="openEditModal('${doc.id}')"></i>
-                            <i class="fas fa-trash" style="color:var(--danger);cursor:pointer;margin-left:12px" onclick="deleteMember('${doc.id}')"></i>
+                        <td>${data.jabatan || '-'}</td>
+                        <td>
+                            <i class="fas fa-trash" style="color:red;cursor:pointer" onclick="deleteMember('${doc.id}')"></i>
                         </td>
                     </tr>`;
             });
         });
     }
 
-    async function openEditModal(id) {
-        const doc = await db.collection("users").doc(id).get();
-        const data = doc.data();
-        document.getElementById("edit_id").value = id;
-        document.getElementById("edit_nama").value = data.nama || "";
-        document.getElementById("edit_wa").value = data.whatsapp || "";
-        document.getElementById("edit_email").value = data.email || "";
-        document.getElementById("edit_komsel").value = data.komsel || "";
-        document.getElementById("edit_jabatan").value = data.jabatan || "Anggota";
-        document.getElementById("edit_alamat").value = data.alamat || "";
-        document.getElementById("editModal").style.display = "block";
-    }
-
-    function closeEditModal() { document.getElementById("editModal").style.display = "none"; }
-
-    document.getElementById("formUpdateUser").onsubmit = async (e) => {
-        e.preventDefault();
-        const id = document.getElementById("edit_id").value;
-        await db.collection("users").doc(id).update({
-            nama: document.getElementById("edit_nama").value,
-            whatsapp: document.getElementById("edit_wa").value,
-            email: document.getElementById("edit_email").value,
-            komsel: document.getElementById("edit_komsel").value,
-            jabatan: document.getElementById("edit_jabatan").value,
-            alamat: document.getElementById("edit_alamat").value
-        });
-        alert("Profil berhasil diperbarui!");
-        closeEditModal();
-    };
-
-    // --- MANAJEMEN BROADCAST (INFORMASI) ---
-    document.getElementById("formInfo").onsubmit = async (e) => {
-        e.preventDefault();
-        const id = document.getElementById("info_id").value;
-        const data = {
-            judul: document.getElementById("info_judul").value,
-            kategori: document.getElementById("info_kategori").value,
-            target: document.getElementById("info_target").value,
-            detail: document.getElementById("info_detail").value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        if(id) {
-            await db.collection("pengumuman_komsel").doc(id).update(data);
-            alert("Informasi diperbarui!");
-        } else {
-            await db.collection("pengumuman_komsel").add(data);
-            alert("Informasi dipublikasikan!");
-        }
-        document.getElementById("formInfo").reset();
-        document.getElementById("info_id").value = "";
-    };
-
-    function loadBroadcastLog() {
-        db.collection("pengumuman_komsel").orderBy("timestamp", "desc").limit(5).onSnapshot(snap => {
-            const logDiv = document.getElementById("logBroadcast");
-            logDiv.innerHTML = "";
-            snap.forEach(doc => {
-                const d = doc.data();
-                const badge = d.kategori === 'Penting' ? 'bg-penting' : (d.kategori === 'Kegiatan' ? 'bg-kegiatan' : 'bg-umum');
-                logDiv.innerHTML += `
-                    <div style="padding:8px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span class="badge ${badge}">${d.kategori}</span>
-                            <strong>${d.judul}</strong><br>
-                            <small style="color:#999">Target: ${d.target}</small>
-                        </div>
-                        <div>
-                            <i class="fas fa-edit" style="cursor:pointer; color:blue;" onclick="editInfo('${doc.id}')"></i>
-                            <i class="fas fa-trash" style="cursor:pointer; color:red; margin-left:10px" onclick="deleteInfo('${doc.id}')"></i>
-                        </div>
-                    </div>`;
-            });
-        });
-    }
-
-    // --- MANAJEMEN PORTAL MEDIA ---
-    document.getElementById("formAddMedia").onsubmit = async (e) => {
-        e.preventDefault();
-        const snapshot = await db.collection("portal_media").get();
-        const data = {
-            judul: document.getElementById("m_judul").value,
-            tipe: document.getElementById("m_tipe").value,
-            url: document.getElementById("m_isi").value,
-            durasi: parseInt(document.getElementById("m_durasi").value),
-            urutan: snapshot.size + 1,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        await db.collection("portal_media").add(data);
-        document.getElementById("formAddMedia").reset();
-    };
-
-    function loadPlaylist() {
-        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot((snapshot) => {
-            const container = document.getElementById("playlistData");
-            container.innerHTML = "";
-            snapshot.forEach((doc) => {
-                const m = doc.data();
-                container.innerHTML += `
-                    <div class="media-item">
-                        <div class="media-info">
-                            <span>${m.tipe}</span>
-                            <h4>${m.judul}</h4>
-                            <small style="font-size:10px; color:#999;">${m.durasi} Menit</small>
-                        </div>
-                        <div style="display:flex; gap:5px;">
-                            <button onclick="changeOrder('${doc.id}', -1)" style="border:none; background:#eee; padding:5px; border-radius:4px;"><i class="fas fa-arrow-up"></i></button>
-                            <button onclick="changeOrder('${doc.id}', 1)" style="border:none; background:#eee; padding:5px; border-radius:4px;"><i class="fas fa-arrow-down"></i></button>
-                            <button onclick="deleteMedia('${doc.id}')" style="border:none; background:var(--danger); color:white; padding:5px; border-radius:4px;"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>`;
-            });
-        });
-    }
-
-    async function saveRunningText() {
-        const text = document.getElementById("running_text_input").value;
-        await db.collection("config").doc("running_text").set({ message: text, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        alert("Running text diperbarui!");
-    }
-
-    async function loadRunningText() {
-        const doc = await db.collection("config").doc("running_text").get();
-        if(doc.exists) document.getElementById("running_text_input").value = doc.data().message;
-    }
-
-    async function updatePlayMode() {
-        const mode = document.getElementById("play_mode_select").value;
-        await db.collection("config").doc("playlist").set({ mode: mode }, { merge: true });
-    }
-
-    async function loadConfig() {
-        const doc = await db.collection("config").doc("playlist").get();
-        if(doc.exists) document.getElementById("play_mode_select").value = doc.data().mode;
-    }
-
-    // --- FUNGSI HELPER ---
-    function deleteMember(id) { if(confirm("Hapus anggota ini?")) db.collection("users").doc(id).delete(); }
-    function deleteInfo(id) { if(confirm("Hapus pengumuman ini?")) db.collection("pengumuman_komsel").doc(id).delete(); }
-    function deleteMedia(id) { if(confirm("Hapus media dari playlist?")) db.collection("portal_media").doc(id).delete(); }
-    
-    async function editInfo(id) {
-        const doc = await db.collection("pengumuman_komsel").doc(id).get();
-        const d = doc.data();
-        document.getElementById("info_id").value = id;
-        document.getElementById("info_judul").value = d.judul;
-        document.getElementById("info_kategori").value = d.kategori;
-        document.getElementById("info_target").value = d.target;
-        document.getElementById("info_detail").value = d.detail;
-        document.getElementById("btnSubmitInfo").innerHTML = "<i class='fas fa-save'></i> PERBARUI INFORMASI";
-        window.scrollTo(0, 500);
-    }
-
-    function filterTable() {
-        let input = document.getElementById("searchInput").value.toLowerCase();
-        document.querySelectorAll("#memberData tr").forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
-        });
-    }
-
-    async function changeOrder(id, direction) {
-        const ref = db.collection("portal_media");
-        const doc = await ref.doc(id).get();
-        const currentPos = doc.data().urutan;
-        const newPos = currentPos + direction;
-        if(newPos < 1) return;
-
-        const swapQuery = await ref.where("urutan", "==", newPos).get();
-        if(!swapQuery.empty) {
-            const otherDoc = swapQuery.docs[0];
-            await ref.doc(otherDoc.id).update({ urutan: currentPos });
-        }
-        await ref.doc(id).update({ urutan: newPos });
-    }
+    function deleteMember(id) { if(confirm("Hapus anggota?")) db.collection("users").doc(id).delete(); }
 </script>
 </body>
 </html>
