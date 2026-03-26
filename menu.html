@@ -42,23 +42,14 @@
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; }
 
         #media-display-area { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
-        #other-media { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; color: white; text-align: center; }
-        #other-media img, #other-media video { width: 100%; height: 100%; object-fit: contain; }
+        #player, #other-media { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        #other-media { display: none; align-items: center; justify-content: center; color: white; }
+        #other-media img { width: 100%; height: 100%; object-fit: contain; }
 
-        /* Style Baru untuk Running Text di Atas Media */
-        #running-text-overlay { display: none; position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7); color: white; padding: 5px 0; z-index: 100; }
-
-        .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
-        .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
-        #email-badge { position: absolute; top: -8px; right: -8px; background: red; color: white; font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none; }
-
-        .popup-inbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; }
-        .inbox-content { background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; }
-        #list-pesan { flex: 1; overflow-y: auto; padding-right: 5px; margin-top: 10px; }
-        .msg-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid #eee; text-align: left; transition: 0.2s; }
+        #running-text-overlay { display: none; position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7); color: white; padding: 5px 0; z-index: 100; pointer-events: none; }
 
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); }
         .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
         .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); }
@@ -70,7 +61,7 @@
     <div id="modal-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 4000; justify-content: center; align-items: center; padding: 20px;">
         <div style="background: white; width: 100%; max-width: 320px; border-radius: 15px; text-align: center; padding: 20px;">
             <i class="fa-solid fa-right-from-bracket" style="font-size: 40px; color: #dc3545; margin-bottom: 15px;"></i>
-            <h3 style="margin: 0;">Konfirmasi Keluar</h3>
+            <h3>Konfirmasi Keluar</h3>
             <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Apakah Anda yakin ingin keluar?</p>
             <div style="display: flex; gap: 10px;">
                 <button onclick="closeLogoutModal()" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; background: white;">Batal</button>
@@ -79,13 +70,13 @@
         </div>
     </div>
 
-    <div id="popup-inbox" class="popup-inbox">
-        <div class="inbox-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas-lux); padding-bottom: 10px; margin-bottom: 10px;">
-                <h3 style="margin:0; color:var(--biru-tua);"><i class="fas fa-envelope-open"></i> Inbox JC</h3>
-                <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px; color:red;"></i>
+    <div id="popup-inbox" style="display:none;" class="popup-inbox">
+        <div class="inbox-content" style="background:white; margin:20px; border-radius:15px; padding:20px;">
+            <div style="display: flex; justify-content: space-between;">
+                <h3>Inbox JC</h3>
+                <button onclick="tutupInbox()">X</button>
             </div>
-            <div id="list-pesan"><p style="font-size:12px; color:#999;">Memuat pesan...</p></div>
+            <div id="list-pesan"></div>
         </div>
     </div>
 
@@ -103,10 +94,6 @@
 
         <div class="top-section-container">
             <div id="profileCard" class="profile-card">
-                <div class="email-btn" onclick="bukaInbox()">
-                    <i class="fas fa-envelope email-icon" id="icon-mail"></i>
-                    <span id="email-badge">0</span>
-                </div>
                 <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--emas-lux); background: white; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-circle-user" id="default-icon" style="font-size: 70px; color: var(--biru-safir);"></i>
                     <img id="user-photo" src="" style="display: none; width:100%; height:100%; object-fit:cover;">
@@ -122,7 +109,7 @@
             </button>
 
             <div id="media-display-area">
-                <div id="player" style="width: 100%; height: 100%;"></div> 
+                <div id="player"></div> 
                 <div id="other-media"></div>
                 <div id="running-text-overlay">
                     <marquee id="marquee-content" scrollamount="5" style="font-weight: bold; font-size: 14px;"></marquee>
@@ -136,11 +123,7 @@
             <a href="baca-alkitab.html" class="menu-box"><i class="fa-solid fa-book-bible"></i>Laporan Baca</a>
             <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>Statistik</a>
             <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>Peringkat JC</a>
-            <a href="laporan-komsel.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>Laporan Komsel</a>
-            <a href="lacak-domba.html" class="menu-box"><i class="fa-solid fa-map-location-dot"></i>Lacak Domba</a>
-            <a href="capaian-doa.html" class="menu-box"><i class="fa-solid fa-hands-praying"></i>Capaian Doa</a>
             <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
-            <a href="saran.html" class="menu-box"><i class="fa-solid fa-comment-dots"></i>Saran</a>
         </div>
 
         <a href="javascript:void(0)" onclick="confirmLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Keluar</a>
@@ -171,7 +154,7 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
-        // --- MULTI-MEDIA PLAYER LOGIC (VIDEO + RUNNING TEXT) ---
+        // --- REVISED LOGIC ---
         function onYouTubeIframeAPIReady() {
             db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
                 const otherMedia = document.getElementById('other-media');
@@ -179,94 +162,65 @@
                 const textOverlay = document.getElementById('running-text-overlay');
                 const marqueeContent = document.getElementById('marquee-content');
 
-                // Sembunyikan Running Text Overlay di awal setiap update
+                // Reset Tampilan
                 textOverlay.style.display = 'none';
 
-                if (!snapshot.empty) {
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const type = data.tipe;
-                        const content = data.url || data.isi_artikel;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const type = data.tipe;
+                    const content = data.url || data.isi_artikel;
 
-                        if (type === "video_youtube" || type === "youtube") {
-                            ytContainer.style.display = 'block';
-                            otherMedia.style.display = 'none';
-                            playYouTube(content);
-                        } 
-                        else if (type === "gambar") {
-                            otherMedia.style.display = 'flex';
-                            ytContainer.style.display = 'none';
-                            otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
-                            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+                    if (type === "video_youtube" || type === "youtube") {
+                        ytContainer.style.display = 'block';
+                        otherMedia.style.display = 'none';
+                        playYouTube(content);
+                    } 
+                    else if (type === "gambar") {
+                        otherMedia.style.display = 'flex';
+                        ytContainer.style.display = 'none';
+                        otherMedia.innerHTML = `<img src="${content}">`;
+                        if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+                    }
+                    else if (type === "teks") {
+                        if (content) {
+                            textOverlay.style.display = 'block';
+                            marqueeContent.innerText = content;
                         }
-                        // LOGIKA KHUSUS TEKS: Menampilkan teks berjalan di atas media yang sedang aktif
-                        else if (type === "teks") {
-                            if (content) {
-                                textOverlay.style.display = 'block';
-                                marqueeContent.innerText = content;
-                            }
-                        }
-                    });
-                } else {
-                    otherMedia.style.display = 'flex';
-                    otherMedia.innerHTML = "<div style='color:white;'>Belum ada media aktif</div>";
-                }
+                    }
+                });
             });
         }
 
         function playYouTube(rawUrl) {
             const videoId = extractYouTubeID(rawUrl);
-            if (videoId) {
-                if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-                    ytPlayer.loadVideoById({ videoId: videoId, startSeconds: 0 });
-                    ytPlayer.unMute();
-                } else {
-                    ytPlayer = new YT.Player('player', {
-                        videoId: videoId,
-                        playerVars: { 'autoplay': 1, 'mute': 0, 'controls': 1, 'loop': 1, 'playlist': videoId, 'rel': 0, 'modestbranding': 1 },
-                        events: { 
-                            'onReady': (event) => { 
-                                event.target.playVideo(); 
-                                setTimeout(() => { event.target.unMute(); }, 1000);
-                            } 
-                        }
-                    });
-                }
+            if (!videoId) return;
+
+            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+                ytPlayer.loadVideoById({ videoId: videoId });
+                ytPlayer.unMute();
+            } else {
+                ytPlayer = new YT.Player('player', {
+                    videoId: videoId,
+                    playerVars: { 'autoplay': 1, 'mute': 0, 'loop': 1, 'playlist': videoId },
+                    events: { 'onReady': (e) => { e.target.playVideo(); setTimeout(() => e.target.unMute(), 1000); } }
+                });
             }
         }
 
-        // --- FUNGSI INBOX & USER SYNC ---
-        function monitorEmailInbox(userJC, userEmail) {
-            db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-                let unreadCount = 0;
-                const listDiv = document.getElementById('list-pesan');
-                if(!listDiv) return;
-                listDiv.innerHTML = "";
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const target = data.target || data.target_jc; 
-                    if (target === "Semua JC" || target === userJC) {
-                        const sudahDibaca = data.sudahDibaca || [];
-                        const isUnread = !sudahDibaca.includes(userEmail);
-                        if (isUnread) unreadCount++;
-                        listDiv.innerHTML += `<div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}"><div class="msg-content-wrapper"><b>${data.judul || 'Pesan'}</b><br><small>${isUnread ? 'Baru' : 'Sudah dibaca'}</small></div></div>`;
-                    }
-                });
-                const badge = document.getElementById('email-badge');
-                if (badge) {
-                    if (unreadCount > 0) { badge.style.display = 'block'; badge.innerText = unreadCount; } 
-                    else { badge.style.display = 'none'; }
-                }
-            });
+        // --- UPDATE TIME ---
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
         }
 
+        // --- AUTH & SYNC ---
         function syncUser() {
             const email = localStorage.getItem("userEmail");
             const isAdmin = localStorage.getItem("adminLoggedIn");
             if (isAdmin === "true") {
                 document.getElementById('disp_nama').innerText = "Administrator";
                 document.getElementById('admin-badge').style.display = "inline-block";
-                monitorEmailInbox("Semua JC", "admin@system.com");
             } else if (email) {
                 document.getElementById('disp_email').innerText = email;
                 db.collection("users").where("email", "==", email).onSnapshot(s => {
@@ -274,7 +228,6 @@
                         const d = s.docs[0].data();
                         document.getElementById('disp_nama').innerText = d.nama || "User";
                         document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                        monitorEmailInbox(String(d.komsel), email);
                         if (d.fotoUrl) { 
                             document.getElementById('user-photo').src = d.fotoUrl; 
                             document.getElementById('user-photo').style.display = "block"; 
@@ -285,17 +238,8 @@
             }
         }
 
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
-        }
-
         function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
-        function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
         function executeLogout() { localStorage.clear(); window.location.href = "login.html"; }
-        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
-        function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
 
         window.onload = () => { 
             updateTime(); 
