@@ -41,9 +41,12 @@
         .profile-card.closed { transform: translateX(-100%); }
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; }
 
-        #media-display-area { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+        #media-display-area { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
         #other-media { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; color: white; text-align: center; }
         #other-media img, #other-media video { width: 100%; height: 100%; object-fit: contain; }
+
+        /* Style Baru untuk Running Text di Atas Media */
+        #running-text-overlay { display: none; position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.7); color: white; padding: 5px 0; z-index: 100; }
 
         .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
         .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
@@ -121,6 +124,9 @@
             <div id="media-display-area">
                 <div id="player" style="width: 100%; height: 100%;"></div> 
                 <div id="other-media"></div>
+                <div id="running-text-overlay">
+                    <marquee id="marquee-content" scrollamount="5" style="font-weight: bold; font-size: 14px;"></marquee>
+                </div>
             </div>
         </div>
 
@@ -158,7 +164,6 @@
         const db = firebase.firestore();
         let ytPlayer; 
 
-        // --- UTILITY SAKTI UNTUK YOUTUBE ---
         function extractYouTubeID(url) {
             if (!url) return null;
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -166,38 +171,42 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
-        // --- MULTI-MEDIA PLAYER LOGIC ---
+        // --- MULTI-MEDIA PLAYER LOGIC (VIDEO + RUNNING TEXT) ---
         function onYouTubeIframeAPIReady() {
-            // Kita gunakan orderBy urutan agar yang muncul pertama adalah urutan ke-1
-            db.collection("portal_media").orderBy("urutan", "asc").limit(1).onSnapshot(snapshot => {
+            db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
                 const otherMedia = document.getElementById('other-media');
                 const ytContainer = document.getElementById('player');
+                const textOverlay = document.getElementById('running-text-overlay');
+                const marqueeContent = document.getElementById('marquee-content');
+
+                // Sembunyikan Running Text Overlay di awal setiap update
+                textOverlay.style.display = 'none';
 
                 if (!snapshot.empty) {
-                    const data = snapshot.docs[0].data();
-                    const type = data.tipe || "video_youtube"; // Mendukung key dari Portal Media
-                    const content = data.url || "";
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const type = data.tipe;
+                        const content = data.url || data.isi_artikel;
 
-                    otherMedia.style.display = 'none';
-                    ytContainer.style.display = 'none';
-                    otherMedia.innerHTML = '';
-
-                    if (type === "video_youtube" || type === "youtube") {
-                        ytContainer.style.display = 'block';
-                        playYouTube(content);
-                    } 
-                    else if (type === "video_player" || type === "video") {
-                        otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<video src="${content}" autoplay controls style="width:100%; height:100%; object-fit:contain;"></video>`;
-                    } 
-                    else if (type === "gambar") {
-                        otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
-                    } 
-                    else if (type === "teks") {
-                        otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<div style="color:white; padding:20px; font-weight:bold; font-size:16px; text-align:center;">${data.isi_artikel || content}</div>`;
-                    }
+                        if (type === "video_youtube" || type === "youtube") {
+                            ytContainer.style.display = 'block';
+                            otherMedia.style.display = 'none';
+                            playYouTube(content);
+                        } 
+                        else if (type === "gambar") {
+                            otherMedia.style.display = 'flex';
+                            ytContainer.style.display = 'none';
+                            otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
+                            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+                        }
+                        // LOGIKA KHUSUS TEKS: Menampilkan teks berjalan di atas media yang sedang aktif
+                        else if (type === "teks") {
+                            if (content) {
+                                textOverlay.style.display = 'block';
+                                marqueeContent.innerText = content;
+                            }
+                        }
+                    });
                 } else {
                     otherMedia.style.display = 'flex';
                     otherMedia.innerHTML = "<div style='color:white;'>Belum ada media aktif</div>";
@@ -207,41 +216,22 @@
 
         function playYouTube(rawUrl) {
             const videoId = extractYouTubeID(rawUrl);
-
             if (videoId) {
                 if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-                    // Jika player sudah ada, tinggal ganti video ID nya
-                    // mute: 0 agar suara defaultnya ada jika browser mengizinkan
-                    ytPlayer.loadVideoById({
-                        videoId: videoId,
-                        startSeconds: 0
-                    });
-                    ytPlayer.unMute(); // Coba paksa unmute
+                    ytPlayer.loadVideoById({ videoId: videoId, startSeconds: 0 });
+                    ytPlayer.unMute();
                 } else {
-                    // Buat player baru
                     ytPlayer = new YT.Player('player', {
                         videoId: videoId,
-                        playerVars: { 
-                            'autoplay': 1, 
-                            'mute': 0, // Set ke 0 agar suara muncul
-                            'controls': 1, // Munculkan kontrol agar user bisa klik unmute sendiri jika terblokir
-                            'loop': 1, 
-                            'playlist': videoId, 
-                            'rel': 0, 
-                            'modestbranding': 1 
-                        },
+                        playerVars: { 'autoplay': 1, 'mute': 0, 'controls': 1, 'loop': 1, 'playlist': videoId, 'rel': 0, 'modestbranding': 1 },
                         events: { 
-                            'onReady': (event) => {
-                                event.target.playVideo();
-                                // Beberapa browser butuh interaksi user sebelum suara keluar
-                                // Kita coba pancing unmute setelah video mulai
+                            'onReady': (event) => { 
+                                event.target.playVideo(); 
                                 setTimeout(() => { event.target.unMute(); }, 1000);
                             } 
                         }
                     });
                 }
-            } else {
-                document.getElementById('player').innerHTML = "<div style='color:white;text-align:center;padding:20px;'>Link YouTube tidak valid</div>";
             }
         }
 
