@@ -20,7 +20,7 @@
         .header-section h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
         .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; }
 
-        /* Statistik Global (New Row) */
+        /* Statistik Global */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { padding: 15px; border-radius: 12px; color: white; display: flex; flex-direction: column; position: relative; }
         .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 2rem; opacity: 0.3; }
@@ -49,7 +49,7 @@
         
         .btn-save { width: 100%; padding: 12px; background: var(--success); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; }
 
-        /* Playlist & Media */
+        /* Media */
         .media-management-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; margin-top: 20px; }
         .playlist-container { background: #fff; border-radius: 12px; border: 1px solid #eee; padding: 15px; max-height: 500px; overflow-y: auto; }
         .media-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f0f0f0; gap: 10px; }
@@ -58,17 +58,11 @@
         .media-controls { display: flex; gap: 5px; }
         .btn-control { border: none; background: #eee; color: #555; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
 
-        .play-modes { display: flex; justify-content: space-around; background: #f1f3f5; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
-        .mode-btn { background: none; border: none; cursor: pointer; color: #aaa; font-size: 14px; }
-        .mode-btn.active { color: var(--accent); font-weight: bold; }
-
-        /* Doa & Absensi Styles */
-        .doa-scroll { max-height: 200px; overflow-y: auto; background: #fff5f5; padding: 10px; border-radius: 10px; margin-top: 10px; }
-        .absensi-feed { max-height: 200px; overflow-y: auto; }
-
-        /* Modal */
+        /* Modal Edit LENGKAP */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
-        .modal-content { background: white; margin: 20px auto; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; position: relative; }
+        .modal-content { background: white; margin: 20px auto; padding: 25px; border-radius: 15px; width: 90%; max-width: 600px; position: relative; }
+        .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: span 2; }
         .close-modal { position: absolute; right: 20px; top: 15px; font-size: 24px; cursor: pointer; }
     </style>
 </head>
@@ -132,14 +126,12 @@
                 <div class="form-group"><textarea id="doa_isi" rows="2" placeholder="Tulis pokok doa..." required></textarea></div>
                 <button type="submit" class="btn-save" style="background:var(--danger)">KIRIM DOA</button>
             </form>
-            <div class="doa-scroll" id="doaData"></div>
+            <div id="doaData" style="max-height:150px; overflow-y:auto; font-size:11px; margin-top:10px;"></div>
         </div>
 
         <div class="admin-card">
             <h3><i class="fas fa-fingerprint" style="color:var(--success)"></i> Absensi Global</h3>
-            <div class="absensi-feed" id="absensiData">
-                <p style="text-align:center; color:#999; font-size:12px;">Memuat absensi...</p>
-            </div>
+            <div id="absensiData" style="max-height:200px; overflow-y:auto;"></div>
         </div>
     </div>
 
@@ -160,14 +152,8 @@
                 <button type="submit" class="btn-save" style="background: #e67e22;">TAMBAHKAN KE PLAYLIST</button>
             </form>
         </div>
-
         <div class="playlist-container">
-            <h3><i class="fas fa-list-ul"></i> Playlist & Urutan Tampil</h3>
-            <div class="play-modes">
-                <button class="mode-btn active" onclick="setMode('repeat')" id="m_repeat" title="Repeat All"><i class="fas fa-redo"></i> Repeat</button>
-                <button class="mode-btn" onclick="setMode('shuffle')" id="m_shuffle" title="Shuffle Play"><i class="fas fa-random"></i> Shuffle</button>
-                <button class="mode-btn" onclick="setMode('single')" id="m_single" title="Play Single"><i class="fas fa-minus"></i> Single</button>
-            </div>
+            <h3><i class="fas fa-list-ul"></i> Playlist Aktif</h3>
             <div id="playlistData"></div>
         </div>
     </div>
@@ -176,18 +162,36 @@
 <div id="editModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeEditModal()">&times;</span>
-        <h3><i class="fas fa-user-edit"></i> Edit Profil</h3>
+        <h3><i class="fas fa-user-edit"></i> Edit Profil Anggota</h3>
+        <hr>
         <form id="formUpdate">
             <input type="hidden" id="edit_id">
-            <div class="form-group"><label>Nama Lengkap</label><input type="text" id="edit_nama" required></div>
-            <div class="form-group"><label>WhatsApp</label><input type="text" id="edit_wa" required></div>
-            <div class="form-group"><label>Email</label><input type="email" id="edit_email" required></div>
-            <div class="form-group"><label>Jabatan</label>
-                <select id="edit_jabatan">
-                    <option value="Anggota">Anggota</option><option value="Ketua Komsel">Ketua Komsel</option><option value="Pengurus">Pengurus</option>
-                </select>
+            <div class="edit-grid">
+                <div class="form-group"><label>Nama Lengkap</label><input type="text" id="edit_nama" required></div>
+                <div class="form-group"><label>WhatsApp</label><input type="text" id="edit_wa" required></div>
+                
+                <div class="form-group"><label>Email</label><input type="email" id="edit_email" required></div>
+                <div class="form-group"><label>Password Akun</label><input type="text" id="edit_pass" required></div>
+
+                <div class="form-group">
+                    <label>Golongan Darah</label>
+                    <select id="edit_goldar">
+                        <option value="-">-</option><option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Jabatan</label>
+                    <select id="edit_jabatan">
+                        <option value="Anggota">Anggota</option><option value="Ketua Komsel">Ketua Komsel</option><option value="Pengurus">Pengurus</option>
+                    </select>
+                </div>
+
+                <div class="form-group"><label>Nomor Kartu (NK)</label><input type="text" id="edit_nk"></div>
+                <div class="form-group"><label>Lokasi JC (Nomor)</label><input type="text" id="edit_komsel"></div>
+
+                <div class="form-group full-width"><label>Alamat Lengkap</label><textarea id="edit_alamat" rows="2"></textarea></div>
             </div>
-            <button type="submit" class="btn-save">SIMPAN PERUBAHAN</button>
+            <button type="submit" class="btn-save" style="margin-top:10px;">SIMPAN PERUBAHAN</button>
         </form>
     </div>
 </div>
@@ -214,26 +218,26 @@
         loadDoa();
     };
 
-    // --- MANAJEMEN USER (DENGAN IKON EDIT & HAPUS ASLI) ---
+    // --- DATA ANGGOTA ---
     function loadUsers() {
-        db.collection("users").onSnapshot((snapshot) => {
-            const tableBody = document.getElementById("memberData");
-            tableBody.innerHTML = "";
+        db.collection("users").orderBy("nama", "asc").onSnapshot((snapshot) => {
+            const tbody = document.getElementById("memberData");
+            tbody.innerHTML = "";
             document.getElementById("stat_total").innerText = snapshot.size;
             snapshot.forEach((doc) => {
-                const data = doc.data();
-                tableBody.innerHTML += `
+                const d = doc.data();
+                tbody.innerHTML += `
                     <tr>
-                        <td class="freeze-col"><b>${data.nama || '-'}</b></td>
-                        <td>${data.nomor_komsel || '-'}</td>
-                        <td>${data.whatsapp || '-'}</td>
-                        <td>${data.email || '-'}</td>
-                        <td style="text-align:center">${data.golongan_darah || '-'}</td>
-                        <td>${data.jabatan || '-'}</td>
-                        <td>JC ${data.komsel || '-'}</td>
-                        <td>${data.alamat || '-'}</td>
+                        <td class="freeze-col"><b>${d.nama || '-'}</b></td>
+                        <td>${d.nomor_komsel || '-'}</td>
+                        <td>${d.whatsapp || '-'}</td>
+                        <td>${d.email || '-'}</td>
+                        <td style="text-align:center">${d.golongan_darah || '-'}</td>
+                        <td>${d.jabatan || '-'}</td>
+                        <td>JC ${d.komsel || '-'}</td>
+                        <td>${d.alamat || '-'}</td>
                         <td style="text-align:center;">
-                            <i class="fas fa-edit" style="color:blue;cursor:pointer;margin-right:10px" onclick="openEditModal('${doc.id}')"></i>
+                            <i class="fas fa-edit" style="color:blue;cursor:pointer;margin-right:12px" onclick="openEditModal('${doc.id}')"></i>
                             <i class="fas fa-trash" style="color:red;cursor:pointer" onclick="deleteMember('${doc.id}')"></i>
                         </td>
                     </tr>`;
@@ -243,71 +247,72 @@
 
     async function openEditModal(id) {
         const doc = await db.collection("users").doc(id).get();
-        const data = doc.data();
+        const d = doc.data();
         document.getElementById("edit_id").value = id;
-        document.getElementById("edit_nama").value = data.nama || "";
-        document.getElementById("edit_wa").value = data.whatsapp || "";
-        document.getElementById("edit_email").value = data.email || "";
-        document.getElementById("edit_jabatan").value = data.jabatan || "Anggota";
+        document.getElementById("edit_nama").value = d.nama || "";
+        document.getElementById("edit_wa").value = d.whatsapp || "";
+        document.getElementById("edit_email").value = d.email || "";
+        document.getElementById("edit_pass").value = d.password || "";
+        document.getElementById("edit_goldar").value = d.golongan_darah || "-";
+        document.getElementById("edit_jabatan").value = d.jabatan || "Anggota";
+        document.getElementById("edit_nk").value = d.nomor_komsel || "";
+        document.getElementById("edit_komsel").value = d.komsel || "";
+        document.getElementById("edit_alamat").value = d.alamat || "";
         document.getElementById("editModal").style.display = "block";
     }
 
+    document.getElementById("formUpdate").onsubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById("edit_id").value;
+        await db.collection("users").doc(id).update({
+            nama: document.getElementById("edit_nama").value,
+            whatsapp: document.getElementById("edit_wa").value,
+            email: document.getElementById("edit_email").value,
+            password: document.getElementById("edit_pass").value,
+            golongan_darah: document.getElementById("edit_goldar").value,
+            jabatan: document.getElementById("edit_jabatan").value,
+            nomor_komsel: document.getElementById("edit_nk").value,
+            komsel: document.getElementById("edit_komsel").value,
+            alamat: document.getElementById("edit_alamat").value
+        });
+        closeEditModal();
+        alert("Profil Berhasil Diperbarui!");
+    };
+
     function closeEditModal() { document.getElementById("editModal").style.display = "none"; }
 
-    // --- MANAJEMEN PLAYLIST (DENGAN URUTAN ASLI) ---
-    function loadPlaylist() {
-        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot((snapshot) => {
-            const container = document.getElementById("playlistData");
-            container.innerHTML = "";
-            snapshot.forEach((doc) => {
-                const m = doc.data();
-                container.innerHTML += `
-                    <div class="media-item">
-                        <div class="media-info">
-                            <span>${m.tipe}</span>
-                            <h4>${m.judul}</h4>
-                        </div>
-                        <div class="media-controls">
-                            <button class="btn-control" onclick="moveOrder('${doc.id}', -1)"><i class="fas fa-arrow-up"></i></button>
-                            <button class="btn-control" onclick="moveOrder('${doc.id}', 1)"><i class="fas fa-arrow-down"></i></button>
-                            <button class="btn-control" style="color:red" onclick="deleteMedia('${doc.id}')"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>`;
-            });
-        });
-    }
-
-    // --- FUNGSI DOA & ABSENSI (ADDITIONAL) ---
+    // --- FITUR LAIN ---
     function loadDoa() {
-        db.collection("doa_global").orderBy("timestamp", "desc").onSnapshot(snap => {
-            const div = document.getElementById("doaData");
-            div.innerHTML = "";
+        db.collection("doa_global").orderBy("timestamp", "desc").limit(10).onSnapshot(snap => {
+            const div = document.getElementById("doaData"); div.innerHTML = "";
             document.getElementById("stat_doa").innerText = snap.size;
-            snap.forEach(doc => {
-                div.innerHTML += `<div style="padding:5px; border-bottom:1px solid #ddd; font-size:11px;"><b>${doc.data().pengirim || 'Anonim'}:</b> ${doc.data().isi}</div>`;
-            });
+            snap.forEach(doc => { div.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;"><b>${doc.data().pengirim || 'Anonim'}:</b> ${doc.data().isi}</div>`; });
         });
     }
 
     function loadAbsensi() {
-        db.collection("absensi").where("tanggal", "==", new Date().toISOString().split('T')[0]).onSnapshot(snap => {
-            const div = document.getElementById("absensiData");
-            div.innerHTML = "";
+        const today = new Date().toISOString().split('T')[0];
+        db.collection("absensi").where("tanggal", "==", today).onSnapshot(snap => {
+            const div = document.getElementById("absensiData"); div.innerHTML = "";
             document.getElementById("stat_hadir").innerText = snap.size;
+            snap.forEach(doc => { div.innerHTML += `<div style="padding:8px; border-bottom:1px solid #eee; font-size:12px;"><i class="fas fa-check-circle" style="color:green"></i> ${doc.data().nama} (JC ${doc.data().komsel})</div>`; });
+        });
+    }
+
+    function loadPlaylist() {
+        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snap => {
+            const div = document.getElementById("playlistData"); div.innerHTML = "";
             snap.forEach(doc => {
-                div.innerHTML += `<div style="padding:8px; border-bottom:1px solid #eee; font-size:12px;"><i class="fas fa-user-check"></i> ${doc.data().nama} (JC ${doc.data().komsel})</div>`;
+                div.innerHTML += `<div class="media-item"><div class="media-info"><h4>${doc.data().judul}</h4><span>${doc.data().tipe}</span></div><button class="btn-control" style="color:red" onclick="deleteMedia('${doc.id}')"><i class="fas fa-trash"></i></button></div>`;
             });
         });
     }
 
-    // Helper Functions
-    function deleteMember(id) { if(confirm("Hapus anggota?")) db.collection("users").doc(id).delete(); }
-    function deleteMedia(id) { if(confirm("Hapus media?")) db.collection("portal_media").doc(id).delete(); }
+    function deleteMember(id) { if(confirm("Hapus anggota ini?")) db.collection("users").doc(id).delete(); }
+    function deleteMedia(id) { if(confirm("Hapus media dari playlist?")) db.collection("portal_media").doc(id).delete(); }
     function filterTable() {
         let input = document.getElementById("searchInput").value.toLowerCase();
-        document.querySelectorAll("#memberData tr").forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
-        });
+        document.querySelectorAll("#memberData tr").forEach(row => { row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none"; });
     }
 </script>
 </body>
