@@ -36,7 +36,7 @@
         .freeze-col { position: sticky; left: 0; z-index: 2; background: white !important; border-right: 2px solid #eee; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { padding: 15px; border-radius: 12px; color: white; position: relative; cursor: pointer; transition: transform 0.2s; }
+        .stat-card { padding: 15px; border-radius: 12px; color: white; position: relative; cursor: pointer; transition: transform 0.2s; height: 100%; box-sizing: border-box; }
         .stat-card:hover { transform: translateY(-3px); }
         .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 2rem; opacity: 0.3; }
         .stat-card p { margin: 5px 0 0; font-size: 22px; font-weight: bold; }
@@ -68,9 +68,13 @@
         <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #a71d2a);">
             <h4 style="margin:0; font-size:11px;">POKOK DOA</h4><p id="stat_doa">0</p><i class="fas fa-hands-praying"></i>
         </div>
-        <div class="stat-card" style="background: linear-gradient(135deg, var(--purple), #4e2a84);">
-            <h4 style="margin:0; font-size:11px;">PORTAL MEDIA</h4><p id="stat_media">0</p><i class="fas fa-photo-video"></i>
-        </div>
+        
+        <a href="portal-media.html" style="text-decoration: none; color: inherit;">
+            <div class="stat-card" style="background: linear-gradient(135deg, var(--purple), #4e2a84);">
+                <h4 style="margin:0; font-size:11px;">PORTAL MEDIA</h4><p id="stat_media">0</p><i class="fas fa-photo-video"></i>
+            </div>
+        </a>
+
         <div class="stat-card" style="background: linear-gradient(135deg, var(--orange), #c46210);">
             <h4 style="margin:0; font-size:11px;">INFORMASI KEGIATAN</h4><p id="stat_kegiatan">0</p><i class="fas fa-calendar-alt"></i>
         </div>
@@ -174,20 +178,20 @@
     };
 
     function updateStats() {
-        // Real-time Total Anggota
         db.collection("users").onSnapshot(snap => {
             document.getElementById("stat_total").innerText = snap.size;
         });
 
-        // Absensi Hari Ini
         db.collection("absensi").where("tanggal", "==", new Date().toISOString().split('T')[0])
             .onSnapshot(snap => { document.getElementById("stat_hadir").innerText = snap.size; });
         
-        // Pokok Doa
         db.collection("doa_global").onSnapshot(snap => { document.getElementById("stat_doa").innerText = snap.size; });
 
-        // Placeholder untuk menu baru (Bisa dihubungkan ke collection Firebase jika sudah ada)
-        document.getElementById("stat_media").innerText = "0";
+        // Update stat portal media berdasarkan collection portal_media
+        db.collection("portal_media").onSnapshot(snap => { 
+            document.getElementById("stat_media").innerText = snap.size; 
+        });
+
         document.getElementById("stat_kegiatan").innerText = "0";
         document.getElementById("stat_bigdata").innerText = "0";
     }
