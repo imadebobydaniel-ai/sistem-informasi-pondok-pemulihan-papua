@@ -32,11 +32,6 @@
         .user-name { font-size: 14px; font-weight: bold; color: #333; margin: 0; }
         .user-jc { font-size: 11px; color: #666; margin: 0; font-weight: bold; }
         .btn-back { display: block; text-align: center; padding: 14px; background: white; color: var(--biru-utama); text-decoration: none; font-weight: bold; border-radius: 12px; border: 1px solid #ddd; margin-top: 10px; font-size: 13px; width: 100%; box-sizing: border-box; }
-        
-        /* Style Analisa */
-        .container-analisa { margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 15px; }
-        .analisa-header { text-align: center; font-size: 11px; font-weight: bold; color: #555; margin-bottom: 12px; text-transform: uppercase; }
-        #notif-backup { display: none; background: #fff3cd; color: #856404; font-size: 10px; padding: 8px; border-radius: 8px; margin-top: 10px; text-align: center; border: 1px solid #ffeeba; }
     </style>
 </head>
 <body>
@@ -68,7 +63,7 @@
 
         <div class="stat-item">
             <div class="stat-label-flex">
-                <span>LAPORAN KOMSELL</span>
+                <span>LAPORAN KOMSEL</span>
                 <span id="text-capaian-komsel">0.0%</span>
             </div>
             <div class="progress-bar">
@@ -85,8 +80,6 @@
                 <div id="bar-capaian-global" class="progress-fill" style="width: 0%; background: var(--ungu-global);"></div>
             </div>
         </div>
-
-       
     </div>
 
     <div class="card">
@@ -155,87 +148,51 @@ function updateBarUI(textId, barId, total, done) {
     if(barEl) barEl.style.width = persen + "%";
 }
 
-// 1. FUNGSI ANALISA & CAPAIAN BACA ALKITAB (REALTIME)
+// --- FUNGSI syncCapaianRealtime (VERSI TERBARU) ---
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
     const selKomselAngka = parseInt(selKomselRaw.replace(/\D/g, "")).toString();
     const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
     
-    const listAnalisa = document.getElementById('list-analisa-bulanan');
-    const notifBackup = document.getElementById('notif-backup');
-    
     const limitFilter = new Date();
     limitFilter.setDate(limitFilter.getDate() - (periodeBulan * 30));
 
-    const limit365 = new Date();
-    limit365.setDate(limit365.getDate() - 365);
-
+    // 1. Ambil data user terlebih dahulu untuk menentukan TARGET (Total Anggota)
     db.collection("users").get().then(userSnap => {
-        let targetGlobal = userSnap.size;
-        let targetKomsel = 0;
+        let totalUserGlobal = userSnap.size;
+        let totalUserKomsel = 0;
 
         userSnap.forEach(uDoc => {
             const u = uDoc.data();
             const jcUser = String(u.komsel || u.jc || "").replace(/\D/g, "");
-            if (parseInt(jcUser).toString() === selKomselAngka) targetKomsel++;
+            if (parseInt(jcUser).toString() === selKomselAngka) {
+                totalUserKomsel++;
+            }
         });
 
-        if (targetKomsel === 0) targetKomsel = 1;
+        if (totalUserKomsel === 0) totalUserKomsel = 1;
 
+        // 2. Ambil data laporan dengan snapshot agar realtime
         db.collection("laporan_bacaan")
-            .where("tanggal", ">=", limit365)
+            .where("tanggal", ">=", limitFilter)
             .onSnapshot(snap => {
                 let doneGlobal = new Set();
                 let doneKomsel = new Set();
-                let monthlySets = Array.from({length: 12}, () => new Set());
-                let hasDataOld = false;
 
                 snap.forEach(doc => {
                     const d = doc.data();
-                    const tgl = d.tanggal?.toDate();
-                    if (!tgl || !d.pasal_utama) return;
-
                     const userEmail = d.email;
                     const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
-                    const isTargetKomsel = (parseInt(jcLaporan).toString() === selKomselAngka);
 
-                    if (tgl >= limitFilter) {
-                        doneGlobal.add(userEmail);
-                        if (isTargetKomsel) doneKomsel.add(userEmail);
-                    }
+                    doneGlobal.add(userEmail);
 
-                    for (let i = 1; i <= 12; i++) {
-                        const rEnd = new Date(); rEnd.setDate(rEnd.getDate() - ((i-1)*30));
-                        const rStart = new Date(); rStart.setDate(rStart.getDate() - (i*30));
-                        if (tgl >= rStart && tgl <= rEnd && isTargetKomsel) {
-                            monthlySets[i-1].add(userEmail);
-                        }
+                    if (parseInt(jcLaporan).toString() === selKomselAngka) {
+                        doneKomsel.add(userEmail);
                     }
-                    
-                    const diffDays = (new Date() - tgl) / (1000 * 3600 * 24);
-                    if (diffDays >= 330) hasDataOld = true;
                 });
 
-                updateBarUI('text-capaian-komsel', 'bar-capaian-komsel', targetKomsel, doneKomsel.size);
-                updateBarUI('text-capaian-global', 'bar-capaian-global', targetGlobal, doneGlobal.size);
-
-                listAnalisa.innerHTML = "";
-                monthlySets.forEach((set, idx) => {
-                    const count = set.size;
-                    const p = ((count / targetKomsel) * 100).toFixed(1);
-                    listAnalisa.innerHTML += `
-                        <div style="margin-bottom: 12px;">
-                            <div class="stat-label-flex">
-                                <span style="font-size:10px; color:#666;">BULAN KE-${idx+1} LALU</span>
-                                <span style="font-size:10px; font-weight:bold; color:var(--biru-utama);">${p}%</span>
-                            </div>
-                            <div class="progress-bar" style="height:6px; margin-top:4px;">
-                                <div class="progress-fill" style="width: ${p}%; background: var(--biru-utama);"></div>
-                            </div>
-                        </div>`;
-                });
-
-                if(notifBackup) notifBackup.style.display = hasDataOld ? 'block' : 'none';
+                updateBarUI('text-capaian-komsel', 'bar-capaian-komsel', totalUserKomsel, doneKomsel.size);
+                updateBarUI('text-capaian-global', 'bar-capaian-global', totalUserGlobal, doneGlobal.size);
             });
     });
 }
