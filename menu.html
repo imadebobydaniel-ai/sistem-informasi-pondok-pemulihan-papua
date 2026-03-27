@@ -50,6 +50,72 @@
         @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
 
         .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
+        
+        /* CSS POPUP SELAMAT DATANG */
+        .welcome-modal {
+            display: none; 
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .welcome-content {
+            position: relative;
+            background-color: #fff;
+            margin: auto;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 85%;
+            max-width: 400px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(-40%); opacity: 0; }
+            to { transform: translateY(-50%); opacity: 1; }
+        }
+
+        .welcome-header {
+            background-color: var(--biru-tua);
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .welcome-body {
+            padding: 20px;
+            text-align: center;
+            color: #333;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .welcome-footer {
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-ok-welcome {
+            background-color: var(--biru-safir);
+            color: white;
+            border: none;
+            padding: 10px 40px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        /* AKHIR CSS POPUP */
+
         .top-section-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto 30px auto; height: 220px; overflow: hidden; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
         
         .profile-card { 
@@ -107,6 +173,20 @@
     </style>
 </head>
 <body>
+
+    <div id="welcomePopup" class="welcome-modal">
+        <div class="welcome-content">
+            <div class="welcome-header">
+                <h3 style="margin:0;">Pesan Sistem</h3>
+            </div>
+            <div class="welcome-body">
+                <p>Selamat Datang Di Aplikasi Sistem Informasi Integrasi Komsel JC. Semoga Anda Diberkati Dengan Adanya Aplikasi Ini. Tuhan Yesus Memberkati.</p>
+            </div>
+            <div class="welcome-footer">
+                <button onclick="closeWelcomePopup()" class="btn-ok-welcome">OK</button>
+            </div>
+        </div>
+    </div>
 
     <div id="modal-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 4000; justify-content: center; align-items: center; padding: 20px;">
         <div style="background: white; width: 100%; max-width: 320px; border-radius: 15px; text-align: center; padding: 20px;">
@@ -222,6 +302,12 @@
         const db = firebase.firestore();
         let ytPlayer; 
 
+        // FUNGSI POPUP SELAMAT DATANG
+        function closeWelcomePopup() {
+            document.getElementById('welcomePopup').style.display = 'none';
+            sessionStorage.setItem('welcomeShown', 'true');
+        }
+
         function handleToggleMute() {
             if (ytPlayer && typeof ytPlayer.isMuted === 'function') {
                 if (ytPlayer.isMuted()) {
@@ -293,11 +379,11 @@
 
         function bacaWelcome(userEmail) {
             localStorage.setItem("welcomeRead_" + userEmail, "true");
-            alert("Selamat Datang Di Aplikasi Sistem Informasi Integrasi Komsel JC. Semoga Anda Diberkati Dengan Adanya Aplikasi Ini. Tuhan Yesus Memberkati.");
-            location.reload(); 
+            // Menggunakan popup yang sama saat diklik dari inbox
+            document.getElementById('welcomePopup').style.display = 'block';
+            tutupInbox();
         }
 
-        // FUNGSI BARU: Baca detail pesan di dalam popup
         async function bacaDetailPesan(docId, userEmail) {
             const listDiv = document.getElementById('list-pesan');
             const detailDiv = document.getElementById('detail-pesan-konten');
@@ -307,7 +393,6 @@
                 const doc = await db.collection("pengumuman_komsel").doc(docId).get();
                 if (doc.exists) {
                     const data = doc.data();
-                    
                     document.getElementById('detail-judul').innerText = data.judul;
                     document.getElementById('detail-isi').innerText = data.isi || data.pesan || "Tidak ada isi pesan.";
                     
@@ -319,9 +404,7 @@
                     detailDiv.style.display = "block";
                     judulInbox.innerHTML = '<i class="fas fa-envelope-open-text"></i> Isi Pesan';
                 }
-            } catch (e) { 
-                console.error("Gagal memuat detail:", e); 
-            }
+            } catch (e) { console.error("Gagal memuat detail:", e); }
         }
 
         function kembaliKeList() {
@@ -331,7 +414,6 @@
         }
 
         function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
-        
         function tutupInbox() { 
             document.getElementById('popup-inbox').style.display = 'none'; 
             kembaliKeList(); 
@@ -436,6 +518,11 @@
             setInterval(updateTime, 1000); 
             syncUser(); 
             loadMedia(); 
+
+            // Trigger Popup Selamat Datang jika belum muncul di sesi ini
+            if (!sessionStorage.getItem('welcomeShown')) {
+                document.getElementById('welcomePopup').style.display = 'block';
+            }
 
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
