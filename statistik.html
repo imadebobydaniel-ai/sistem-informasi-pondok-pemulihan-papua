@@ -139,16 +139,7 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Helper Global untuk Update UI Bar
-function updateBarUI(textId, barId, total, done) {
-    const persen = total > 0 ? ((done / total) * 100).toFixed(1) : "0.0";
-    const textEl = document.getElementById(textId);
-    const barEl = document.getElementById(barId);
-    if(textEl) textEl.innerText = persen + "%";
-    if(barEl) barEl.style.width = Math.min(persen, 100) + "%"; // Maksimal 100% secara visual
-}
-
-// --- FUNGSI syncCapaianRealtime (VERSI LOGIKA PAK BOBY) ---
+// --- FUNGSI syncCapaianRealtime (VERSI TARGET 100) ---
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
     const selKomselAngka = parseInt(selKomselRaw.replace(/\D/g, "")).toString();
@@ -157,40 +148,52 @@ function syncCapaianRealtime() {
     const limitFilter = new Date();
     limitFilter.setDate(limitFilter.getDate() - (periodeBulan * 30));
 
-    db.collection("users").get().then(userSnap => {
-        const totalUserGlobal = userSnap.size || 1;
+    // STANDAR PEMBAGI KRUSIAL (Target 100)
+    const targetStandar = 100;
 
-        db.collection("laporan_bacaan")
-            .where("tanggal", ">=", limitFilter)
-            .onSnapshot(snap => {
-                let doneGlobal = new Set();
-                let doneKomsel = new Set();
+    // REALTIME SNAPSHOT
+    db.collection("laporan_bacaan")
+        .where("tanggal", ">=", limitFilter)
+        .onSnapshot(snap => {
+            let doneGlobal = new Set(); 
+            let doneKomsel = new Set(); 
 
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    if (!d.pasal_utama) return;
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (!d.email) return;
 
-                    const userEmail = d.email;
-                    const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
+                const userEmail = d.email;
+                const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
 
-                    doneGlobal.add(userEmail);
+                // 1. RUMUS GLOBAL
+                doneGlobal.add(userEmail);
 
-                    if (parseInt(jcLaporan).toString() === selKomselAngka) {
-                        doneKomsel.add(userEmail);
-                    }
-                });
-
-                // --- LOGIKA PAK BOBY ---
-                const targetStandar = 100; 
-                
-                updateBarUI('text-capaian-komsel', 'bar-capaian-komsel', targetStandar, doneKomsel.size);
-                updateBarUI('text-capaian-global', 'bar-capaian-global', totalUserGlobal, doneGlobal.size);
-                
-                console.log("Realtime: JC " + selKomselAngka + " lapor " + doneKomsel.size + " user.");
+                // 2. RUMUS PER JC
+                if (parseInt(jcLaporan).toString() === selKomselAngka) {
+                    doneKomsel.add(userEmail);
+                }
             });
-    });
+
+            // --- HITUNGAN PRESENTASE SENSITIF ---
+            const persenKomsel = ((doneKomsel.size / targetStandar) * 100).toFixed(1);
+            const persenGlobal = ((doneGlobal.size / targetStandar) * 100).toFixed(1);
+
+            // --- UPDATE KE UI ---
+            const textKomselEl = document.getElementById('text-capaian-komsel');
+            const barKomselEl = document.getElementById('bar-capaian-komsel');
+            if(textKomselEl) textKomselEl.innerText = persenKomsel + "%";
+            if(barKomselEl) barKomselEl.style.width = Math.min(persenKomsel, 100) + "%";
+            
+            const textGlobalEl = document.getElementById('text-capaian-global');
+            const barGlobalEl = document.getElementById('bar-capaian-global');
+            if(textGlobalEl) textGlobalEl.innerText = persenGlobal + "%";
+            if(barGlobalEl) barGlobalEl.style.width = Math.min(persenGlobal, 100) + "%";
+            
+            console.log("Update Realtime - JC " + selKomselAngka + ": " + doneKomsel.size + " lapor.");
+        });
 }
 
+// --- FUNGSI GOLONGAN DARAH ---
 function syncGoldarRealtime() {
     const filter = document.getElementById('select-komsel-goldar').value.trim();
     db.collection("users").onSnapshot(snap => {
@@ -217,6 +220,7 @@ function syncGoldarRealtime() {
     });
 }
 
+// --- FUNGSI DOA (SLA) ---
 function syncDoaRealtime() {
     const selKomsel = document.getElementById('select-komsel-doa').value.trim();
     db.collection("laporan_doa").onSnapshot(snap => {
@@ -243,6 +247,7 @@ function syncDoaRealtime() {
     });
 }
 
+// --- MODAL DETAIL USER ---
 function openUserDetail(type, data) {
     const list = document.getElementById('modal-list-user');
     document.getElementById('modal-title').innerText = "Golongan Darah " + type;
@@ -266,6 +271,7 @@ function openUserDetail(type, data) {
     document.getElementById('modal-goldar').style.display = 'flex';
 }
 
+// INITIAL LOAD
 window.onload = () => {
     syncCapaianRealtime();
     syncGoldarRealtime();
