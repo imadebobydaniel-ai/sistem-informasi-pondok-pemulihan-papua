@@ -47,16 +47,16 @@
                     <option value="JC 05" selected>JC 05</option>
                 </select>
             </div>
-            <div class="input-box"><label>Periode</label>
+            <div class="input-box" style="display:none;"><label>Periode</label>
                 <select id="select-periode-alkitab" onchange="syncCapaianRealtime()">
-                    <option value="1">1 Bulan</option><option value="3">3 Bulan</option><option value="6">6 Bulan</option>
+                    <option value="12">12 Bulan (Avg)</option>
                 </select>
             </div>
         </div>
         <div class="stat-item">
-            <div class="stat-label-flex"><span>Capaian Komsel</span><span id="text-capaian-komsel" style="color:var(--biru-utama)">0%</span></div>
+            <div class="stat-label-flex"><span>Rata-rata Capaian Komsel (1 Thn)</span><span id="text-capaian-komsel" style="color:var(--biru-utama)">0%</span></div>
             <div class="progress-bar"><div id="bar-capaian-komsel" class="progress-fill" style="width: 0%; background: var(--biru-utama);"></div></div>
-            <div class="stat-label-flex"><span>Seluruh Komsel</span><span id="text-capaian-global" style="color:var(--ungu-global)">0%</span></div>
+            <div class="stat-label-flex"><span>Rata-rata Seluruh Komsel (1 Thn)</span><span id="text-capaian-global" style="color:var(--ungu-global)">0%</span></div>
             <div class="progress-bar"><div id="bar-capaian-global" class="progress-fill" style="width: 0%; background: var(--ungu-global);"></div></div>
         </div>
     </div>
@@ -124,16 +124,15 @@ function updateBar(textId, barId, total, done) {
     document.getElementById(barId).style.width = persen + "%";
 }
 
-// 1. REALTIME BACA ALKITAB (Target: Total Anggota, Realisasi: User yang melapor)
+// 1. REALTIME BACA ALKITAB (LOGIKA 12 BULAN TERAKHIR)
 function syncCapaianRealtime() {
-    const selKomselRaw = document.getElementById('select-komsel-alkitab').value; 
-    const selKomselAngka = parseInt(selKomselRaw.replace(/\D/g, "")).toString(); 
+    const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
+    const selKomselAngka = parseInt(selKomselRaw.replace(/\D/g, "")).toString();
     
-    const periode = parseInt(document.getElementById('select-periode-alkitab').value);
+    // Set rentang waktu 12 bulan ke belakang
     const limitDate = new Date();
-    limitDate.setMonth(limitDate.getMonth() - periode);
+    limitDate.setFullYear(limitDate.getFullYear() - 1); 
 
-    // Ambil data users sebagai target pembagi (Denominator)
     db.collection("users").get().then(userSnap => {
         let targetGlobal = userSnap.size;
         let targetKomsel = 0;
@@ -144,36 +143,45 @@ function syncCapaianRealtime() {
             if (parseInt(jcUser).toString() === selKomselAngka) targetKomsel++;
         });
 
-        // Pantau laporan bacaan
-        db.collection("laporan_bacaan").onSnapshot(snap => {
-            let doneGlobal = 0;
-            let doneKomsel = 0;
-            let sudahHitungUser = new Set(); 
+        db.collection("laporan_bacaan").where("tanggal", ">=", limitDate).onSnapshot(snap => {
+            let monthlyData = {}; 
 
             snap.forEach(doc => {
                 const d = doc.data();
-                const tglRaw = d.tanggal?.toDate ? d.tanggal.toDate() : (d.tanggal ? new Date(d.tanggal) : null);
-                
-                if (tglRaw && tglRaw >= limitDate) {
+                const tgl = d.tanggal?.toDate();
+                if (tgl) {
+                    const bulanTahun = tgl.getFullYear() + "-" + (tgl.getMonth() + 1);
                     const userEmail = d.email;
+
+                    if (!monthlyData[bulanTahun]) {
+                        monthlyData[bulanTahun] = { doneGlobal: new Set(), doneKomsel: new Set() };
+                    }
+
+                    monthlyData[bulanTahun].doneGlobal.add(userEmail);
                     
-                    if (d.pasal_utama && d.pasal_utama !== "" && !sudahHitungUser.has(userEmail)) {
-                        doneGlobal++;
-                        
-                        const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
-                        if (parseInt(jcLaporan).toString() === selKomselAngka) {
-                            doneKomsel++;
-                        }
-                        sudahHitungUser.add(userEmail);
+                    const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
+                    if (parseInt(jcLaporan).toString() === selKomselAngka) {
+                        monthlyData[bulanTahun].doneKomsel.add(userEmail);
                     }
                 }
             });
 
-            if (targetKomsel === 0) targetKomsel = 1; 
-            if (targetGlobal === 0) targetGlobal = 1;
+            let totalDoneGlobal = 0;
+            let totalDoneKomsel = 0;
+            let jumlahBulanAdaData = Object.keys(monthlyData).length || 1;
 
-            updateBar('text-capaian-komsel', 'bar-capaian-komsel', targetKomsel, doneKomsel);
-            updateBar('text-capaian-global', 'bar-capaian-global', targetGlobal, doneGlobal);
+            for (let bulan in monthlyData) {
+                totalDoneGlobal += monthlyData[bulan].doneGlobal.size;
+                totalDoneKomsel += monthlyData[bulan].doneKomsel.size;
+            }
+
+            const avgDoneGlobal = totalDoneGlobal / jumlahBulanAdaData;
+            const avgDoneKomsel = totalDoneKomsel / jumlahBulanAdaData;
+
+            updateBar('text-capaian-komsel', 'bar-capaian-komsel', targetKomsel, avgDoneKomsel);
+            updateBar('text-capaian-global', 'bar-capaian-global', targetGlobal, avgDoneGlobal);
+            
+            console.log("Rincian 12 Bulan:", monthlyData); 
         });
     });
 }
