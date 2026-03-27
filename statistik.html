@@ -125,29 +125,37 @@ function updateBar(textId, barId, total, done) {
     document.getElementById(barId).style.width = persen + "%";
 }
 
-// 1. REALTIME BACA ALKITAB
+// 1. REALTIME BACA ALKITAB (VERSI PERBAIKAN)
 function syncCapaianRealtime() {
-    const selKomsel = document.getElementById('select-komsel-alkitab').value.trim();
+    const selKomselRaw = document.getElementById('select-komsel-alkitab').value; 
+    const selKomselAngka = selKomselRaw.replace(/\D/g, ""); 
+    
     const periode = parseInt(document.getElementById('select-periode-alkitab').value);
     const limitDate = new Date();
     limitDate.setMonth(limitDate.getMonth() - periode);
 
     db.collection("laporan_bacaan").onSnapshot(snap => {
-        let totalGlobal = 0, doneGlobal = 0, totalKomsel = 0, doneKomsel = 0;
+        let totalGlobal = 0, doneGlobal = 0;
+        let totalKomsel = 0, doneKomsel = 0;
 
         snap.forEach(doc => {
             const d = doc.data();
-            const tgl = d.tanggal_db ? d.tanggal_db.toDate() : new Date();
             
-            if (tgl >= limitDate) {
+            // Perbaikan field tanggal
+            const tglRaw = d.tanggal?.toDate ? d.tanggal.toDate() : (d.tanggal ? new Date(d.tanggal) : null);
+            
+            if (tglRaw && tglRaw >= limitDate) {
                 totalGlobal++;
-                if (d.status === "Selesai") doneGlobal++;
                 
-                // Cek JC (Menangani JC 01 atau JC 1)
-                const jcData = String(d.jc || d.komsel || "").trim();
-                if (jcData === selKomsel) {
+                // Dianggap selesai jika pasal_utama terisi
+                const isSelesai = (d.pasal_utama && d.pasal_utama !== "");
+                if (isSelesai) doneGlobal++;
+
+                // Cek Komsel (Normalisasi "5" vs "JC 05")
+                const jcDatabase = String(d.komsel || d.jc || "").replace(/\D/g, "");
+                if (jcDatabase === selKomselAngka || jcDatabase === parseInt(selKomselAngka).toString()) {
                     totalKomsel++;
-                    if (d.status === "Selesai") doneKomsel++;
+                    if (isSelesai) doneKomsel++;
                 }
             }
         });
@@ -168,7 +176,6 @@ function syncGoldarRealtime() {
             const jcUser = String(d.jc || d.komsel || "").trim();
             
             if (filter === "Semua Komsel" || jcUser === filter) {
-                // Ambil field golDarah atau golongan_darah
                 const g = String(d.golongan_darah || d.golDarah || "").toUpperCase().trim();
                 if (counts.hasOwnProperty(g)) {
                     counts[g]++;
@@ -177,7 +184,6 @@ function syncGoldarRealtime() {
             }
         });
 
-        // Update Tampilan & Klik Detail
         ["A", "B", "O", "AB"].forEach(type => {
             const el = document.getElementById('count-' + type);
             if (el) {
@@ -218,7 +224,6 @@ function syncDoaRealtime() {
     });
 }
 
-// Modal Detail User
 function openUserDetail(type, data) {
     const list = document.getElementById('modal-list-user');
     document.getElementById('modal-title').innerText = "Golongan Darah " + type;
@@ -244,7 +249,6 @@ function openUserDetail(type, data) {
     document.getElementById('modal-goldar').style.display = 'flex';
 }
 
-// Jalankan saat start
 window.onload = () => {
     syncCapaianRealtime();
     syncGoldarRealtime();
