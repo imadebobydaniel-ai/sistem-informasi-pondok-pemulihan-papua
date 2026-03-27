@@ -58,6 +58,16 @@
         .msg-item:active { background-color: #f0f0f0; }
         .badge-baru { background: #ff0000; color: white; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: bold; margin-left: 5px; }
 
+        /* MODAL DETAIL CUSTOM (BARU) */
+        .modal-detail { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-detail-content { background: white; width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; animation: zoomIn 0.3s ease; }
+        .modal-header { background: var(--biru-tua); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; text-align: left; line-height: 1.6; }
+        .modal-footer { padding: 15px; border-top: 1px solid #eee; text-align: right; }
+        .inbox-controls { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border-radius: 10px; margin-bottom: 10px; font-size: 12px; }
+        .btn-delete-selected { color: #ff0000; cursor: pointer; font-weight: bold; display: none; }
+        @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
         .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -87,6 +97,23 @@
                 <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px; color:red;"></i>
             </div>
             <div id="list-pesan"><p style="font-size:12px; color:#999;">Memuat pesan...</p></div>
+        </div>
+    </div>
+
+    <div id="modal-pesan" class="modal-detail">
+        <div class="modal-detail-content">
+            <div class="modal-header">
+                <span id="det-kategori" style="font-size: 12px; font-weight: bold; text-transform: uppercase;">INFO</span>
+                <i class="fas fa-times" onclick="tutupDetail()" style="cursor:pointer;"></i>
+            </div>
+            <div class="modal-body">
+                <h3 id="det-judul" style="margin-top: 0; color: var(--biru-tua);">Judul Pesan</h3>
+                <small id="det-tanggal" style="color: #999; display: block; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px;"></small>
+                <div id="det-isi" style="white-space: pre-wrap;">Isi pesan muncul di sini...</div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="tutupDetail()" style="padding: 10px 20px; border-radius: 10px; border: none; background: var(--biru-safir); color: white; font-weight: bold;">Tutup</button>
+            </div>
         </div>
     </div>
 
@@ -217,17 +244,24 @@
             }
         }
 
-        // --- FUNGSI INBOX SAKTI ---
+        // --- UPDATE FUNGSI MONITOR INBOX (BARU) ---
         function monitorEmailInbox(userJC, emailUser) {
             db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 let unreadCount = 0;
                 const listDiv = document.getElementById('list-pesan');
                 if(!listDiv) return;
-                listDiv.innerHTML = "";
-                
+
+                listDiv.innerHTML = `
+                    <div class="inbox-controls">
+                        <label style="cursor:pointer"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"> Pilih Semua</label>
+                        <span id="btnHapusMassal" class="btn-delete-selected" onclick="hapusPesanTerpilih()"><i class="fas fa-trash"></i> Hapus</span>
+                    </div>
+                `;
+
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    const target = data.target_jc || data.target; 
+                    const target = data.target_jc || data.target;
+                    const tgl = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('id-ID') : "-";
                     
                     if (target === "Semua JC" || target === userJC || target === ("JC"+userJC)) {
                         const sudahDibaca = data.sudahDibaca || [];
@@ -235,12 +269,17 @@
                         if (isUnread) unreadCount++;
                         
                         listDiv.innerHTML += `
-                            <div class="msg-item" onclick="bukaDetailPesan('${doc.id}')" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}">
-                                <div class="msg-content-wrapper">
-                                    <b style="font-size:14px;">${data.judul || 'Pesan'}</b><br>
+                            <div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}">
+                                <input type="checkbox" class="msg-check" value="${doc.id}" onclick="updateDeleteBtn()">
+                                <div style="flex:1; margin-left:10px;" onclick="bukaDetailPesan('${doc.id}')">
+                                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                                        <b style="font-size:14px;">${data.judul || 'Pesan'}</b>
+                                        <small style="font-size:10px; color:#999;">${tgl}</small>
+                                    </div>
                                     <small style="color:#888;">${data.kategori || 'Info'}</small>
                                     ${isUnread ? '<span class="badge-baru">Baru</span>' : ''}
                                 </div>
+                                <i class="fas fa-trash-alt" style="color:#ccc; padding:10px;" onclick="hapusSatuPesan('${doc.id}')"></i>
                             </div>`;
                     }
                 });
@@ -253,26 +292,52 @@
             });
         }
 
-        // --- FUNGSI BUKA DETAIL (YANG ANDA MINTA) ---
+        // --- FUNGSI BUKA DETAIL (MODAL CUSTOM) ---
         async function bukaDetailPesan(id) {
             try {
                 const docRef = db.collection("pengumuman_komsel").doc(id);
                 const doc = await docRef.get();
                 const data = doc.data();
+                const tgl = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString('id-ID') : "-";
+
+                document.getElementById('det-kategori').innerText = data.kategori || 'PENGUMUMAN';
+                document.getElementById('det-judul').innerText = data.judul;
+                document.getElementById('det-tanggal').innerText = "Diterima: " + tgl;
+                document.getElementById('det-isi').innerText = data.isi || data.isi_pesan || "Tidak ada detail.";
+                document.getElementById('modal-pesan').style.display = 'flex';
                 
-                const detailIsi = data.isi || data.isi_pesan || "Tidak ada detail pesan.";
-                
-                // Tampilkan Detail (Bisa diganti Modal Cantik nanti)
-                alert(`--- ${data.kategori || 'PENGUMUMAN'} ---\n\n${data.judul}\n\nIsi Pesan:\n${detailIsi}`);
-                
-                // Update Status Baca ke Firebase
                 if(!data.sudahDibaca || !data.sudahDibaca.includes(userEmail)) {
-                    await docRef.update({
-                        sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
-                    });
+                    await docRef.update({ sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail) });
                 }
-            } catch (e) {
-                console.error("Gagal membuka detail:", e);
+            } catch (e) { alert("Gagal memuat pesan"); }
+        }
+
+        function tutupDetail() { document.getElementById('modal-pesan').style.display = 'none'; }
+
+        // --- FITUR HAPUS & CHECKBOX ---
+        function toggleSelectAll(source) {
+            const checkboxes = document.querySelectorAll('.msg-check');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateDeleteBtn();
+        }
+
+        function updateDeleteBtn() {
+            const checkedCount = document.querySelectorAll('.msg-check:checked').length;
+            document.getElementById('btnHapusMassal').style.display = checkedCount > 0 ? 'block' : 'none';
+        }
+
+        async function hapusSatuPesan(id) {
+            if(confirm("Hapus pesan ini dari pandangan Anda?")) {
+                await db.collection("pengumuman_komsel").doc(id).update({ target: "Sembunyikan_" + userEmail });
+            }
+        }
+
+        async function hapusPesanTerpilih() {
+            if(confirm("Hapus semua pesan yang dipilih?")) {
+                const ids = Array.from(document.querySelectorAll('.msg-check:checked')).map(cb => cb.value);
+                for(const id of ids) {
+                    await db.collection("pengumuman_komsel").doc(id).update({ target: "Sembunyikan_" + userEmail });
+                }
             }
         }
 
