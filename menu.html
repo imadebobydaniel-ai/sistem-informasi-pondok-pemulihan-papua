@@ -7,10 +7,9 @@
     <title>Menu Utama - Pondok Pemulihan Papua</title>
     
     <script>
-        // Cek Auth di awal
         const isMember = localStorage.getItem("userEmail");
-        const isAdminLogged = localStorage.getItem("adminLoggedIn") === "true";
-        if (!isMember && !isAdminLogged) {
+        const isAdmin = localStorage.getItem("adminLoggedIn");
+        if (!isMember && isAdmin !== "true") {
             window.location.href = "login.html"; 
         }
     </script>
@@ -20,65 +19,100 @@
         :root { 
             --biru-tua: #003366; 
             --biru-safir: #0056b3; 
+            --biru-muda: #00e6e6; 
             --hijau-zamrud: #2ecc71; 
             --emas-lux: #D4AF37; 
             --putih-bg: #f4f7fa; 
         }
 
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--putih-bg); margin: 0; padding: 0; color: #333; overflow-x: hidden; }
-        
-        @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
-        
         .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
         
-        header { background: var(--biru-tua); border-bottom: 3px solid var(--hijau-zamrud); padding: 12px 0; overflow: hidden; white-space: nowrap; display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .running-content { display: inline-block; padding-left: 100%; animation: marqueeTop 30s linear infinite; font-weight: 900; font-size: 13px; color: white; text-transform: uppercase; }
+        header { 
+            background: var(--biru-tua); 
+            border-bottom: 3px solid var(--hijau-zamrud); 
+            padding: 12px 0; 
+            overflow: hidden; 
+            white-space: nowrap; 
+            display: flex; 
+            align-items: center; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .running-content { 
+            display: inline-block; 
+            padding-left: 100%; 
+            animation: marqueeTop 30s linear infinite; 
+            font-weight: 900; 
+            font-size: 13px; 
+            color: white; 
+            text-transform: uppercase; 
+        }
+        @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
 
-        .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        
+        .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
         .top-section-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto 30px auto; height: 220px; overflow: hidden; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
-        .profile-card { position: absolute; width: 100%; height: 100%; background: linear-gradient(145deg, #ffffff, #e6e6e6); border-radius: 25px; z-index: 5; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 4px solid var(--biru-safir); }
+        
+        .profile-card { 
+            position: absolute; width: 100%; height: 100%; 
+            background: linear-gradient(145deg, #ffffff, #e6e6e6); 
+            border-radius: 25px; z-index: 5; 
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            border-top: 4px solid var(--biru-safir); 
+        }
         .profile-card.closed { transform: translateX(-100%); }
-        .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; }
-
-        #media-display-area { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
-        #other-media { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; color: white; text-align: center; }
 
         .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
         .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
-        #email-badge { position: absolute; top: -8px; right: -8px; background: red; color: white; font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none; }
+        #email-badge {
+            position: absolute; top: -8px; right: -8px; background: red; color: white;
+            font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none;
+        }
+        @keyframes shake {
+            0% { transform: rotate(0deg); } 10% { transform: rotate(-10deg); } 20% { transform: rotate(10deg); }
+            30% { transform: rotate(-10deg); } 40% { transform: rotate(10deg); } 50% { transform: rotate(0deg); }
+        }
+        .vibrate { animation: shake 0.5s infinite; color: var(--emas-lux) !important; }
 
-        /* MODAL / POPUP INBOX & DETAIL */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 3000; justify-content: center; align-items: center; }
-        .modal-content-medium { background: white; width: 90%; max-width: 400px; border-radius: 20px; padding: 0; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; animation: zoomIn 0.3s ease; }
-        
-        @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .popup-inbox {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center;
+        }
+        .inbox-content {
+            background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 80vh; overflow-y: auto;
+        }
+        .msg-item {
+            padding: 12px; border-bottom: 1px solid #eee; text-align: left; cursor: pointer; transition: 0.2s;
+        }
+        .msg-item:hover { background: #f1f1f1; }
+        .msg-item b { display: block; color: var(--biru-tua); font-size: 14px; }
+        .msg-item small { color: #888; font-size: 11px; }
 
-        .modal-header { padding: 15px 20px; background: var(--biru-tua); color: white; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
-        .modal-footer { padding: 15px 20px; text-align: right; border-top: 1px solid #eee; }
+        .btn-toggle-side { 
+            position: absolute; left: 0; top: 50%; transform: translateY(-50%); 
+            z-index: 10; background: #ff0000; color: white; border: none; 
+            width: 30px; height: 60px; border-radius: 0 15px 15px 0; 
+            cursor: pointer; transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .profile-card.closed ~ .btn-toggle-side { left: 0; }
+        .news-slider { width: 100%; height: 100%; background: var(--biru-tua); position: relative; z-index: 1; }
 
-        .msg-item { display: flex; flex-direction: column; padding: 12px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
-        .msg-item:active { transform: scale(0.98); }
-
-        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 400px; margin-bottom: 30px; }
+        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .menu-box:active { transform: scale(0.95); }
         .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        .special-menu-container { display: flex; justify-content: center; width: 100%; margin-top: 10px; margin-bottom: -15px; position: relative; z-index: 2; }
-        .menu-circle-3d { width: 90px; height: 90px; border-radius: 50%; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; text-transform: uppercase; background: linear-gradient(135deg, #0056b3 0%, #2ecc71 100%); color: white; box-shadow: 0 8px 15px rgba(0,0,0,0.3), inset 0 -4px 8px rgba(0,0,0,0.2), inset 0 4px 8px rgba(255,255,255,0.4); border: 4px solid white; transition: all 0.3s ease; cursor: pointer; }
-
-        .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); width: max-content; }
-        #admin-badge { display: none; background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-top: 5px; font-weight: bold; }
+        .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); }
+        #admin-badge { display: none; background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="modal-logout" class="modal-overlay">
-        <div class="modal-content-medium" style="max-width: 320px; padding: 20px; text-align: center;">
+    <div id="modal-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 4000; justify-content: center; align-items: center; padding: 20px;">
+        <div style="background: white; width: 100%; max-width: 320px; border-radius: 15px; text-align: center; padding: 20px;">
             <i class="fa-solid fa-right-from-bracket" style="font-size: 40px; color: #dc3545; margin-bottom: 15px;"></i>
-            <h3>Konfirmasi Keluar</h3>
-            <p style="color: #666; margin-bottom: 20px;">Apakah Anda yakin ingin keluar?</p>
+            <h3 style="margin: 0;">Konfirmasi Keluar</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Apakah Anda yakin ingin keluar?</p>
             <div style="display: flex; gap: 10px;">
                 <button onclick="closeLogoutModal()" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; background: white;">Batal</button>
                 <button onclick="executeLogout()" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #dc3545; color: white; font-weight: bold;">Keluar</button>
@@ -86,29 +120,24 @@
         </div>
     </div>
 
-    <div id="popup-inbox" class="modal-overlay">
-        <div class="modal-content-medium">
-            <div class="modal-header">
-                <h3 style="margin:0;"><i class="fas fa-envelope-open"></i> Inbox JC</h3>
-                <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px;"></i>
+    <div id="popup-inbox" class="popup-inbox">
+        <div class="inbox-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas-lux); padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 id="inbox-title" style="margin:0; color:var(--biru-tua);"><i class="fas fa-envelope-open"></i> Inbox JC</h3>
+                <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px; color:red;"></i>
             </div>
-            <div class="modal-body" id="list-pesan">
+
+            <div id="list-pesan">
                 <p style="font-size:12px; color:#999;">Memuat pesan...</p>
             </div>
-        </div>
-    </div>
 
-    <div id="popup-detail-pesan" class="modal-overlay">
-        <div class="modal-content-medium">
-            <div class="modal-header">
-                <h3 id="view-judul" style="margin:0; font-size:16px;">Detail Pesan</h3>
-                <i class="fas fa-times" onclick="kembaliKeInbox()" style="cursor:pointer; font-size:20px;"></i>
-            </div>
-            <div class="modal-body">
-                <div id="view-isi" style="font-size:14px; white-space: pre-wrap; line-height: 1.6; color: #333;">...</div>
-            </div>
-            <div class="modal-footer">
-                <button onclick="kembaliKeInbox()" style="padding: 8px 20px; background: var(--biru-tua); color:white; border:none; border-radius:5px;">Kembali</button>
+            <div id="detail-pesan-konten" style="display: none; text-align: left;">
+                <button onclick="kembaliKeList()" style="background: #eee; border: none; color: #333; cursor: pointer; padding: 5px 10px; border-radius: 5px; margin-bottom: 10px; font-size: 12px;">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </button>
+                <h4 id="detail-judul" style="margin: 5px 0; color: var(--biru-tua);"></h4>
+                <hr style="border: 0; border-top: 1px solid #eee;">
+                <div id="detail-isi" style="font-size: 14px; line-height: 1.6; color: #444; white-space: pre-wrap; margin-top: 10px;"></div>
             </div>
         </div>
     </div>
@@ -119,7 +148,7 @@
     </div>
 
     <header>
-        <div id="running-text" class="running-content">Selamat Datang di Pondok Pemulihan Papua</div>
+        <div id="running-text" class="running-content">Memuat data sistem...</div>
     </header>
 
     <div class="container">
@@ -131,6 +160,7 @@
                     <i class="fas fa-envelope email-icon" id="icon-mail"></i>
                     <span id="email-badge">0</span>
                 </div>
+
                 <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--emas-lux); background: white; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-circle-user" id="default-icon" style="font-size: 70px; color: var(--biru-safir);"></i>
                     <img id="user-photo" src="" style="display: none; width:100%; height:100%; object-fit:cover;">
@@ -145,9 +175,17 @@
                 <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
             </button>
 
-            <div id="media-display-area">
-                <div id="player" style="width: 100%; height: 100%;"></div> 
-                <div id="other-media"></div>
+            <div id="media-display-area" class="news-slider">
+                <div id="youtube-player-container" style="width: 100%; height: 100%;">
+                    <div id="player"></div> 
+                </div>
+                <div id="newsOverlay" style="position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 10px; text-align: left; color: white; z-index: 2; pointer-events: none;">
+                    <small id="newsLabel" style="color: #ffc107; font-weight: bold;"></small>
+                    <h3 id="newsTitle" style="margin: 0; font-size: 14px;"></h3>
+                </div>
+                <div id="muteBtn" onclick="handleToggleMute()" style="display:none; position: absolute; bottom: 50px; right: 15px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 50%; color: white; cursor: pointer;">
+                    <i class="fa-solid fa-volume-xmark" id="muteIcon"></i>
+                </div>
             </div>
         </div>
 
@@ -162,12 +200,6 @@
             <a href="capaian-doa.html" class="menu-box"><i class="fa-solid fa-hands-praying"></i>Capaian Doa</a>
             <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
             <a href="saran.html" class="menu-box"><i class="fa-solid fa-comment-dots"></i>Saran</a>
-        </div>
-
-        <div class="special-menu-container">
-            <a href="chat.html" class="menu-circle-3d">
-                <span class="icon-emoji-3d">🗣️</span> <span class="circle-label">BARIBUT</span>
-            </a>
         </div>
 
         <a href="javascript:void(0)" onclick="confirmLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Keluar</a>
@@ -186,149 +218,232 @@
             messagingSenderId: "125984859692", 
             appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
         };
-
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         let ytPlayer; 
-        const userEmail = localStorage.getItem("userEmail");
-        const isAdmin = localStorage.getItem("adminLoggedIn") === "true";
 
-        // MEDIA
-        function extractYouTubeID(url) {
-            if (!url) return null;
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : null;
-        }
-
-        function onYouTubeIframeAPIReady() {
-            db.collection("portal_media").orderBy("urutan", "asc").limit(1).onSnapshot(snapshot => {
-                const otherMedia = document.getElementById('other-media');
-                const ytContainer = document.getElementById('player');
-                if (snapshot.empty) {
-                    otherMedia.style.display = 'flex';
-                    otherMedia.innerHTML = "<div style='color:white;'>Belum ada media aktif</div>";
-                    return;
+        function handleToggleMute() {
+            if (ytPlayer && typeof ytPlayer.isMuted === 'function') {
+                if (ytPlayer.isMuted()) {
+                    ytPlayer.unMute();
+                    document.getElementById('muteIcon').className = "fa-solid fa-volume-high";
+                } else {
+                    ytPlayer.mute();
+                    document.getElementById('muteIcon').className = "fa-solid fa-volume-xmark";
                 }
-                const data = snapshot.docs[0].data();
-                const type = data.tipe || "video_youtube";
-                const content = data.url || "";
-                otherMedia.style.display = 'none';
-                ytContainer.style.display = 'none';
-                if (type === "video_youtube" || type === "youtube") {
-                    ytContainer.style.display = 'block';
-                    playYouTube(content);
-                } else if (type === "gambar") {
-                    otherMedia.style.display = 'flex';
-                    otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
-                }
-            });
-        }
-
-        function playYouTube(rawUrl) {
-            const videoId = extractYouTubeID(rawUrl);
-            if (!videoId) return;
-            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-                ytPlayer.loadVideoById({ videoId: videoId });
-            } else {
-                ytPlayer = new YT.Player('player', {
-                    videoId: videoId,
-                    playerVars: { 'autoplay': 1, 'mute': 0, 'loop': 1, 'playlist': videoId, 'rel': 0 },
-                    events: { 'onReady': e => { e.target.playVideo(); } }
-                });
             }
         }
 
-        // INBOX & MODAL LOGIC
-        function monitorEmailInbox(userJC, emailKey) {
-            db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+        // --- MONITOR INBOX ---
+        function monitorEmailInbox(userJC, userEmail) {
+            db.collection("pengumuman_komsel")
+              .orderBy("timestamp", "desc")
+              .onSnapshot(snapshot => {
                 let unreadCount = 0;
                 const listDiv = document.getElementById('list-pesan');
+                if(!listDiv) return;
                 listDiv.innerHTML = "";
 
+                // 1. Pesan Sambutan Virtual
+                const hasReadWelcome = localStorage.getItem("welcomeRead_" + userEmail);
+                if (!hasReadWelcome) unreadCount++;
+
+                const welcomeItem = `
+                    <div class="msg-item" onclick="bacaWelcome('${userEmail}')" 
+                         style="${!hasReadWelcome ? 'background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;' : 'background:#fff; border-left:4px solid #eee;'}">
+                        <b>Selamat Datang! ${!hasReadWelcome ? '<span style="color:red; font-size:9px;">(BARU)</span>' : ''}</b>
+                        <small>Sistem • ${!hasReadWelcome ? 'Belum Dibaca' : 'Sudah Dibaca'}</small>
+                    </div>`;
+                listDiv.innerHTML += welcomeItem;
+
+                // 2. Pesan Firestore
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const target = data.target || data.target_jc; 
-                    if (target === "Semua JC" || String(target) === String(userJC)) {
+                    
+                    if (target === "Semua JC" || target === userJC || (Array.isArray(target) && target.includes(userJC))) {
                         const sudahDibaca = data.sudahDibaca || [];
-                        const isUnread = !sudahDibaca.includes(emailKey);
+                        const isUnread = !sudahDibaca.includes(userEmail);
                         if (isUnread) unreadCount++;
 
-                        const itemHtml = `
-                            <div class="msg-item" onclick="bukaDetailPesan('${doc.id}', '${data.judul}', \`${data.isi}\`, '${emailKey}')"
-                                 style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#f9f9f9; border:1px solid #eee;'}">
-                                <b style="color:var(--biru-tua)">${data.judul || 'Pesan Baru'}</b>
-                                <p style="font-size:11px; margin:5px 0; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${data.isi || ''}</p>
-                                <small style="color:${isUnread ? '#d4af37' : '#999'}">${isUnread ? '🔵 Belum Dibaca' : '⚪ Sudah Dibaca'}</small>
+                        const itemStyle = isUnread 
+                            ? "background:#fff9e6; border-left:4px solid var(--emas-lux); font-weight:bold;" 
+                            : "background:#fff; border-left:4px solid #eee;";
+
+                        listDiv.innerHTML += `
+                            <div class="msg-item" onclick="bacaDetailPesan('${doc.id}', '${userEmail}')" style="${itemStyle}">
+                                <b>${data.judul} ${isUnread ? '<span style="color:red; font-size:9px;">(BARU)</span>' : ''}</b>
+                                <small>${data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID') : '-'} • ${isUnread ? 'Belum Dibaca' : 'Sudah Dibaca'}</small>
                             </div>`;
-                        listDiv.innerHTML += itemHtml;
                     }
                 });
-                document.getElementById('email-badge').style.display = unreadCount > 0 ? 'block' : 'none';
-                document.getElementById('email-badge').innerText = unreadCount;
+
+                const icon = document.getElementById('icon-mail');
+                const badge = document.getElementById('email-badge');
+                if (unreadCount > 0) {
+                    icon.classList.add('vibrate');
+                    badge.style.display = 'block';
+                    badge.innerText = unreadCount;
+                } else {
+                    icon.classList.remove('vibrate');
+                    badge.style.display = 'none';
+                }
             });
         }
 
-        function bukaDetailPesan(docId, judul, isi, emailKey) {
-            document.getElementById('view-judul').innerText = judul;
-            document.getElementById('view-isi').innerText = isi;
-            document.getElementById('popup-inbox').style.display = 'none'; // Tutup list
-            document.getElementById('popup-detail-pesan').style.display = 'flex'; // Buka detail
-            
-            db.collection("pengumuman_komsel").doc(docId).update({
-                sudahDibaca: firebase.firestore.FieldValue.arrayUnion(emailKey)
-            });
+        function bacaWelcome(userEmail) {
+            localStorage.setItem("welcomeRead_" + userEmail, "true");
+            alert("Selamat Datang Di Aplikasi Sistem Informasi Integrasi Komsel JC. Semoga Anda Diberkati Dengan Adanya Aplikasi Ini. Tuhan Yesus Memberkati.");
+            location.reload(); 
         }
 
-        function kembaliKeInbox() {
-            document.getElementById('popup-detail-pesan').style.display = 'none';
-            document.getElementById('popup-inbox').style.display = 'flex';
+        // FUNGSI BARU: Baca detail pesan di dalam popup
+        async function bacaDetailPesan(docId, userEmail) {
+            const listDiv = document.getElementById('list-pesan');
+            const detailDiv = document.getElementById('detail-pesan-konten');
+            const judulInbox = document.getElementById('inbox-title');
+
+            try {
+                const doc = await db.collection("pengumuman_komsel").doc(docId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    
+                    document.getElementById('detail-judul').innerText = data.judul;
+                    document.getElementById('detail-isi').innerText = data.isi || data.pesan || "Tidak ada isi pesan.";
+                    
+                    await db.collection("pengumuman_komsel").doc(docId).update({
+                        sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail)
+                    });
+
+                    listDiv.style.display = "none";
+                    detailDiv.style.display = "block";
+                    judulInbox.innerHTML = '<i class="fas fa-envelope-open-text"></i> Isi Pesan';
+                }
+            } catch (e) { 
+                console.error("Gagal memuat detail:", e); 
+            }
+        }
+
+        function kembaliKeList() {
+            document.getElementById('list-pesan').style.display = "block";
+            document.getElementById('detail-pesan-konten').style.display = "none";
+            document.getElementById('inbox-title').innerHTML = '<i class="fas fa-envelope-open"></i> Inbox JC';
+        }
+
+        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
+        
+        function tutupInbox() { 
+            document.getElementById('popup-inbox').style.display = 'none'; 
+            kembaliKeList(); 
         }
 
         function syncUser() {
-            if (isAdmin) {
+            const email = localStorage.getItem("userEmail");
+            const isAdmin = localStorage.getItem("adminLoggedIn");
+            const imgElement = document.getElementById('user-photo');
+            const iconElement = document.getElementById('default-icon');
+
+            if (isAdmin === "true") {
                 document.getElementById('disp_nama').innerText = "Administrator";
+                document.getElementById('disp_email').innerText = "System Access Active";
                 document.getElementById('admin-badge').style.display = "inline-block";
-                monitorEmailInbox("Admin", "admin@system.com");
-            } else if (userEmail) {
-                db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
+                document.getElementById('disp_komsel').innerText = "ALL KOMSEL";
+                imgElement.style.display = "none";
+                iconElement.style.display = "block";
+                monitorEmailInbox("Semua JC", "admin@system.com");
+            } else if (email) {
+                document.getElementById('disp_email').innerText = email;
+                db.collection("users").where("email", "==", email).onSnapshot(s => {
                     if (!s.empty) {
                         const d = s.docs[0].data();
                         document.getElementById('disp_nama').innerText = d.nama || "User";
-                        document.getElementById('disp_email').innerText = userEmail;
-                        document.getElementById('disp_komsel').innerText = "JC " + (d.komsel || "");
-                        if (d.fotoUrl) {
-                            document.getElementById('user-photo').src = d.fotoUrl;
-                            document.getElementById('user-photo').style.display = "block";
-                            document.getElementById('default-icon').style.display = "none";
+                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                        monitorEmailInbox(String(d.komsel), email);
+                        if (d.fotoUrl) { 
+                            imgElement.src = d.fotoUrl; 
+                            imgElement.style.display = "block";
+                            iconElement.style.display = "none";
                         }
-                        monitorEmailInbox(d.komsel, userEmail);
                     }
                 });
             }
+        }
+
+        function updateMainPlayer(data) {
+            const container = document.getElementById('youtube-player-container'); 
+            const muteBtn = document.getElementById('muteBtn');
+            const tipe = data.tipe ? data.tipe.toLowerCase() : "";
+            muteBtn.style.display = 'none';
+            container.innerHTML = "";
+            
+            if (tipe.includes('video')) {
+                container.innerHTML = `<div id="player"></div>`;
+                initYouTube(extractVideoID(data.url));
+                muteBtn.style.display = 'block';
+            } else if (tipe.includes('audio')) {
+                container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #003366, #0056b3); color:white; border-radius:20px; padding:20px;"><i class="fa-solid fa-music" style="font-size:50px; margin-bottom:15px; color:var(--emas-lux);"></i><audio controls style="width:100%;"><source src="${data.url}" type="audio/mpeg"></audio></div>`;
+            } else {
+                container.innerHTML = `<img src="${data.url}" style="width:100%; height:100%; object-fit:cover; border-radius:20px;">`;
+            }
+        }
+
+        async function loadMedia() {
+            try {
+                const snapshot = await db.collection("portal_media").orderBy("timestamp", "desc").limit(1).get();
+                if (!snapshot.empty) {
+                    const data = snapshot.docs[0].data();
+                    document.getElementById('newsTitle').innerText = data.judul || "";
+                    document.getElementById('newsLabel').innerText = "BERITA TERKINI";
+                    updateMainPlayer(data);
+                }
+                document.getElementById('running-text').innerText = "Selamat Datang di Sistem Informasi & Integrasi Komsel JC | Digitalisasi Monitoring Pertumbuhan Iman Realtime | Copyright @imadeboby 2026";
+            } catch (e) { console.error("Error loading media:", e); }
+        }
+
+        function extractVideoID(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length == 11) ? match[2] : null;
+        }
+
+        function initYouTube(videoId) {
+            if (typeof YT === 'undefined' || !YT.loaded) {
+                window.onYouTubeIframeAPIReady = () => createPlayer(videoId);
+            } else { createPlayer(videoId); }
+        }
+
+        function createPlayer(videoId) {
+            ytPlayer = new YT.Player('player', {
+                height: '100%', width: '100%', videoId: videoId,
+                playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'loop': 1, 'playlist': videoId },
+                events: { 'onReady': (e) => e.target.playVideo() }
+            });
         }
 
         function updateTime() {
             const now = new Date();
-            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', options);
+            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }) + " WIT";
         }
 
         function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
         function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
         function executeLogout() { localStorage.clear(); window.location.href = "login.html"; }
-        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
-        function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
 
-        window.onload = () => {
-            updateTime();
-            setInterval(updateTime, 1000);
-            syncUser();
+        window.onload = () => { 
+            updateTime(); 
+            setInterval(updateTime, 1000); 
+            syncUser(); 
+            loadMedia(); 
+
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
+            const toggleIcon = document.getElementById('toggleIcon');
+
             btnToggle.addEventListener('click', () => {
                 profileCard.classList.toggle('closed');
-                document.getElementById('toggleIcon').className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+                toggleIcon.className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
             });
         };
     </script>
