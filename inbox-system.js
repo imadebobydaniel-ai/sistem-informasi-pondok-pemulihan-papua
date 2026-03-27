@@ -23,11 +23,8 @@ const InboxSystem = {
                     const data = doc.data();
                     const docId = doc.id;
                     
-                    // --- BAGIAN FILTER YANG DIPERBAIKI ---
-                    const target = (data.target || "Semua JC").toLowerCase();
-                    const userGroup = (userJC || "").toLowerCase();
-
-                    if (target === "semua jc" || target === userGroup) {
+                    // MODIFIKASI DIAGNOSA: Memaksa tampil tanpa filter target
+                    if (true) { 
                         const readBy = data.readBy || [];
                         const isUnread = !readBy.includes(userEmail);
 
