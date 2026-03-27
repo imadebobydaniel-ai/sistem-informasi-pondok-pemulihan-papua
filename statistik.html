@@ -106,7 +106,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-// KONFIGURASI
 const firebaseConfig = {
     apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
     authDomain: "boby-apps-project.firebaseapp.com",
@@ -125,7 +124,7 @@ function updateBar(textId, barId, total, done) {
     document.getElementById(barId).style.width = persen + "%";
 }
 
-// 1. REALTIME BACA ALKITAB (VERSI PERBAIKAN)
+// 1. REALTIME BACA ALKITAB (Target: Total Anggota, Realisasi: User yang melapor)
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value; 
     const selKomselAngka = selKomselRaw.replace(/\D/g, ""); 
@@ -134,33 +133,43 @@ function syncCapaianRealtime() {
     const limitDate = new Date();
     limitDate.setMonth(limitDate.getMonth() - periode);
 
-    db.collection("laporan_bacaan").onSnapshot(snap => {
-        let totalGlobal = 0, doneGlobal = 0;
-        let totalKomsel = 0, doneKomsel = 0;
+    // AMBIL DATA TARGET (USERS)
+    db.collection("users").get().then(userSnap => {
+        let targetGlobal = userSnap.size;
+        let targetKomsel = 0;
 
-        snap.forEach(doc => {
-            const d = doc.data();
-            
-            // Perbaikan field tanggal
-            const tglRaw = d.tanggal?.toDate ? d.tanggal.toDate() : (d.tanggal ? new Date(d.tanggal) : null);
-            
-            if (tglRaw && tglRaw >= limitDate) {
-                totalGlobal++;
-                
-                // Dianggap selesai jika pasal_utama terisi
-                const isSelesai = (d.pasal_utama && d.pasal_utama !== "");
-                if (isSelesai) doneGlobal++;
-
-                // Cek Komsel (Normalisasi "5" vs "JC 05")
-                const jcDatabase = String(d.komsel || d.jc || "").replace(/\D/g, "");
-                if (jcDatabase === selKomselAngka || jcDatabase === parseInt(selKomselAngka).toString()) {
-                    totalKomsel++;
-                    if (isSelesai) doneKomsel++;
-                }
-            }
+        userSnap.forEach(uDoc => {
+            const u = uDoc.data();
+            const jcUser = String(u.komsel || u.jc || "").replace(/\D/g, "");
+            if (jcUser === selKomselAngka) targetKomsel++;
         });
-        updateBar('text-capaian-komsel', 'bar-capaian-komsel', totalKomsel, doneKomsel);
-        updateBar('text-capaian-global', 'bar-capaian-global', totalGlobal, doneGlobal);
+
+        // MONITOR REALISASI (LAPORAN)
+        db.collection("laporan_bacaan").onSnapshot(snap => {
+            let doneGlobal = 0;
+            let doneKomsel = 0;
+            let sudahHitungUser = new Set();
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                const tglRaw = d.tanggal?.toDate ? d.tanggal.toDate() : (d.tanggal ? new Date(d.tanggal) : null);
+                
+                if (tglRaw && tglRaw >= limitDate) {
+                    const userEmail = d.email;
+                    if (d.pasal_utama && !sudahHitungUser.has(userEmail)) {
+                        doneGlobal++;
+                        const jcDatabase = String(d.komsel || d.jc || "").replace(/\D/g, "");
+                        if (jcDatabase === selKomselAngka) {
+                            doneKomsel++;
+                        }
+                        sudahHitungUser.add(userEmail);
+                    }
+                }
+            });
+
+            updateBar('text-capaian-komsel', 'bar-capaian-komsel', targetKomsel, doneKomsel);
+            updateBar('text-capaian-global', 'bar-capaian-global', targetGlobal, doneGlobal);
+        });
     });
 }
 
