@@ -127,13 +127,13 @@ function updateBar(textId, barId, total, done) {
 // 1. REALTIME BACA ALKITAB (Target: Total Anggota, Realisasi: User yang melapor)
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value; 
-    const selKomselAngka = selKomselRaw.replace(/\D/g, ""); 
+    const selKomselAngka = parseInt(selKomselRaw.replace(/\D/g, "")).toString(); 
     
     const periode = parseInt(document.getElementById('select-periode-alkitab').value);
     const limitDate = new Date();
     limitDate.setMonth(limitDate.getMonth() - periode);
 
-    // AMBIL DATA TARGET (USERS)
+    // Ambil data users sebagai target pembagi (Denominator)
     db.collection("users").get().then(userSnap => {
         let targetGlobal = userSnap.size;
         let targetKomsel = 0;
@@ -141,14 +141,14 @@ function syncCapaianRealtime() {
         userSnap.forEach(uDoc => {
             const u = uDoc.data();
             const jcUser = String(u.komsel || u.jc || "").replace(/\D/g, "");
-            if (jcUser === selKomselAngka) targetKomsel++;
+            if (parseInt(jcUser).toString() === selKomselAngka) targetKomsel++;
         });
 
-        // MONITOR REALISASI (LAPORAN)
+        // Pantau laporan bacaan
         db.collection("laporan_bacaan").onSnapshot(snap => {
             let doneGlobal = 0;
             let doneKomsel = 0;
-            let sudahHitungUser = new Set();
+            let sudahHitungUser = new Set(); 
 
             snap.forEach(doc => {
                 const d = doc.data();
@@ -156,16 +156,21 @@ function syncCapaianRealtime() {
                 
                 if (tglRaw && tglRaw >= limitDate) {
                     const userEmail = d.email;
-                    if (d.pasal_utama && !sudahHitungUser.has(userEmail)) {
+                    
+                    if (d.pasal_utama && d.pasal_utama !== "" && !sudahHitungUser.has(userEmail)) {
                         doneGlobal++;
-                        const jcDatabase = String(d.komsel || d.jc || "").replace(/\D/g, "");
-                        if (jcDatabase === selKomselAngka) {
+                        
+                        const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
+                        if (parseInt(jcLaporan).toString() === selKomselAngka) {
                             doneKomsel++;
                         }
                         sudahHitungUser.add(userEmail);
                     }
                 }
             });
+
+            if (targetKomsel === 0) targetKomsel = 1; 
+            if (targetGlobal === 0) targetGlobal = 1;
 
             updateBar('text-capaian-komsel', 'bar-capaian-komsel', targetKomsel, doneKomsel);
             updateBar('text-capaian-global', 'bar-capaian-global', targetGlobal, doneGlobal);
