@@ -39,13 +39,43 @@
 <div class="mobile-wrapper">
     <div class="card">
         <div class="card-header"><i class="fa-solid fa-earth-americas"></i> BACA ALKITAB</div>
+        
         <div class="flex-row">
-            <div class="input-box"><label>Komsel</label>
+            <div class="input-box">
+                <label>Komsel</label>
                 <select id="select-komsel-alkitab" onchange="syncCapaianRealtime()">
                     <option value="JC 01">JC 01</option><option value="JC 02">JC 02</option>
                     <option value="JC 03">JC 03</option><option value="JC 04">JC 04</option>
                     <option value="JC 05" selected>JC 05</option>
                 </select>
+            </div>
+            <div class="input-box">
+                <label>Periode</label>
+                <select id="select-periode-alkitab" onchange="syncCapaianRealtime()">
+                    <option value="1">1 Bulan Terakhir</option>
+                    <option value="2">2 Bulan Terakhir</option>
+                    <option value="3">3 Bulan Terakhir</option>
+                    <option value="6">6 Bulan Terakhir</option>
+                    <option value="12" selected>12 Bulan Terakhir</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stat-item" style="margin-bottom: 20px;">
+            <div class="stat-label-flex">
+                <span>Capaian Komsel</span>
+                <span id="text-capaian-komsel" style="color:var(--biru-utama)">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="bar-capaian-komsel" class="progress-fill" style="width: 0%; background: var(--biru-utama);"></div>
+            </div>
+
+            <div class="stat-label-flex">
+                <span>Capaian Global</span>
+                <span id="text-capaian-global" style="color:var(--ungu-global)">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="bar-capaian-global" class="progress-fill" style="width: 0%; background: var(--ungu-global);"></div>
             </div>
         </div>
 
@@ -58,7 +88,7 @@
                 <i class="fa-solid fa-triangle-exclamation"></i> <b>PERINGATAN:</b> Data bulan ke-12 ditemukan. Segera backup data sebelum pembersihan otomatis.
             </div>
 
-            <div class="stat-item" id="container-12-bulan">
+            <div id="container-12-bulan">
                 </div>
         </div>
     </div>
@@ -119,14 +149,26 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// 1. ANALISA 12 BULAN TERAKHIR (BACA ALKITAB)
+function updateBar(textId, barId, total, done) {
+    const persen = total > 0 ? ((done / total) * 100).toFixed(1) : "0.0";
+    document.getElementById(textId).innerText = persen + "%";
+    document.getElementById(barId).style.width = persen + "%";
+}
+
+// 1. FUNGSI UTAMA BACA ALKITAB
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
     const selKomselAngka = parseInt(selKomselRaw.replace(/\D/g, "")).toString();
-    const container = document.getElementById('container-12-bulan');
+    const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
+    const container12 = document.getElementById('container-12-bulan');
     const notifBackup = document.getElementById('notif-backup');
     
+    // Hitung batas waktu filter utama (misal 3 bulan terakhir)
+    const limitDate = new Date();
+    limitDate.setDate(limitDate.getDate() - (periodeBulan * 30));
+
     db.collection("users").get().then(userSnap => {
+        let targetGlobal = userSnap.size;
         let targetKomsel = 0;
         userSnap.forEach(uDoc => {
             const u = uDoc.data();
@@ -135,55 +177,75 @@ function syncCapaianRealtime() {
         });
         if (targetKomsel === 0) targetKomsel = 1;
 
+        // Tarik data 1 tahun terakhir untuk mencakup semua analisa
         const limit365 = new Date();
         limit365.setDate(limit365.getDate() - 365);
 
         db.collection("laporan_bacaan")
             .where("tanggal", ">=", limit365)
             .onSnapshot(snap => {
-                container.innerHTML = "";
+                // --- LOGIKA PROGRESS BAR UTAMA (Dropdown Periode) ---
+                let doneGlobal = 0;
+                let doneKomsel = 0;
+                let sudahHitungUser = new Set();
+
+                // --- LOGIKA ANALISA 12 BULAN (Daftar List) ---
+                container12.innerHTML = "";
                 let hasDataOld = false;
-                
-                // Render 12 Periode (Mundur 30 hari per periode)
-                for (let i = 1; i <= 12; i++) {
-                    let doneInPeriod = new Set();
-                    const rangeEnd = new Date();
-                    rangeEnd.setDate(rangeEnd.getDate() - ((i - 1) * 30));
-                    const rangeStart = new Date();
-                    rangeStart.setDate(rangeStart.getDate() - (i * 30));
+                let monthlySets = Array.from({length: 12}, () => new Set());
 
-                    snap.forEach(doc => {
-                        const d = doc.data();
-                        const tgl = d.tanggal?.toDate();
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const tgl = d.tanggal?.toDate();
+                    if (!tgl) return;
+
+                    const userEmail = d.email;
+                    const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
+                    const isTargetKomsel = (parseInt(jcLaporan).toString() === selKomselAngka);
+
+                    // A. Filter untuk Progress Bar Utama
+                    if (tgl >= limitDate && d.pasal_utama && !sudahHitungUser.has(userEmail)) {
+                        doneGlobal++;
+                        if (isTargetKomsel) doneKomsel++;
+                        sudahHitungUser.add(userEmail);
+                    }
+
+                    // B. Filter untuk List Analisa 12 Bulan
+                    for (let i = 1; i <= 12; i++) {
+                        const rEnd = new Date(); rEnd.setDate(rEnd.getDate() - ((i-1)*30));
+                        const rStart = new Date(); rStart.setDate(rStart.getDate() - (i*30));
                         
-                        if (tgl && tgl >= rangeStart && tgl <= rangeEnd) {
-                            const jcLaporan = String(d.komsel || d.jc || "").replace(/\D/g, "");
-                            if (parseInt(jcLaporan).toString() === selKomselAngka && d.pasal_utama) {
-                                doneInPeriod.add(d.email);
-                            }
-                            
-                            const diffDays = (new Date() - tgl) / (1000 * 3600 * 24);
-                            if (diffDays >= 330) hasDataOld = true;
+                        if (tgl >= rStart && tgl <= rEnd && isTargetKomsel && d.pasal_utama) {
+                            monthlySets[i-1].add(userEmail);
                         }
-                    });
-
-                    const totalLapor = doneInPeriod.size;
-                    const persen = ((totalLapor / targetKomsel) * 100).toFixed(1);
+                    }
                     
-                    container.innerHTML += `
+                    // C. Cek Notif Backup
+                    const diffDays = (new Date() - tgl) / (1000 * 3600 * 24);
+                    if (diffDays >= 330) hasDataOld = true;
+                });
+
+                // Update Bar Utama
+                updateBar('text-capaian-komsel', 'bar-capaian-komsel', targetKomsel, doneKomsel);
+                updateBar('text-capaian-global', 'bar-capaian-global', targetGlobal, doneGlobal);
+
+                // Render List Analisa 12 Bulan
+                monthlySets.forEach((set, idx) => {
+                    const total = set.size;
+                    const p = ((total / targetKomsel) * 100).toFixed(1);
+                    container12.innerHTML += `
                         <div style="margin-bottom: 12px;">
                             <div class="stat-label-flex">
-                                <span style="font-size:11px; color:#666;">Bulan Ke-${i} Lalu</span>
-                                <span style="font-size:11px; font-weight:bold; color:var(--biru-utama);">${persen}%</span>
+                                <span style="font-size:11px; color:#666;">Bulan Ke-${idx+1} Lalu</span>
+                                <span style="font-size:11px; font-weight:bold; color:var(--biru-utama);">${p}%</span>
                             </div>
                             <div class="progress-bar" style="height:6px; margin-top:4px;">
-                                <div class="progress-fill" style="width: ${persen}%; background: var(--biru-utama);"></div>
+                                <div class="progress-fill" style="width: ${p}%; background: var(--biru-utama);"></div>
                             </div>
-                            <div style="font-size:9px; color:#aaa;">${totalLapor} dari ${targetKomsel} Anggota Aktif</div>
-                        </div>
-                    `;
-                }
-                notifBackup.style.display = hasDataOld ? 'block' : 'none';
+                        </div>`;
+                });
+
+                if(notifBackup) notifBackup.style.display = hasDataOld ? 'block' : 'none';
             });
     });
 }
