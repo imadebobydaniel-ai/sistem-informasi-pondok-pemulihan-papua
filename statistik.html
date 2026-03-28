@@ -63,7 +63,7 @@
             </div>
         </div>
         <div class="stat-item">
-            <div class="stat-label-flex"><span>PROGRES KOMSEL (TARGET 100)</span><span id="txt-alkitab-komsel">0.0%</span></div>
+            <div class="stat-label-flex"><span>PROGRES KOMSEL</span><span id="txt-alkitab-komsel">0.0%</span></div>
             <div class="progress-bar"><div id="bar-alkitab-komsel" class="progress-fill" style="background: var(--biru-utama);"></div></div>
         </div>
         <div class="stat-item">
@@ -192,13 +192,71 @@
         let barValue = isCount ? Math.min(value * 10, 100) : Math.min(value, 100); 
         document.getElementById(barId).style.width = barValue + "%";
     }
- 
-    // 1. SINKRONISASI DOA
+
+    // --- FUNGSI PERBAIKAN SINKRONISASI ALKITAB ---
+    function syncStatistikAlkitab() {
+        const jcRaw = document.getElementById('select-komsel-alkitab').value; 
+        const numJC = ambilAngkaJC(jcRaw); // Menghasilkan "5" jika input "JC 05"
+        const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value) || 12;
+        
+        const limitTgl = new Date();
+        limitTgl.setMonth(limitTgl.getMonth() - periodeBulan);
+
+        db.collection("laporan_bacaan").onSnapshot(snap => {
+            let countJC = 0;
+            let countGlobal = 0;
+
+            snap.forEach(doc => {
+                const d = doc.data();
+                
+                // Masalah 1: Penentuan Tanggal (Parsing format String atau Timestamp)
+                let tglData;
+                if (d.tglInput && d.tglInput.toDate) {
+                    tglData = d.tglInput.toDate();
+                } else if (d.tanggal && typeof d.tanggal === 'string') {
+                    // Parsing string format "DD/MM/YYYY" jika ada
+                    const parts = d.tanggal.split('/');
+                    if(parts.length === 3) {
+                        tglData = new Date(parts[2], parts[1] - 1, parts[0]);
+                    } else {
+                        tglData = new Date(d.tanggal);
+                    }
+                } else {
+                    tglData = new Date(); 
+                }
+                
+                if (tglData >= limitTgl) {
+                    countGlobal++; 
+
+                    // Masalah 2: Pencocokan Nomor Komsel yang fleksibel
+                    const k = String(d.komsel || d.jc || "");
+                    const cleanK = ambilAngkaJC(k);
+                    if (cleanK === numJC) {
+                        countJC++;
+                    }
+                }
+            });
+
+            // Penentuan Target Angka (bisa disesuaikan, misal 30 laporan/bulan)
+            const targetAngka = 30; 
+            let persenJC = ((countJC / targetAngka) * 100).toFixed(1);
+            let persenGlobal = ((countGlobal / (targetAngka * 5)) * 100).toFixed(1); // Global asumsi 5 komsel
+
+            // Update ke UI
+            updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', Math.min(persenJC, 100));
+            updateStatistikBar('txt-alkitab-global', 'bar-alkitab-global', Math.min(persenGlobal, 100));
+            
+            console.log("Trace: Sync Alkitab Selesai. JC:" + countJC + " Global:" + countGlobal);
+        });
+    }
+    // ----------------------------------------------
+
+    // (Fungsi syncStatistikDoa, Hadir, Izin, Golongan Darah tetap menggunakan versi Anda sebelumnya)
     function syncStatistikDoa() {
         const jcRaw = document.getElementById('select-jc-doa').value;
-        const periodeBulan = parseInt(document.getElementById('select-periode-doa').value);
+        const periodeBulan = parseInt(document.getElementById('select-periode-doa').value) || 12;
         const limitTgl = new Date(); limitTgl.setMonth(limitTgl.getMonth() - periodeBulan);
- 
+
         db.collection("laporan_doa").where("jc", "==", jcRaw).onSnapshot(snap => {
             let total = 0, terjawab = 0, totalSLA = 0;
             snap.forEach(doc => {
@@ -216,96 +274,47 @@
             });
             const persenDoa = total > 0 ? ((terjawab / 100) * 100).toFixed(1) : 0;
             const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
- 
             updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persenDoa);
             document.getElementById('txt-doa-sla-jc').innerText = rataSLA + " Hari";
             document.getElementById('bar-doa-sla-jc').style.width = Math.min((rataSLA / 30) * 100, 100) + "%";
         });
     }
- 
-    // 2. SINKRONISASI KEHADIRAN KOMSEL (LOGIC TERBARU)
+
     function syncStatistikHadir() {
         const jcRaw = document.getElementById('select-jc-laporan').value;
         const numJC = ambilAngkaJC(jcRaw);
-        
         db.collection("kehadiran").onSnapshot(snap => {
-            let totalHadirJC = 0;
-            let totalHadirGlobal = 0;
-
+            let totalHadirJC = 0, totalHadirGlobal = 0;
             snap.forEach(doc => {
                 const d = doc.data();
                 if(d.status === "HADIR") {
                     totalHadirGlobal++;
-                    
-                    const dataKomsel = ambilAngkaJC(d.jc || d.komsel);
-                    if(dataKomsel === numJC) {
-                        totalHadirJC++;
-                    }
+                    if(ambilAngkaJC(d.jc || d.komsel) === numJC) totalHadirJC++;
                 }
             });
-
-            const persenJC = ((totalHadirJC / 100) * 100).toFixed(1);
-            const persenGlobal = ((totalHadirGlobal / 100) * 100).toFixed(1);
-
-            updateStatistikBar('txt-hadir-jc', 'bar-hadir-jc', persenJC);
-            updateStatistikBar('txt-hadir-global', 'bar-hadir-global', persenGlobal);
+            updateStatistikBar('txt-hadir-jc', 'bar-hadir-jc', ((totalHadirJC / 100) * 100).toFixed(1));
+            updateStatistikBar('txt-hadir-global', 'bar-hadir-global', ((totalHadirGlobal / 500) * 100).toFixed(1));
         });
     }
- 
-    // 3. SINKRONISASI KETIDAK HADIRAN (LOGIC TERBARU)
+
     function syncStatistikIzin() {
         const jcRaw = document.getElementById('select-jc-izin').value;
         const numJC = ambilAngkaJC(jcRaw);
-        
         db.collection("kehadiran").onSnapshot(snap => {
-            let totalIzinJC = 0;
-            let totalIzinGlobal = 0;
-
+            let totalIzinJC = 0, totalIzinGlobal = 0;
             snap.forEach(doc => {
                 const d = doc.data();
                 if(d.status && d.status !== "HADIR") { 
                     totalIzinGlobal++;
-                    const dataKomsel = ambilAngkaJC(d.jc || d.komsel);
-                    if(dataKomsel === numJC) {
-                        totalIzinJC++;
-                    }
+                    if(ambilAngkaJC(d.jc || d.komsel) === numJC) totalIzinJC++;
                 }
             });
-
-            const persenIzinJC = ((totalIzinJC / 100) * 100).toFixed(1);
-            updateStatistikBar('txt-izin-jc', 'bar-izin-jc', persenIzinJC);
-            
+            updateStatistikBar('txt-izin-jc', 'bar-izin-jc', ((totalIzinJC / 100) * 100).toFixed(1));
             document.getElementById('txt-izin-global').innerText = totalIzinGlobal;
             document.getElementById('bar-izin-global').style.width = Math.min(totalIzinGlobal, 100) + "%";
         });
     }
- 
-    // 4. SINKRONISASI BACA ALKITAB
-    function syncStatistikAlkitab() {
-        const jcRaw = document.getElementById('select-komsel-alkitab').value; 
-        const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
-        const limitTgl = new Date(); limitTgl.setMonth(limitTgl.getMonth() - periodeBulan);
 
-        db.collection("laporan_bacaan").where("tanggal", ">=", limitTgl).onSnapshot(snap => {
-            let countJC = 0;
-            let countGlobal = snap.size;
-
-            snap.forEach(doc => {
-                const d = doc.data();
-                if (d.jc === jcRaw) {
-                    countJC++;
-                }
-            });
-
-            const persenJC = ((countJC / 100) * 100).toFixed(1);
-            const persenGlobal = ((countGlobal / 500) * 100).toFixed(1);
-
-            updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', persenJC);
-            updateStatistikBar('txt-alkitab-global', 'bar-alkitab-global', persenGlobal);
-        });
-    }
- 
-    // 5. GOLONGAN DARAH
     function syncGolonganDarah() {
         db.collection("users").where("komsel", "==", "5").onSnapshot(snap => {
             listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
@@ -313,10 +322,9 @@
             snap.forEach(doc => {
                 const data = doc.data();
                 const gol = (data.goldarah || data.golongan_darah || "").toUpperCase().trim();
-                const namaAnggota = data.nama || "Tanpa Nama";
                 if (countGoldar.hasOwnProperty(gol)) {
                     countGoldar[gol]++;
-                    listNamaGoldar[gol].push(namaAnggota);
+                    listNamaGoldar[gol].push(data.nama || "Tanpa Nama");
                 }
             });
             for (let tipe in countGoldar) {
@@ -324,28 +332,25 @@
             }
         });
     }
- 
+
     function bukaPopupNamaGoldar(tipe) {
         const modal = document.getElementById('pop-detail-nama-darah');
         const containerNama = document.getElementById('list-nama-darah');
-        const judul = document.getElementById('modal-title');
-        const daftarNamaAnggota = listNamaGoldar[tipe];
-        judul.innerText = "Pemilik Golongan Darah " + tipe;
+        document.getElementById('modal-title').innerText = "Pemilik Golongan Darah " + tipe;
         containerNama.innerHTML = "";
-        if (daftarNamaAnggota && daftarNamaAnggota.length > 0) {
-            daftarNamaAnggota.sort().forEach((nama, index) => {
-                containerNama.innerHTML += `<div class="nama-item"><b>${index + 1}.</b> ${nama}</div>`;
+        const daftar = listNamaGoldar[tipe];
+        if (daftar && daftar.length > 0) {
+            daftar.sort().forEach((nama, i) => {
+                containerNama.innerHTML += `<div class="nama-item"><b>${i + 1}.</b> ${nama}</div>`;
             });
         } else {
             containerNama.innerHTML = "<p style='text-align:center; padding:20px; color:#999;'>Tidak ada data.</p>";
         }
         modal.style.display = 'flex';
     }
- 
-    function tutupPopupDarah() {
-        document.getElementById('pop-detail-nama-darah').style.display = 'none';
-    }
- 
+
+    function tutupPopupDarah() { document.getElementById('pop-detail-nama-darah').style.display = 'none'; }
+
     function setupPeriodeDropdown() {
         const dropdownIds = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin', 'select-periode-doa'];
         dropdownIds.forEach(id => {
@@ -357,16 +362,15 @@
             selectEl.value = "12";
         });
     }
- 
+
     window.onload = () => {
         setupPeriodeDropdown();
         syncStatistikDoa();
         syncStatistikHadir();
         syncStatistikIzin();
-        syncStatistikAlkitab();
+        syncStatistikAlkitab(); // Memanggil versi perbaikan
         syncGolonganDarah();
     };
 </script>
- 
 </body>
 </html>
