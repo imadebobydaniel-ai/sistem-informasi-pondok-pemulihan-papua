@@ -104,7 +104,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Firebase Configuration (Tetap menggunakan config Anda)
+    // 1. Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -116,7 +116,7 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 2. Real-time Clock (Tetap)
+    // 2. Real-time Clock
     function updateClock() {
         const now = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -125,7 +125,7 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // 3. Password Toggle (Tetap)
+    // 3. Password Toggle
     document.getElementById('eyeIcon').addEventListener('click', function() {
         const passInput = document.getElementById('pass');
         passInput.type = passInput.type === 'password' ? 'text' : 'password';
@@ -133,7 +133,7 @@
         this.classList.toggle('fa-eye-slash');
     });
 
-    // 4. Generate Auto NK (Tetap)
+    // 4. Generate Auto NK
     async function updateNKPreview() {
         const jc = document.getElementById("komsel").value;
         const nkInput = document.getElementById("nk-display");
@@ -146,11 +146,9 @@
         } catch (e) { nkInput.value = "Error koneksi"; }
     }
 
-    // 5. Main Registration Function (UPDATED: Dual-Path Saving)
+    // 5. Fungsi Registrasi (Proses Simpan Data)
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
-        
-        // Ambil Data dari Form
         const nama = document.getElementById("nama").value;
         const email = document.getElementById("email").value.trim().toLowerCase();
         const hp = document.getElementById("hp").value;
@@ -161,7 +159,6 @@
         const komsel = document.getElementById("komsel").value;
         const nk = document.getElementById("nk-display").value;
 
-        // Validasi Sederhana
         if(!nama || !email || !hp || !darah || !pass || !komsel) {
             alert("Harap lengkapi semua data termasuk Golongan Darah!");
             return;
@@ -177,7 +174,7 @@
                 whatsapp: hp,
                 password: pass,
                 alamat: alamat,
-                goldarah: darah, // Sinkron dengan kartu statistik Anda
+                goldarah: darah,
                 jabatan: jabatan,
                 komsel: komsel,
                 nomor_komsel: nk,
@@ -186,19 +183,13 @@
                 tanggalDaftar: new Date().toLocaleString('id-ID')
             };
 
-            // PATH 1: Simpan ke koleksi 'users' agar statistik real-time terupdate
+            // Simpan ke 'users'
             const userRef = await db.collection("users").add(userData);
-            const docId = userRef.id;
-
-            // PATH 2: Simpan ke folder Administrator > profile biodata menggunakan ID yang sama
-            // Struktur: Administrator (Coll) -> profile biodata (Doc) -> daftar_anggota (Sub-Coll)
-            await db.collection("Administrator")
-                    .doc("profile biodata")
-                    .collection("daftar_anggota")
-                    .doc(docId)
-                    .set(userData);
             
-            // Tampilkan Pesan Sukses
+            // Simpan ke 'Administrator'
+            await db.collection("Administrator").doc("profile biodata")
+                    .collection("daftar_anggota").doc(userRef.id).set(userData);
+            
             document.getElementById('blocking-message').style.display = 'flex';
             
         } catch (error) { 
@@ -207,6 +198,41 @@
             btn.disabled = false;
         }
     }
+
+    // 6. Fungsi Monitoring Statistik Real-time (DI LUAR handleRegistrasi)
+    function monitorProfilDarah() {
+        db.collection("users").onSnapshot((snapshot) => {
+            let rekapDarah = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                // Filter JC 5 (sesuai target kartu di gambar Anda)
+                const jcInput = data.komsel ? data.komsel.toString().replace(/\D/g, "") : "";
+                
+                if (jcInput === "5") {
+                    const gol = (data.goldarah || "").toUpperCase().trim();
+                    if (rekapDarah.hasOwnProperty(gol)) {
+                        rekapDarah[gol]++;
+                    }
+                }
+            });
+
+            // Update elemen teks di HTML
+            updateElemenDarah('A', rekapDarah['A']);
+            updateElemenDarah('B', rekapDarah['B']);
+            updateElemenDarah('O', rekapDarah['O']);
+            updateElemenDarah('AB', rekapDarah['AB']);
+        });
+    }
+
+    function updateElemenDarah(tipe, jumlah) {
+        const el = document.getElementById('count-' + tipe.toLowerCase());
+        if (el) { el.innerText = jumlah + " Orang"; }
+    }
+
+    // Jalankan monitoring saat halaman terbuka
+    monitorProfilDarah();
+
 </script>
 </body>
 </html>
