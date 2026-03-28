@@ -21,8 +21,7 @@
         .stat-label-flex { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
         .progress-bar { height: 8px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
         .progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
-        .blood-item, .stat-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; }
-        b { color: var(--emas-doa); font-size: 15px; }
+        .blood-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; }
         .btn-back { display: block; text-align: center; padding: 14px; background: white; color: var(--biru-utama); text-decoration: none; font-weight: bold; border-radius: 12px; border: 1px solid #ddd; margin-top: 10px; font-size: 13px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
@@ -80,14 +79,6 @@
         </div>
     </div>
 
-    <div class="card" id="card-deteksi" style="display:none; border-color: orange;">
-        <div class="card-header" style="border-bottom-color: orange; color: orange;">
-            <i class="fa-solid fa-magnifying-glass"></i> DATA TANPA IDENTITAS JC (CEK 12%)
-        </div>
-        <div id="list-data-hilang" style="font-size: 11px; max-height: 200px; overflow-y: auto;">
-            </div>
-    </div>
-
     <div class="card">
         <div class="card-header" style="border-bottom-color: var(--merah-absen);">
             <i class="fa-solid fa-user-xmark" style="color:var(--merah-absen)"></i> LAPORAN KETIDAK HADIRAN
@@ -141,7 +132,6 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// UTILITY FUNCTIONS
 function ambilAngka(str) {
     return String(str || "").replace(/\D/g, "").replace(/^0+/, "");
 }
@@ -153,20 +143,14 @@ function updateProgressBar(textId, barId, value, isCount = false) {
     if(barEl) barEl.style.width = Math.min(isCount ? (value * 10) : value, 100) + "%";
 }
 
-// 1. FUNGSI BARU: DETEKSI KEHADIRAN & DATA KOSONG
 function syncLaporanKehadiranJC() {
     const jcTargetRaw = document.getElementById('select-jc-laporan').value; 
     const jcTargetAngka = ambilAngka(jcTargetRaw);
-    const containerHilang = document.getElementById('list-data-hilang');
-    const cardDeteksi = document.getElementById('card-deteksi');
-    
     const bulan = parseInt(document.getElementById('select-periode-laporan').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
     db.collection("kehadiran").onSnapshot(snap => {
         let countJC = 0, countGlobal = 0;
-        let htmlHilang = "";
-        let adaDataHilang = false;
 
         snap.forEach(doc => {
             const data = doc.data();
@@ -174,36 +158,19 @@ function syncLaporanKehadiranJC() {
             
             if(String(data.status).toUpperCase() === "HADIR") {
                 countGlobal++;
-                
-                if(dbAngka === jcTargetAngka) {
-                    countJC++;
-                } else if (dbAngka === "") {
-                    // Masukkan ke daftar kotak oranye jika JC kosong
-                    adaDataHilang = true;
-                    htmlHilang += `<div class="stat-row"><span>${data.nama}</span><span style="color:red; font-size:10px;">ID JC KOSONG</span></div>`;
-                }
+                if(dbAngka === jcTargetAngka) countJC++;
             }
         });
-
-        // Tampilkan card oranye hanya jika ditemukan data tanpa JC
-        if(adaDataHilang) {
-            cardDeteksi.style.display = "block";
-            containerHilang.innerHTML = htmlHilang;
-        } else {
-            cardDeteksi.style.display = "none";
-        }
 
         updateProgressBar('text-laporan-jc', 'bar-laporan-jc', ((countJC/100)*100).toFixed(1));
         updateProgressBar('text-global-hadir', 'bar-global-hadir', ((countGlobal/100)*100).toFixed(1));
     });
 }
 
-// 2. SYNC LAPORAN IZIN
 function syncLaporanIzinJC() {
     const jcTargetRaw = document.getElementById('select-jc-izin').value;
     const jcTargetAngka = ambilAngka(jcTargetRaw);
     const bulan = parseInt(document.getElementById('select-periode-izin').value);
-    const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
     db.collection("kehadiran").onSnapshot(snap => {
         let countIzin = 0, countGlobalIzin = 0;
@@ -220,7 +187,6 @@ function syncLaporanIzinJC() {
     });
 }
 
-// 3. SYNC BACA ALKITAB
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
     const jcTargetAngka = ambilAngka(selKomselRaw);
@@ -238,7 +204,6 @@ function syncCapaianRealtime() {
     });
 }
 
-// 4. SYNC GOLONGAN DARAH
 function syncGoldarRealtime() {
     db.collection("users").where("komsel", "==", "5").onSnapshot(snap => {
         let c = { A: 0, B: 0, O: 0, AB: 0 };
@@ -253,7 +218,6 @@ function syncGoldarRealtime() {
     });
 }
 
-// 5. SETUP DROPDOWN & PEMBERSIH
 function setupDropdownPeriode() {
     const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin'];
     ids.forEach(id => {
@@ -266,27 +230,7 @@ function setupDropdownPeriode() {
     });
 }
 
-async function bersihkanDataDatabase() {
-    const snap = await db.collection("kehadiran").get();
-    const updatePromises = [];
-    snap.forEach((doc) => {
-        const data = doc.data();
-        let updateObj = {};
-        let perluUpdate = false;
-        if (data.status && data.status !== "HADIR" && data.status.toUpperCase() === "HADIR") {
-            updateObj.status = "HADIR"; perluUpdate = true;
-        }
-        if (!data.jc && data.komsel) {
-            updateObj.jc = "JC " + String(data.komsel).replace(/\D/g, "").padStart(2, '0');
-            perluUpdate = true;
-        }
-        if (perluUpdate) updatePromises.push(db.collection("kehadiran").doc(doc.id).update(updateObj));
-    });
-    await Promise.all(updatePromises);
-}
-
-window.onload = async () => {
-    await bersihkanDataDatabase();
+window.onload = () => {
     setupDropdownPeriode();
     syncCapaianRealtime();
     syncLaporanKehadiranJC();
