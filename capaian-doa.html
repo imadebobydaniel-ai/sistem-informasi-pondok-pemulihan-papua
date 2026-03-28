@@ -2,33 +2,113 @@
     <div class="card-header" style="border-bottom-color: #2980b9;">
         <i class="fa-solid fa-droplet" style="color:#e74c3c"></i> GOLONGAN DARAH (<span id="title-jc-darah">JC 05</span>)
     </div>
-    <div id="darah-container">
-        <div class="stat-item-darah" onclick="showDetailDarah('A')">
-            <span>A</span>
-            <span class="count-darah"><b id="count-A">0</b> Orang</span>
+    <div id="darah-container" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 15px;">
+        <div class="stat-item-darah" onclick="showDetailDarah('A')" style="background: #fdf2f2; padding: 10px; border-radius: 8px; cursor: pointer; border: 1px solid #fee2e2;">
+            <span style="font-weight: bold; color: #b91c1c;">A</span>
+            <span class="count-darah" style="float: right;"><b id="count-A">0</b> Orang</span>
         </div>
-        <div class="stat-item-darah" onclick="showDetailDarah('B')">
-            <span>B</span>
-            <span class="count-darah"><b id="count-B">0</b> Orang</span>
+        <div class="stat-item-darah" onclick="showDetailDarah('B')" style="background: #fdf2f2; padding: 10px; border-radius: 8px; cursor: pointer; border: 1px solid #fee2e2;">
+            <span style="font-weight: bold; color: #b91c1c;">B</span>
+            <span class="count-darah" style="float: right;"><b id="count-B">0</b> Orang</span>
         </div>
-        <div class="stat-item-darah" onclick="showDetailDarah('O')">
-            <span>O</span>
-            <span class="count-darah"><b id="count-O">0</b> Orang</span>
+        <div class="stat-item-darah" onclick="showDetailDarah('O')" style="background: #fdf2f2; padding: 10px; border-radius: 8px; cursor: pointer; border: 1px solid #fee2e2;">
+            <span style="font-weight: bold; color: #b91c1c;">O</span>
+            <span class="count-darah" style="float: right;"><b id="count-O">0</b> Orang</span>
         </div>
-        <div class="stat-item-darah" onclick="showDetailDarah('AB')">
-            <span>AB</span>
-            <span class="count-darah"><b id="count-AB">0</b> Orang</span>
+        <div class="stat-item-darah" onclick="showDetailDarah('AB')" style="background: #fdf2f2; padding: 10px; border-radius: 8px; cursor: pointer; border: 1px solid #fee2e2;">
+            <span style="font-weight: bold; color: #b91c1c;">AB</span>
+            <span class="count-darah" style="float: right;"><b id="count-AB">0</b> Orang</span>
         </div>
     </div>
 </div>
 
-<div id="popup-darah" class="modal-darah">
-    <div class="modal-content-darah">
-        <div class="modal-header-darah">
-            <h3 id="modal-title">Daftar Pemilik Golongan Darah</h3>
-            <span class="close-btn" onclick="closePopup()">&times;</span>
+<div id="popup-darah" class="modal-darah" style="display: none; position: fixed; z-index: 2001; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);">
+    <div class="modal-content-darah" style="background: white; margin: 20% auto; padding: 20px; border-radius: 15px; width: 85%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <div class="modal-header-darah" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 id="modal-title" style="margin: 0; font-size: 16px; color: #003366;">Daftar Pemilik Golongan Darah</h3>
+            <span class="close-btn" onclick="closePopup()" style="font-size: 24px; cursor: pointer; color: #999;">&times;</span>
         </div>
-        <div id="list-nama-darah" class="modal-body-darah">
+        <div id="list-nama-darah" class="modal-body-darah" style="max-height: 300px; overflow-y: auto; font-size: 14px;">
             </div>
     </div>
 </div>
+
+<script>
+// Objek sementara untuk menyimpan daftar nama agar popup cepat muncul
+let dataDarahLocal = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+
+function syncGolonganDarah() {
+    // Mengambil JC dari dropdown (pastikan ID 'select-jc-izin' tersedia di file utama)
+    const elJc = document.getElementById('select-jc-izin');
+    const jcTarget = elJc ? elJc.value : "JC 05"; 
+    document.getElementById('title-jc-darah').innerText = jcTarget;
+
+    // Reset data lokal sebelum update
+    dataDarahLocal = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+
+    // Mengambil data dari collection "kehadiran"
+    db.collection("kehadiran").onSnapshot(snap => {
+        let counts = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
+        // Kosongkan ulang list nama setiap ada perubahan snapshot
+        dataDarahLocal = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            
+            // Logika filter: Membandingkan JC
+            const currentJC = data.jc || "";
+            if (currentJC === jcTarget || (typeof ambilAngka === 'function' && ambilAngka(currentJC) === ambilAngka(jcTarget))) {
+                
+                const tipeDarah = (data.darah || "").toUpperCase().trim();
+                
+                if (counts.hasOwnProperty(tipeDarah)) {
+                    counts[tipeDarah]++;
+                    dataDarahLocal[tipeDarah].push(data.nama || "Tanpa Nama");
+                }
+            }
+        });
+
+        // Update angka di UI secara real-time
+        for (let tipe in counts) {
+            const elCount = document.getElementById(`count-${tipe}`);
+            if(elCount) elCount.innerText = counts[tipe];
+        }
+    });
+}
+
+// Fungsi menampilkan Popup Detail
+function showDetailDarah(tipe) {
+    const listContainer = document.getElementById('list-nama-darah');
+    const modal = document.getElementById('popup-darah');
+    document.getElementById('modal-title').innerText = `Pemilik Golongan Darah ${tipe}`;
+    
+    // Bersihkan list lama
+    listContainer.innerHTML = "";
+    
+    const daftarNama = dataDarahLocal[tipe];
+    
+    if (daftarNama && daftarNama.length > 0) {
+        // Urutkan nama secara alfabetis agar lebih rapi
+        daftarNama.sort().forEach((nama, index) => {
+            const div = document.createElement('div');
+            div.style.padding = "8px 0";
+            div.style.borderBottom = "1px solid #f9f9f9";
+            div.innerHTML = `<span style="color: #666; font-size: 12px;">${index + 1}.</span> <b>${nama}</b>`;
+            listContainer.appendChild(div);
+        });
+    } else {
+        listContainer.innerHTML = "<p style='text-align:center; color:#999; padding: 20px;'>Data tidak ditemukan untuk JC ini.</p>";
+    }
+
+    modal.style.display = "block";
+}
+
+function closePopup() {
+    document.getElementById('popup-darah').style.display = "none";
+}
+
+// Inisialisasi saat window dimuat
+window.addEventListener('DOMContentLoaded', (event) => {
+    syncGolonganDarah();
+});
+</script>
