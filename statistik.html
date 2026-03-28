@@ -41,8 +41,7 @@
             </div>
             <div class="input-box">
                 <label>PERIODE</label>
-                <select id="select-periode-alkitab" onchange="syncCapaianRealtime()">
-                    </select>
+                <select id="select-periode-alkitab" onchange="syncCapaianRealtime()"></select>
             </div>
         </div>
         <div class="stat-item">
@@ -68,8 +67,7 @@
             </div>
             <div class="input-box">
                 <label>PERIODE</label>
-                <select id="select-periode-laporan" onchange="syncLaporanKehadiranJC()">
-                    </select>
+                <select id="select-periode-laporan" onchange="syncLaporanKehadiranJC()"></select>
             </div>
         </div>
         <div class="stat-item">
@@ -91,20 +89,13 @@
             </div>
             <div class="input-box">
                 <label>PERIODE</label>
-                <select id="select-periode-izin" onchange="syncLaporanIzinJC()">
-                    </select>
+                <select id="select-periode-izin" onchange="syncLaporanIzinJC()"></select>
             </div>
         </div>
         <div class="stat-item">
             <div class="stat-label-flex"><span>TIDAK HADIR (TOTAL INPUT)</span><span id="text-laporan-izin" style="color: var(--merah-absen);">0</span></div>
             <div class="progress-bar"><div id="bar-laporan-izin" class="progress-fill" style="width: 0%; background: var(--merah-absen);"></div></div>
         </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--emas-doa);"><i class="fa-solid fa-hands-praying" style="color:var(--emas-doa)"></i> DOA (SLA)</div>
-        <div class="stat-row"><span>Persentase Dijawab</span><b id="stat-persen-dijawab">0%</b></div>
-        <div class="progress-bar" style="margin-top: 10px;"><div id="progress-doa" class="progress-fill" style="width: 0%; background: var(--emas-doa);"></div></div>
     </div>
 
     <div class="card">
@@ -133,18 +124,17 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// --- FUNGSI BARU UNTUK MENGISI DROPDOWN SECARA OTOMATIS ---
 function setupDropdownPeriode() {
     const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin'];
     ids.forEach(id => {
         const select = document.getElementById(id);
         let options = "";
         for (let i = 1; i <= 12; i++) {
-            // Kita set 12 bulan sebagai 'selected' secara default
             let isSelected = i === 12 ? "selected" : "";
-            options += `<option value="${i}" ${isSelected}>${i} Bulan terakhir</option>`;
+            options += `<option value="${i}">${i} Bulan terakhir</option>`;
         }
         select.innerHTML = options;
+        select.value = "12";
     });
 }
 
@@ -155,31 +145,10 @@ function updateProgressBar(textId, barId, value, isCount = false) {
     if(barEl) barEl.style.width = Math.min(isCount ? (value * 10) : value, 100) + "%";
 }
 
-// 1. Logika Alkitab
-function syncCapaianRealtime() {
-    const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
-    const selKomselAngka = selKomselRaw.replace(/\D/g, "");
-    const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
-    const limitFilter = new Date();
-    limitFilter.setHours(0,0,0,0);
-    limitFilter.setMonth(limitFilter.getMonth() - periodeBulan);
-
-    db.collection("laporan_bacaan").where("tanggal", ">=", limitFilter).onSnapshot(snap => {
-        let countJC = 0, countGlobal = 0;
-        snap.forEach(doc => {
-            countGlobal++;
-            const d = doc.data();
-            const jcLaporanAngka = String(d.komsel || d.jc || "").replace(/\D/g, "");
-            if (jcLaporanAngka !== "" && parseInt(jcLaporanAngka) === parseInt(selKomselAngka)) countJC++;
-        });
-        updateProgressBar('text-capaian-komsel', 'bar-capaian-komsel', ((countJC/100)*100).toFixed(1));
-        updateProgressBar('text-capaian-global', 'bar-capaian-global', ((countGlobal/100)*100).toFixed(1));
-    });
-}
-
-// 2. Logika Kehadiran
+// 1. Logika Kehadiran - PERBAIKAN KOLOM KOMSEL
 function syncLaporanKehadiranJC() {
     const jcTarget = document.getElementById('select-jc-laporan').value;
+    const jcAngkaOnly = jcTarget.replace(/\D/g, "").replace(/^0+/, ""); // Mengubah "JC 05" jadi "5"
     const bulan = parseInt(document.getElementById('select-periode-laporan').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
@@ -187,15 +156,21 @@ function syncLaporanKehadiranJC() {
         let countJC = 0;
         snap.forEach(doc => {
             const data = doc.data();
-            if(data.jc === jcTarget && data.status === "Hadir") countJC++;
+            let dbJC = data.komsel || ""; // Ubah dari data.jc ke data.komsel
+            
+            // Logika pengecekan: mendukung angka "5" atau string "JC 05"
+            if((dbJC === jcAngkaOnly || dbJC === jcTarget) && data.status === "Hadir") {
+                countJC++;
+            }
         });
         updateProgressBar('text-laporan-jc', 'bar-laporan-jc', ((countJC/100)*100).toFixed(1));
     });
 }
 
-// 3. Logika Ketidak Hadiran
+// 2. Logika Ketidak Hadiran - PERBAIKAN KOLOM KOMSEL
 function syncLaporanIzinJC() {
     const jcTarget = document.getElementById('select-jc-izin').value;
+    const jcAngkaOnly = jcTarget.replace(/\D/g, "").replace(/^0+/, "");
     const bulan = parseInt(document.getElementById('select-periode-izin').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
@@ -203,15 +178,38 @@ function syncLaporanIzinJC() {
         let countIzin = 0;
         snap.forEach(doc => {
             const data = doc.data();
-            if(data.jc === jcTarget && data.status !== "Hadir") countIzin++;
+            let dbJC = data.komsel || ""; // Ubah ke data.komsel
+            
+            if((dbJC === jcAngkaOnly || dbJC === jcTarget) && data.status !== "Hadir") {
+                countIzin++;
+            }
         });
         updateProgressBar('text-laporan-izin', 'bar-laporan-izin', countIzin, true);
     });
 }
 
-// 4. Logika Lainnya
+// 3. Logika Alkitab (Tetap menggunakan filter angka)
+function syncCapaianRealtime() {
+    const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
+    const selKomselAngka = selKomselRaw.replace(/\D/g, "");
+    const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
+    const limitFilter = new Date(); limitFilter.setMonth(limitFilter.getMonth() - periodeBulan);
+
+    db.collection("laporan_bacaan").onSnapshot(snap => {
+        let countJC = 0, countGlobal = 0;
+        snap.forEach(doc => {
+            const d = doc.data();
+            const jcLaporanAngka = String(d.komsel || d.jc || "").replace(/\D/g, "");
+            countGlobal++;
+            if (parseInt(jcLaporanAngka) === parseInt(selKomselAngka)) countJC++;
+        });
+        updateProgressBar('text-capaian-komsel', 'bar-capaian-komsel', ((countJC/100)*100).toFixed(1));
+        updateProgressBar('text-capaian-global', 'bar-capaian-global', ((countGlobal/100)*100).toFixed(1));
+    });
+}
+
 function syncGoldarRealtime() {
-    db.collection("users").where("jc", "==", "JC 05").onSnapshot(snap => {
+    db.collection("users").where("komsel", "==", "5").onSnapshot(snap => {
         let c = { A: 0, B: 0, O: 0, AB: 0 };
         snap.forEach(doc => {
             const g = (doc.data().golongan_darah || "").toUpperCase().trim();
@@ -221,23 +219,12 @@ function syncGoldarRealtime() {
     });
 }
 
-function syncDoaRealtime() {
-    db.collection("laporan_doa").onSnapshot(snap => {
-        let total = snap.size, dijawab = 0;
-        snap.forEach(doc => { if (doc.data().status === "Dijawab") dijawab++; });
-        let p = total > 0 ? ((dijawab/total)*100).toFixed(1) : 0;
-        document.getElementById('stat-persen-dijawab').innerText = p + "%";
-        document.getElementById('progress-doa').style.width = p + "%";
-    });
-}
-
 window.onload = () => {
-    setupDropdownPeriode(); // Jalankan pengisian dropdown dulu
+    setupDropdownPeriode();
     syncCapaianRealtime();
     syncLaporanKehadiranJC();
     syncLaporanIzinJC();
     syncGoldarRealtime();
-    syncDoaRealtime();
 };
 </script>
 </body>
