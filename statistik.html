@@ -3,112 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Capaian Doa Komsel - Pondok Pemulihan Papua</title>
+    <title>Statistik Dashboard - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f9; --putih: #ffffff; --success: #28a745; }
+        :root { 
+            --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7fa; --putih: #ffffff;
+            --biru-utama: #007bff; --ungu-global: #6f42c1; --merah-absen: #dc3545; --success: #28a745;
+        }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-
-        /* Header & Control Panel */
-        .header-fixed { background: var(--putih); z-index: 1000; position: sticky; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .control-panel { display: flex; justify-content: space-around; padding: 10px; border-bottom: 2px solid var(--emas); }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         
-        .btn-action { border: none; background: none; color: #bbb; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; transition: 0.3s; pointer-events: none; }
-        .btn-action.active { color: var(--biru-tua); font-weight: bold; cursor: pointer; pointer-events: auto; }
-        .btn-action i { font-size: 18px; }
-
-        /* Statistik Summary Card */
-        .stat-summary { background: var(--biru-tua); color: white; margin: 15px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-around; text-align: center; }
-        .stat-item { flex: 1; border-right: 1px solid rgba(255,255,255,0.2); }
-        .stat-item:last-child { border-right: none; }
-        .stat-value { display: block; font-size: 18px; font-weight: bold; color: var(--emas); }
-        .stat-label { font-size: 10px; text-transform: uppercase; opacity: 0.8; }
-
-        /* Bar Gold (Sticky) */
-        .sticky-add-bar { background: var(--emas); display: flex; align-items: center; padding: 8px 15px; position: sticky; top: 125px; z-index: 900; min-height: 50px; }
-        .check-all-box { width: 20px; height: 20px; margin-right: 15px; accent-color: var(--biru-tua); cursor: pointer; }
-        .btn-add-doa { flex: 1; background: none; border: none; color: var(--biru-tua); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; }
-
-        /* Konten */
-        .main-content { flex: 1; padding: 15px; }
-        .doa-card { background: var(--putih); border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; gap: 12px; border-left: 5px solid var(--emas); box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: 0.3s; }
-        .doa-checkbox { width: 20px; height: 20px; accent-color: var(--biru-tua); margin-top: 5px; }
-        .doa-info { flex: 1; }
-        .user-label { font-weight: bold; color: var(--biru-tua); margin-bottom: 4px; display: block; }
-        .text-label { font-size: 13px; color: #555; line-height: 1.4; }
-        .card-header-detail { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .ticket-no { background: #eef2f7; color: var(--biru-tua); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #d1d9e6; }
-        .status-tag { font-size: 11px; font-weight: bold; font-style: italic; }
-        .date-label { font-size: 11px; color: #888; margin-top: 8px; display: block; }
-        .duration-label { background: #f9f9f9; padding: 5px 10px; border-radius: 6px; font-size: 11px; color: #666; display: inline-block; margin-top: 8px; border: 1px solid #eee; }
-
-        /* Modals */
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
-        .popup { background: var(--putih); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; border-top: 6px solid var(--emas); }
+        /* Mobile-First Wrapper */
+        .mobile-wrapper { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
         
-        .bottom-nav { width: 100%; background: var(--bg); padding: 15px 15px 40px 15px; display: flex; justify-content: center; margin-top: auto; }
-        .btn-back { width: 100%; max-width: 600px; background: var(--biru-tua); color: white; text-decoration: none; font-size: 14px; font-weight: bold; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        /* Card System */
+        .card { background: var(--putih); border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #eee; }
+        .card-header { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; border-bottom: 2px solid var(--biru-utama); padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; font-size: 13px; color: #333; }
         
-        input[type="text"], textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 14px; }
-        .btn-submit { width: 100%; padding: 15px; background: var(--biru-tua); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        /* Flex Row Form */
+        .flex-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .input-box { flex: 1; }
+        label { font-size: 9px; font-weight: bold; color: #999; text-transform: uppercase; display: block; margin-bottom: 4px; }
+        select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 11px; font-weight: bold; background: #fff; color: #444; }
+        
+        /* Progress & Stats */
+        .stat-item { margin-bottom: 12px; }
+        .stat-label-flex { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+        .progress-bar { height: 8px; background: #f0f0f0; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s Ease-in-out; width: 0%; }
+        
+        /* Golongan Darah List (Clickable) */
+        .blood-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .blood-item:hover { background: #fff5f5; }
+        .count-darah { color: var(--merah-absen); font-size: 14px; }
+        .count-darah b { font-size: 16px; }
+
+        /* Modal/Popup Detail Nama */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(3px); }
+        .popup { background: var(--putih); width: 100%; max-width: 350px; border-radius: 20px; padding: 20px; position: relative; border-top: 6px solid var(--emas); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .close-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #999; font-weight: bold; }
+        .nama-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
+        .modal-body { max-height: 300px; overflow-y: auto; margin-top: 15px; }
+
+        /* SLA Stat (Doa terjawab) */
+        .sla-value { background: #f9f9f9; padding: 5px 10px; border-radius: 6px; font-size: 12px; color: var(--biru-tua); font-weight: bold; border: 1px solid #eee; }
+
+        .btn-back { display: block; text-align: center; padding: 14px; background: white; color: var(--biru-utama); text-decoration: none; font-weight: bold; border-radius: 12px; border: 1px solid #ddd; margin-top: 10px; font-size: 13px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-<div class="header-fixed">
-    <div class="control-panel">
-        <button class="btn-action" id="act-terjawab" onclick="prosesTerjawab()"><i class="fa-solid fa-circle-check"></i>TERJAWAB</button>
-        <button class="btn-action" id="act-edit" onclick="prosesEdit()"><i class="fa-solid fa-pen-to-square"></i>EDIT</button>
-        <button class="btn-action" id="act-hapus" onclick="prosesHapus()"><i class="fa-solid fa-trash"></i>HAPUS</button>
+<div class="mobile-wrapper">
+    
+    <div class="card">
+        <div class="card-header"><i class="fa-solid fa-book-bible"></i> CAPAIAN BACA ALKITAB</div>
+        <div class="flex-row">
+            <div class="input-box">
+                <label>KOMSEL</label>
+                <select id="select-komsel-alkitab" onchange="syncStatistikAlkitab()">
+                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                </select>
+            </div>
+            <div class="input-box">
+                <label>PERIODE</label>
+                <select id="select-periode-alkitab" onchange="syncStatistikAlkitab()"></select>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>PROGRES KOMSEL (TARGET 100)</span><span id="txt-alkitab-komsel">0.0%</span></div>
+            <div class="progress-bar"><div id="bar-alkitab-komsel" class="progress-fill" style="background: var(--biru-utama);"></div></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>PROGRES GLOBAL</span><span id="txt-alkitab-global">0.0%</span></div>
+            <div class="progress-bar"><div id="bar-alkitab-global" class="progress-fill" style="background: var(--ungu-global);"></div></div>
+        </div>
     </div>
 
-    <div class="stat-summary">
-        <div class="stat-item">
-            <span class="stat-value" id="stat-total-doa">0</span>
-            <span class="stat-label">Total Doa</span>
+    <div class="card">
+        <div class="card-header" style="border-bottom-color: var(--success);"><i class="fa-solid fa-clipboard-user" style="color:var(--success)"></i> KEHADIRAN JC (BIG DATA)</div>
+        <div class="flex-row">
+            <div class="input-box">
+                <label>KOMSEL (JC)</label>
+                <select id="select-jc-laporan" onchange="syncStatistikHadir()">
+                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                </select>
+            </div>
+            <div class="input-box">
+                <label>PERIODE</label>
+                <select id="select-periode-laporan" onchange="syncStatistikHadir()"></select>
+            </div>
         </div>
         <div class="stat-item">
-            <span class="stat-value" id="stat-persen-terjawab">0%</span>
-            <span class="stat-label">Dijawab</span>
+            <div class="stat-label-flex"><span>HADIR KOMSEL (TARGET 100)</span><span id="txt-hadir-jc" style="color: var(--success);">0%</span></div>
+            <div class="progress-bar"><div id="bar-hadir-jc" class="progress-fill" style="background: var(--success);"></div></div>
         </div>
         <div class="stat-item">
-            <span class="stat-value" id="stat-sla-rata">0</span>
-            <span class="stat-label">SLA (Hari)</span>
+            <div class="stat-label-flex"><span>PROGRES HADIR GLOBAL</span><span id="txt-hadir-global">0.0%</span></div>
+            <div class="progress-bar"><div id="bar-hadir-global" class="progress-fill" style="background: var(--ungu-global);"></div></div>
         </div>
     </div>
+
+    <div class="card">
+        <div class="card-header" style="border-bottom-color: var(--merah-absen);"><i class="fa-solid fa-user-xmark" style="color:var(--merah-absen)"></i> LAPORAN KETIDAK HADIRAN</div>
+        <div class="flex-row">
+            <div class="input-box">
+                <label>KOMSEL (JC)</label>
+                <select id="select-jc-izin" onchange="syncStatistikIzin()">
+                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                </select>
+            </div>
+            <div class="input-box">
+                <label>PERIODE</label>
+                <select id="select-periode-izin" onchange="syncStatistikIzin()"></select>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>PROGRES TIDAK HADIR (TARGET 100)</span><span id="txt-izin-jc" style="color: var(--merah-absen);">0%</span></div>
+            <div class="progress-bar"><div id="bar-izin-jc" class="progress-fill" style="background: var(--merah-absen);"></div></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>TOTAL TIDAK HADIR GLOBAL</span><span id="txt-izin-global">0</span></div>
+            <div class="progress-bar"><div id="bar-izin-global" class="progress-fill" style="background: #ff4d4d;"></div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header" style="border-bottom-color: var(--emas-doa);"><i class="fa-solid fa-hands-praying" style="color:var(--emas-doa)"></i> CAPAIAN DOA KOMSEL</div>
+        <div class="flex-row">
+            <div class="input-box">
+                <label>KOMSEL (JC)</label>
+                <select id="select-jc-doa" onchange="syncStatistikDoa()">
+                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                </select>
+            </div>
+            <div class="input-box">
+                <label>PERIODE</label>
+                <select id="select-periode-doa" onchange="syncStatistikDoa()"></select>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>DOA TERJAWAB (TARGET 100)</span><span id="txt-doa-jawab-jc" style="color: var(--emas-doa);">0.0%</span></div>
+            <div class="progress-bar"><div id="bar-doa-jawab-jc" class="progress-fill" style="background: var(--emas-doa);"></div></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>RATA-RATA SLA</span><span class="sla-value" id="txt-doa-sla-jc">0 Hari</span></div>
+            <div class="progress-bar"><div id="bar-doa-sla-jc" class="progress-fill" style="background: var(--biru-tua);"></div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="fa-solid fa-droplet" style="color:red"></i> GOLONGAN DARAH (JC 05)</div>
+        <div id="darah-list">
+            <div class="blood-item" onclick="bukaPopupNamaGoldar('A')"><span>Tipe A</span><span class="count-darah"><b id="count-darah-a">0</b> Orang</span></div>
+            <div class="blood-item" onclick="bukaPopupNamaGoldar('B')"><span>Tipe B</span><span class="count-darah"><b id="count-darah-b">0</b> Orang</span></div>
+            <div class="blood-item" onclick="bukaPopupNamaGoldar('O')"><span>Tipe O</span><span class="count-darah"><b id="count-darah-o">0</b> Orang</span></div>
+            <div class="blood-item" onclick="bukaPopupNamaGoldar('AB')"><span>Tipe AB</span><span class="count-darah"><b id="count-darah-ab">0</b> Orang</span></div>
+        </div>
+    </div>
+
+    <a href="menu.html" class="btn-back">← KEMBALI KE MENU UTAMA</a>
 </div>
 
-<div class="sticky-add-bar">
-    <input type="checkbox" id="check-all" class="check-all-box" onchange="toggleCheckAll(this)">
-    <button class="btn-add-doa" onclick="bukaAdd()"><i class="fa-solid fa-plus-circle"></i> ADD DOA BARU</button>
-</div>
-
-<div class="main-content">
-    <div id="list-doa"></div>
-</div>
-
-<div id="pop-add" class="overlay">
+<div id="pop-detail-nama-darah" class="overlay">
     <div class="popup">
-        <h3 style="text-align:center; color:var(--biru-tua)">Form Tiket Doa</h3>
-        <input type="text" id="add-nama" readonly>
-        <textarea id="add-doa" rows="4" placeholder="Apa yang ingin Anda doakan hari ini?"></textarea>
-        <button class="btn-submit" onclick="simpanBaru()">KIRIM TIKET</button>
-        <p onclick="tutupPop()" style="text-align:center; cursor:pointer; color:#999; margin-top:15px; font-size: 13px;">Batal</p>
+        <span class="close-btn" onclick="tutupPopupDarah()">&times;</span>
+        <h3 id="modal-title" style="margin:0; color:var(--biru-tua); font-size: 16px;">Daftar Nama</h3>
+        <hr style="border: 1px solid #f1f1f1; margin: 15px 0;">
+        <div id="list-nama-darah" class="modal-body">
+            </div>
     </div>
-</div>
-
-<div id="pop-edit" class="overlay">
-    <div class="popup">
-        <h3 style="text-align:center;">Edit Pokok Doa</h3>
-        <textarea id="ed-doa" rows="4"></textarea>
-        <button class="btn-submit" onclick="simpanEdit()">SIMPAN PERUBAHAN</button>
-        <p onclick="tutupPop()" style="text-align:center; cursor:pointer; color:#999; margin-top:15px; font-size: 13px;">Batal</p>
-    </div>
-</div>
-
-<div class="bottom-nav">
-    <a href="menu.html" class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU UTAMA</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -126,141 +189,182 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let userNama = "I Made Boby"; 
-    let selectedIDs = [];
+    // STATE MANAGEMENT LOKAL UNTUK POPUP DARAH
+    let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
 
-    // 1. LOGIKA UTAMA: LOAD DATA & KALKULASI SLA
-    function loadDoa() {
-        db.collection("laporan_doa")
-          .where("jc", "==", "JC 5") 
-          .orderBy("tglInput", "desc")
-          .onSnapshot(snap => {
-            let h = "";
-            let totalData = snap.size;
-            let countTerjawab = 0;
-            let totalSLA = 0;
+    // UTILITY: AMBIL ANGKA DARI JC (JC 05 -> "5")
+    function ambilAngkaJC(str) {
+        return String(str || "").replace(/\D/g, "").replace(/^0+/, "");
+    }
 
+    // UTILITY: UPDATE PROGRESS BAR & TEKS
+    function updateStatistikBar(textId, barId, value, isCount = false) {
+        document.getElementById(textId).innerText = value + (isCount ? "" : "%");
+        // Batasi bar maksimal 100%
+        let barValue = isCount ? Math.min(value * 10, 100) : Math.min(value, 100); 
+        document.getElementById(barId).style.width = barValue + "%";
+    }
+
+    // 1. SINKRONISASI DOA KOMSEL (DENGAN SLA & MUARA BIG DATA)
+    function syncStatistikDoa() {
+        const jcRaw = document.getElementById('select-jc-doa').value; // JC 05
+        const periodeBulan = parseInt(document.getElementById('select-periode-doa').value);
+        const limitTgl = new Date(); limitTgl.setMonth(limitTgl.getMonth() - periodeBulan);
+
+        db.collection("laporan_doa").where("jc", "==", jcRaw).onSnapshot(snap => {
+            let total = 0, terjawab = 0, totalSLA = 0;
             snap.forEach(doc => {
                 const d = doc.data();
-                const ts = d.tglInput ? d.tglInput.toDate() : new Date();
-                const tglTampil = ts.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                
-                // Kalkulasi SLA
-                const tglAkhir = d.terjawab && d.tglTerjawab ? d.tglTerjawab.toDate() : new Date();
-                const diffTime = Math.abs(tglAkhir - ts);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (d.terjawab === true) {
-                    countTerjawab++;
-                    totalSLA += diffDays;
+                // Filter tanggal manual jika Firestore rule belum optimal
+                const tglIn = d.tglInput ? d.tglInput.toDate() : null;
+                if(tglIn && tglIn >= limitTgl) {
+                    total++;
+                    if(d.terjawab) {
+                        terjawab++;
+                        const tglOut = d.tglTerjawab ? d.tglTerjawab.toDate() : new Date();
+                        const diffHari = Math.ceil(Math.abs(tglOut - tglIn) / (1000 * 60 * 60 * 24));
+                        totalSLA += diffHari;
+                    }
                 }
-                
-                h += `
-                <div class="doa-card" style="border-left: 5px solid ${d.terjawab ? 'var(--success)' : 'var(--emas)'}">
-                    <input type="checkbox" class="doa-checkbox item-check" value="${doc.id}" onchange="cekStatus()">
-                    <div class="doa-info">
-                        <div class="card-header-detail">
-                            <span class="ticket-no">${d.ticketID || 'NO-ID'}</span>
-                            <span class="status-tag" style="color:${d.terjawab ? 'var(--success)' : '#d68910'}">
-                                ${d.terjawab ? '<i class="fa-solid fa-check-double"></i> Terjawab' : '<i class="fa-solid fa-clock"></i> On Progress'}
-                            </span>
-                        </div>
-                        <span class="user-label">${d.nama}</span>
-                        <div class="text-label" id="text-${doc.id}">${d.pokokDoa}</div>
-                        <span class="date-label">Masuk: ${tglTampil}</span>
-                        <div class="duration-label">Lama: ${diffDays} Hari</div>
-                    </div>
-                </div>`;
             });
+            // Rumus Target 100 (Sesuai Laporan Baca Alkitab)
+            const persenDoa = total > 0 ? ((terjawab / 100) * 100).toFixed(1) : 0;
+            const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
 
-            // Update Statistik (Target 100 logic for percentage)
-            document.getElementById("stat-total-doa").innerText = totalData;
-            document.getElementById("stat-persen-terjawab").innerText = totalData > 0 ? Math.round((countTerjawab / totalData) * 100) + "%" : "0%";
-            document.getElementById("stat-sla-rata").innerText = countTerjawab > 0 ? Math.round(totalSLA / countTerjawab) : 0;
+            updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persenDoa);
+            document.getElementById('txt-doa-sla-jc').innerText = rataSLA + " Hari";
+            // Visual Bar SLA (0 - 30 hari skala ideal)
+            document.getElementById('bar-doa-sla-jc').style.width = Math.min((rataSLA / 30) * 100, 100) + "%";
+        });
+    }
+
+    // 2. SINKRONISASI KEHADIRAN KOMSEL (BIG DATA logic)
+    function syncStatistikHadir() {
+        const jcRaw = document.getElementById('select-jc-laporan').value;
+        const numJC = ambilAngkaJC(jcRaw);
+        const snapshotParams = db.collection("kehadiran").onSnapshot(snap => {
+            let totalHadirJC = 0, totalHadirGlobal = 0;
+            snap.forEach(doc => {
+                const d = doc.data();
+                if(d.status === "HADIR") {
+                    totalHadirGlobal++;
+                    if(ambilAngkaJC(d.jc || d.komsel) === numJC) totalHadirJC++;
+                }
+            });
+            // Perhitungan Persentase (sesuaikan rumus Big Data Anda)
+            const persenJC = ((totalHadirJC / 100) * 100).toFixed(1);
+            const persenGlobal = ((totalHadirGlobal / 100) * 100).toFixed(1);
+
+            updateStatistikBar('txt-hadir-jc', 'bar-hadir-jc', persenJC);
+            updateStatistikBar('txt-hadir-global', 'bar-hadir-global', persenGlobal);
+        });
+    }
+
+    // 3. SINKRONISASI KETIDAK HADIRAN (RUMUS PERSENTASE)
+    function syncStatistikIzin() {
+        const jcRaw = document.getElementById('select-jc-izin').value;
+        const numJC = ambilAngkaJC(jcRaw);
+        db.collection("kehadiran").onSnapshot(snap => {
+            let totalIzinJC = 0, totalIzinGlobal = 0;
+            snap.forEach(doc => {
+                const d = doc.data();
+                if(d.status !== "HADIR") { // Izin, Sakit, Alpa, dll
+                    totalIzinGlobal++;
+                    if(ambilAngkaJC(d.jc || d.komsel) === numJC) totalIzinJC++;
+                }
+            });
+            // Rumus Persentase Target 100 (sesuai Alkitab)
+            const persenIzinJC = ((totalIzinJC / 100) * 100).toFixed(1);
+            updateStatistikBar('txt-izin-jc', 'bar-izin-jc', persenIzinJC);
             
-            document.getElementById("list-doa").innerHTML = h || "<p style='text-align:center; padding:20px; color:#999;'>Belum ada permohonan doa.</p>";
-            cekStatus(); 
+            // Global Izin tetap angka nominal
+            document.getElementById('txt-izin-global').innerText = totalIzinGlobal;
+            document.getElementById('bar-izin-global').style.width = Math.min(totalIzinGlobal, 100) + "%";
         });
     }
 
-    // 2. FUNGSI ADD
-    function bukaAdd() {
-        document.getElementById('add-nama').value = userNama;
-        document.getElementById('add-doa').value = "";
-        document.getElementById('pop-add').style.display = 'flex';
+    // 4. SINKRONISASI BACA ALKITAB (Contoh logic Dummy/Sesuaikan dengan database Anda)
+    function syncStatistikAlkitab() {
+        // ... Logika query db.collection("laporan_bacaan") Anda yang asli ...
+        // Untuk demo tampilan agar tetap hidup:
+        updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', 75.0); 
+        updateStatistikBar('txt-alkitab-global', 'bar-alkitab-global', 60.0);
     }
 
-    function simpanBaru() {
-        const isi = document.getElementById('add-doa').value;
-        if(!isi) return alert("Mohon isi pokok doa");
-        const tid = "NK-DOA-" + Math.floor(100 + Math.random() * 899) + "-2026";
-        
-        db.collection("laporan_doa").add({
-            nama: userNama, 
-            pokokDoa: isi, 
-            jc: "JC 5", 
-            terjawab: false, 
-            status: "Proses",
-            tglInput: firebase.firestore.FieldValue.serverTimestamp(), 
-            ticketID: tid
-        }).then(() => tutupPop());
-    }
+    // 5. LOGIKA GOLONGAN DARAH JC 05 & FUNGSI KLIKABLE popupDarah
+    function syncGolonganDarah() {
+        // Menggunakan filter 'komsel' == '5' sesuai database user Anda
+        db.collection("users").where("komsel", "==", "5").onSnapshot(snap => {
+            // Reset Data Local
+            listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+            let countGoldar = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
 
-    // 3. FUNGSI UPDATE STATUS TERJAWAB
-    function prosesTerjawab() {
-        if (selectedIDs.length === 0) return;
-        const batch = db.batch();
-        selectedIDs.forEach(id => {
-            batch.update(db.collection("laporan_doa").doc(id), {
-                terjawab: true, 
-                status: "Terjawab",
-                tglTerjawab: firebase.firestore.FieldValue.serverTimestamp()
+            snap.forEach(doc => {
+                const data = doc.data();
+                const gol = (data.goldarah || data.golongan_darah || "").toUpperCase().trim();
+                const namaAnggota = data.nama || "Tanpa Nama";
+
+                if (countGoldar.hasOwnProperty(gol)) {
+                    countGoldar[gol]++;
+                    listNamaGoldar[gol].push(namaAnggota);
+                }
             });
+
+            // Update UI Angka (1 Orang, 2 Orang, dsb.)
+            for (let tipe in countGoldar) {
+                document.getElementById('count-darah-' + tipe.toLowerCase()).innerText = countGoldar[tipe];
+            }
         });
-        batch.commit().then(() => { selectedIDs = []; cekStatus(); });
     }
 
-    // 4. EDIT & HAPUS
-    function prosesEdit() {
-        if (selectedIDs.length !== 1) return;
-        const id = selectedIDs[0];
-        document.getElementById('ed-doa').value = document.getElementById(`text-${id}`).innerText;
-        document.getElementById('pop-edit').style.display = 'flex';
+    // FUNGSI POPUP: Tampilkan Daftar Nama Golongan Darah
+    function bukaPopupNamaGoldar(tipe) {
+        const modal = document.getElementById('pop-detail-nama-darah');
+        const containerNama = document.getElementById('list-nama-darah');
+        const judul = document.getElementById('modal-title');
+        const daftarNamaAnggota = listNamaGoldar[tipe];
+
+        judul.innerText = "Pemilik Golongan Darah " + tipe;
+        containerNama.innerHTML = "";
+
+        if (daftarNamaAnggota && daftarNamaAnggota.length > 0) {
+            // Urutkan nama dan tampilkan
+            daftarNamaAnggota.sort().forEach((nama, index) => {
+                containerNama.innerHTML += `<div class="nama-item"><b>${index + 1}.</b> ${nama}</div>`;
+            });
+        } else {
+            containerNama.innerHTML = "<p style='text-align:center; padding:20px; color:#999;'>Tidak ada data.</p>";
+        }
+        modal.style.display = 'flex'; // Munculkan popup
     }
 
-    function simpanEdit() {
-        const id = selectedIDs[0];
-        db.collection("laporan_doa").doc(id).update({
-            pokokDoa: document.getElementById('ed-doa').value
-        }).then(() => { tutupPop(); selectedIDs = []; cekStatus(); });
+    function tutupPopupDarah() {
+        document.getElementById('pop-detail-nama-darah').style.display = 'none';
     }
 
-    function prosesHapus() {
-        if (selectedIDs.length === 0) return;
-        if (!confirm("Hapus tiket doa yang dipilih?")) return;
-        const batch = db.batch();
-        selectedIDs.forEach(id => batch.delete(db.collection("laporan_doa").doc(id)));
-        batch.commit().then(() => { selectedIDs = []; cekStatus(); });
+    // SETUP AWAL: Dropdown Periode & Sinkronisasi Real-time
+    function setupPeriodeDropdown() {
+        const dropdownIds = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin', 'select-periode-doa'];
+        dropdownIds.forEach(id => {
+            const selectEl = document.getElementById(id);
+            if(!selectEl) return;
+            let optionsStr = "";
+            for (let i = 1; i <= 12; i++) optionsStr += `<option value="${i}">${i} Bulan terakhir</option>`;
+            selectEl.innerHTML = optionsStr;
+            selectEl.value = "12"; // Default 1 tahun
+        });
     }
 
-    // UTILITY FUNCTIONS
-    function cekStatus() {
-        const checked = document.querySelectorAll('.item-check:checked');
-        selectedIDs = Array.from(checked).map(cb => cb.value);
-        document.getElementById('act-terjawab').classList.toggle('active', selectedIDs.length > 0);
-        document.getElementById('act-hapus').classList.toggle('active', selectedIDs.length > 0);
-        document.getElementById('act-edit').classList.toggle('active', selectedIDs.length === 1);
-        document.getElementById('check-all').checked = (checked.length > 0 && checked.length === document.querySelectorAll('.item-check').length);
-    }
-
-    function toggleCheckAll(source) {
-        document.querySelectorAll('.item-check').forEach(cb => cb.checked = source.checked);
-        cekStatus();
-    }
-
-    function tutupPop() { document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none'); }
-
-    window.onload = loadDoa;
+    // JALANKAN SEMUA FUNGSI SAAT HALAMAN LOAD
+    window.onload = () => {
+        setupPeriodeDropdown();
+        syncStatistikDoa();
+        syncStatistikHadir();
+        syncStatistikIzin();
+        syncStatistikAlkitab();
+        syncGolonganDarah(); // Pastikan fungsi gol darah jalan
+    };
 </script>
+
 </body>
 </html>
