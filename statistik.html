@@ -3,139 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Statistik Lengkap - Pondok Pemulihan Papua</title>
+    <title>Capaian Doa Komsel - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f9; --putih: #ffffff;
-            --success: #28a745; --biru-utama: #007bff; --ungu-global: #6f42c1; --merah-absen: #dc3545;
-        }
+        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f9; --putih: #ffffff; --success: #28a745; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
-        /* Header & Statistik Atas */
+        /* Header & Control Panel */
         .header-fixed { background: var(--putih); z-index: 1000; position: sticky; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .stat-summary { background: var(--biru-tua); color: white; margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-around; text-align: center; }
-        .stat-summary-item { flex: 1; border-right: 1px solid rgba(255,255,255,0.2); }
-        .stat-summary-item:last-child { border-right: none; }
+        .control-panel { display: flex; justify-content: space-around; padding: 10px; border-bottom: 2px solid var(--emas); }
+        
+        .btn-action { border: none; background: none; color: #bbb; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; transition: 0.3s; pointer-events: none; }
+        .btn-action.active { color: var(--biru-tua); font-weight: bold; cursor: pointer; pointer-events: auto; }
+        .btn-action i { font-size: 18px; }
+
+        /* Statistik Summary Card */
+        .stat-summary { background: var(--biru-tua); color: white; margin: 15px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-around; text-align: center; }
+        .stat-item { flex: 1; border-right: 1px solid rgba(255,255,255,0.2); }
+        .stat-item:last-child { border-right: none; }
         .stat-value { display: block; font-size: 18px; font-weight: bold; color: var(--emas); }
         .stat-label { font-size: 10px; text-transform: uppercase; opacity: 0.8; }
 
-        /* Blok Ringkasan Golongan Darah Baru */
-        .goldar-mini-summary { background: var(--putih); color: var(--biru-tua); border: 1px solid #ddd; display: flex; flex-direction: column; gap: 10px; margin: 10px; padding: 12px; border-radius: 12px; }
-        .goldar-mini-item { flex: 1; text-align: center; }
-        .goldar-mini-value { display: block; font-size: 14px; font-weight: bold; color: var(--merah-absen); }
+        /* Bar Gold (Sticky) */
+        .sticky-add-bar { background: var(--emas); display: flex; align-items: center; padding: 8px 15px; position: sticky; top: 125px; z-index: 900; min-height: 50px; }
+        .check-all-box { width: 20px; height: 20px; margin-right: 15px; accent-color: var(--biru-tua); cursor: pointer; }
+        .btn-add-doa { flex: 1; background: none; border: none; color: var(--biru-tua); font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; }
 
-        /* Main Content */
-        .main-content { padding: 5px 10px; }
-        .card { background: var(--putih); border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .card-header { font-weight: bold; font-size: 13px; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid var(--emas); display: flex; align-items: center; gap: 10px; text-transform: uppercase; }
+        /* Konten */
+        .main-content { flex: 1; padding: 15px; }
+        .doa-card { background: var(--putih); border-radius: 12px; padding: 15px; margin-bottom: 12px; display: flex; gap: 12px; border-left: 5px solid var(--emas); box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: 0.3s; }
+        .doa-checkbox { width: 20px; height: 20px; accent-color: var(--biru-tua); margin-top: 5px; }
+        .doa-info { flex: 1; }
+        .user-label { font-weight: bold; color: var(--biru-tua); margin-bottom: 4px; display: block; }
+        .text-label { font-size: 13px; color: #555; line-height: 1.4; }
+        .card-header-detail { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .ticket-no { background: #eef2f7; color: var(--biru-tua); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #d1d9e6; }
+        .status-tag { font-size: 11px; font-weight: bold; font-style: italic; }
+        .date-label { font-size: 11px; color: #888; margin-top: 8px; display: block; }
+        .duration-label { background: #f9f9f9; padding: 5px 10px; border-radius: 6px; font-size: 11px; color: #666; display: inline-block; margin-top: 8px; border: 1px solid #eee; }
+
+        /* Modals */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
+        .popup { background: var(--putih); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; border-top: 6px solid var(--emas); }
         
-        .flex-row { display: flex; gap: 8px; margin-bottom: 15px; }
-        .input-box { flex: 1; }
-        label { font-size: 9px; font-weight: bold; color: #999; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 11px; font-weight: bold; }
-
-        .stat-item-bar { margin-bottom: 12px; }
-        .stat-label-flex { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 5px; }
-        .progress-bar { width: 100%; height: 8px; background: #eee; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; width: 0%; transition: 0.5s; }
-
-        .blood-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .blood-item:hover { background: #fff5f5; }
-
-        /* Modal Popup */
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(3px); }
-        .popup { background: var(--putih); width: 100%; max-width: 350px; border-radius: 20px; padding: 20px; position: relative; border-top: 5px solid var(--emas); }
-        .nama-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
-        .close-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #999; }
-
-        .btn-back { background: var(--biru-tua); color: white; text-decoration: none; padding: 15px; border-radius: 12px; display: block; text-align: center; margin: 10px; font-weight: bold; font-size: 14px; }
+        .bottom-nav { width: 100%; background: var(--bg); padding: 15px 15px 40px 15px; display: flex; justify-content: center; margin-top: auto; }
+        .btn-back { width: 100%; max-width: 600px; background: var(--biru-tua); color: white; text-decoration: none; font-size: 14px; font-weight: bold; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        input[type="text"], textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 14px; }
+        .btn-submit { width: 100%; padding: 15px; background: var(--biru-tua); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="header-fixed">
-    <div class="stat-summary">
-        <div class="stat-summary-item"><span class="stat-value" id="top-total-doa">0</span><span class="stat-label">Total Doa</span></div>
-        <div class="stat-summary-item"><span class="stat-value" id="top-persen-jawab">0%</span><span class="stat-label">Dijawab</span></div>
-        <div class="stat-summary-item"><span class="stat-value" id="top-sla">0</span><span class="stat-label">SLA (Hari)</span></div>
+    <div class="control-panel">
+        <button class="btn-action" id="act-terjawab" onclick="prosesTerjawab()"><i class="fa-solid fa-circle-check"></i>TERJAWAB</button>
+        <button class="btn-action" id="act-edit" onclick="prosesEdit()"><i class="fa-solid fa-pen-to-square"></i>EDIT</button>
+        <button class="btn-action" id="act-hapus" onclick="prosesHapus()"><i class="fa-solid fa-trash"></i>HAPUS</button>
     </div>
 
-    <div class="goldar-mini-summary">
-        <div style="font-weight: bold; border-bottom: 2px solid var(--emas); padding-bottom: 5px; margin-bottom: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <i class="fa-solid fa-droplet" style="color: #e74c3c;"></i> GOLONGAN DARAH (JC 05)
+    <div class="stat-summary">
+        <div class="stat-item">
+            <span class="stat-value" id="stat-total-doa">0</span>
+            <span class="stat-label">Total Doa</span>
         </div>
-        <div style="display: flex; justify-content: space-around; width: 100%;">
-            <div class="goldar-mini-item" style="border-right: 1px solid #eee;">
-                <span class="goldar-mini-value" id="goldar-a">0</span>
-                <span class="stat-label" style="color: #666;">Tipe A</span>
-            </div>
-            <div class="goldar-mini-item" style="border-right: 1px solid #eee;">
-                <span class="goldar-mini-value" id="goldar-b">0</span>
-                <span class="stat-label" style="color: #666;">Tipe B</span>
-            </div>
-            <div class="goldar-mini-item" style="border-right: 1px solid #eee;">
-                <span class="goldar-mini-value" id="goldar-o">0</span>
-                <span class="stat-label" style="color: #666;">Tipe O</span>
-            </div>
-            <div class="goldar-mini-item">
-                <span class="goldar-mini-value" id="goldar-ab">0</span>
-                <span class="stat-label" style="color: #666;">Tipe AB</span>
-            </div>
+        <div class="stat-item">
+            <span class="stat-value" id="stat-persen-terjawab">0%</span>
+            <span class="stat-label">Dijawab</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" id="stat-sla-rata">0</span>
+            <span class="stat-label">SLA (Hari)</span>
         </div>
     </div>
+</div>
+
+<div class="sticky-add-bar">
+    <input type="checkbox" id="check-all" class="check-all-box" onchange="toggleCheckAll(this)">
+    <button class="btn-add-doa" onclick="bukaAdd()"><i class="fa-solid fa-plus-circle"></i> ADD DOA BARU</button>
 </div>
 
 <div class="main-content">
-    <div class="card">
-        <div class="flex-row">
-            <div class="input-box">
-                <label>PILIH KOMSEL</label>
-                <select id="select-jc" onchange="loadSemuaStatistik()">
-                    <option value="5">JC 5</option>
-                    <option value="1">JC 1</option>
-                    <option value="2">JC 2</option>
-                </select>
-            </div>
-            <div class="input-box">
-                <label>PERIODE</label>
-                <select id="select-periode">
-                    <option value="12">12 Bulan Terakhir</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header"><i class="fa-solid fa-book-bible"></i> CAPAIAN BACA ALKITAB</div>
-        <div class="stat-item-bar">
-            <div class="stat-label-flex"><span>PROGRES KOMSEL (TARGET 100)</span><span id="txt-alkitab-komsel">0%</span></div>
-            <div class="progress-bar"><div id="bar-alkitab-komsel" class="progress-fill" style="background: var(--biru-utama);"></div></div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header"><i class="fa-solid fa-droplet" style="color:red"></i> DETAIL GOLONGAN DARAH</div>
-        <div id="darah-list">
-            <div class="blood-item" onclick="bukaPopupDarah('A')"><span>Tipe A</span><span class="count-darah"><b id="count-A">0</b> Orang</span></div>
-            <div class="blood-item" onclick="bukaPopupDarah('B')"><span>Tipe B</span><span class="count-darah"><b id="count-B">0</b> Orang</span></div>
-            <div class="blood-item" onclick="bukaPopupDarah('O')"><span>Tipe O</span><span class="count-darah"><b id="count-O">0</b> Orang</span></div>
-            <div class="blood-item" onclick="bukaPopupDarah('AB')"><span>Tipe AB</span><span class="count-darah"><b id="count-AB">0</b> Orang</span></div>
-        </div>
-    </div>
+    <div id="list-doa"></div>
 </div>
 
-<div id="modal-darah" class="overlay">
+<div id="pop-add" class="overlay">
     <div class="popup">
-        <span class="close-btn" onclick="tutupModal()">&times;</span>
-        <h3 id="modal-title" style="margin:0; color:var(--biru-tua); font-size: 16px;">Daftar Nama</h3>
-        <hr>
-        <div id="list-nama" style="max-height: 300px; overflow-y: auto;"></div>
+        <h3 style="text-align:center; color:var(--biru-tua)">Form Tiket Doa</h3>
+        <input type="text" id="add-nama" readonly>
+        <textarea id="add-doa" rows="4" placeholder="Apa yang ingin Anda doakan hari ini?"></textarea>
+        <button class="btn-submit" onclick="simpanBaru()">KIRIM TIKET</button>
+        <p onclick="tutupPop()" style="text-align:center; cursor:pointer; color:#999; margin-top:15px; font-size: 13px;">Batal</p>
     </div>
 </div>
 
-<a href="menu.html" class="btn-back">KEMBALI KE MENU UTAMA</a>
+<div id="pop-edit" class="overlay">
+    <div class="popup">
+        <h3 style="text-align:center;">Edit Pokok Doa</h3>
+        <textarea id="ed-doa" rows="4"></textarea>
+        <button class="btn-submit" onclick="simpanEdit()">SIMPAN PERUBAHAN</button>
+        <p onclick="tutupPop()" style="text-align:center; cursor:pointer; color:#999; margin-top:15px; font-size: 13px;">Batal</p>
+    </div>
+</div>
+
+<div class="bottom-nav">
+    <a href="menu.html" class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU UTAMA</a>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -152,97 +126,141 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let listNamaDarah = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+    let userNama = "I Made Boby"; 
+    let selectedIDs = [];
 
-    // FUNGSI UTAMA LOAD DATA
-    function loadSemuaStatistik() {
-        loadGolonganDarah();
-        loadStatistikDoa();
-        // Fungsi alkitab/kehadiran lainnya panggil di sini
-    }
-
-    // FUNGSI LOAD DATA GOLONGAN DARAH (Sudah digabung dengan Ringkasan & Detail)
-    function loadGolonganDarah() {
-        const jcSelected = document.getElementById('select-jc').value;
-        
-        db.collection("users")
-          .where("komsel", "==", jcSelected) 
+    // 1. LOGIKA UTAMA: LOAD DATA & KALKULASI SLA
+    function loadDoa() {
+        db.collection("laporan_doa")
+          .where("jc", "==", "JC 5") 
+          .orderBy("tglInput", "desc")
           .onSnapshot(snap => {
-            let counts = { "A": 0, "B": 0, "O": 0, "AB": 0 };
-            listNamaDarah = { 'A': [], 'B': [], 'O': [], 'AB': [] };
-            
-            snap.forEach(doc => {
-                const data = doc.data();
-                const g = data.goldarah ? data.goldarah.toUpperCase().trim() : "";
-                const nama = data.nama || "Tanpa Nama";
-
-                if (counts.hasOwnProperty(g)) {
-                    counts[g]++;
-                    listNamaDarah[g].push(nama);
-                }
-            });
-
-            // Update Tampilan Ringkasan Atas
-            document.getElementById("goldar-a").innerText = counts["A"];
-            document.getElementById("goldar-b").innerText = counts["B"];
-            document.getElementById("goldar-o").innerText = counts["O"];
-            document.getElementById("goldar-ab").innerText = counts["AB"];
-
-            // Update Tampilan List Detail (Bawah)
-            for(let tipe in counts) {
-                const el = document.getElementById('count-' + tipe);
-                if(el) el.innerText = counts[tipe];
-            }
-        });
-    }
-
-    function loadStatistikDoa() {
-        const jcSelected = document.getElementById('select-jc').value;
-        db.collection("laporan_doa").where("jc", "==", "JC " + jcSelected).onSnapshot(snap => {
-            let total = snap.size;
-            let terjawab = 0;
+            let h = "";
+            let totalData = snap.size;
+            let countTerjawab = 0;
             let totalSLA = 0;
 
             snap.forEach(doc => {
                 const d = doc.data();
-                if(d.terjawab) {
-                    terjawab++;
-                    const tglIn = d.tglInput ? d.tglInput.toDate() : new Date();
-                    const tglOut = d.tglTerjawab ? d.tglTerjawab.toDate() : new Date();
-                    const diff = Math.ceil(Math.abs(tglOut - tglIn) / (1000 * 60 * 60 * 24));
-                    totalSLA += diff;
+                const ts = d.tglInput ? d.tglInput.toDate() : new Date();
+                const tglTampil = ts.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                
+                // Kalkulasi SLA
+                const tglAkhir = d.terjawab && d.tglTerjawab ? d.tglTerjawab.toDate() : new Date();
+                const diffTime = Math.abs(tglAkhir - ts);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (d.terjawab === true) {
+                    countTerjawab++;
+                    totalSLA += diffDays;
                 }
+                
+                h += `
+                <div class="doa-card" style="border-left: 5px solid ${d.terjawab ? 'var(--success)' : 'var(--emas)'}">
+                    <input type="checkbox" class="doa-checkbox item-check" value="${doc.id}" onchange="cekStatus()">
+                    <div class="doa-info">
+                        <div class="card-header-detail">
+                            <span class="ticket-no">${d.ticketID || 'NO-ID'}</span>
+                            <span class="status-tag" style="color:${d.terjawab ? 'var(--success)' : '#d68910'}">
+                                ${d.terjawab ? '<i class="fa-solid fa-check-double"></i> Terjawab' : '<i class="fa-solid fa-clock"></i> On Progress'}
+                            </span>
+                        </div>
+                        <span class="user-label">${d.nama}</span>
+                        <div class="text-label" id="text-${doc.id}">${d.pokokDoa}</div>
+                        <span class="date-label">Masuk: ${tglTampil}</span>
+                        <div class="duration-label">Lama: ${diffDays} Hari</div>
+                    </div>
+                </div>`;
             });
 
-            document.getElementById('top-total-doa').innerText = total;
-            document.getElementById('top-persen-jawab').innerText = total > 0 ? Math.round((terjawab/total)*100) + "%" : "0%";
-            document.getElementById('top-sla').innerText = terjawab > 0 ? Math.round(totalSLA/terjawab) : 0;
+            // Update Statistik (Target 100 logic for percentage)
+            document.getElementById("stat-total-doa").innerText = totalData;
+            document.getElementById("stat-persen-terjawab").innerText = totalData > 0 ? Math.round((countTerjawab / totalData) * 100) + "%" : "0%";
+            document.getElementById("stat-sla-rata").innerText = countTerjawab > 0 ? Math.round(totalSLA / countTerjawab) : 0;
+            
+            document.getElementById("list-doa").innerHTML = h || "<p style='text-align:center; padding:20px; color:#999;'>Belum ada permohonan doa.</p>";
+            cekStatus(); 
         });
     }
 
-    function bukaPopupDarah(tipe) {
-        const container = document.getElementById('list-nama');
-        const judul = document.getElementById('modal-title');
-        const daftar = listNamaDarah[tipe];
+    // 2. FUNGSI ADD
+    function bukaAdd() {
+        document.getElementById('add-nama').value = userNama;
+        document.getElementById('add-doa').value = "";
+        document.getElementById('pop-add').style.display = 'flex';
+    }
 
-        judul.innerText = "Pemilik Golongan Darah " + tipe;
-        container.innerHTML = "";
+    function simpanBaru() {
+        const isi = document.getElementById('add-doa').value;
+        if(!isi) return alert("Mohon isi pokok doa");
+        const tid = "NK-DOA-" + Math.floor(100 + Math.random() * 899) + "-2026";
+        
+        db.collection("laporan_doa").add({
+            nama: userNama, 
+            pokokDoa: isi, 
+            jc: "JC 5", 
+            terjawab: false, 
+            status: "Proses",
+            tglInput: firebase.firestore.FieldValue.serverTimestamp(), 
+            ticketID: tid
+        }).then(() => tutupPop());
+    }
 
-        if (daftar && daftar.length > 0) {
-            daftar.sort().forEach((nama, i) => {
-                container.innerHTML += `<div class="nama-item"><b>${i+1}.</b> ${nama}</div>`;
+    // 3. FUNGSI UPDATE STATUS TERJAWAB
+    function prosesTerjawab() {
+        if (selectedIDs.length === 0) return;
+        const batch = db.batch();
+        selectedIDs.forEach(id => {
+            batch.update(db.collection("laporan_doa").doc(id), {
+                terjawab: true, 
+                status: "Terjawab",
+                tglTerjawab: firebase.firestore.FieldValue.serverTimestamp()
             });
-        } else {
-            container.innerHTML = "<p style='text-align:center; padding:20px; color:#999;'>Tidak ada data.</p>";
-        }
-        document.getElementById('modal-darah').style.display = 'flex';
+        });
+        batch.commit().then(() => { selectedIDs = []; cekStatus(); });
     }
 
-    function tutupModal() {
-        document.getElementById('modal-darah').style.display = 'none';
+    // 4. EDIT & HAPUS
+    function prosesEdit() {
+        if (selectedIDs.length !== 1) return;
+        const id = selectedIDs[0];
+        document.getElementById('ed-doa').value = document.getElementById(`text-${id}`).innerText;
+        document.getElementById('pop-edit').style.display = 'flex';
     }
 
-    window.onload = loadSemuaStatistik;
+    function simpanEdit() {
+        const id = selectedIDs[0];
+        db.collection("laporan_doa").doc(id).update({
+            pokokDoa: document.getElementById('ed-doa').value
+        }).then(() => { tutupPop(); selectedIDs = []; cekStatus(); });
+    }
+
+    function prosesHapus() {
+        if (selectedIDs.length === 0) return;
+        if (!confirm("Hapus tiket doa yang dipilih?")) return;
+        const batch = db.batch();
+        selectedIDs.forEach(id => batch.delete(db.collection("laporan_doa").doc(id)));
+        batch.commit().then(() => { selectedIDs = []; cekStatus(); });
+    }
+
+    // UTILITY FUNCTIONS
+    function cekStatus() {
+        const checked = document.querySelectorAll('.item-check:checked');
+        selectedIDs = Array.from(checked).map(cb => cb.value);
+        document.getElementById('act-terjawab').classList.toggle('active', selectedIDs.length > 0);
+        document.getElementById('act-hapus').classList.toggle('active', selectedIDs.length > 0);
+        document.getElementById('act-edit').classList.toggle('active', selectedIDs.length === 1);
+        document.getElementById('check-all').checked = (checked.length > 0 && checked.length === document.querySelectorAll('.item-check').length);
+    }
+
+    function toggleCheckAll(source) {
+        document.querySelectorAll('.item-check').forEach(cb => cb.checked = source.checked);
+        cekStatus();
+    }
+
+    function tutupPop() { document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none'); }
+
+    window.onload = loadDoa;
 </script>
 </body>
 </html>
