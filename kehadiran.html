@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kehadiran JC - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; position: relative; }
+        .icon-header { font-size: 50px; color: #00a884; margin-bottom: 15px; }
+        h2 { color: #003366; margin: 0 0 5px 0; font-size: 22px; font-weight: bold; }
+        p.subtitle { color: #777; font-size: 13px; margin-bottom: 25px; }
+        .menu-selector, .extra-form { text-align: left; margin-bottom: 20px; }
+        label { font-size: 12px; font-weight: bold; color: #555; margin-left: 5px; display: block; margin-top: 10px; }
+        select, input, textarea { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e0e0e0; font-size: 15px; margin-top: 5px; outline: none; transition: 0.3s; background: #f9f9f9; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; color: white; }
+        .btn-hadir { background: #00c853; }
+        .btn-absen { background: #d81b60; }
+        
+        #lock-display { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255,255,255,0.95); z-index: 9999; 
+            flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px; box-sizing: border-box;
+        }
+        #lock-display i { font-size: 80px; margin-bottom: 20px; }
+        #lock-display h1 { font-size: 24px; color: #333; margin: 10px 0; }
+        #lock-display p { font-size: 14px; color: #666; max-width: 300px; line-height: 1.5; }
+        .btn-close-lock { margin-top: 25px; padding: 12px 30px; background: #003366; color: white; border-radius: 10px; border: none; font-weight: bold; }
+
+        #extention-container, #gabungan-container, #reason-container { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="lock-display">
+    <i id="lock-icon"></i>
+    <h1 id="lock-title"></h1>
+    <p id="lock-msg"></p>
+    <button class="btn-close-lock" onclick="closeLockDisplay()">OKE, MENGERTI</button>
+</div>
+
+<div class="card">
+    <div class="icon-header"><i class="fa-solid fa-location-dot"></i></div>
+    <h2>KEHADIRAN JC</h2>
+    <p class="subtitle">Shalom! Silakan pilih jenis kegiatan.</p>
+
+    <div class="menu-selector">
+        <label><i class="fa-solid fa-list-check"></i> PILIH JENIS KEGIATAN:</label>
+        <select id="jenis-kegiatan" onchange="cekJenisMenu()">
+            <option value="Absen Ibadah Raya">Ibadah Raya</option>
+            <option value="Absen Doa">Absen Doa</option>
+            <option value="Absen KD">Absen KD</option>
+            <option value="Absen Komsel Reguler">Komsel Reguler</option>
+            <option value="Absen Komsel Gabungan">Komsel Gabungan</option>
+            <option value="Absen Pelayanan">Pelayanan Arso 1</option>
+            <option value="Absen Extention">Extention (Bantu Anggota)</option>
+        </select>
+    </div>
+
+    <div id="gabungan-container" class="extra-form">
+        <label>GABUNGAN BERSAMA :</label>
+        <input type="text" id="gabungan-info" placeholder="Lokasi / JC Gabungan">
+    </div>
+
+    <div id="extention-container" class="extra-form">
+        <label>NAMA ANGGOTA:</label>
+        <input type="text" id="ext-nama" placeholder="Nama anggota...">
+        <label>UNIT JC:</label>
+        <select id="ext-jc">
+            <option value="JC 01">JC 01</option><option value="JC 02">JC 02</option>
+            <option value="JC 03">JC 03</option><option value="JC 04">JC 04</option>
+            <option value="JC 05">JC 05</option>
+        </select>
+    </div>
+
+    <div id="main-buttons">
+        <button class="btn btn-hadir" onclick="handleProses('HADIR')">SAYA HADIR <i class="fa-solid fa-circle-check"></i></button>
+        <button class="btn btn-absen" onclick="tampilkanInputAlasan()">TIDAK HADIR <i class="fa-solid fa-circle-xmark"></i></button>
+    </div>
+
+    <div id="reason-container">
+        <textarea id="alasan" rows="3" placeholder="Tulis alasan tidak hadir..."></textarea>
+        <button class="btn btn-absen" onclick="handleProses('TIDAK HADIR')">KIRIM LAPORAN</button>
+        <button style="background:none; border:none; color:#777; margin-top:10px;" onclick="batalAbsen()">Kembali</button>
+    </div>
+
+    <a href="menu.html" style="display:block; margin-top:20px; color:#003366; text-decoration:none; font-weight:bold; font-size:13px;"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+        authDomain: "boby-apps-project.firebaseapp.com", 
+        projectId: "boby-apps-project", 
+        storageBucket: "boby-apps-project.appspot.com", 
+        messagingSenderId: "125984859692", 
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const leaderName = localStorage.getItem("userName") || "User";
+    const leaderJC = localStorage.getItem("userJC") || "JC";
+
+    function showLockDisplay(type, title, msg) {
+        const lock = document.getElementById('lock-display');
+        const icon = document.getElementById('lock-icon');
+        lock.style.display = 'flex';
+        document.getElementById('lock-title').innerText = title;
+        document.getElementById('lock-msg').innerText = msg;
+        
+        if(type === 'success') {
+            icon.className = 'fa-solid fa-circle-check';
+            icon.style.color = '#00c853';
+        } else if(type === 'loading') {
+            icon.className = 'fa-solid fa-spinner fa-spin';
+            icon.style.color = '#007bff';
+        } else {
+            icon.className = 'fa-solid fa-circle-xmark';
+            icon.style.color = '#d81b60';
+        }
+    }
+
+    function closeLockDisplay() {
+        document.getElementById('lock-display').style.display = 'none';
+        if(document.getElementById('lock-title').innerText.includes("Terimakasih")) {
+            location.reload();
+        }
+    }
+
+    function cekJenisMenu() {
+        const menu = document.getElementById("jenis-kegiatan").value;
+        document.getElementById("extention-container").style.display = (menu === "Absen Extention") ? "block" : "none";
+        document.getElementById("gabungan-container").style.display = (menu === "Absen Komsel Gabungan") ? "block" : "none";
+    }
+
+    function tampilkanInputAlasan() { 
+        document.getElementById("main-buttons").style.display = "none"; 
+        document.getElementById("reason-container").style.display = "block"; 
+    }
+    
+    function batalAbsen() { 
+        document.getElementById("main-buttons").style.display = "block"; 
+        document.getElementById("reason-container").style.display = "none"; 
+    }
+
+    async function handleProses(tipe) {
+        const menu = document.getElementById("jenis-kegiatan").value;
+        const today = new Date().toISOString().split('T')[0];
+        const subjekLaporan = (menu === "Absen Extention") ? document.getElementById("ext-nama").value : leaderName;
+
+        // 1. CEK DATA GANDA DI KOLEKSI "kehadiran"
+        const check = await db.collection("kehadiran")
+            .where("nama", "==", subjekLaporan)
+            .where("kegiatan", "==", menu)
+            .where("tanggal", "==", today)
+            .get();
+
+        if (!check.empty) {
+            showLockDisplay('error', 'Laporan Ditolak', 'Anda Tadi Sudah Kirim Laporan untuk kegiatan ini hari ini.');
+            return;
+        }
+
+        if (navigator.geolocation) {
+            showLockDisplay('loading', 'Mencari Lokasi...', 'Sedang memverifikasi lokasi Anda...');
+            
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const addr = await res.json();
+                    const alamatJalan = addr.display_name || "Alamat tidak ditemukan";
+                    saveData(tipe, `${lat}, ${lon}`, alamatJalan, subjekLaporan);
+                } catch (e) {
+                    saveData(tipe, `${lat}, ${lon}`, "Gagal mendeteksi nama jalan", subjekLaporan);
+                }
+            }, () => saveData(tipe, "GPS Off", "Lokasi tidak diizinkan", subjekLaporan), { timeout: 10000 });
+        } else {
+            saveData(tipe, "No GPS Support", "Perangkat tidak mendukung GPS", subjekLaporan);
+        }
+    }
+
+    async function saveData(tipe, koordinat, alamat, subjek) {
+        const menu = document.getElementById("jenis-kegiatan").value;
+        const now = new Date();
+        
+        let payload = {
+            status: tipe,
+            tanggal: now.toISOString().split('T')[0],
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            kegiatan: menu,
+            nama: subjek,
+            jc: (menu === "Absen Extention" ? document.getElementById("ext-jc").value : leaderJC),
+            lokasi_koordinat: koordinat,
+            lokasi_alamat: alamat
+        };
+
+        if (menu === "Absen Extention") payload.absensi_helper = leaderName;
+        if (menu === "Absen Komsel Gabungan") payload.gabungan_info = document.getElementById("gabungan-info").value;
+        if (tipe === 'TIDAK HADIR') payload.alasan = document.getElementById("alasan").value;
+
+        // SIMPAN KE KOLEKSI "kehadiran" AGAR SINKRON DENGAN STATISTIK
+        try {
+            await db.collection("kehadiran").add(payload);
+            showLockDisplay('success', 'Terimakasih Atas Laporan Anda', alamat);
+        } catch (err) {
+            showLockDisplay('error', 'Gagal Simpan', err.message);
+        }
+    }
+</script>
+</body>
+</html>
