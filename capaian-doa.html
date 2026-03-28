@@ -7,187 +7,100 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --biru-tua: #003366; 
-            --emas: #D4AF37; 
-            --bg: #f4f7f9; 
-            --putih: #ffffff;
-            --success: #28a745; 
-            --merah-absen: #e74c3c;
-            --orange-doa: #f39c12;
+            --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f9; --putih: #ffffff;
+            --success: #28a745; --merah-absen: #e74c3c; --orange-doa: #f39c12;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: 'Segoe UI', sans-serif; 
-            background: var(--bg); 
-            margin: 0; padding: 0; 
-            min-height: 100vh; 
-            display: flex; flex-direction: column; 
-            overflow-x: hidden; 
-        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* Header & Control Panel */
         .header-fixed { background: var(--putih); z-index: 1000; position: sticky; top: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .control-panel { display: flex; justify-content: space-around; padding: 10px; border-bottom: 2px solid var(--emas); }
-        .btn-action { border: none; background: none; color: #bbb; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; transition: 0.3s; }
-        .btn-action.active { color: var(--biru-tua); font-weight: bold; cursor: pointer; }
-        .btn-action i { font-size: 18px; }
+        .btn-action { border: none; background: none; color: #bbb; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+        .btn-action.active { color: var(--biru-tua); font-weight: bold; }
 
-        /* Card System */
-        .main-content { padding: 15px; }
+        .main-content { padding: 15px; flex: 1; }
         .card { background: var(--putih); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .card-header { font-weight: bold; font-size: 14px; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #eee; display: flex; align-items: center; gap: 10px; }
+        .card-header { font-weight: bold; font-size: 14px; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #f1f1f1; display: flex; align-items: center; gap: 10px; }
         
-        .flex-row { display: flex; gap: 10px; margin-bottom: 15px; }
-        .input-box { flex: 1; }
+        .input-box { margin-bottom: 15px; }
         .input-box label { font-size: 10px; font-weight: bold; display: block; margin-bottom: 5px; color: #666; }
-        select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 13px; }
+        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none; }
 
-        /* Progress Bar Styles */
+        /* Progress Bars */
         .stat-item { margin-bottom: 12px; }
         .stat-label-flex { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 5px; }
-        .progress-bar { width: 100%; height: 10px; background: #eee; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; width: 0%; transition: width 0.5s ease-in-out; }
+        .progress-bar { width: 100%; height: 8px; background: #eee; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; transition: 0.5s; }
 
-        /* Golongan Darah Styles */
-        .stat-item-darah { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f1f1f1; cursor: pointer; transition: 0.2s; border-radius: 8px; }
-        .stat-item-darah:hover { background: #f9f9f9; }
-        .count-darah { font-weight: bold; color: var(--biru-tua); }
-        .count-darah b { color: var(--merah-absen); }
+        /* Golongan Darah List */
+        .stat-item-darah { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f9f9f9; cursor: pointer; }
+        .stat-item-darah:last-child { border-bottom: none; }
+        .count-darah b { color: var(--merah-absen); font-size: 16px; }
 
-        /* Modal / Popup */
+        /* Modal */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
-        .popup { background: var(--putih); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; border-top: 6px solid var(--emas); position: relative; }
+        .popup { background: var(--putih); width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; position: relative; border-top: 5px solid var(--emas); }
         .modal-body { max-height: 300px; overflow-y: auto; margin-top: 15px; }
-        .nama-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
+        .nama-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
         .close-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #999; }
 
-        .bottom-nav { padding: 20px; text-align: center; }
-        .btn-back { background: var(--biru-tua); color: white; text-decoration: none; padding: 15px; border-radius: 10px; display: block; font-weight: bold; }
+        .btn-back { background: var(--biru-tua); color: white; text-decoration: none; padding: 15px; border-radius: 10px; display: block; text-align: center; margin: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="header-fixed">
     <div class="control-panel">
-        <button class="btn-action active"><i class="fa-solid fa-chart-line"></i>STATISTIK</button>
-        <button class="btn-action"><i class="fa-solid fa-database"></i>BIG DATA</button>
-        <button class="btn-action"><i class="fa-solid fa-gear"></i>SETTING</button>
+        <button class="btn-action active"><i class="fa-solid fa-chart-pie"></i>STATISTIK</button>
+        <button class="btn-action"><i class="fa-solid fa-users"></i>ANGGOTA</button>
     </div>
 </div>
 
 <div class="main-content">
-    
     <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--merah-absen);">
-            <i class="fa-solid fa-user-xmark" style="color:var(--merah-absen)"></i> LAPORAN KETIDAK HADIRAN
-        </div>
-        <div class="flex-row">
-            <div class="input-box">
-                <label>KOMSEL (JC)</label>
-                <select id="select-jc-izin" onchange="syncSemuaLaporan()">
-                    <option value="JC 01">JC 1</option>
-                    <option value="JC 02">JC 2</option>
-                    <option value="JC 03">JC 3</option>
-                    <option value="JC 04">JC 4</option>
-                    <option value="JC 05" selected>JC 5</option>
-                </select>
-            </div>
-            <div class="input-box">
-                <label>PERIODE</label>
-                <select id="select-periode-izin" onchange="syncSemuaLaporan()">
-                    <option value="1">1 Bulan terakhir</option>
-                    <option value="12" selected>12 Bulan terakhir</option>
-                </select>
-            </div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex">
-                <span>PROGRES TIDAK HADIR (TARGET 100)</span>
-                <span id="text-laporan-izin" style="color: var(--merah-absen);">0.0%</span>
-            </div>
-            <div class="progress-bar">
-                <div id="bar-laporan-izin" class="progress-fill" style="background: var(--merah-absen);"></div>
-            </div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex">
-                <span>PROGRES GLOBAL</span>
-                <span id="text-global-tidak-hadir">0.0%</span>
-            </div>
-            <div class="progress-bar">
-                <div id="bar-global-tidak-hadir" class="progress-fill" style="background: #ff4d4d;"></div>
-            </div>
+        <div class="input-box">
+            <label>PILIH KOMSEL (JC)</label>
+            <select id="select-jc" onchange="loadSemuaData()">
+                <option value="5">JC 5</option>
+                <option value="1">JC 1</option>
+                <option value="2">JC 2</option>
+            </select>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--orange-doa);">
-            <i class="fa-solid fa-hands-praying" style="color:var(--orange-doa)"></i> CAPAIAN DOA KOMSEL
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex">
-                <span>DOA TERJAWAB (TARGET 100)</span>
-                <span id="text-doa-terjawab" style="color: var(--orange-doa);">0.0%</span>
-            </div>
-            <div class="progress-bar">
-                <div id="bar-doa-terjawab" class="progress-fill" style="background: var(--orange-doa);"></div>
-            </div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex">
-                <span>RATA-RATA SLA (HARI)</span>
-                <span id="text-sla-doa">0 Hari</span>
-            </div>
-            <div class="progress-bar">
-                <div id="bar-sla-doa" class="progress-fill" style="background: #bdc3c7;"></div>
-            </div>
+        <div class="card-header"><i class="fa-solid fa-droplet" style="color:red"></i> DATA GOLONGAN DARAH</div>
+        <div id="darah-list">
+            <div class="stat-item-darah" onclick="showDetail('A')"><span>Tipe A</span><span class="count-darah"><b id="count-A">0</b> Orang</span></div>
+            <div class="stat-item-darah" onclick="showDetail('B')"><span>Tipe B</span><span class="count-darah"><b id="count-B">0</b> Orang</span></div>
+            <div class="stat-item-darah" onclick="showDetail('O')"><span>Tipe O</span><span class="count-darah"><b id="count-O">0</b> Orang</span></div>
+            <div class="stat-item-darah" onclick="showDetail('AB')"><span>Tipe AB</span><span class="count-darah"><b id="count-AB">0</b> Orang</span></div>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--biru-tua);">
-            <i class="fa-solid fa-droplet" style="color:var(--merah-absen)"></i> GOLONGAN DARAH (<span id="title-jc-darah">JC 05</span>)
-        </div>
-        <div id="darah-container">
-            <div class="stat-item-darah" onclick="showDetailDarah('A')">
-                <span>Golongan Darah A</span>
-                <span class="count-darah"><b id="count-A">0</b> Orang</span>
-            </div>
-            <div class="stat-item-darah" onclick="showDetailDarah('B')">
-                <span>Golongan Darah B</span>
-                <span class="count-darah"><b id="count-B">0</b> Orang</span>
-            </div>
-            <div class="stat-item-darah" onclick="showDetailDarah('O')">
-                <span>Golongan Darah O</span>
-                <span class="count-darah"><b id="count-O">0</b> Orang</span>
-            </div>
-            <div class="stat-item-darah" onclick="showDetailDarah('AB')">
-                <span>Golongan Darah AB</span>
-                <span class="count-darah"><b id="count-AB">0</b> Orang</span>
-            </div>
+        <div class="card-header"><i class="fa-solid fa-clipboard-user" style="color:var(--success)"></i> STATISTIK KEHADIRAN</div>
+        <div class="stat-item">
+            <div class="stat-label-flex"><span>HADIR (TARGET 100)</span><span id="txt-hadir">0%</span></div>
+            <div class="progress-bar"><div id="bar-hadir" class="progress-fill" style="background:var(--success)"></div></div>
         </div>
     </div>
-
 </div>
 
-<div id="pop-detail-darah" class="overlay">
+<div id="modal-darah" class="overlay">
     <div class="popup">
-        <span class="close-btn" onclick="tutupPop()">&times;</span>
-        <h3 id="modal-title" style="text-align:center; color:var(--biru-tua); font-size: 16px;">Daftar Nama</h3>
-        <div id="list-nama-darah" class="modal-body">
-            </div>
+        <span class="close-btn" onclick="tutupModal()">&times;</span>
+        <h3 id="modal-title" style="margin:0; color:var(--biru-tua)">Daftar Nama</h3>
+        <div id="list-nama" class="modal-body"></div>
     </div>
 </div>
 
-<div class="bottom-nav">
-    <a href="menu.html" class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU UTAMA</a>
-</div>
+<a href="menu.html" class="btn-back">KEMBALI KE MENU</a>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. FIREBASE INITIALIZATION
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -199,115 +112,57 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 2. GLOBAL STATE
-    let dataDarahLocal = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+    let dataDarah = { 'A': [], 'B': [], 'O': [], 'AB': [] };
 
-    // 3. UTILITY: AMBIL ANGKA DARI STRING (Contoh: "JC 05" -> 5)
-    function ambilAngka(str) {
-        return parseInt(str.replace(/[^0-9]/g, '')) || 0;
-    }
+    function loadSemuaData() {
+        const jcSelected = document.getElementById('select-jc').value;
+        
+        // Reset Data
+        dataDarah = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+        ['A','B','O','AB'].forEach(t => document.getElementById('count-'+t).innerText = "0");
 
-    // 4. SYNC SEMUA DATA (REAL-TIME SNAPSHOT)
-    function syncSemuaLaporan() {
-        const jcTargetRaw = document.getElementById('select-jc-izin').value;
-        const jcTargetAngka = ambilAngka(jcTargetRaw);
-        document.getElementById('title-jc-darah').innerText = jcTargetRaw;
-
-        // Reset Data Darah
-        dataDarahLocal = { 'A': [], 'B': [], 'O': [], 'AB': [] };
-
-        // SNAPSHOT KEHADIRAN & DARAH
-        db.collection("kehadiran").onSnapshot(snap => {
-            let countIzinJC = 0;
-            let countGlobalIzin = 0;
-            let countsDarah = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
-
+        // 1. Ambil Golongan Darah dari koleksi 'users'
+        // Kita filter berdasarkan field 'komsel' yang isinya string angka (misal: "5")
+        db.collection("users").where("komsel", "==", jcSelected).onSnapshot(snap => {
             snap.forEach(doc => {
                 const d = doc.data();
-                const dbAngka = ambilAngka(d.jc || d.komsel);
-
-                // Logika Ketidakhadiran
-                if(String(d.status).toUpperCase() !== "HADIR") {
-                    countGlobalIzin++;
-                    if(dbAngka === jcTargetAngka) countIzinJC++;
-                }
-
-                // Logika Golongan Darah
-                if(dbAngka === jcTargetAngka) {
-                    const gol = (d.darah || "").toUpperCase().trim();
-                    if(countsDarah.hasOwnProperty(gol)) {
-                        countsDarah[gol]++;
-                        dataDarahLocal[gol].push(d.nama);
-                    }
+                const gol = (d.goldarah || "").toUpperCase().trim(); // Sesuai database: goldarah
+                if(dataDarah[gol]) {
+                    dataDarah[gol].push(d.nama);
                 }
             });
-
-            // Update UI Ketidakhadiran (Target 100)
-            const persenIzin = ((countIzinJC / 100) * 100).toFixed(1);
-            const persenGlobalIzin = ((countGlobalIzin / 100) * 100).toFixed(1);
-            updateUIBar('text-laporan-izin', 'bar-laporan-izin', persenIzin);
-            updateUIBar('text-global-tidak-hadir', 'bar-global-tidak-hadir', persenGlobalIzin);
-
-            // Update UI Golongan Darah
-            for (let tipe in countsDarah) {
-                document.getElementById(`count-${tipe}`).innerText = countsDarah[tipe];
+            // Update UI
+            for(let tipe in dataDarah) {
+                document.getElementById('count-'+tipe).innerText = dataDarah[tipe].length;
             }
         });
 
-        // SNAPSHOT DOA
-        db.collection("laporan_doa").where("jc", "==", jcTargetRaw).onSnapshot(snap => {
-            let terjawab = 0;
-            let totalSLA = 0;
+        // 2. Ambil Kehadiran
+        db.collection("kehadiran").onSnapshot(snap => {
+            let hadir = 0;
             snap.forEach(doc => {
                 const d = doc.data();
-                if(d.terjawab === true) {
-                    terjawab++;
-                    // Hitung SLA sederhana
-                    if(d.tglInput && d.tglTerjawab) {
-                        const diff = Math.ceil(Math.abs(d.tglTerjawab.toDate() - d.tglInput.toDate()) / (1000*60*60*24));
-                        totalSLA += diff;
-                    }
-                }
+                const dJC = String(d.jc || d.komsel || "").replace(/[^0-9]/g, '');
+                if(dJC === jcSelected && d.status === "HADIR") hadir++;
             });
-            const persenDoa = ((terjawab / 100) * 100).toFixed(1);
-            const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
-
-            updateUIBar('text-doa-terjawab', 'bar-doa-terjawab', persenDoa);
-            document.getElementById('text-sla-doa').innerText = rataSLA + " Hari";
-            document.getElementById('bar-sla-doa').style.width = Math.min(rataSLA * 3, 100) + "%";
+            const persen = Math.min(hadir, 100);
+            document.getElementById('txt-hadir').innerText = persen + "%";
+            document.getElementById('bar-hadir').style.width = persen + "%";
         });
     }
 
-    // 5. UI HELPER
-    function updateUIBar(textId, barId, val) {
-        document.getElementById(textId).innerText = val + "%";
-        document.getElementById(barId).style.width = Math.min(val, 100) + "%";
+    function showDetail(tipe) {
+        const container = document.getElementById('list-nama');
+        document.getElementById('modal-title').innerText = "Tipe Darah " + tipe;
+        container.innerHTML = dataDarah[tipe].length > 0 
+            ? dataDarah[tipe].map((n, i) => `<div class="nama-item">${i+1}. ${n}</div>`).join('')
+            : "<p style='color:#999; text-align:center'>Data tidak ditemukan</p>";
+        document.getElementById('modal-darah').style.display = 'flex';
     }
 
-    // 6. POPUP DETAIL NAMA
-    function showDetailDarah(tipe) {
-        const listContainer = document.getElementById('list-nama-darah');
-        document.getElementById('modal-title').innerText = `Pemilik Golongan Darah ${tipe}`;
-        listContainer.innerHTML = "";
-        
-        const names = dataDarahLocal[tipe];
-        if(names.length > 0) {
-            names.forEach((n, i) => {
-                listContainer.innerHTML += `<div class="nama-item">${i+1}. ${n}</div>`;
-            });
-        } else {
-            listContainer.innerHTML = "<p style='text-align:center; color:#999;'>Tidak ada data</p>";
-        }
-        document.getElementById('pop-detail-darah').style.display = 'flex';
-    }
+    function tutupModal() { document.getElementById('modal-darah').style.display = 'none'; }
 
-    function tutupPop() {
-        document.getElementById('pop-detail-darah').style.display = 'none';
-    }
-
-    // INIT ON LOAD
-    window.onload = syncSemuaLaporan;
+    window.onload = loadSemuaData;
 </script>
-
 </body>
 </html>
