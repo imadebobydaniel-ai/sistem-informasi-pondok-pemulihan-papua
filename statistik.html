@@ -121,6 +121,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+// Konfigurasi Firebase Boby
 const firebaseConfig = {
     apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
     authDomain: "boby-apps-project.firebaseapp.com",
@@ -129,22 +130,26 @@ const firebaseConfig = {
     messagingSenderId: "125984859692",
     appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
 };
+
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// Helper: Setup Dropdown Periode (1-12 Bulan)
 function setupDropdownPeriode() {
     const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin'];
     ids.forEach(id => {
         const select = document.getElementById(id);
+        if(!select) return;
         let options = "";
         for (let i = 1; i <= 12; i++) {
             options += `<option value="${i}">${i} Bulan terakhir</option>`;
         }
         select.innerHTML = options;
-        select.value = "12";
+        select.value = "12"; // Default 12 bulan
     });
 }
 
+// Helper: UI Progress Bar
 function updateProgressBar(textId, barId, value, isCount = false) {
     const textEl = document.getElementById(textId);
     const barEl = document.getElementById(barId);
@@ -152,22 +157,27 @@ function updateProgressBar(textId, barId, value, isCount = false) {
     if(barEl) barEl.style.width = Math.min(isCount ? (value * 10) : value, 100) + "%";
 }
 
-// 1. Logika Kehadiran + Global
+// Helper: Pembersih String ke Angka Murni (JC 05 -> 5)
+function ambilAngka(str) {
+    return String(str || "").replace(/\D/g, "").replace(/^0+/, "");
+}
+
+// 1. Logika Kehadiran Realtime
 function syncLaporanKehadiranJC() {
-    const jcTarget = document.getElementById('select-jc-laporan').value; 
+    const jcTargetRaw = document.getElementById('select-jc-laporan').value; 
+    const jcTargetAngka = ambilAngka(jcTargetRaw);
+    
     const bulan = parseInt(document.getElementById('select-periode-laporan').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
     db.collection("kehadiran").where("tanggal", ">=", dLimit).onSnapshot(snap => {
-        let countJC = 0;
-        let countGlobal = 0;
+        let countJC = 0, countGlobal = 0;
         snap.forEach(doc => {
             const data = doc.data();
             if(data.status === "HADIR") {
                 countGlobal++;
-                if(data.jc === jcTarget) {
-                    countJC++;
-                }
+                const dbAngka = ambilAngka(data.jc || data.komsel);
+                if(dbAngka === jcTargetAngka) countJC++;
             }
         });
         updateProgressBar('text-laporan-jc', 'bar-laporan-jc', ((countJC/100)*100).toFixed(1));
@@ -175,22 +185,22 @@ function syncLaporanKehadiranJC() {
     });
 }
 
-// 2. Logika Ketidakhadiran + Global
+// 2. Logika Ketidakhadiran Realtime
 function syncLaporanIzinJC() {
-    const jcTarget = document.getElementById('select-jc-izin').value;
+    const jcTargetRaw = document.getElementById('select-jc-izin').value;
+    const jcTargetAngka = ambilAngka(jcTargetRaw);
+
     const bulan = parseInt(document.getElementById('select-periode-izin').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
     db.collection("kehadiran").where("tanggal", ">=", dLimit).onSnapshot(snap => {
-        let countIzin = 0;
-        let countGlobalIzin = 0;
+        let countIzin = 0, countGlobalIzin = 0;
         snap.forEach(doc => {
             const data = doc.data();
             if(data.status !== "HADIR") {
                 countGlobalIzin++;
-                if(data.jc === jcTarget) {
-                    countIzin++;
-                }
+                const dbAngka = ambilAngka(data.jc || data.komsel);
+                if(dbAngka === jcTargetAngka) countIzin++;
             }
         });
         updateProgressBar('text-laporan-izin', 'bar-laporan-izin', countIzin, true);
@@ -198,10 +208,11 @@ function syncLaporanIzinJC() {
     });
 }
 
-// 3. Logika Alkitab
+// 3. Logika Capaian Alkitab Realtime
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
-    const selKomselAngka = selKomselRaw.replace(/\D/g, "");
+    const jcTargetAngka = ambilAngka(selKomselRaw);
+    
     const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
     const limitFilter = new Date(); limitFilter.setMonth(limitFilter.getMonth() - periodeBulan);
 
@@ -209,15 +220,16 @@ function syncCapaianRealtime() {
         let countJC = 0, countGlobal = 0;
         snap.forEach(doc => {
             const d = doc.data();
-            const jcLaporanAngka = String(d.komsel || d.jc || "").replace(/\D/g, "");
             countGlobal++;
-            if (parseInt(jcLaporanAngka) === parseInt(selKomselAngka)) countJC++;
+            const dbAngka = ambilAngka(d.komsel || d.jc);
+            if (dbAngka === jcTargetAngka) countJC++;
         });
         updateProgressBar('text-capaian-komsel', 'bar-capaian-komsel', ((countJC/100)*100).toFixed(1));
         updateProgressBar('text-capaian-global', 'bar-capaian-global', ((countGlobal/100)*100).toFixed(1));
     });
 }
 
+// 4. Logika Golongan Darah Khusus JC 05
 function syncGoldarRealtime() {
     db.collection("users").where("komsel", "==", "5").onSnapshot(snap => {
         let c = { A: 0, B: 0, O: 0, AB: 0 };
@@ -225,10 +237,14 @@ function syncGoldarRealtime() {
             const g = (doc.data().golongan_darah || "").toUpperCase().trim();
             if (c.hasOwnProperty(g)) c[g]++;
         });
-        Object.keys(c).forEach(t => document.getElementById('count-'+t).innerText = c[t] + " Orang");
+        Object.keys(c).forEach(t => {
+            const el = document.getElementById('count-'+t);
+            if(el) el.innerText = c[t] + " Orang";
+        });
     });
 }
 
+// Inisialisasi saat halaman dimuat
 window.onload = () => {
     setupDropdownPeriode();
     syncCapaianRealtime();
