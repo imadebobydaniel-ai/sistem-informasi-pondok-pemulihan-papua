@@ -121,7 +121,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-// Konfigurasi Firebase Boby
 const firebaseConfig = {
     apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
     authDomain: "boby-apps-project.firebaseapp.com",
@@ -134,7 +133,44 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Helper: Setup Dropdown Periode (1-12 Bulan)
+// FUNGSI PEMBERSIH DATA LAMA (Auto-format database)
+async function bersihkanDataDatabase() {
+    console.log("Memulai pembersihan data...");
+    const snap = await db.collection("kehadiran").get();
+    let totalUpdate = 0;
+    
+    // Gunakan Promise.all untuk eksekusi yang lebih cepat
+    const updatePromises = [];
+
+    snap.forEach((doc) => {
+        const data = doc.data();
+        let updateObj = {};
+        let perluUpdate = false;
+
+        // 1. Perbaiki Status (hadir -> HADIR)
+        if (data.status && data.status !== "HADIR" && data.status.toUpperCase() === "HADIR") {
+            updateObj.status = "HADIR";
+            perluUpdate = true;
+        }
+
+        // 2. Pastikan field 'jc' ada (Format standar JC XX)
+        if (!data.jc && data.komsel) {
+            updateObj.jc = "JC " + String(data.komsel).replace(/\D/g, "").padStart(2, '0');
+            perluUpdate = true;
+        }
+
+        if (perluUpdate) {
+            updatePromises.push(db.collection("kehadiran").doc(doc.id).update(updateObj));
+            totalUpdate++;
+        }
+    });
+
+    await Promise.all(updatePromises);
+    if(totalUpdate > 0) {
+        console.log(totalUpdate + " data berhasil dirapikan.");
+    }
+}
+
 function setupDropdownPeriode() {
     const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin'];
     ids.forEach(id => {
@@ -145,11 +181,10 @@ function setupDropdownPeriode() {
             options += `<option value="${i}">${i} Bulan terakhir</option>`;
         }
         select.innerHTML = options;
-        select.value = "12"; // Default 12 bulan
+        select.value = "12";
     });
 }
 
-// Helper: UI Progress Bar
 function updateProgressBar(textId, barId, value, isCount = false) {
     const textEl = document.getElementById(textId);
     const barEl = document.getElementById(barId);
@@ -157,16 +192,13 @@ function updateProgressBar(textId, barId, value, isCount = false) {
     if(barEl) barEl.style.width = Math.min(isCount ? (value * 10) : value, 100) + "%";
 }
 
-// Helper: Pembersih String ke Angka Murni (JC 05 -> 5)
 function ambilAngka(str) {
     return String(str || "").replace(/\D/g, "").replace(/^0+/, "");
 }
 
-// 1. Logika Kehadiran Realtime
 function syncLaporanKehadiranJC() {
     const jcTargetRaw = document.getElementById('select-jc-laporan').value; 
     const jcTargetAngka = ambilAngka(jcTargetRaw);
-    
     const bulan = parseInt(document.getElementById('select-periode-laporan').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
@@ -185,11 +217,9 @@ function syncLaporanKehadiranJC() {
     });
 }
 
-// 2. Logika Ketidakhadiran Realtime
 function syncLaporanIzinJC() {
     const jcTargetRaw = document.getElementById('select-jc-izin').value;
     const jcTargetAngka = ambilAngka(jcTargetRaw);
-
     const bulan = parseInt(document.getElementById('select-periode-izin').value);
     const dLimit = new Date(); dLimit.setMonth(dLimit.getMonth() - bulan);
 
@@ -208,11 +238,9 @@ function syncLaporanIzinJC() {
     });
 }
 
-// 3. Logika Capaian Alkitab Realtime
 function syncCapaianRealtime() {
     const selKomselRaw = document.getElementById('select-komsel-alkitab').value;
     const jcTargetAngka = ambilAngka(selKomselRaw);
-    
     const periodeBulan = parseInt(document.getElementById('select-periode-alkitab').value);
     const limitFilter = new Date(); limitFilter.setMonth(limitFilter.getMonth() - periodeBulan);
 
@@ -229,7 +257,6 @@ function syncCapaianRealtime() {
     });
 }
 
-// 4. Logika Golongan Darah Khusus JC 05
 function syncGoldarRealtime() {
     db.collection("users").where("komsel", "==", "5").onSnapshot(snap => {
         let c = { A: 0, B: 0, O: 0, AB: 0 };
@@ -244,8 +271,11 @@ function syncGoldarRealtime() {
     });
 }
 
-// Inisialisasi saat halaman dimuat
-window.onload = () => {
+window.onload = async () => {
+    // Jalankan pembersihan data sekali di awal
+    await bersihkanDataDatabase();
+    
+    // Jalankan fungsi dashboard lainnya
     setupDropdownPeriode();
     syncCapaianRealtime();
     syncLaporanKehadiranJC();
