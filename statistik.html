@@ -29,7 +29,6 @@
         .progress-bar { height: 8px; background: #f0f0f0; border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out; width: 0%; }
         
-        /* Gaya Khusus Bar Laporan Per Orang */
         .progress-group-top { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #eee; }
 
         .blood-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
@@ -56,10 +55,17 @@
             <div class="input-box">
                 <label>KOMSEL</label>
                 <select id="select-komsel-alkitab" onchange="syncStatistikAlkitab()">
-                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                    <option value="JC 01">JC 1</option>
+                    <option value="JC 02">JC 2</option>
+                    <option value="JC 03">JC 3</option>
+                    <option value="JC 04">JC 4</option>
+                    <option value="JC 05" selected>JC 5</option>
                 </select>
             </div>
-            <div class="input-box"><label>PERIODE</label><select id="select-periode-alkitab" onchange="syncStatistikAlkitab()"></select></div>
+            <div class="input-box">
+                <label>PERIODE</label>
+                <select id="select-periode-alkitab" onchange="syncStatistikAlkitab()"></select>
+            </div>
         </div>
 
         <div class="progress-group-top">
@@ -89,7 +95,11 @@
             <div class="input-box">
                 <label>KOMSEL (JC)</label>
                 <select id="select-jc-laporan" onchange="syncStatistikHadir()">
-                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                    <option value="JC 01">JC 1</option>
+                    <option value="JC 02">JC 2</option>
+                    <option value="JC 03">JC 3</option>
+                    <option value="JC 04">JC 4</option>
+                    <option value="JC 05" selected>JC 5</option>
                 </select>
             </div>
             <div class="input-box"><label>PERIODE</label><select id="select-periode-laporan" onchange="syncStatistikHadir()"></select></div>
@@ -110,7 +120,11 @@
             <div class="input-box">
                 <label>KOMSEL (JC)</label>
                 <select id="select-jc-izin" onchange="syncStatistikIzin()">
-                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                    <option value="JC 01">JC 1</option>
+                    <option value="JC 02">JC 2</option>
+                    <option value="JC 03">JC 3</option>
+                    <option value="JC 04">JC 4</option>
+                    <option value="JC 05" selected>JC 5</option>
                 </select>
             </div>
             <div class="input-box"><label>PERIODE</label><select id="select-periode-izin" onchange="syncStatistikIzin()"></select></div>
@@ -131,7 +145,11 @@
             <div class="input-box">
                 <label>KOMSEL (JC)</label>
                 <select id="select-jc-doa" onchange="syncStatistikDoa()">
-                    <option value="JC 01">JC 1</option><option value="JC 02">JC 2</option><option value="JC 03">JC 3</option><option value="JC 04">JC 4</option><option value="JC 05" selected>JC 5</option>
+                    <option value="JC 01">JC 1</option>
+                    <option value="JC 02">JC 2</option>
+                    <option value="JC 03">JC 3</option>
+                    <option value="JC 04">JC 4</option>
+                    <option value="JC 05" selected>JC 5</option>
                 </select>
             </div>
             <div class="input-box"><label>PERIODE</label><select id="select-periode-doa" onchange="syncStatistikDoa()"></select></div>
@@ -195,21 +213,18 @@
         if(elBar) elBar.style.width = barValue + "%";
     }
 
-    // --- SINKRONISASI ALKITAB (TERMASUK HITUNG ORANG) ---
     function syncStatistikAlkitab() {
         const jcTerpilih = document.getElementById("select-komsel-alkitab").value;
         const textLaporan = document.getElementById("text-laporan-orang");
         const barLaporan = document.getElementById("bar-laporan-orang");
         const labelLama = document.getElementById("progres-komsel-text");
 
-        // Realtime monitor jumlah orang yang melapor di JC terpilih
         db.collection("users").where("komsel", "==", jcTerpilih).onSnapshot(snap => {
             let totalAnggota = snap.size;
             let anggotaSudahLapor = 0;
 
             snap.forEach(doc => {
                 const data = doc.data();
-                // Jika user punya data progres alkitab di atas 0, dianggap sudah lapor
                 if (data.progres_alkitab && data.progres_alkitab > 0) {
                     anggotaSudahLapor++;
                 }
@@ -221,13 +236,11 @@
             if (barLaporan) barLaporan.style.width = persenLapor + "%";
             if (labelLama) labelLama.innerText = anggotaSudahLapor + " Orang Melapor";
             
-            // Progres Capaian (Dummy atau bisa disesuaikan dengan rata-rata isi progres anggota)
             updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', 75.0); 
             updateStatistikBar('txt-alkitab-global', 'bar-alkitab-global', 60.0);
         });
     }
 
-    // --- SINKRONISASI DOA ---
     function syncStatistikDoa() {
         const jcRaw = document.getElementById('select-jc-doa').value;
         const periodeBulan = parseInt(document.getElementById('select-periode-doa').value);
@@ -256,7 +269,6 @@
         });
     }
 
-    // --- SINKRONISASI KEHADIRAN ---
     function syncStatistikHadir() {
         const jcRaw = document.getElementById('select-jc-laporan').value;
         const numJC = ambilAngkaJC(jcRaw);
@@ -274,7 +286,6 @@
         });
     }
 
-    // --- SINKRONISASI IZIN ---
     function syncStatistikIzin() {
         const jcRaw = document.getElementById('select-jc-izin').value;
         const numJC = ambilAngkaJC(jcRaw);
@@ -293,7 +304,6 @@
         });
     }
 
-    // --- GOLONGAN DARAH ---
     function syncGolonganDarah() {
         db.collection("users").onSnapshot((snapshot) => {
             listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
