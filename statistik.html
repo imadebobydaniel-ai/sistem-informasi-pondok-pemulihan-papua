@@ -190,6 +190,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -267,7 +268,6 @@
         const jcRaw = document.getElementById('select-jc-laporan').value;
         const numJC = ambilAngkaJC(jcRaw);
         
-        // Logika Laporan Masuk Per Orang (Hadir)
         db.collection("users").where("komsel", "==", jcRaw).onSnapshot(uSnap => {
             let totalAnggota = uSnap.size;
             db.collection("kehadiran").onSnapshot(snap => {
@@ -296,7 +296,6 @@
         const jcRaw = document.getElementById('select-jc-izin').value;
         const numJC = ambilAngkaJC(jcRaw);
 
-        // Logika Laporan Masuk Per Orang (Izin)
         db.collection("users").where("komsel", "==", jcRaw).onSnapshot(uSnap => {
             let totalAnggota = uSnap.size;
             db.collection("kehadiran").onSnapshot(snap => {
@@ -370,38 +369,51 @@
             selectEl.innerHTML = optionsStr;
             selectEl.value = "12";
         });
-        async function klasifikasiLaporanLengkap() {
-    const listID = [
-        "1P18YJxbYiT42vjHBjma", "21x0bMmRgl22vK7Jfg8k", "2JyageivoZs6hhNxIUkp",
-        // ... masukkan semua 26 ID di sini
-    ];
-
-    let hasilKlasifikasi = {};
-
-    for (const id of listID) {
-        const userDoc = await db.collection("users").doc(id).get();
-        
-        if (userDoc.exists) {
-            const data = userDoc.data();
-            const nama = data.nama || "Tanpa Nama";
-            const jc = data.komsel || "Tanpa JC";
-            
-            // Mengambil data pembacaan terakhir
-            const kitab = data.terakhir_dibaca || "Belum ada data";
-            const tanggal = data.tanggal_update ? data.tanggal_update.toDate().toLocaleDateString('id-ID') : "-";
-
-            if (!hasilKlasifikasi[jc]) hasilKlasifikasi[jc] = [];
-            
-            hasilKlasifikasi[jc].push({
-                nama: nama,
-                tanggal: tanggal,
-                kitab: kitab
-            });
-        }
     }
-    console.log("Hasil Klasifikasi per JC:", hasilKlasifikasi);
-    return hasilKlasifikasi;
-}
+
+    async function klasifikasiLaporanLengkap() {
+        const listID = ["1P18YJxbYiT42vjHBjma", "21x0bMmRgl22vK7Jfg8k", "2JyageivoZs6hhNxIUkp"];
+        let hasilKlasifikasi = {};
+        for (const id of listID) {
+            const userDoc = await db.collection("users").doc(id).get();
+            if (userDoc.exists) {
+                const data = userDoc.data();
+                const jc = data.komsel || "Tanpa JC";
+                if (!hasilKlasifikasi[jc]) hasilKlasifikasi[jc] = [];
+                hasilKlasifikasi[jc].push({
+                    nama: data.nama || "Tanpa Nama",
+                    tanggal: data.tanggal_update ? data.tanggal_update.toDate().toLocaleDateString('id-ID') : "-",
+                    kitab: data.terakhir_dibaca || "Belum ada data"
+                });
+            }
+        }
+        console.log("Hasil Klasifikasi per JC:", hasilKlasifikasi);
+        return hasilKlasifikasi;
+    }
+
+    function sinkronisasiBigData() {
+        db.collection("laporan_bacaan").onSnapshot((snapshot) => {
+            let rekapJC = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+            let totalMelapor = 0;
+            let targetAnggotaJC5 = 13;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const jcID = ambilAngkaJC(data.komsel);
+                if (rekapJC[jcID] !== undefined) {
+                    rekapJC[jcID]++;
+                    totalMelapor++;
+                }
+                if(data.tanggal) console.log(`[BIG DATA] ID: ${doc.id} | Nama: ${data.nama} | Waktu: ${data.tanggal.toDate()}`);
+            });
+
+            const elText = document.getElementById("progres-komsel-text");
+            if(elText) elText.innerText = `${totalMelapor} Orang Melapor`;
+            
+            let progresJC5 = (rekapJC["5"] / targetAnggotaJC5) * 100;
+            const elBar = document.getElementById("bar-laporan-orang");
+            if(elBar) elBar.style.width = progresJC5 + "%";
+        });
     }
 
     window.onload = () => {
@@ -410,7 +422,8 @@
         syncStatistikHadir();
         syncStatistikIzin();
         syncStatistikAlkitab();
-        syncGolonganDarah(); 
+        syncGolonganDarah();
+        sinkronisasiBigData();
     };
 </script>
 </body>
