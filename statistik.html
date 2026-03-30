@@ -221,42 +221,42 @@
                 dataPerJC[namaJC].totalDoc++;
             });
 
-            // TAHAP 1: HITUNG TOTAL GLOBAL (Sesuai Logika Set Unik per JC)
+            // TAHAP 1: HITUNG TOTAL GLOBAL (Penjumlahan semua orang unik dari seluruh JC)
+            // Sesuai permintaan: Jika JC 5 ada 3 dan JC 3 ada 6, total = 9.
             let totalOrangGlobal = 0;
             Object.keys(dataPerJC).forEach(key => {
                 totalOrangGlobal += dataPerJC[key].orang.size;
             });
 
-            // TAHAP 2: AMBIL DATA KHUSUS JC YANG DIPILIH
+            // TAHAP 2: AMBIL DATA KHUSUS JC YANG DIPILIH DI DROPDOWN
             const dataJCTerpilih = dataPerJC[jcTerpilih] || { orang: new Set(), totalDoc: 0 };
             const jmlOrangUnik = dataJCTerpilih.orang.size;
 
             // TAHAP 3: UPDATE TAMPILAN
-            // A. Update Teks Orang
+            // A. Update Teks Orang (Detail per JC)
             const elTeksOrang = document.getElementById(idTeksOrang);
             if (elTeksOrang) elTeksOrang.innerText = jmlOrangUnik + " Orang";
 
-            // B. Update Detail Melapor (Label bawah bar kecil)
+            // B. Update Detail Melapor (Label bawah bar visual)
             const idDetail = idTeksOrang.replace("txt", "txt").replace("orang", "detail");
             if(document.getElementById(idDetail)) document.getElementById(idDetail).innerText = jmlOrangUnik + " Orang Melapor";
 
-            // C. Bar Visual Kecil (Target 10 orang untuk visualisasi bar tengah)
+            // C. Bar Visual Kecil (Persentase orang per JC terhadap target kecil 10)
             const idBarOrangVisual = idTeksOrang.replace("txt", "bar") + "-visual";
             if(document.getElementById(idBarOrangVisual)) {
                 document.getElementById(idBarOrangVisual).style.width = Math.min((jmlOrangUnik / 10) * 100, 100) + "%";
             }
 
-            // D. Update Persentase Progres Utama (Target 100)
-            // Menggunakan dataJCTerpilih.totalDoc jika ingin menghitung total laporan masuk, 
-            // atau totalOrangGlobal jika ingin melihat total seluruh JC. Di sini saya arahkan ke target 100.
+            // D. UPDATE BAR PROGRES UTAMA (BERDASARKAN TOTAL GLOBAL)
+            // Sesuai permintaan: Nilai total seluruh JC diubah menjadi persentase progres.
             let target = 100;
-            let persenProgres = (jmlOrangUnik / target) * 100; 
+            let persenProgresGlobal = (totalOrangGlobal / target) * 100; 
 
             const elTeksPersen = document.getElementById(idTeksPersen);
             const elBarPersen = document.getElementById(idBarPersen);
 
-            if (elTeksPersen) elTeksPersen.innerText = persenProgres.toFixed(1) + "%";
-            if (elBarPersen) elBarPersen.style.width = Math.min(persenProgres, 100) + "%";
+            if (elTeksPersen) elTeksPersen.innerText = persenProgresGlobal.toFixed(1) + "%";
+            if (elBarPersen) elBarPersen.style.width = Math.min(persenProgresGlobal, 100) + "%";
         });
     }
 
@@ -269,15 +269,13 @@
         // B. KATEGORI: KEHADIRAN JC
         updateStatistik("kehadiran", "sel-hadir", "txt-hadir-orang", "txt-hadir-persen", "bar-hadir-persen", "HADIR");
 
-        // C. KATEGORI: KETIDAKHADIRAN (IZIN/SAKIT)
+        // C. KATEGORI: KETIDAKHADIRAN
         updateStatistik("kehadiran", "sel-tidak-hadir", "txt-tidak-hadir-orang", "txt-tidak-hadir-persen", "bar-tidak-hadir-persen", "TIDAK_HADIR");
         
-        // Tetap jalankan Doa dan Darah
         syncStatistikDoa();
         syncGolonganDarah();
     }
 
-    // Fungsi Pendukung Lainnya (Doa, Darah, Dropdown)
     function syncStatistikDoa() {
         const jcRaw = document.getElementById('select-jc-doa').value;
         db.collection("laporan_doa").where("jc", "==", jcRaw).onSnapshot(snap => {
@@ -335,7 +333,6 @@
         });
     }
 
-    // Jalankan saat halaman dimuat
     window.onload = () => {
         setupPeriodeDropdown();
         syncSemuaDashboard();
