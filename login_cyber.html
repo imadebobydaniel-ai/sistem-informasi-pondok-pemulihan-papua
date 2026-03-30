@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Admin - Pondok Pemulihan Papua</title>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval';">
+    <title>Admin Secure Access - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -11,190 +12,228 @@
 
     <style>
         :root {
-            --purple-neon: #a020f0;
-            --purple-light: #d8b4fe;
-            --dark-overlay: rgba(20, 10, 30, 0.75);
-            --input-bg: rgba(255, 255, 255, 0.05);
+            --cyan-neon: #00ffff;
+            --dark-bg: #030303;
+            --panel-bg: rgba(10, 10, 10, 0.9); 
+            --input-bg: rgba(0, 0, 0, 0.6);
         }
 
         body, html {
             height: 100%; margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-bg); color: #fff; overflow: hidden;
             display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
         }
 
-        /* Background Image ala Gambar yang Anda kirim */
-        .bg-image {
+        /* --- Perbaikan Latar Belakang (Watermark Logo) --- */
+        .bg-watermark {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('https://w0.peakpx.com/wallpaper/403/17/HD-wallpaper-mt-fuji-night-mountain-fuji-night-purple.jpg'); /* Estimasi gambar serupa */
-            background-size: cover; background-position: center;
-            z-index: -1; filter: brightness(0.7);
+            /* Menggunakan file di GitHub sesuai instruksi */
+            background-image: url('logo_pondok.png'); 
+            background-size: contain; background-position: center; background-repeat: no-repeat;
+            z-index: -100;
+            /* Membuat logo transparan (watermark) & gelap */
+            filter: brightness(0.15) opacity(0.2) saturate(0.5); 
         }
 
-        .login-card {
-            background: var(--dark-overlay);
-            padding: 40px; border-radius: 8px;
-            width: 100%; max-width: 380px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(160, 32, 240, 0.3);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        /* Cyber Grid tipis tetap dipertahankan untuk tekstur */
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, .03) 25%, rgba(0, 255, 255, .03) 26%, transparent 27%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, .03) 25%, rgba(0, 255, 255, .03) 26%, transparent 27%, transparent);
+            background-size: 60px 60px; z-index: -50; pointer-events: none;
         }
 
-        h2 {
-            color: #fff; text-transform: uppercase;
-            letter-spacing: 3px; margin-bottom: 30px;
-            font-weight: 600; font-size: 24px;
+        /* --- Panel Login --- */
+        .login-panel {
+            background-color: var(--panel-bg); padding: 40px; border-radius: 20px;
+            width: 90%; max-width: 400px; text-align: center;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.15), 0 0 10px rgba(0, 255, 255, 0.3) inset;
+            border: 1px solid rgba(0, 255, 255, 0.4); backdrop-filter: blur(15px);
+            position: relative;
         }
 
-        .form-group {
-            margin-bottom: 20px; text-align: left;
-            border-bottom: 2px solid var(--purple-neon);
-        }
+        .header-icon { font-size: 60px; color: var(--cyan-neon); text-shadow: 0 0 15px var(--cyan-neon); margin-bottom: 10px; }
+        h2 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 2px; color: var(--cyan-neon); text-transform: uppercase; text-shadow: 0 0 10px var(--cyan-neon); }
+        .subtitle { color: #888; margin-bottom: 40px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; }
 
-        label {
-            display: block; font-size: 11px;
-            color: var(--purple-light); text-transform: capitalize;
-            margin-bottom: 5px; opacity: 0.8;
+        /* --- Form Elements --- */
+        .form-group { margin-bottom: 25px; text-align: left; }
+        label { display: block; margin-bottom: 10px; font-size: 10px; font-weight: bold; color: var(--cyan-neon); text-transform: uppercase; letter-spacing: 1px; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper i.field-icon { position: absolute; left: 15px; color: #555; font-size: 16px; transition: 0.3s; }
+        
+        input { 
+            width: 100%; padding: 15px 15px 15px 45px; 
+            background-color: var(--input-bg); border: 1px solid #222; 
+            border-radius: 10px; color: #fff; outline: none; transition: 0.3s; box-sizing: border-box; 
+            font-size: 14px;
         }
+        input::placeholder { color: #444; }
+        input:focus { border-color: var(--cyan-neon); box-shadow: 0 0 12px rgba(0, 255, 255, 0.3); }
+        input:focus + i.field-icon { color: var(--cyan-neon); text-shadow: 0 0 5px var(--cyan-neon); }
+        
+        .toggle-password { position: absolute; right: 15px; cursor: pointer; color: #555; transition: 0.3s; }
+        .toggle-password:hover { color: var(--cyan-neon); }
 
-        input {
-            width: 100%; background: transparent;
-            border: none; padding: 10px 0;
-            color: #fff; font-size: 16px; outline: none;
+        .btn-cyber { 
+            width: 100%; padding: 16px; background: transparent; 
+            color: var(--cyan-neon); border: 2px solid var(--cyan-neon); 
+            border-radius: 10px; font-weight: 900; letter-spacing: 2px; 
+            text-transform: uppercase; cursor: pointer; transition: 0.3s; 
+            margin-top: 10px; font-size: 14px;
         }
+        .btn-cyber:hover { background: var(--cyan-neon); color: #000; box-shadow: 0 0 30px rgba(0, 255, 255, 0.6); }
 
-        input::placeholder { color: rgba(255,255,255,0.3); }
+        .back-link { display: inline-block; margin-top: 30px; color: #555; text-decoration: none; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+        .back-link:hover { color: #999; }
 
-        .btn-login {
-            width: 100%; padding: 14px;
-            background: var(--purple-neon);
-            color: #fff; border: none; border-radius: 25px;
-            font-weight: bold; cursor: pointer;
-            margin-top: 25px; transition: 0.3s;
-            text-transform: capitalize; font-size: 15px;
-        }
-
-        .btn-login:hover {
-            background: #8214c4;
-            box-shadow: 0 0 20px rgba(160, 32, 240, 0.6);
-        }
-
-        .footer-links {
-            margin-top: 20px; font-size: 12px; color: #ccc;
-        }
-
-        .footer-links a {
-            color: var(--purple-light); text-decoration: none;
-        }
-
-        /* Modal Simple */
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; 
-            width: 100%; height: 100%; background: rgba(0,0,0,0.8);
-            z-index: 100; justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: #1a1a1a; padding: 25px; border-radius: 10px;
-            border: 1px solid var(--purple-neon); text-align: center;
-        }
+        /* --- Modal Notifikasi --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 10000; justify-content: center; align-items: center; }
+        .modal-content { background: #0a0a0a; padding: 30px; border-radius: 15px; width: 85%; max-width: 320px; border: 1px solid var(--cyan-neon); text-align: center; box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); animation: modalIn 0.3s ease; }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .btn-modal-action { width: 100%; padding: 12px; border-radius: 8px; margin-top: 20px; cursor: pointer; font-weight: bold; border: none; text-transform: uppercase; letter-spacing: 1px; background: var(--cyan-neon); color: #000; }
     </style>
 </head>
 <body>
 
-    <div class="bg-image"></div>
+    <div class="bg-watermark"></div>
+    <div class="cyber-grid"></div>
 
-    <div class="login-card">
-        <h2>LOGIN</h2>
-        
-        <form id="loginForm">
+    <div class="login-panel">
+        <div class="header-icon"><i class="fa-solid fa-user-shield"></i></div>
+        <h2>Admin Portal</h2>
+        <p class="subtitle">Secure Area - Authorized Access Only</p>
+
+        <form id="cyberLoginForm">
             <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="user" placeholder="admin" required>
+                <label>Admin ID</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-id-badge field-icon"></i>
+                    <input type="text" id="cyberUser" placeholder="admin" required autocomplete="username">
+                </div>
             </div>
-
             <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="pass" placeholder="•••••" required>
+                <label>Access Key</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock-keyhole field-icon"></i>
+                    <input type="password" id="cyberPass" placeholder="•••••" required autocomplete="current-password">
+                    <i class="fa-solid fa-eye toggle-password" id="toggleEye" onclick="togglePasswordVisibility()"></i>
+                </div>
             </div>
-
-            <button type="submit" class="btn-login">Log in</button>
+            <button type="submit" class="btn-cyber">Verify & Log In</button>
         </form>
 
-        <div class="footer-links">
-            <p>Belum punya akun? <a href="#">Register di sini</a></p>
-        </div>
+        <a href="menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Return to Main Menu</a>
     </div>
 
-    <div id="msgModal" class="modal">
+    <div id="cyberModal" class="modal-overlay">
         <div class="modal-content">
-            <p id="msgText" style="color: white;"></p>
-            <button onclick="closeModal()" style="padding: 8px 20px; cursor: pointer;">OK</button>
+            <i id="modalIcon" class="fa-solid" style="font-size: 50px; margin-bottom: 20px;"></i>
+            <h3 id="modalTitle" style="margin: 0; color: #fff; text-transform: uppercase; letter-spacing: 1px;">Status</h3>
+            <p id="modalMsg" style="color: #aaa; font-size: 13px; margin-top: 10px; line-height: 1.5;"></p>
+            <button id="closeModal" class="btn-modal-action">Acknowledge</button>
         </div>
     </div>
 
 <script>
-    // Konfigurasi Firebase Anda
+    // --- 1. KONFIGURASI FIREBASE (Gunakan Config Asli Anda) ---
     const firebaseConfig = {
-        apiKey: "AIzaSy...", // Masukkan API Key asli Anda
-        authDomain: "komsel-jc.firebaseapp.com",
-        projectId: "komsel-jc",
-        storageBucket: "komsel-jc.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const MASTER_USER = "admin";
-    const MASTER_PASS = "bukadong821";
+    // Master Account (Hardcoded untuk Akses Darurat/Pertama)
+    const VALID_USERNAME = "admin";
+    const VALID_PASSWORD = "bukadong821";
 
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    // Fungsi Lihat/Sembunyikan Password
+    function togglePasswordVisibility() {
+        const passInput = document.getElementById('cyberPass');
+        const eyeIcon = document.getElementById('toggleEye');
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            passInput.type = 'password';
+            eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
+    // Fungsi Menampilkan Notifikasi Modal
+    function showCyberNotification(type, title, message) {
+        const modal = document.getElementById('cyberModal');
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMsg').innerText = message;
+        const icon = document.getElementById('modalIcon');
+        
+        if (type === 'success') {
+            icon.className = "fa-solid fa-shield-check"; icon.style.color = "#2ecc71";
+            icon.style.textShadow = "0 0 15px #2ecc71";
+        } else {
+            icon.className = "fa-solid fa-user-slash"; icon.style.color = "#e74c3c";
+            icon.style.textShadow = "0 0 15px #e74c3c";
+        }
+        modal.style.display = 'flex';
+    }
+
+    document.getElementById('closeModal').onclick = () => document.getElementById('cyberModal').style.display = 'none';
+
+    // --- 2. LOGIKA LOGIN ---
+    document.getElementById('cyberLoginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const user = document.getElementById('user').value.trim();
-        const pass = document.getElementById('pass').value.trim();
+        const user = document.getElementById('cyberUser').value.trim();
+        const pass = document.getElementById('cyberPass').value.trim();
 
-        // 1. Cek Master Account
-        if (user === MASTER_USER && pass === MASTER_PASS) {
-            loginSuccess("Master Admin Verified");
+        const handleSuccess = (msg) => {
+            // Bersihkan session member/user biasa agar tidak bentrok
+            localStorage.clear(); 
+            
+            // Set session khusus ADMIN
+            localStorage.setItem("adminLoggedIn", "true");
+            localStorage.setItem("adminUser", user);
+            
+            showCyberNotification('success', 'Access Granted', msg);
+            
+            // Arahkan ke Dashboard Statistik Admin
+            setTimeout(() => { window.location.href = "statistik.html"; }, 1500);
+        };
+
+        // PRIORITAS 1: CEK MASTER ACCOUNT (Paling Cepat)
+        if (user === VALID_USERNAME && pass === VALID_PASSWORD) {
+            handleSuccess('Master Administrator Verified. Loading Secure Environment...');
             return;
         }
 
-        // 2. Cek Database
+        // PRIORITAS 2: CEK DATABASE FIREBASE (Collection 'admins')
         try {
-            const snap = await db.collection("admins")
+            const snapshot = await db.collection("admins")
                 .where("username", "==", user)
                 .where("password", "==", pass)
                 .get();
 
-            if (!snap.empty) {
-                loginSuccess("Access Granted");
+            if (!snapshot.empty) {
+                handleSuccess('Administrator Access Verified. Loading Secure Environment...');
             } else {
-                showMsg("Username atau Password Salah!");
+                showMsgGagal();
             }
-        } catch (err) {
-            showMsg("Error Koneksi Database");
+        } catch (error) {
+            console.error("Database Error:", error);
+            showCyberNotification('error', 'System Error', 'Gagal terhubung ke Cybernet Database. Cek koneksi Anda.');
+        }
+
+        function showMsgGagal() {
+            showCyberNotification('error', 'Access Denied', 'Username atau Password tidak valid dalam database Admin Pondok Pemulihan Papua.');
+            document.getElementById('cyberPass').value = ''; // Reset password field
         }
     });
-
-    function loginSuccess(msg) {
-        localStorage.setItem("adminLoggedIn", "true");
-        localStorage.setItem("adminUser", document.getElementById('user').value);
-        showMsg(msg);
-        setTimeout(() => { window.location.href = "admin.html"; }, 1200);
-    }
-
-    function showMsg(txt) {
-        document.getElementById('msgText').innerText = txt;
-        document.getElementById('msgModal').style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('msgModal').style.display = 'none';
-    }
 </script>
 </body>
 </html>
