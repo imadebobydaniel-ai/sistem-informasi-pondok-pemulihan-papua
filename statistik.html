@@ -192,8 +192,7 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    /** * 1. RUMUS INTI: PENJUMLAHAN KOLEKTIF & FILTER SPESIFIK
-     * Digunakan untuk Alkitab, Kehadiran, dan Ketidakhadiran.
+    /** * 1. FUNGSI UTAMA: UPDATE STATISTIK (SINKRON MATEMATIKA)
      */
     function updateStatistik(koleksi, idSelect, idTeksOrang, idTeksPersen, idBarPersen, statusFilter = null) {
         const dropdown = document.getElementById(idSelect);
@@ -201,77 +200,56 @@
         const jcTerpilih = dropdown.value;
 
         db.collection(koleksi).onSnapshot((snapshot) => {
-            let dataPerJC = {}; 
+            let orangUnikTerpilih = new Set(); 
 
             snapshot.forEach((doc) => {
                 const data = doc.data();
 
-                // Logika Filter Status (untuk membedakan hadir/tidak hadir di koleksi yang sama)
+                // Filter Status (khusus Kehadiran/Izin)
                 if (statusFilter === "HADIR" && data.status !== "HADIR") return;
                 if (statusFilter === "TIDAK_HADIR" && (data.status === "HADIR" || !data.status)) return;
 
-                // Membersihkan spasi (trim) agar " JC 5 " terbaca sebagai "JC 5".
-                const namaJC = (data.komsel || data.jc || "Unknown").trim();
-                const namaOrang = data.nama ? data.nama.trim() : "Unknown";
+                // Solusi Spasi (Trim)
+                const namaJC = (data.komsel || data.jc || "").trim();
+                const namaOrang = (data.nama || "").trim();
 
-                if (!dataPerJC[namaJC]) {
-                    dataPerJC[namaJC] = { orang: new Set(), totalDoc: 0 };
+                // Saring data berdasarkan Dropdown
+                if (namaJC === jcTerpilih) {
+                    if (namaOrang) orangUnikTerpilih.add(namaOrang);
                 }
-                dataPerJC[namaJC].orang.add(namaOrang);
-                dataPerJC[namaJC].totalDoc++;
             });
 
-            // TAHAP 1: HITUNG TOTAL GLOBAL (Penjumlahan semua orang unik dari seluruh JC)
-            // Sesuai permintaan: Jika JC 5 ada 3 dan JC 3 ada 6, total = 9.
-            let totalOrangGlobal = 0;
-            Object.keys(dataPerJC).forEach(key => {
-                totalOrangGlobal += dataPerJC[key].orang.size;
-            });
+            // HITUNG MATEMATIKA SINKRON
+            const jmlOrang = orangUnikTerpilih.size;
+            const target = 100;
+            const persen = (jmlOrang / target) * 100;
 
-            // TAHAP 2: AMBIL DATA KHUSUS JC YANG DIPILIH DI DROPDOWN
-            const dataJCTerpilih = dataPerJC[jcTerpilih] || { orang: new Set(), totalDoc: 0 };
-            const jmlOrangUnik = dataJCTerpilih.orang.size;
-
-            // TAHAP 3: UPDATE TAMPILAN
-            // A. Update Teks Orang (Detail per JC)
+            // UPDATE TAMPILAN
             const elTeksOrang = document.getElementById(idTeksOrang);
-            if (elTeksOrang) elTeksOrang.innerText = jmlOrangUnik + " Orang";
+            if (elTeksOrang) elTeksOrang.innerText = jmlOrang + " Orang";
 
-            // B. Update Detail Melapor (Label bawah bar visual)
-            const idDetail = idTeksOrang.replace("txt", "txt").replace("orang", "detail");
-            if(document.getElementById(idDetail)) document.getElementById(idDetail).innerText = jmlOrangUnik + " Orang Melapor";
+            const idDetail = idTeksOrang.replace("orang", "detail");
+            const elDetail = document.getElementById(idDetail);
+            if(elDetail) elDetail.innerText = jmlOrang + " Orang Melapor";
 
-            // C. Bar Visual Kecil (Persentase orang per JC terhadap target kecil 10)
             const idBarOrangVisual = idTeksOrang.replace("txt", "bar") + "-visual";
-            if(document.getElementById(idBarOrangVisual)) {
-                document.getElementById(idBarOrangVisual).style.width = Math.min((jmlOrangUnik / 10) * 100, 100) + "%";
-            }
-
-            // D. UPDATE BAR PROGRES UTAMA (BERDASARKAN TOTAL GLOBAL)
-            // Sesuai permintaan: Nilai total seluruh JC diubah menjadi persentase progres.
-            let target = 100;
-            let persenProgresGlobal = (totalOrangGlobal / target) * 100; 
+            const elBarVisual = document.getElementById(idBarOrangVisual);
+            if(elBarVisual) elBarVisual.style.width = Math.min((jmlOrang / 10) * 100, 100) + "%";
 
             const elTeksPersen = document.getElementById(idTeksPersen);
             const elBarPersen = document.getElementById(idBarPersen);
-
-            if (elTeksPersen) elTeksPersen.innerText = persenProgresGlobal.toFixed(1) + "%";
-            if (elBarPersen) elBarPersen.style.width = Math.min(persenProgresGlobal, 100) + "%";
+            if (elTeksPersen) elTeksPersen.innerText = persen.toFixed(1) + "%";
+            if (elBarPersen) elBarPersen.style.width = Math.min(persen, 100) + "%";
         });
     }
 
-    /** * 2. KONFIGURASI DAN INITIALISASI
+    /**
+     * 2. FUNGSI SYNC GLOBAL
      */
     function syncSemuaDashboard() {
-        // A. KATEGORI: PEMBACAAN ALKITAB
         updateStatistik("laporan_baca", "sel-alkitab", "txt-alkitab-orang", "txt-alkitab-persen", "bar-alkitab-persen");
-
-        // B. KATEGORI: KEHADIRAN JC
         updateStatistik("kehadiran", "sel-hadir", "txt-hadir-orang", "txt-hadir-persen", "bar-hadir-persen", "HADIR");
-
-        // C. KATEGORI: KETIDAKHADIRAN
         updateStatistik("kehadiran", "sel-tidak-hadir", "txt-tidak-hadir-orang", "txt-tidak-hadir-persen", "bar-tidak-hadir-persen", "TIDAK_HADIR");
-        
         syncStatistikDoa();
         syncGolonganDarah();
     }
