@@ -168,10 +168,9 @@
 
         for(let i=1; i<=31; i++){ aSelect.add(new Option(i, i)); }
         
-        // Default Values
         kSelect.value = "Yohanes";
         dSelect.value = 1; sSelect.value = 1;
-        aSelect.value = new Date().getDate(); // Otomatis ke tanggal hari ini
+        aSelect.value = new Date().getDate(); 
     }
 
     function toggleExtension() {
@@ -199,7 +198,7 @@
 
     async function prosesLaporan() {
         const btn = document.getElementById('btnKirim');
-        const originalText = btn.innerHTML;
+        const originalText = "KIRIM LAPORAN SEKARANG";
         btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengecek Data...";
         btn.disabled = true;
 
@@ -209,7 +208,7 @@
         besok.setDate(besok.getDate() + 1);
 
         try {
-            // 1. Cek Double Post hari ini
+            // 1. Cek apakah user sudah lapor hari ini
             const cekDouble = await db.collection("laporan_bacaan")
                 .where("email", "==", userEmail)
                 .where("tanggal", ">=", hariIni)
@@ -221,26 +220,33 @@
                 return;
             }
 
-            // 2. Ambil data user untuk Nama & Komsel
+            // 2. SAFETY CHECK: Ambil data user dari koleksi 'users'
             const snapUser = await db.collection("users").where("email", "==", userEmail).get();
-            if (snapUser.empty) throw new Error("Data User tidak ditemukan. Silakan login ulang.");
+            
+            if (snapUser.empty) {
+                alert("Error: Data profil Anda tidak ditemukan. Silakan pastikan email Anda sudah terdaftar di sistem.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+            
             const u = snapUser.docs[0].data();
 
-            // 3. Susun Payload (Struktur Baru)
+            // 3. Susun Payload (Sinkron dengan Statistik Dashboard)
             const payload = {
-                nama: u.nama, 
+                nama: u.nama || "Tanpa Nama", 
                 email: userEmail, 
-                jc: String(u.komsel || u.jc).trim(), // Menggunakan 'jc' agar sinkron dengan dashboard
+                jc: String(u.komsel || u.jc || "Umum").trim(), // Field utama untuk filter grafik
                 
-                // Format Detail
+                // Field detail untuk perhitungan statistik
                 kitab: document.getElementById('kitab-utama').value,
                 pasal: document.getElementById('pasal-dari').value + "-" + document.getElementById('pasal-sampai').value,
                 
-                // Format String (untuk riwayat/view)
+                // Field string untuk tampilan riwayat
                 pasal_utama: `${document.getElementById('kitab-utama').value} ${document.getElementById('pasal-dari').value} - ${document.getElementById('pasal-sampai').value}`,
                 pasal_hikmat: `Amsal ${document.getElementById('pasal-amsal').value}`,
                 
-                // Timestamp Penting
+                // Timestamp
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 tanggal: firebase.firestore.Timestamp.now()
             };
@@ -250,12 +256,13 @@
                 payload.pasal_extension = `${document.getElementById('kitab-ext').value} ${document.getElementById('pasal-dari-ext').value} - ${document.getElementById('pasal-sampai-ext').value}`;
             }
 
-            // 4. Simpan ke Firestore
+            // 4. Kirim ke Firestore
             await db.collection("laporan_bacaan").add(payload);
             showBlock("BERHASIL", "Terimakasih! Laporan Anda telah tersimpan.", "fa-circle-check", "#2ecc71");
 
         } catch (e) {
-            alert("Error: " + e.message);
+            console.error(e);
+            alert("Terjadi kesalahan sistem: " + e.message);
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
@@ -270,6 +277,11 @@
     }
 
     window.onload = function() {
+        if(!userEmail) {
+            alert("Sesi berakhir, silakan login kembali.");
+            window.location.href = "index.html";
+            return;
+        }
         init();
         document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
