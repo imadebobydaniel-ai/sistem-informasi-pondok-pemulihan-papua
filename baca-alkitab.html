@@ -50,7 +50,6 @@
         }
         
         .icon-circle { background: white; padding: 25px; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-        .btn-home { display: inline-block; margin-top: 25px; color: var(--biru-bca); text-decoration: none; font-size: 14px; font-weight: 800; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -124,7 +123,7 @@
     </div>
 
     <button id="btnKirim" class="btn-kirim btn-disabled" disabled onclick="prosesLaporan()">KIRIM LAPORAN SEKARANG</button>
-    <a href="menu.html" class="btn-home"><i class="fa-solid fa-house"></i> Kembali ke Menu Utama</a>
+    <a href="menu.html" class="btn-home" style="display: block; margin-top: 20px; text-decoration: none; color: var(--biru-bca); font-weight: bold; font-size: 13px;"><i class="fa-solid fa-house"></i> Kembali ke Menu Utama</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -140,7 +139,7 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const userEmail = localStorage.getItem("userEmail");
 
@@ -155,27 +154,24 @@
         const sExt = document.getElementById('pasal-sampai-ext');
         const aSelect = document.getElementById('pasal-amsal');
 
-        // Isi Dropdown Kitab
         daftarKitab.forEach(k => { 
             kSelect.add(new Option(k, k)); 
             kExt.add(new Option(k, k)); 
         });
-        kSelect.value = "Yohanes";
-        kExt.value = "Yohanes";
 
-        // Isi Dropdown Pasal 1-150
         for(let i=1; i<=150; i++){ 
             dSelect.add(new Option(i, i)); 
             sSelect.add(new Option(i, i)); 
             dExt.add(new Option(i, i)); 
             sExt.add(new Option(i, i)); 
         }
-        dSelect.value = 5; sSelect.value = 8;
-        dExt.value = 1; sExt.value = 1;
 
-        // Isi Dropdown Amsal
         for(let i=1; i<=31; i++){ aSelect.add(new Option(i, i)); }
-        aSelect.value = 20;
+        
+        // Default Values
+        kSelect.value = "Yohanes";
+        dSelect.value = 1; sSelect.value = 1;
+        aSelect.value = new Date().getDate(); // Otomatis ke tanggal hari ini
     }
 
     function toggleExtension() {
@@ -203,6 +199,7 @@
 
     async function prosesLaporan() {
         const btn = document.getElementById('btnKirim');
+        const originalText = btn.innerHTML;
         btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengecek Data...";
         btn.disabled = true;
 
@@ -212,6 +209,7 @@
         besok.setDate(besok.getDate() + 1);
 
         try {
+            // 1. Cek Double Post hari ini
             const cekDouble = await db.collection("laporan_bacaan")
                 .where("email", "==", userEmail)
                 .where("tanggal", ">=", hariIni)
@@ -219,18 +217,31 @@
                 .get();
 
             if (!cekDouble.empty) {
-                showBlock("GAGAL", "Anda tadi sudah kirim Laporan", "fa-circle-xmark", "#e74c3c");
+                showBlock("GAGAL", "Anda sudah mengirim laporan hari ini.", "fa-circle-xmark", "#e74c3c");
                 return;
             }
 
+            // 2. Ambil data user untuk Nama & Komsel
             const snapUser = await db.collection("users").where("email", "==", userEmail).get();
+            if (snapUser.empty) throw new Error("Data User tidak ditemukan. Silakan login ulang.");
             const u = snapUser.docs[0].data();
 
-            // Data Dasar
+            // 3. Susun Payload (Struktur Baru)
             const payload = {
-                nama: u.nama, email: userEmail, komsel: String(u.komsel),
+                nama: u.nama, 
+                email: userEmail, 
+                jc: String(u.komsel || u.jc).trim(), // Menggunakan 'jc' agar sinkron dengan dashboard
+                
+                // Format Detail
+                kitab: document.getElementById('kitab-utama').value,
+                pasal: document.getElementById('pasal-dari').value + "-" + document.getElementById('pasal-sampai').value,
+                
+                // Format String (untuk riwayat/view)
                 pasal_utama: `${document.getElementById('kitab-utama').value} ${document.getElementById('pasal-dari').value} - ${document.getElementById('pasal-sampai').value}`,
                 pasal_hikmat: `Amsal ${document.getElementById('pasal-amsal').value}`,
+                
+                // Timestamp Penting
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 tanggal: firebase.firestore.Timestamp.now()
             };
 
@@ -239,12 +250,13 @@
                 payload.pasal_extension = `${document.getElementById('kitab-ext').value} ${document.getElementById('pasal-dari-ext').value} - ${document.getElementById('pasal-sampai-ext').value}`;
             }
 
+            // 4. Simpan ke Firestore
             await db.collection("laporan_bacaan").add(payload);
-            showBlock("BERHASIL", "Terimakasih atas laporan anda", "fa-circle-check", "#2ecc71");
+            showBlock("BERHASIL", "Terimakasih! Laporan Anda telah tersimpan.", "fa-circle-check", "#2ecc71");
 
         } catch (e) {
             alert("Error: " + e.message);
-            btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+            btn.innerHTML = originalText;
             btn.disabled = false;
         }
     }
