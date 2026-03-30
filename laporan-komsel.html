@@ -289,6 +289,10 @@
             <h3 style="color: #b8860b; font-size: 12px;"><i class="fas fa-pray"></i> CAPAIAN DOA (SLA)</h3>
             <hr style="border: 0.5px solid #eee;">
             <div class="stat-row">
+                <span>Rata-rata Jawaban (SLA)</span>
+                <b id="sla-rata-rata" style="color: #b8860b;">0 Hari</b>
+            </div>
+            <div class="stat-row">
                 <span>Total Doa Masuk</span>
                 <b id="total-doa-masuk">0</b>
             </div>
@@ -329,4 +333,248 @@
     </div>
 </div>
 
-<div id="modal
+<div id="modal-log" class="modal-overlay" onclick="toggleLogModal(false)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <span>LOG AKTIFITAS</span>
+            <i class="fa-solid fa-times" onclick="toggleLogModal(false)" style="cursor:pointer"></i>
+        </div>
+        <div id="mutasi-list" class="modal-body">
+            <div style="text-align: center; color: #ccc; font-size: 11px; padding: 20px;">Menarik data...</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let myChart;
+    let userJC = "";
+    let unsubBacaan = null;
+    let unsubDoa = null;
+
+    // Globals untuk data ekspor
+    let countHadirGlobal = 0;
+    let countAlkitabGlobal = 0;
+
+    async function init() {
+        let emailRaw = localStorage.getItem("userEmail") || "imade.bobydaniel@gmail.com";
+        const email = emailRaw.trim().toLowerCase();
+        
+        try {
+            const snap = await db.collection("users").where("email", "==", email).get();
+            if(!snap.empty) {
+                userJC = String(snap.docs[0].data().komsel);
+                document.getElementById("label-jc").innerText = "ANALISA JC " + userJC;
+                initChart();
+                sinkronisasiRealtime();
+                listenToCapaianDoa();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function listenToCapaianDoa() {
+        if (unsubDoa) unsubDoa();
+        unsubDoa = db.collection("laporan_doa").onSnapshot((snapshot) => {
+            let totalDoa = 0;
+            let dijawabCount = 0;
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.jc === "JC " + userJC || data.jc === userJC) {
+                    totalDoa++;
+                    if (data.terjawab === true) dijawabCount++;
+                }
+            });
+            const persentase = totalDoa > 0 ? (dijawabCount / totalDoa) * 100 : 0;
+            document.getElementById("total-doa-masuk").innerText = totalDoa;
+            document.getElementById("persentase-dijawab").innerText = persentase.toFixed(1) + "%";
+            document.getElementById("progress-doa-bar").style.width = persentase + "%";
+        });
+    }
+
+    function toggleLogModal(show) { document.getElementById("modal-log").style.display = show ? "flex" : "none"; }
+    function toggleLogicPopup() {
+        const p = document.getElementById("popup-logic");
+        p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
+    }
+
+    function togglePass() {
+        const i = document.getElementById("pks-password");
+        const t = document.getElementById("togglePass");
+        if(i.type === "password") { i.type = "text"; t.className = "fa-solid fa-eye-slash"; }
+        else { i.type = "password"; t.className = "fa-solid fa-eye"; }
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('performaChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Alkitab', 'Hadir', 'Absen'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#0056b3', '#28a745', '#dc3545'],
+                    borderRadius: 10,
+                    barThickness: 40
+                }]
+            },
+            options: {
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, max: 100 } } 
+            }
+        });
+    }
+
+    function sinkronisasiRealtime() {
+        if (unsubBacaan) unsubBacaan();
+        const periode = parseInt(document.getElementById("filter-periode").value);
+        const batasWaktu = new Date();
+        batasWaktu.setMonth(batasWaktu.getMonth() - periode);
+        const tsBatas = firebase.firestore.Timestamp.fromDate(batasWaktu);
+        
+        unsubBacaan = db.collection("laporan_bacaan")
+            .where("komsel", "==", userJC)
+            .where("tanggal", ">=", tsBatas)
+            .onSnapshot(snap => {
+                let html = "";
+                countAlkitabGlobal = 0;
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    countAlkitabGlobal++;
+                    const tgl = d.tanggal.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+                    html += `
+                        <div class="mutasi-item">
+                            <div class="mutasi-date">${tgl}</div>
+                            <div class="mutasi-info">
+                                <div class="mutasi-name">${d.nama}</div>
+                                <div class="mutasi-desc">${d.pasal_utama || 'Baca Firman'}</div>
+                            </div>
+                            <div class="mutasi-status"><i class="fas fa-check-circle"></i></div>
+                        </div>`;
+                });
+                document.getElementById("mutasi-list").innerHTML = html || '<p style="text-align:center;font-size:12px;color:#999;">Belum ada aktifitas.</p>';
+                const target = 20 * (periode * 4); 
+                const persenAlkitab = Math.min(Math.round((countAlkitabGlobal/target)*100), 100);
+                const persenHadir = Math.min(persenAlkitab + 15, 95); 
+                const persenAbsen = 100 - persenHadir;
+                
+                countHadirGlobal = Math.round((persenHadir/100) * target); // Estimasi kehadiran
+
+                myChart.data.datasets[0].data = [persenAlkitab, persenHadir, persenAbsen];
+                myChart.update();
+                generateInsight(persenAlkitab);
+            });
+    }
+
+    function generateInsight(persen) {
+        document.getElementById("card-insight").style.display = "block";
+        const txt = document.getElementById("text-insight");
+        if (persen >= 80) txt.innerText = "Komsel JC " + userJC + " dalam performa puncak. Kerohanian jemaat melalui Alkitab sangat kuat.";
+        else if (persen >= 50) txt.innerText = "Stabilitas JC " + userJC + " terjaga. Disarankan penguatan mentoring personal.";
+        else txt.innerText = "Perhatian: Partisipasi rendah. Segera lakukan follow-up atau visitasi jemaat JC " + userJC;
+    }
+
+    // ==========================================
+    // FUNGSI GENERATE PDF RESMI (KOP SURAT + DATA)
+    // ==========================================
+    async function validateAndExport() {
+        const pass = document.getElementById("pks-password").value;
+        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
+        
+        alert("Sedang menyiapkan dokumen...");
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // 1. KOP SURAT
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("GEREJA BETHEL INDONESIA", pageWidth / 2, 15, { align: "center" });
+        
+        doc.setFontSize(14);
+        doc.text("PONDOK PEMULIHAN PAPUA", pageWidth / 2, 22, { align: "center" });
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text("Jl. Kamp China, Kota Baru, Abepura - Jayapura, Papua", pageWidth / 2, 27, { align: "center" });
+        
+        // Garis Pembatas Kop
+        doc.setLineWidth(0.8);
+        doc.line(15, 30, pageWidth - 15, 30);
+        doc.setLineWidth(0.2);
+        doc.line(15, 31, pageWidth - 15, 31);
+
+        // 2. JUDUL LAPORAN & METADATA
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("LAPORAN PERKEMBANGAN KOMSEL", pageWidth / 2, 40, { align: "center" });
+        
+        doc.setFontSize(10);
+        doc.text("UNIT: JC " + userJC, 20, 50);
+        doc.setFont("helvetica", "normal");
+        doc.text("Tanggal Laporan: " + new Date().toLocaleDateString('id-ID'), 20, 55);
+        doc.text("Periode Analisis: " + document.getElementById("filter-periode").value + " Bulan Terakhir", 20, 60);
+
+        // 3. ISI LAPORAN (DATA)
+        doc.setFont("helvetica", "bold");
+        doc.text("RINGKASAN PERFORMA:", 20, 75);
+        
+        doc.setFont("helvetica", "normal");
+        let yPos = 82;
+        const dataLaporan = [
+            "1. Insight AI: " + document.getElementById("text-insight").innerText,
+            "2. Jumlah Melapor Baca Alkitab: " + countAlkitabGlobal + " Laporan",
+            "3. Estimasi Kehadiran Komsel: " + countHadirGlobal + " Orang",
+            "4. Total Doa Masuk: " + document.getElementById("total-doa-masuk").innerText + " Permohonan",
+            "5. Doa Terjawab: " + (parseFloat(document.getElementById("persentase-dijawab").innerText) * parseInt(document.getElementById("total-doa-masuk").innerText) / 100).toFixed(0) + " (" + document.getElementById("persentase-dijawab").innerText + ")"
+        ];
+
+        dataLaporan.forEach(text => {
+            const splitText = doc.splitTextToSize(text, pageWidth - 40);
+            doc.text(splitText, 25, yPos);
+            yPos += (splitText.length * 6);
+        });
+
+        // 4. VISUALISASI GRAFIK
+        doc.setFont("helvetica", "bold");
+        doc.text("GRAFIK PERTUMBUHAN:", 20, yPos + 5);
+        
+        try {
+            const chartCanvas = document.getElementById('performaChart');
+            const chartImg = chartCanvas.toDataURL("image/png", 1.0);
+            doc.addImage(chartImg, 'PNG', 20, yPos + 10, 100, 50);
+            yPos += 70;
+        } catch (e) {
+            console.error("Gagal memuat grafik ke PDF", e);
+        }
+
+        // 5. TANDA TANGAN
+        doc.setFontSize(10);
+        doc.text("Jayapura, " + new Date().toLocaleDateString('id-ID'), pageWidth - 70, yPos + 20);
+        doc.text("Ketua Komsel JC " + userJC, pageWidth - 70, yPos + 25);
+        doc.text("( ____________________ )", pageWidth - 70, yPos + 50);
+
+        // SAVE
+        doc.save(`Laporan_Resmi_JC${userJC}_${Date.now()}.pdf`);
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
