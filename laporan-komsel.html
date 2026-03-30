@@ -387,27 +387,23 @@
     }
 
     function listenToCapaianDoa() {
-    if (unsubDoa) unsubDoa();
-    
-    // PERBAIKAN: Filter .where() langsung di query Firebase (Server-side)
-    unsubDoa = db.collection("laporan_doa")
-        .where("jc", "in", ["JC " + userJC, userJC]) 
-        .onSnapshot((snapshot) => {
+        if (unsubDoa) unsubDoa();
+        unsubDoa = db.collection("laporan_doa").onSnapshot((snapshot) => {
             let totalDoa = 0;
             let dijawabCount = 0;
-            
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                totalDoa++;
-                if (data.terjawab === true) dijawabCount++;
+                if (data.jc === "JC " + userJC || data.jc === userJC) {
+                    totalDoa++;
+                    if (data.terjawab === true) dijawabCount++;
+                }
             });
-            
             const persentase = totalDoa > 0 ? (dijawabCount / totalDoa) * 100 : 0;
             document.getElementById("total-doa-masuk").innerText = totalDoa;
             document.getElementById("persentase-dijawab").innerText = persentase.toFixed(1) + "%";
             document.getElementById("progress-doa-bar").style.width = persentase + "%";
         });
-}
+    }
 
     function toggleLogModal(show) { document.getElementById("modal-log").style.display = show ? "flex" : "none"; }
     function toggleLogicPopup() {
@@ -577,42 +573,6 @@
         // SAVE
         doc.save(`Laporan_Resmi_JC${userJC}_${Date.now()}.pdf`);
     }
-    async function validateAndExport() {
-        const pass = document.getElementById("pks-password").value;
-        if(!pass || pass !== "rahasia123") { alert("Password Otoritas Salah!"); return; }
-        
-        alert("Sedang menyiapkan dokumen...");
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = doc.internal.pageSize.getWidth();
-
-        // --- TAMBAHKAN LOGO DISINI ---
-        // Ganti string di bawah dengan Base64 logo Anda jika ada
-        const logoBase64 = "DATA_BASE64_LOGO_ANDA"; 
-        try {
-            doc.addImage(logoBase64, 'PNG', 15, 10, 22, 22);
-        } catch (e) { /* Abaikan jika logo belum ada */ }
-
-        // 1. KOP SURAT (Teks digeser ke kanan agar ada ruang untuk logo)
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.text("GEREJA BETHEL INDONESIA", pageWidth / 2 + 10, 15, { align: "center" });
-        
-        doc.setFontSize(14);
-        doc.text("PONDOK PEMULIHAN PAPUA", pageWidth / 2 + 10, 22, { align: "center" });
-        
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text("Jl. Kamp China, Kota Baru, Abepura - Jayapura, Papua", pageWidth / 2 + 10, 27, { align: "center" });
-        
-        // Garis Pembatas Kop
-        doc.setLineWidth(0.8);
-        doc.line(15, 33, pageWidth - 15, 33);
-        doc.setLineWidth(0.2);
-        doc.line(15, 34, pageWidth - 15, 34);
-
-        // ... Lanjutkan ke bagian Judul Laporan ...
 
     window.onload = init;
 </script>
