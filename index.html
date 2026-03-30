@@ -117,6 +117,33 @@
             }
         }
 
+        // --- FUNGSI SIMPAN PRESENSI (SUDAH DIPERBAIKI PENEMPATANNYA) ---
+        // Catatan: Fungsi ini tetap ditaruh di sini agar bisa digunakan secara global jika diperlukan
+        function simpanPresensi(namaUser, jcUser, modelKegiatan) {
+            let statusFinal = "";
+            const daftarTidakHadir = ["Absen Doa", "Absen KD"]; 
+            
+            if (daftarTidakHadir.includes(modelKegiatan)) {
+                statusFinal = "TIDAK HADIR";
+            } else {
+                statusFinal = "HADIR";
+            }
+
+            db.collection("kehadiran").add({
+                nama: namaUser,
+                jc: "JC " + jcUser.replace(/[^0-9]/g, ''), 
+                jenis_kegiatan: modelKegiatan, 
+                status: statusFinal, 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert("Data berhasil disimpan sebagai: " + statusFinal);
+            })
+            .catch((error) => {
+                console.error("Error simpan data: ", error);
+            });
+        }
+
         // 4. LOGIKA LOGIN
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -141,62 +168,6 @@
                 tampilkanPesan("Gagal terhubung ke database.");
             }
         });
-
-        // 5. FUNGSI MEDIA PLAYER MULTIFUNGSI (DEBUG MODE)
-        // Catatan: Fungsi ini harus dipanggil di halaman yang memiliki elemen ID 'player'
-        function inisialisasiMediaPlayer() {
-            const playerDiv = document.getElementById("player");
-            const newsLabel = document.getElementById("newsLabel");
-            const newsTitle = document.getElementById("newsTitle");
-
-            if (!playerDiv) return; // Mencegah error jika dijalankan di halaman login yang tidak ada ID player
-
-            console.log("Memulai koneksi ke Firestore untuk Media Player...");
-
-            db.collection("media_player").where("active", "==", true).limit(1).onSnapshot((snapshot) => {
-                console.log("Jumlah data ditemukan:", snapshot.size);
-
-                if (snapshot.empty) {
-                    console.log("Hasil: Snapshot Kosong. Cek field 'active' di Firestore (harus tipe Boolean true).");
-                    playerDiv.innerHTML = `<div style="color:white; padding:20px; text-align:center;">Belum ada media aktif</div>`;
-                    if(newsLabel) newsLabel.innerText = "";
-                    if(newsTitle) newsTitle.innerText = "";
-                    return;
-                }
-
-                const data = snapshot.docs[0].data();
-                console.log("Isi data dari Firestore:", data);
-
-                const type = data.type;
-                const content = data.content;
-
-                playerDiv.innerHTML = "";
-                if(newsLabel) newsLabel.innerText = "MEDIA AKTIF";
-                if(newsTitle) newsTitle.innerText = "Informasi Pondok Pemulihan";
-                
-                if (type === "youtube") {
-                    let videoId = "";
-                    if (content.includes("v=")) videoId = content.split("v=")[1].substring(0, 11);
-                    else if (content.includes("youtu.be/")) videoId = content.split("youtu.be/")[1].substring(0, 11);
-                    playerDiv.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>`;
-                } 
-                else if (type === "video") {
-                    playerDiv.innerHTML = `<video controls autoplay muted style="width:100%; height:100%; object-fit:cover;"><source src="${content}" type="video/mp4"></video>`;
-                } 
-                else if (type === "image") {
-                    playerDiv.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
-                } 
-                else if (type === "pdf") {
-                    playerDiv.innerHTML = `<iframe src="${content}#toolbar=0" style="width:100%; height:100%; border:none;"></iframe>`;
-                } 
-                else if (type === "text") {
-                    playerDiv.innerHTML = `<div style="background:#2c3e50; width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:20px; color:white; text-align:center; font-weight:bold;">${content}</div>`;
-                }
-            }, (error) => {
-                console.error("Error dari Firestore Rules:", error.message);
-                if(playerDiv) playerDiv.innerHTML = `<div style="color:red; padding:20px;">Error: ${error.message}</div>`;
-            });
-        }
     </script>
 </body>
 </html>
