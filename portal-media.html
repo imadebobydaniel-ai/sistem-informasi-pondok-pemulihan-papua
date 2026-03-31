@@ -292,24 +292,131 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-            // ... sisa konfigurasi lainnya
+<script>
+    // 2. KONFIGURASI DATABASE
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "pondok-pemulihan-papua.firebaseapp.com",
+        projectId: "pondok-pemulihan-papua",
+        storageBucket: "pondok-pemulihan-papua.appspot.com",
+        messagingSenderId: "935408986877",
+        appId: "1:935408986877:web:86f687986877" // Pastikan App ID ini sesuai dengan Console Firebase Anda
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    // 3. FUNGSI TOGGLE INPUT (Menyesuaikan field saat tipe media diganti)
+    function toggleInputFields() {
+        const tipe = document.getElementById('tipe_media').value;
+        const urlContainer = document.getElementById('input_url_container');
+        const teksContainer = document.getElementById('input_teks_container');
+        const labelUrl = document.getElementById('label_url');
+
+        if (tipe === 'teks') {
+            urlContainer.style.display = 'none';
+            teksContainer.style.display = 'block';
+        } else {
+            urlContainer.style.display = 'block';
+            teksContainer.style.display = 'none';
+            labelUrl.innerText = tipe === 'video_youtube' ? 'URL YouTube' : 'URL Direct Link';
+        }
+    }
+
+    // 4. FUNGSI LOAD RUNNING TEXT
+    function loadRunningText() {
+        db.collection("config").doc("running_text").onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById("runningTextInput").value = data.message || "";
+                const statusEl = document.getElementById("statusText");
+                statusEl.innerText = data.isSyncActive ? "AKTIF (Sync ON)" : "NON-AKTIF";
+                statusEl.style.color = data.isSyncActive ? "#22c55e" : "#ef4444";
+            }
+        });
+    }
+
+    // 5. FUNGSI UPDATE RUNNING TEXT
+    async function setSyncStatus(status) {
+        const txt = document.getElementById("runningTextInput").value;
+        try {
+            await db.collection("config").doc("running_text").set({
+                message: txt,
+                isSyncActive: status,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            alert("Status Running Text diperbarui!");
+        } catch (e) { alert("Gagal: " + e.message); }
+    }
+
+    // 6. FUNGSI UPLOAD KONTEN
+    async function uploadKePortal() {
+        const btn = document.getElementById("btnPublish");
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+
+        const data = {
+            judul: document.getElementById("judul").value,
+            tipe_media: document.getElementById("tipe_media").value,
+            url_media: document.getElementById("url_media").value,
+            isi_artikel: document.getElementById("isi_artikel").value,
+            durasi: parseInt(document.getElementById("itemDurasi").value),
+            urutan: Date.now(), // Gunakan timestamp sebagai urutan default
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // ... semua fungsi loadRunningText, uploadKePortal, dll ...
+        try {
+            await db.collection("portal_media").add(data);
+            alert("Konten Berhasil Di-publish!");
+            document.getElementById("judul").value = "";
+            document.getElementById("url_media").value = "";
+        } catch (e) { alert("Error: " + e.message); }
         
-        window.onload = () => {
-            loadMedia();
-            loadRunningText();
-        };
-    </script>
-</body>
-</html>
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publish Sekarang';
+    }
+
+    // 7. FUNGSI LOAD PLAYLIST
+    function loadMedia() {
+        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot((snapshot) => {
+            const list = document.getElementById("mediaList");
+            list.innerHTML = "";
+            if (snapshot.empty) {
+                list.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px;">Playlist Kosong</td></tr>';
+                return;
+            }
+            snapshot.forEach((doc) => {
+                const item = doc.data();
+                list.innerHTML += `
+                    <tr class="media-row">
+                        <td>${item.urutan}</td>
+                        <td><strong>${item.judul}</strong></td>
+                        <td><span class="badge badge-${item.tipe_media}">${item.tipe_media}</span></td>
+                        <td>${item.durasi}m</td>
+                        <td style="text-align: right;">
+                            <button onclick="hapusKonten('${doc.id}')" class="btn-action btn-delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        });
+    }
+
+    // 8. FUNGSI HAPUS KONTEN
+    async function hapusKonten(id) {
+        if (confirm("Hapus konten ini?")) {
+            await db.collection("portal_media").doc(id).delete();
+        }
+    }
+
+    // INISIALISASI
+    window.onload = () => {
+        loadMedia();
+        loadRunningText();
+    };
+</script>
 </body>
 </html>
