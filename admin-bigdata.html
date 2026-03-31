@@ -157,6 +157,10 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -185,7 +189,6 @@
         saran: { title: 'Saran & Tiket Masuk', col: 'saran_masuk', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
-    // FUNGSI PINDAH TAB (Ini yang membuat menu bisa diklik)
     function switchTab(type, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -213,29 +216,77 @@
 
         query.onSnapshot((snapshot) => {
             let html = "";
-            let stats = { pie: {}, line: {}, bar: {} };
+            let pieData = { "HADIR": 0, "TIDAK HADIR": 0 };
+            let barData = {};
+            let lineData = {};
 
             snapshot.forEach((doc) => {
                 const d = doc.data();
+                const status = (d.status || d.status_doa || "HADIR").toUpperCase();
+                const jc = d.jc || d.komsel || d.nama_jc || "Umum";
+                const tgl = d.tanggal || d.tgl_kirim || d.tanggal_kirim || "Lainnya";
+
+                // Hitung Data Statistik
+                pieData[status] = (pieData[status] || 0) + 1;
+                barData[jc] = (barData[jc] || 0) + 1;
+                lineData[tgl] = (lineData[tgl] || 0) + 1;
+
                 if(type === 'peringkat_jc') {
-                    html += `<tr><td>#${d.ranking}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td>AKTIF</td></tr>`;
+                    html += `<tr><td>#${d.ranking}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
                 } else {
-                    const status = (d.status || "HADIR").toUpperCase();
                     html += `<tr>
                         <td>${d.nama || d.pengirim || '-'}</td>
-                        <td>${d.jc || d.komsel || '-'}</td>
-                        <td>${d.tanggal || d.tgl_kirim || '-'}</td>
-                        <td><span class="badge ${status === 'HADIR' ? 'badge-success' : 'badge-danger'}">${status}</span></td>
-                        <td>${d.keterangan || d.materi || d.isi_pesan || '-'}</td>
+                        <td>${jc}</td>
+                        <td>${tgl}</td>
+                        <td><span class="badge ${status === 'HADIR' || status === 'PROSES' ? 'badge-success' : 'badge-danger'}">${status}</span></td>
+                        <td>${d.keterangan || d.materi || d.isi_pesan || d.pokok_doa || '-'}</td>
                     </tr>`;
                 }
             });
+
             document.getElementById('data-list').innerHTML = html;
+            updateCharts(pieData, lineData, barData);
             showLoading(false);
         });
     }
 
-    // Inisialisasi awal
+    function updateCharts(pieData, lineData, barData) {
+        // 1. Pie Chart (Status)
+        if (myCharts.pie) myCharts.pie.destroy();
+        myCharts.pie = new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(pieData),
+                datasets: [{ data: Object.values(pieData), backgroundColor: ['#28a745', '#dc3545', '#ffc107'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // 2. Line Chart (Tren)
+        const lineLabels = Object.keys(lineData).sort().slice(-7);
+        const lineValues = lineLabels.map(l => lineData[l]);
+        if (myCharts.line) myCharts.line.destroy();
+        myCharts.line = new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: {
+                labels: lineLabels,
+                datasets: [{ label: 'Aktivitas', data: lineValues, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // 3. Bar Chart (Distribusi)
+        if (myCharts.bar) myCharts.bar.destroy();
+        myCharts.bar = new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(barData),
+                datasets: [{ label: 'Total Laporan', data: Object.values(barData), backgroundColor: '#6f42c1' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
     window.onload = () => loadData('ibadah');
 </script>
 </body>
