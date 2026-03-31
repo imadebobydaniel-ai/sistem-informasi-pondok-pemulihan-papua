@@ -140,9 +140,20 @@
             border-radius: 50px; text-decoration: none; font-weight: 800; 
             box-shadow: 0 8px 25px rgba(0,51,102,0.3);
         }
+
+        #loading-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(255,255,255,0.8); display: flex; flex-direction:column;
+            justify-content: center; align-items: center; z-index: 2000;
+        }
     </style>
 </head>
 <body>
+
+<div id="loading-overlay">
+    <i class="fas fa-sync fa-spin fa-3x" style="color: var(--biru-safir);"></i>
+    <p style="margin-top: 15px; font-weight: bold;">Menghitung Skor JC...</p>
+</div>
 
 <div class="container">
     <div class="card">
@@ -173,8 +184,7 @@
     </div>
 
     <div id="rank-list" class="rank-list">
-        <p style="text-align:center; color:#ccc; padding: 20px;">Menghitung skor...</p>
-    </div>
+        </div>
 
     <div class="btn-back-container">
         <a href="menu.html" class="btn-back"><i class="fas fa-home"></i> KEMBALI KE MENU</a>
@@ -193,130 +203,139 @@
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
-    let myChart; // Variabel global untuk chart
+    let myChart;
 
     function selebrasiJuara() {
-        const durasi = 3 * 1000;
-        const akhir = Date.now() + durasi;
-        const frame = () => {
-            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#FFD700', '#FFFFFF', '#FF8C00'], shapes: ['star'] });
-            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#FFD700', '#FFFFFF', '#FF8C00'], shapes: ['star'] });
-            if (Date.now() < akhir) requestAnimationFrame(frame);
-        };
-        frame();
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#D4AF37', '#003366', '#FFFFFF'] });
     }
 
-    // Fungsi Utama dengan Real-time Listener (.onSnapshot)
-    function muatStatistikRealtime() {
-        const sekarang = new Date();
-        const namaBulan = sekarang.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-        document.getElementById('current-month').innerText = `Update Real-time: ${namaBulan}`;
+    // ==========================================
+    // LOGIKA PERHITUNGAN POIN GABUNGAN
+    // ==========================================
+    async function syncLeaderboard() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+        try {
+            let skorJC = {};
+            let periodeSekarang = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+            
+            const koleksiPoin = [
+                { nama: "kehadiran", poin: 10 },
+                { nama: "kehadiran_arso1", poin: 10 },
+                { nama: "laporan_komsel", poin: 8 },
+                { nama: "laporan_gabungan", poin: 8 },
+                { nama: "laporan_doa", poin: 8 },
+                { nama: "kehadiran_kd", poin: 10 },
+                { nama: "laporan_bacaan", poin: 5 }
+            ];
 
-        const awalBulan = new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
-        const tsAwalBulan = firebase.firestore.Timestamp.fromDate(awalBulan);
+            // Ambil data dari semua koleksi
+            await Promise.all(koleksiPoin.map(async (item) => {
+                const snapshot = await db.collection(item.nama).get();
+                snapshot.forEach((doc) => {
+                    let d = doc.data();
+                    let namaJC = d.jc || d.komsel || d.nama_jc || "Umum";
+                    
+                    // Standarisasi Nama JC
+                    namaJC = namaJC.trim().toUpperCase();
+                    if (!namaJC.startsWith("JC") && namaJC !== "UMUM") namaJC = "JC " + namaJC;
 
-        // MENGGUNAKAN onSnapshot UNTUK REAL-TIME
-        db.collection("laporan_bacaan")
-            .where("tanggal", ">=", tsAwalBulan)
-            .onSnapshot((snap) => {
-                let rekapJC = {};
-                // Inisialisasi default JC 1 - JC 5
-                for(let i=1; i<=5; i++) { rekapJC[`JC ${i}`] = 0; }
+                    if (!skorJC[namaJC]) skorJC[namaJC] = 0;
 
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    if (d.komsel) {
-                        let namaJC = d.komsel.trim();
-                        // Standarisasi Nama
-                        if (!namaJC.startsWith("JC")) {
-                            namaJC = `JC ${namaJC}`;
-                        }
-                        
-                        if (rekapJC.hasOwnProperty(namaJC)) {
-                            rekapJC[namaJC]++;
-                        } else {
-                            rekapJC[namaJC] = 1;
-                        }
+                    const status = (d.status || d.status_doa || "HADIR").toUpperCase();
+                    if (status === "HADIR" || status === "SELESAI" || item.nama === "laporan_bacaan") {
+                        skorJC[namaJC] += item.poin;
                     }
                 });
+            }));
 
-                const sortedJC = Object.entries(rekapJC).sort(([,a], [,b]) => b - a);
+            // Ubah ke Array & Urutkan
+            let urutan = Object.keys(skorJC).map(name => ({
+                nama: name,
+                poin: skorJC[name]
+            })).sort((a, b) => b.poin - a.poin);
 
-                // Update Tampilan secara otomatis
-                updatePodium(sortedJC);
-                tampilkanGrafik(rekapJC);
-                tampilkanList(sortedJC);
-
-                // Jalankan selebrasi jika ada perubahan data dan skor > 0
-                if (sortedJC.length > 0 && sortedJC[0][1] > 0) {
-                    console.log("Data updated: Selebrasi!");
-                }
-            }, (error) => {
-                console.error("Firestore Error:", error);
-                document.getElementById('rank-list').innerHTML = `<p style="text-align:center; color:red;">Gagal memuat data real-time.</p>`;
+            // Simpan ke Firebase untuk konsumsi UI
+            const batch = db.batch();
+            urutan.forEach((item, index) => {
+                let docRef = db.collection("peringkat_jc").doc(item.nama);
+                batch.set(docRef, {
+                    ranking: index + 1,
+                    nama_jc: item.nama,
+                    poin: item.poin,
+                    periode: periodeSekarang,
+                    lastUpdate: firebase.firestore.FieldValue.serverTimestamp()
+                });
             });
+            await batch.commit();
+            
+            tampilkanData(urutan);
+            document.getElementById('current-month').innerText = `Periode: ${periodeSekarang}`;
+            selebrasiJuara();
+
+        } catch (error) {
+            console.error("Error Sync:", error);
+        } finally {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
     }
 
-    function updatePodium(sortedData) {
-        // Reset tampilan jika data kosong
-        document.getElementById('top1-name').innerText = sortedData[0] ? sortedData[0][0] : "JC -";
-        document.getElementById('top1-val').innerText = sortedData[0] ? sortedData[0][1] + " Lap" : "0";
-        
-        document.getElementById('top2-name').innerText = sortedData[1] ? sortedData[1][0] : "JC -";
-        document.getElementById('top2-val').innerText = sortedData[1] ? sortedData[1][1] + " Lap" : "0";
-        
-        document.getElementById('top3-name').innerText = sortedData[2] ? sortedData[2][0] : "JC -";
-        document.getElementById('top3-val').innerText = sortedData[2] ? sortedData[2][1] + " Lap" : "0";
-    }
+    function tampilkanData(urutan) {
+        // Update Podium
+        if(urutan[0]) {
+            document.getElementById('top1-name').innerText = urutan[0].nama;
+            document.getElementById('top1-val').innerText = urutan[0].poin + " Pts";
+        }
+        if(urutan[1]) {
+            document.getElementById('top2-name').innerText = urutan[1].nama;
+            document.getElementById('top2-val').innerText = urutan[1].poin + " Pts";
+        }
+        if(urutan[2]) {
+            document.getElementById('top3-name').innerText = urutan[2].nama;
+            document.getElementById('top3-val').innerText = urutan[2].poin + " Pts";
+        }
 
-    function tampilkanList(sortedData) {
+        // Update List
         let html = "";
-        sortedData.forEach((item, index) => {
+        urutan.forEach((item, index) => {
             const isTop = index < 3 ? 'top-three' : '';
             html += `
                 <div class="rank-item ${isTop}">
-                    <span class="rank-jc">${index + 1}. ${item[0]}</span>
-                    <span class="rank-val">${item[1]} LAPORAN</span>
+                    <span class="rank-jc">${index + 1}. ${item.nama}</span>
+                    <span class="rank-val">${item.poin} POIN</span>
                 </div>`;
         });
         document.getElementById('rank-list').innerHTML = html;
+
+        // Update Grafik
+        const labels = urutan.map(i => i.nama);
+        const values = urutan.map(i => i.poin);
+        tampilkanGrafik(labels, values);
     }
 
-    function tampilkanGrafik(dataLaporan) {
+    function tampilkanGrafik(labels, values) {
         const ctx = document.getElementById('chartJC').getContext('2d');
-        
-        // Hancurkan chart lama agar tidak tumpang tindih saat update data
-        if (myChart) {
-            myChart.destroy();
-        }
-        
+        if (myChart) myChart.destroy();
         myChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: Object.keys(dataLaporan),
+                labels: labels,
                 datasets: [{
-                    label: 'Jumlah Laporan',
-                    data: Object.values(dataLaporan),
+                    label: 'Total Poin',
+                    data: values,
                     backgroundColor: '#0056b3',
-                    borderRadius: 10,
+                    borderRadius: 8,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 500 }, // Animasi halus saat data berubah
                 plugins: { legend: { display: false } },
-                scales: { 
-                    y: { beginAtZero: true, display: false },
-                    x: { grid: { display: false } }
-                }
+                scales: { y: { beginAtZero: true, display: false }, x: { grid: { display: false } } }
             }
         });
     }
 
-    // Ganti pemanggilan fungsi saat window load
-    window.onload = muatStatistikRealtime;
+    window.onload = syncLeaderboard;
 </script>
 </body>
 </html>
