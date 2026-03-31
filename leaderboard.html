@@ -6,7 +6,6 @@
     <title>Peringkat Komsel - Pondok Pemulihan</title>
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -63,7 +62,6 @@
             align-items: center; 
         }
         
-        /* Trophy Icons */
         .trophy-box {
             width: 50px;
             height: 50px;
@@ -196,42 +194,14 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // FUNGSI EFEK PERAYAAN (Kembang api, Bunga, Bintang)
     function selebrasiJuara() {
         const durasi = 3 * 1000;
         const akhir = Date.now() + durasi;
-
         const frame = () => {
-            // Efek Kembang Api & Bintang
-            confetti({
-                particleCount: 5,
-                angle: 60,
-                spread: 55,
-                origin: { x: 0, y: 0.6 },
-                colors: ['#FFD700', '#FFFFFF', '#FF8C00'], // Emas & Putih
-                shapes: ['star']
-            });
-            confetti({
-                particleCount: 5,
-                angle: 120,
-                spread: 55,
-                origin: { x: 1, y: 0.6 },
-                colors: ['#FFD700', '#FFFFFF', '#FF8C00'],
-                shapes: ['star']
-            });
-
-            // Efek Bunga (Lingkaran warna warni lembut)
-            confetti({
-                particleCount: 2,
-                origin: { x: 0.5, y: 0.3 },
-                colors: ['#FFC0CB', '#BA55D3', '#87CEEB'], // Pink, Ungu, Biru Muda
-                shapes: ['circle'],
-                scalar: 1.5
-            });
-
-            if (Date.now() < akhir) {
-                requestAnimationFrame(frame);
-            }
+            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#FFD700', '#FFFFFF', '#FF8C00'], shapes: ['star'] });
+            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#FFD700', '#FFFFFF', '#FF8C00'], shapes: ['star'] });
+            confetti({ particleCount: 2, origin: { x: 0.5, y: 0.3 }, colors: ['#FFC0CB', '#BA55D3', '#87CEEB'], shapes: ['circle'], scalar: 1.5 });
+            if (Date.now() < akhir) requestAnimationFrame(frame);
         };
         frame();
     }
@@ -249,12 +219,23 @@
                 .where("tanggal", ">=", tsAwalBulan).get();
 
             let rekapJC = {};
+            // Inisialisasi default JC 1 - JC 5 agar tetap muncul meski skor 0
             for(let i=1; i<=5; i++) { rekapJC[`JC ${i}`] = 0; }
 
             snap.forEach(doc => {
                 const d = doc.data();
-                const namaJC = d.komsel.startsWith("JC") ? d.komsel : `JC ${d.komsel}`;
-                if (rekapJC.hasOwnProperty(namaJC)) rekapJC[namaJC]++;
+                if (d.komsel) {
+                    // Normalisasi nama komsel agar seragam "JC X"
+                    let namaJC = d.komsel.trim();
+                    if (!namaJC.startsWith("JC")) {
+                        namaJC = `JC ${namaJC}`;
+                    }
+                    if (rekapJC.hasOwnProperty(namaJC)) {
+                        rekapJC[namaJC]++;
+                    } else {
+                        rekapJC[namaJC] = 1;
+                    }
+                }
             });
 
             const sortedJC = Object.entries(rekapJC).sort(([,a], [,b]) => b - a);
@@ -263,12 +244,14 @@
             tampilkanGrafik(rekapJC);
             tampilkanList(sortedJC);
 
-            // JALANKAN SELEBRASI JIKA DATA SUDAH ADA
             if (sortedJC[0][1] > 0) {
                 setTimeout(selebrasiJuara, 1000);
             }
 
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            document.getElementById('rank-list').innerHTML = `<p style="text-align:center; color:red;">Gagal memuat data.</p>`;
+        }
     }
 
     function updatePodium(sortedData) {
@@ -299,9 +282,12 @@
         document.getElementById('rank-list').innerHTML = html;
     }
 
+    let myChart;
     function tampilkanGrafik(dataLaporan) {
         const ctx = document.getElementById('chartJC').getContext('2d');
-        new Chart(ctx, {
+        if (myChart) myChart.destroy(); // Hancurkan chart lama jika ada
+        
+        myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: Object.keys(dataLaporan),
@@ -315,7 +301,7 @@
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { 
-                    y: { display: false },
+                    y: { beginAtZero: true, display: false },
                     x: { grid: { display: false } }
                 }
             }
