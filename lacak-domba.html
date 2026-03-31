@@ -11,6 +11,7 @@
             --biru-safir: #0056b3;
             --hijau-online: #27ae60;
             --putih-bg: #f4f6f9;
+            --merah-error: #e74c3c;
         }
 
         body {
@@ -37,6 +38,7 @@
             text-transform: uppercase; letter-spacing: 1px;
         }
 
+        /* --- Search Area --- */
         .search-wrapper { 
             padding: 12px; background: var(--biru-tua); 
             border-radius: 0 0 20px 20px;
@@ -57,12 +59,11 @@
 
         .content-area { padding: 10px; }
 
-        /* --- Compact Card Design --- */
+        /* --- Card Design --- */
         .card-lacak {
             background: white; border-radius: 15px;
             margin-bottom: 10px; overflow: hidden;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: 0.3s;
         }
 
         .card-main-info {
@@ -80,7 +81,6 @@
         .btn-expand { color: #ccc; transition: 0.3s; }
         .card-lacak.active .btn-expand { transform: rotate(180deg); color: var(--biru-tua); }
 
-        /* --- Hidden Detail Area --- */
         .card-detail {
             display: none; padding: 0 15px 15px 15px;
             border-top: 1px solid #f0f0f0; background: #fafafa;
@@ -88,19 +88,63 @@
 
         .card-lacak.active .card-detail { display: block; }
 
-        .coords-text { font-size: 11px; color: #777; margin: 10px 0; font-family: monospace; }
-
         .map-frame {
             width: 100%; height: 180px;
             border-radius: 10px; overflow: hidden;
             border: 1px solid #ddd; margin-bottom: 10px;
+            background: #eee; position: relative;
         }
 
+        /* Tombol Navigasi */
         .btn-navigasi {
             background: var(--biru-tua); color: white;
-            text-decoration: none; padding: 10px;
+            border: none; width: 100%; padding: 12px;
             border-radius: 8px; font-weight: 700; font-size: 12px;
             display: flex; justify-content: center; align-items: center; gap: 8px;
+            cursor: pointer;
+        }
+
+        /* --- MODAL POPUP (Half Display) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            display: none; align-items: flex-end;
+        }
+
+        .modal-content {
+            background: white; width: 100%; max-width: 500px;
+            padding: 25px; border-radius: 25px 25px 0 0;
+            box-sizing: border-box; animation: slideUp 0.3s ease-out;
+            text-align: center;
+        }
+
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-content h3 { margin-top: 0; color: var(--biru-tua); font-size: 1.1rem; }
+
+        .pass-container {
+            position: relative; margin: 20px 0;
+        }
+
+        .pass-container input {
+            width: 100%; padding: 12px 40px 12px 15px;
+            border: 2px solid #ddd; border-radius: 10px;
+            font-size: 16px; box-sizing: border-box; outline: none;
+        }
+
+        .pass-container .toggle-pass {
+            position: absolute; right: 15px; top: 50%;
+            transform: translateY(-50%); color: #999; cursor: pointer;
+        }
+
+        .btn-verifikasi {
+            background: var(--biru-tua); color: white;
+            border: none; width: 100%; padding: 12px;
+            border-radius: 10px; font-weight: bold; margin-bottom: 10px;
+        }
+
+        .btn-cancel {
+            background: transparent; color: #777; border: none; font-size: 13px;
         }
 
         .bottom-bar {
@@ -114,8 +158,6 @@
             text-decoration: none; color: var(--biru-tua);
             display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 800;
         }
-
-        .no-data { text-align: center; padding: 50px 20px; color: #999; }
     </style>
 </head>
 <body>
@@ -144,6 +186,19 @@
     </footer>
 </div>
 
+<div class="modal-overlay" id="modalPassword">
+    <div class="modal-content">
+        <i class="fas fa-lock" style="font-size: 30px; color: var(--biru-tua); margin-bottom: 10px;"></i>
+        <h3>Masukan Password PKS atau Admin</h3>
+        <div class="pass-container">
+            <input type="password" id="inputPass" placeholder="Ketik password di sini...">
+            <i class="fas fa-eye toggle-pass" id="eyeIcon" onclick="togglePassword()"></i>
+        </div>
+        <button class="btn-verifikasi" onclick="cekAkses()">BUKA NAVIGASI</button>
+        <button class="btn-cancel" onclick="tutupModal()">Batal</button>
+    </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -160,52 +215,56 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    let targetUrl = ""; // Simpan URL maps sementara
+
     function toggleCard(el) {
         el.parentElement.classList.toggle('active');
     }
 
-    function filterMembers() {
-        let input = document.getElementById('memberSearch').value.toLowerCase();
-        let cards = document.getElementsByClassName('card-lacak');
-        for (let card of cards) {
-            let name = card.getAttribute('data-name').toLowerCase();
-            card.style.display = name.includes(input) ? "block" : "none";
+    // Fungsi Pop-up
+    function mintaAkses(url) {
+        targetUrl = url;
+        document.getElementById('modalPassword').style.display = 'flex';
+        document.getElementById('inputPass').focus();
+    }
+
+    function tutupModal() {
+        document.getElementById('modalPassword').style.display = 'none';
+        document.getElementById('inputPass').value = "";
+    }
+
+    function togglePassword() {
+        const input = document.getElementById('inputPass');
+        const icon = document.getElementById('eyeIcon');
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            input.type = "password";
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
 
-    function mulaiTrackingRealtime() {
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition((position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const userEmail = localStorage.getItem("userEmail") || "guest_" + Math.floor(Math.random()*1000);
-                const userName = localStorage.getItem("userName") || "Anggota Tanpa Nama";
-
-                db.collection("live_tracking").doc(userEmail).set({
-                    nama: userName,
-                    lat: lat,
-                    lng: lon,
-                    lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-            }, null, { enableHighAccuracy: true });
+    function cekAkses() {
+        const pass = document.getElementById('inputPass').value;
+        // Silakan ganti "admin123" dengan password yang anda inginkan
+        if (pass === "admin123" || pass === "pks2026") {
+            window.open(targetUrl, '_blank');
+            tutupModal();
+        } else {
+            alert("Password Salah! Akses Ditolak.");
         }
     }
 
     function listenLocation() {
         db.collection("live_tracking").onSnapshot((querySnapshot) => {
             const listContainer = document.getElementById('list-lacak');
-            if (querySnapshot.empty) {
-                listContainer.innerHTML = "<div class='no-data'>Tidak ada domba aktif saat ini.</div>";
-                return;
-            }
-
             let htmlContent = "";
             querySnapshot.forEach((doc) => {
                 const d = doc.data();
                 const timeStr = d.lastSeen ? new Date(d.lastSeen.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Aktif";
+                const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}`;
 
-                // Memperbaiki link maps dengan template literal yang benar (${d.lat})
-                // Menggunakan google.com/maps?q= untuk navigasi yang lebih akurat di Android
                 htmlContent += `
                     <div class="card-lacak" data-name="${d.nama}">
                         <div class="card-main-info" onclick="toggleCard(this)">
@@ -213,33 +272,26 @@
                                 <i class="fas fa-user-circle"></i>
                                 <div class="name-stack">
                                     <span class="nama">${d.nama}</span>
-                                    <span class="status"><i class="fas fa-map-marker-alt"></i> Terdeteksi pkl ${timeStr}</span>
+                                    <span class="status"><i class="fas fa-map-marker-alt"></i> pkl ${timeStr}</span>
                                 </div>
                             </div>
                             <i class="fas fa-chevron-down btn-expand"></i>
                         </div>
                         <div class="card-detail">
-                            <div class="coords-text">Lokasi: ${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}</div>
                             <div class="map-frame">
-                                <iframe 
-                                    style="border:0; width:100%; height:100%" 
-                                    src="https://maps.google.com/maps?q=${d.lat},${d.lng}&z=15&output=embed">
-                                </iframe>
+                                <iframe style="border:0;width:100%;height:100%" src="https://maps.google.com/maps?q=${d.lat},${d.lng}&z=15&output=embed"></iframe>
                             </div>
-                            <a href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}" 
-                               target="_blank" 
-                               class="btn-navigasi">
+                            <button onclick="mintaAkses('${mapsUrl}')" class="btn-navigasi">
                                 <i class="fas fa-location-arrow"></i> NAVIGASI GOOGLE MAPS
-                            </a>
+                            </button>
                         </div>
                     </div>
                 `;
             });
-            listContainer.innerHTML = htmlContent;
+            listContainer.innerHTML = htmlContent || "<div class='no-data'>Tidak ada data.</div>";
         });
     }
 
-    mulaiTrackingRealtime();
     listenLocation();
 </script>
 </body>
