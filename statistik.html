@@ -194,11 +194,10 @@
  
     let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
 
-    // Fungsi pencarian waktu disesuaikan untuk field 'tanggal'
     function getStartDate(monthsBack) {
         let d = new Date();
         d.setMonth(d.getMonth() - monthsBack);
-        return d; // Menggunakan objek Date murni agar sinkron dengan index 'tanggal'
+        return d; 
     }
  
     function updateStatistikBar(textId, barId, value) {
@@ -208,12 +207,14 @@
         if(elBar) elBar.style.width = Math.min(value, 100) + "%";
     }
 
+    // --- SYNC BACA ALKITAB ---
     async function syncStatistikAlkitab() {
         const jcAlk = document.getElementById("select-komsel-alkitab").value;
         const blnAlk = parseInt(document.getElementById("select-periode-alkitab").value);
         
-        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'komsel' & 'tanggal'
-        db.collection("laporan_bacaan").where("komsel", "==", jcAlk).where("tanggal", ">=", getStartDate(blnAlk))
+        db.collection("laporan_bacaan")
+          .where("komsel", "==", jcAlk)
+          .where("tanggal", ">=", getStartDate(blnAlk))
           .onSnapshot(snap => {
             let userUnik = new Set();
             snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
@@ -226,12 +227,15 @@
         }, err => console.error("Error Alkitab:", err));
     }
  
+    // --- SYNC KEHADIRAN (NEW) ---
     async function syncStatistikHadir() {
         const jcHdr = document.getElementById("select-jc-laporan").value;
         const blnHdr = parseInt(document.getElementById("select-periode-laporan").value);
 
-        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'komsel' & 'tanggal'
-        db.collection("kehadiran").where("komsel", "==", jcHdr).where("status", "==", "HADIR").where("tanggal", ">=", getStartDate(blnHdr))
+        db.collection("kehadiran")
+          .where("komsel", "==", jcHdr)
+          .where("status", "==", "HADIR")
+          .where("tanggal", ">=", getStartDate(blnHdr))
           .onSnapshot(snap => {
             const jml = snap.size;
             document.getElementById("text-laporan-orang-hadir").innerText = jml + " Orang";
@@ -242,12 +246,15 @@
         }, err => console.error("Error Hadir:", err));
     }
  
+    // --- SYNC KETIDAKHADIRAN (NEW) ---
     async function syncStatistikIzin() {
         const jcIz = document.getElementById("select-jc-izin").value;
         const blnIz = parseInt(document.getElementById("select-periode-izin").value);
 
-        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'komsel' & 'tanggal'
-        db.collection("kehadiran").where("komsel", "==", jcIz).where("status", "==", "TIDAK HADIR").where("tanggal", ">=", getStartDate(blnIz))
+        db.collection("kehadiran")
+          .where("komsel", "==", jcIz)
+          .where("status", "in", ["TIDAK HADIR", "IZIN", "ALPHA"]) 
+          .where("tanggal", ">=", getStartDate(blnIz))
           .onSnapshot(snap => {
             const jml = snap.size;
             document.getElementById("text-laporan-orang-izin").innerText = jml + " Orang";
@@ -258,12 +265,14 @@
         }, err => console.error("Error Izin:", err));
     }
  
+    // --- SYNC DOA ---
     function syncStatistikDoa() {
         const jcDoa = document.getElementById('select-jc-doa').value;
         const blnDoa = parseInt(document.getElementById("select-periode-doa").value);
 
-        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'jc' & 'tglInput'
-        db.collection("laporan_doa").where("jc", "==", jcDoa).where("tglInput", ">=", getStartDate(blnDoa))
+        db.collection("laporan_doa")
+          .where("jc", "==", jcDoa)
+          .where("tglInput", ">=", getStartDate(blnDoa))
           .onSnapshot(snap => {
             let terjawab = 0;
             snap.forEach(doc => { if(doc.data().terjawab === true) terjawab++; });
@@ -275,6 +284,7 @@
         });
     }
  
+    // --- SYNC GOLONGAN DARAH ---
     function syncGolonganDarah() {
         db.collection("users").onSnapshot((snapshot) => {
             listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
