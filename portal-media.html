@@ -24,7 +24,7 @@
             height: 100vh;
         }
 
-        /* Sidebar dengan garis tegas */
+        /* Sidebar */
         .sidebar {
             width: 240px;
             background-color: var(--card-bg);
@@ -104,7 +104,7 @@
             float: right;
         }
 
-        /* Tabel dengan Garis Jelas */
+        /* Tabel */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -141,7 +141,6 @@
 
         .btn-action:hover { border-color: var(--primary-green); color: white; }
 
-        /* Badge Tipe */
         .badge {
             padding: 3px 8px;
             border-radius: 4px;
@@ -171,39 +170,8 @@
             <label>Riwayat Running Text:</label>
             <table style="font-size: 0.8rem;">
                 <tbody id="historyRunningText">
-                    </tbody>
+                </tbody>
             </table>
-        </div>
-
-        <div class="glass-card">
-            <div class="section-title"><i class="fas fa-plus-circle"></i> TAMBAH KONTEN BARU</div>
-            <div class="form-row">
-                <div>
-                    <label>Judul Konten</label>
-                    <input type="text" id="judul" placeholder="Contoh: Ibadah Raya Minggu">
-                </div>
-                <div>
-                    <label>Tipe Media</label>
-                    <select id="tipe">
-                        <option value="VIDEO_YOUTUBE">YouTube Video</option>
-                        <option value="VIDEO_PLAYER">Video Player (MP4)</option>
-                        <option value="GAMBAR">Gambar/Poster</option>
-                        <option value="TEKS">Teks Berita</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div>
-                    <label>Link / URL Media</label>
-                    <input type="text" id="url" placeholder="https://...">
-                </div>
-                <div>
-                    <label>Durasi Putar (Menit)</label>
-                    <input type="number" id="durasi" value="10">
-                </div>
-            </div>
-            <button class="btn-publish" onclick="tambahKonten()">PUBLIKASIKAN</button>
-            <div style="clear:both"></div>
         </div>
 
         <div class="glass-card">
@@ -219,7 +187,7 @@
                     </tr>
                 </thead>
                 <tbody id="mediaTableBody">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -234,41 +202,40 @@
             projectId: "boby-apps-project",
             storageBucket: "boby-apps-project.appspot.com",
             messagingSenderId: "125984859692",
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+            appappId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 1. FUNGSI PLAY (AKTIFKAN KONTEN)
-        async function playSekarang(id, judul) {
+        // 1. UPDATE RUNNING TEXT KE DATABASE CONFIG
+        async function postRunningText() {
+            const text = document.getElementById('runningTextInput').value;
+            if(!text) return alert("Ketik pesan dulu!");
+
             try {
-                await db.collection("settings").doc("current_media").set({
-                    mediaId: id,
-                    lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
+                // Simpan ke riwayat untuk daftar di bawahnya
+                await db.collection("running_text_history").add({
+                    content: text,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                alert("Memutar: " + judul);
+                
+                // UPDATE UTAMA: Mengirim ke config/running_text (Sinkron dengan Portal Utama)
+                await db.collection("config").doc("running_text").set({ 
+                    message: text,
+                    isSyncActive: true,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                alert("Running Text berhasil diperbarui!");
+                document.getElementById('runningTextInput').value = "";
             } catch (error) {
-                console.error("Gagal memutar:", error);
+                console.error("Error:", error);
+                alert("Gagal update database!");
             }
         }
 
-        // 2. FUNGSI RUNNING TEXT DENGAN RIWAYAT
-        async function postRunningText() {
-            const text = document.getElementById('runningTextInput').value;
-            if(!text) return;
-
-            await db.collection("running_text_history").add({
-                content: text,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // Update teks yang tampil saat ini
-            await db.collection("settings").doc("running_text").set({ active: text });
-            document.getElementById('runningTextInput').value = "";
-            loadRunningHistory();
-        }
-
+        // 2. LOAD RIWAYAT & REUSE
         function loadRunningHistory() {
             db.collection("running_text_history").orderBy("timestamp", "desc").limit(5).onSnapshot(snap => {
                 let html = "";
@@ -283,12 +250,16 @@
             });
         }
 
-        function reuseText(txt) {
-            db.collection("settings").doc("running_text").set({ active: txt });
-            alert("Pesan riwayat diaktifkan!");
+        async function reuseText(txt) {
+            try {
+                await db.collection("config").doc("running_text").update({ message: txt });
+                alert("Pesan riwayat diaktifkan!");
+            } catch(e) {
+                alert("Gagal mengaktifkan pesan lama");
+            }
         }
 
-        // 3. LOAD DATA PLAYLIST
+        // 3. LOAD DATA PLAYLIST DARI portal_media
         function loadPlaylist() {
             db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snap => {
                 let html = "";
@@ -296,7 +267,7 @@
                     const data = doc.data();
                     html += `
                         <tr>
-                            <td>${data.urutan}</td>
+                            <td>${data.urutan || 0}</td>
                             <td><strong>${data.judul}</strong></td>
                             <td><span class="badge">${data.tipe}</span></td>
                             <td>${data.durasi}m</td>
@@ -308,6 +279,14 @@
                 });
                 document.getElementById('mediaTableBody').innerHTML = html;
             });
+        }
+
+        async function playSekarang(id, judul) {
+            await db.collection("settings").doc("current_media").set({
+                mediaId: id,
+                lastPlayed: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("Memutar di Layar Utama: " + judul);
         }
 
         window.onload = () => {
