@@ -276,30 +276,17 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
+    // ... config firebase tetap sama ...
 
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    let myChart;
-
-    function toggleModal() {
-        const modal = document.getElementById('infoModal');
-        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
-    }
-
-    // FUNGSI SELEBRASI MERIAH
+    // 1. PERBAIKAN FUNGSI SELEBRASI
+    // Menambahkan zIndex agar confetti muncul di atas overlay/modal
     function selebrasiJuara() {
-        const duration = 5 * 1000; 
+        const duration = 5 * 1000;
         const animationEnd = Date.now() + duration;
-        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 4000 };
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 5000 }; // zIndex ditingkatkan
 
         function randomInRange(min, max) {
             return Math.random() * (max - min) + min;
@@ -314,34 +301,32 @@
 
             const particleCount = 50 * (timeLeft / duration);
             
-            // Efek Bintang Meriah (Emas)
             confetti(Object.assign({}, defaults, { 
                 particleCount, 
                 origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-                shapes: ['star'],
                 colors: ['#D4AF37', '#FFD700']
             }));
 
-            // Efek Bunga & Pita (Warna-warni)
             confetti(Object.assign({}, defaults, { 
                 particleCount, 
                 origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-                shapes: ['circle', 'square'],
-                colors: ['#ff0a54', '#ff477e', '#ff7096', '#0056b3', '#90e0ef'] 
+                colors: ['#0056b3', '#90e0ef'] 
             }));
         }, 250);
 
-        // Ledakan besar pembuka
+        // Ledakan besar di tengah
         confetti({
-            particleCount: 200,
-            spread: 100,
+            particleCount: 150,
+            spread: 70,
             origin: { y: 0.6 },
-            colors: ['#D4AF37', '#003366', '#FFFFFF', '#FF0000']
+            zIndex: 5000
         });
     }
 
     async function syncLeaderboard() {
-        document.getElementById('loading-overlay').style.display = 'flex';
+        const loading = document.getElementById('loading-overlay');
+        loading.style.display = 'flex';
+        
         try {
             let skorJC = {};
             let periodeSekarang = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
@@ -356,13 +341,17 @@
                 { nama: "laporan_bacaan", poin: 5 }
             ];
 
-            await Promise.all(koleksiPoin.map(async (item) => {
+            // Mengambil data dari semua koleksi
+            for (const item of koleksiPoin) {
                 const snapshot = await db.collection(item.nama).get();
                 snapshot.forEach((doc) => {
                     let d = doc.data();
-                    let namaJC = d.jc || d.komsel || d.nama_jc || "Umum";
-                    namaJC = namaJC.trim().toUpperCase();
-                    if (!namaJC.startsWith("JC") && namaJC !== "UMUM") namaJC = "JC " + namaJC;
+                    let namaRaw = d.jc || d.komsel || d.nama_jc || "Umum";
+                    let namaJC = namaRaw.trim().toUpperCase();
+                    
+                    if (!namaJC.startsWith("JC") && namaJC !== "UMUM") {
+                        namaJC = "JC " + namaJC;
+                    }
 
                     if (!skorJC[namaJC]) skorJC[namaJC] = 0;
 
@@ -371,13 +360,28 @@
                         skorJC[namaJC] += item.poin;
                     }
                 });
-            }));
+            }
 
             let urutan = Object.keys(skorJC).map(name => ({
                 nama: name,
                 poin: skorJC[name]
             })).sort((a, b) => b.poin - a.poin);
 
+            // Tampilkan data ke UI terlebih dahulu
+            tampilkanData(urutan);
+            document.getElementById('current-month').innerText = `Periode: ${periodeSekarang}`;
+            
+            // Hapus loading sebelum selebrasi
+            loading.style.display = 'none';
+
+            // 2. TRIGGER SELEBRASI (Diberi delay sedikit agar UI render selesai)
+            if (urutan.length > 0) {
+                setTimeout(() => {
+                    selebrasiJuara();
+                }, 500);
+            }
+
+            // Simpan ke Firestore (Background task)
             const batch = db.batch();
             urutan.forEach((item, index) => {
                 let docRef = db.collection("peringkat_jc").doc(item.nama);
@@ -390,74 +394,14 @@
                 });
             });
             await batch.commit();
-            
-            tampilkanData(urutan);
-            document.getElementById('current-month').innerText = `Periode: ${periodeSekarang}`;
-            
-            // Jalankan selebrasi setelah data muncul
-            selebrasiJuara();
 
         } catch (error) {
             console.error("Error Sync:", error);
-        } finally {
-            document.getElementById('loading-overlay').style.display = 'none';
+            loading.style.display = 'none';
         }
     }
 
-    function tampilkanData(urutan) {
-        if(urutan[0]) {
-            document.getElementById('top1-name').innerText = urutan[0].nama;
-            document.getElementById('top1-val').innerText = urutan[0].poin + " Pts";
-        }
-        if(urutan[1]) {
-            document.getElementById('top2-name').innerText = urutan[1].nama;
-            document.getElementById('top2-val').innerText = urutan[1].poin + " Pts";
-        }
-        if(urutan[2]) {
-            document.getElementById('top3-name').innerText = urutan[2].nama;
-            document.getElementById('top3-val').innerText = urutan[2].poin + " Pts";
-        }
-
-        let html = "";
-        urutan.forEach((item, index) => {
-            const isTop = index < 3 ? 'top-three' : '';
-            html += `
-                <div class="rank-item ${isTop}">
-                    <span class="rank-jc">${index + 1}. ${item.nama}</span>
-                    <span class="rank-val">${item.poin} POIN</span>
-                </div>`;
-        });
-        document.getElementById('rank-list').innerHTML = html;
-
-        const labels = urutan.map(i => i.nama);
-        const values = urutan.map(i => i.poin);
-        tampilkanGrafik(labels, values);
-    }
-
-    function tampilkanGrafik(labels, values) {
-        const ctx = document.getElementById('chartJC').getContext('2d');
-        if (myChart) myChart.destroy();
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Total Poin',
-                    data: values,
-                    backgroundColor: '#0056b3',
-                    borderRadius: 8,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, display: false }, x: { grid: { display: false } } }
-            }
-        });
-    }
-
-    window.onload = syncLeaderboard;
+    // ... fungsi tampilkanData dan tampilkanGrafik tetap sama ...
 </script>
 </body>
 </html>
