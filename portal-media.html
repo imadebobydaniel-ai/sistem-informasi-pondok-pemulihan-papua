@@ -282,161 +282,184 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
+   // Konfigurasi Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+    authDomain: "boby-apps-project.firebaseapp.com",
+    projectId: "boby-apps-project",
+    storageBucket: "boby-apps-project.appspot.com",
+    messagingSenderId: "125984859692",
+    appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+};
 
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.firestore();
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
 
-    // Fungsi Update Running Text
-    async function updateRunningText() {
-        const text = document.getElementById('runningTextInput').value;
-        const btn = document.getElementById('btnSaveRunningText');
-        if(!text) return alert("Isi teks dulu!");
-        btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Syncing...";
-        try {
-            await db.collection("config").doc("running_text").set({
-                message: text,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                triggerUpdate: Date.now()
-            });
-            alert("Monitor Berhasil Diupdate!");
-        } catch (e) { alert(e.message); }
-        btn.innerHTML = "<i class='fa-solid fa-sync'></i> Sync ke Monitor";
-    }
+// 1. FUNGSI UPLOAD (DENGAN OTOMATISASI GOOGLE DRIVE & YOUTUBE)
+async function uploadKePortal() {
+    const btn = document.getElementById('btnPublish');
+    const judul = document.getElementById('judul').value;
+    const tipe = document.getElementById('tipe_media').value;
+    const durasi = parseInt(document.getElementById('itemDurasi').value) || 10;
+    let urlValue = document.getElementById('url_media').value;
 
-    // Perbaikan: Toggle input fields lebih dinamis
-    function toggleInputFields() {
-        const tipe = document.getElementById('tipe_media').value;
-        const urlContainer = document.getElementById('input_url_container');
-        const teksContainer = document.getElementById('input_teks_container');
-        const labelUrl = document.getElementById('label_url');
+    if(!judul) return alert("Judul wajib diisi!");
 
-        urlContainer.style.display = tipe === 'teks' ? "none" : "block";
-        teksContainer.style.display = tipe === 'teks' ? "block" : "none";
-
-        if (tipe === 'gambar') labelUrl.innerText = "URL Gambar (Link Direct)";
-        else if (tipe === 'video_youtube') labelUrl.innerText = "Link YouTube (v=...)";
-        else if (tipe === 'video_player') labelUrl.innerText = "Link Direct MP4";
-        else if (tipe === 'audio_player') labelUrl.innerText = "Link Direct MP3";
-    }
-
-    // Fungsi Upload Media ke Firestore
-    async function uploadKePortal() {
-        const btn = document.getElementById('btnPublish');
-        const judul = document.getElementById('judul').value;
-        const tipe = document.getElementById('tipe_media').value;
-        const durasi = parseInt(document.getElementById('itemDurasi').value) || 10;
-        let urlValue = document.getElementById('url_media').value;
-
-        if(!judul) return alert("Judul wajib diisi!");
-
-        // Otomatis convert link YouTube ke embed agar bisa autoplay
-        if (tipe === 'video_youtube' && urlValue) {
-            let videoId = "";
-            if (urlValue.includes('v=')) videoId = urlValue.split('v=')[1].split('&')[0];
-            else if (urlValue.includes('youtu.be/')) videoId = urlValue.split('youtu.be/')[1];
-            if (videoId) urlValue = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playlist=${videoId}&loop=1`;
-        }
-
-        btn.disabled = true;
-        btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Processing...";
-        try {
-            const snapshot = await db.collection("portal_media").get();
-            await db.collection("portal_media").add({
-                judul, tipe, url: urlValue, 
-                isi_artikel: document.getElementById('isi_artikel').value,
-                urutan: snapshot.size + 1,
-                durasi: durasi,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            await db.collection("config").doc("playlist").update({ lastUpdate: Date.now() });
-            location.reload();
-        } catch (e) { alert(e.message); btn.disabled = false; btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> Publish Sekarang"; }
-    }
-
-    // Fungsi Load Daftar Media
-    function loadMedia() {
-        db.collection("config").doc("running_text").get().then(doc => {
-            if(doc.exists) document.getElementById('runningTextInput').value = doc.data().message;
-        });
-
-        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
-            const list = document.getElementById('mediaList');
-            list.innerHTML = "";
-            if(snapshot.empty) {
-                list.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Belum ada konten media.</td></tr>`;
-                return;
-            }
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const id = doc.id;
-                list.innerHTML += `
-                    <tr class="media-row">
-                        <td>
-                            <div style="display:flex; flex-direction:column; align-items:center;">
-                                <button class="order-btn" onclick="pindahUrutan('${id}', -1)"><i class="fas fa-caret-up"></i></button>
-                                <span style="font-weight:bold; color:var(--primary)">${data.urutan}</span>
-                                <button class="order-btn" onclick="pindahUrutan('${id}', 1)"><i class="fas fa-caret-down"></i></button>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-weight:600">${data.judul}</div>
-                            <div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; max-width:250px; white-space:nowrap">${data.url || 'Konten Teks/Artikel'}</div>
-                        </td>
-                        <td><span class="badge badge-${data.tipe}">${data.tipe.replace('_', ' ')}</span></td>
-                        <td>${data.durasi}m</td>
-                        <td style="text-align:right;">
-                            <button class="btn-action" onclick="playSekarang('${id}')" title="Mainkan Sekarang"><i class="fas fa-play"></i></button>
-                            <button class="btn-action btn-delete" onclick="deleteMedia('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
-            });
-        });
-    }
-
-    // Fungsi Mengatur Urutan (Swap)
-    async function pindahUrutan(id, arah) {
-        const ref = db.collection("portal_media");
-        const doc = await ref.doc(id).get();
-        const urutanSekarang = doc.data().urutan;
-        const urutanBaru = urutanSekarang + arah;
-        if (urutanBaru < 1) return;
-        const swapQuery = await ref.where("urutan", "==", urutanBaru).get();
-        const batch = db.batch();
-        if (!swapQuery.empty) batch.update(ref.doc(swapQuery.docs[0].id), { urutan: urutanSekarang });
-        batch.update(ref.doc(id), { urutan: urutanBaru });
-        await batch.commit();
-    }
-
-    // Fungsi Paksa Putar Konten Tertentu
-    async function playSekarang(id) {
-        await db.collection("config").doc("playlist").update({ activeContentId: id, forcePlay: Date.now() });
-        alert("Sinyal 'Play' dikirim ke monitor.");
-    }
-
-    // Fungsi Hapus Konten
-    async function deleteMedia(id) {
-        if(confirm("Hapus konten ini secara permanen?")) {
-            await db.collection("portal_media").doc(id).delete();
+    // OTOMATISASI LINK GOOGLE DRIVE
+    if (urlValue.includes('drive.google.com')) {
+        let fileId = "";
+        const parts = urlValue.split('/');
+        const dIndex = parts.indexOf('d');
+        if (dIndex !== -1 && parts[dIndex + 1]) {
+            fileId = parts[dIndex + 1];
+            urlValue = `https://drive.google.com/uc?export=download&id=${fileId}`;
+            console.log("Link Google Drive dikonversi otomatis.");
         }
     }
 
-    // Fungsi Simpan Mode Putar
-    async function saveGlobalConfig() {
-        const mode = document.getElementById('modePutar').value;
-        await db.collection("config").doc("playlist").set({ mode: mode }, { merge: true });
-        alert("Mode putar berhasil disimpan.");
+    // OTOMATISASI LINK YOUTUBE
+    if (tipe === 'video_youtube' && urlValue && (urlValue.includes('youtube.com') || urlValue.includes('youtu.be'))) {
+        let videoId = "";
+        if (urlValue.includes('v=')) videoId = urlValue.split('v=')[1].split('&')[0];
+        else if (urlValue.includes('youtu.be/')) videoId = urlValue.split('youtu.be/')[1];
+        
+        if (videoId) {
+            urlValue = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playlist=${videoId}&loop=1`;
+        }
     }
 
-    window.onload = loadMedia;
+    btn.disabled = true;
+    btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Processing...";
+    
+    try {
+        const snapshot = await db.collection("portal_media").get();
+        await db.collection("portal_media").add({
+            judul, 
+            tipe, 
+            url: urlValue, 
+            isi_artikel: document.getElementById('isi_artikel').value,
+            urutan: snapshot.size + 1,
+            durasi: durasi,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Trigger update ke monitor
+        await db.collection("config").doc("playlist").set({ 
+            lastUpdate: Date.now() 
+        }, { merge: true });
+        
+        alert("Konten berhasil dipublikasikan!");
+        location.reload();
+    } catch (e) { 
+        alert("Error: " + e.message); 
+        btn.disabled = false; 
+        btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> Publish Sekarang"; 
+    }
+}
+
+// 2. FUNGSI LOAD DAFTAR MEDIA
+function loadMedia() {
+    db.collection("config").doc("running_text").get().then(doc => {
+        if(doc.exists) document.getElementById('runningTextInput').value = doc.data().message;
+    });
+
+    db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
+        const list = document.getElementById('mediaList');
+        list.innerHTML = "";
+        if(snapshot.empty) {
+            list.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Belum ada konten media.</td></tr>`;
+            return;
+        }
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const id = doc.id;
+            list.innerHTML += `
+                <tr class="media-row">
+                    <td>
+                        <div style="display:flex; flex-direction:column; align-items:center;">
+                            <button class="order-btn" onclick="pindahUrutan('${id}', -1)"><i class="fas fa-caret-up"></i></button>
+                            <span style="font-weight:bold; color:var(--primary)">${data.urutan}</span>
+                            <button class="order-btn" onclick="pindahUrutan('${id}', 1)"><i class="fas fa-caret-down"></i></button>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight:600">${data.judul}</div>
+                        <div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; max-width:250px; white-space:nowrap">${data.url || 'Konten Teks/Artikel'}</div>
+                    </td>
+                    <td><span class="badge badge-${data.tipe}">${data.tipe.replace('_', ' ')}</span></td>
+                    <td>${data.durasi}m</td>
+                    <td style="text-align:right;">
+                        <button class="btn-action" onclick="playSekarang('${id}')" title="Mainkan Sekarang"><i class="fas fa-play"></i></button>
+                        <button class="btn-action btn-delete" onclick="deleteMedia('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+        });
+    });
+}
+
+// 3. FUNGSI PENDUKUNG LAINNYA
+async function updateRunningText() {
+    const text = document.getElementById('runningTextInput').value;
+    const btn = document.getElementById('btnSaveRunningText');
+    if(!text) return alert("Isi teks dulu!");
+    btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> Syncing...";
+    try {
+        await db.collection("config").doc("running_text").set({
+            message: text,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            triggerUpdate: Date.now()
+        });
+        alert("Monitor Berhasil Diupdate!");
+    } catch (e) { alert(e.message); }
+    btn.innerHTML = "<i class='fa-solid fa-sync'></i> Sync ke Monitor";
+}
+
+function toggleInputFields() {
+    const tipe = document.getElementById('tipe_media').value;
+    const urlContainer = document.getElementById('input_url_container');
+    const teksContainer = document.getElementById('input_teks_container');
+    const labelUrl = document.getElementById('label_url');
+
+    urlContainer.style.display = tipe === 'teks' ? "none" : "block";
+    teksContainer.style.display = tipe === 'teks' ? "block" : "none";
+
+    if (tipe === 'gambar') labelUrl.innerText = "URL Gambar (Link Direct)";
+    else if (tipe === 'video_youtube') labelUrl.innerText = "Link YouTube (v=...)";
+    else if (tipe === 'video_player') labelUrl.innerText = "Link Direct MP4";
+    else if (tipe === 'audio_player') labelUrl.innerText = "Link Direct MP3";
+}
+
+async function pindahUrutan(id, arah) {
+    const ref = db.collection("portal_media");
+    const doc = await ref.doc(id).get();
+    const urutanSekarang = doc.data().urutan;
+    const urutanBaru = urutanSekarang + arah;
+    if (urutanBaru < 1) return;
+    const swapQuery = await ref.where("urutan", "==", urutanBaru).get();
+    const batch = db.batch();
+    if (!swapQuery.empty) batch.update(ref.doc(swapQuery.docs[0].id), { urutan: urutanSekarang });
+    batch.update(ref.doc(id), { urutan: urutanBaru });
+    await batch.commit();
+}
+
+async function playSekarang(id) {
+    await db.collection("config").doc("playlist").update({ activeContentId: id, forcePlay: Date.now() });
+    alert("Sinyal 'Play' dikirim ke monitor.");
+}
+
+async function deleteMedia(id) {
+    if(confirm("Hapus konten ini secara permanen?")) {
+        await db.collection("portal_media").doc(id).delete();
+    }
+}
+
+async function saveGlobalConfig() {
+    const mode = document.getElementById('modePutar').value;
+    await db.collection("config").doc("playlist").set({ mode: mode }, { merge: true });
+    alert("Mode putar berhasil disimpan.");
+}
+
+window.onload = loadMedia;
 </script>
 </body>
 </html>
