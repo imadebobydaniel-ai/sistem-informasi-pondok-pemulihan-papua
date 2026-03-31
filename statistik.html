@@ -32,18 +32,18 @@
         .progress-group-top { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #eee; }
         .text-orange { color: var(--orange) !important; }
         .bg-orange { background-color: var(--orange) !important; }
- 
+
         .blood-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .blood-item:hover { background: #fff5f5; }
         .count-darah { color: var(--merah-absen); font-size: 14px; }
         .count-darah b { font-size: 16px; }
- 
+
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(3px); }
         .popup { background: var(--putih); width: 100%; max-width: 350px; border-radius: 20px; padding: 20px; position: relative; border-top: 6px solid var(--emas); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .close-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #999; font-weight: bold; }
         .nama-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
         .modal-body { max-height: 300px; overflow-y: auto; margin-top: 15px; }
- 
+
         .sla-value { background: #f9f9f9; padding: 5px 10px; border-radius: 6px; font-size: 12px; color: var(--biru-tua); font-weight: bold; border: 1px solid #eee; }
         .btn-back { display: block; text-align: center; padding: 14px; background: white; color: var(--biru-utama); text-decoration: none; font-weight: bold; border-radius: 12px; border: 1px solid #ddd; margin-top: 10px; font-size: 13px; width: 100%; box-sizing: border-box; }
         
@@ -51,7 +51,7 @@
     </style>
 </head>
 <body>
- 
+
 <div class="mobile-wrapper">
     <div class="card">
         <div class="card-header"><i class="fa-solid fa-book-bible"></i> CAPAIAN BACA ALKITAB</div>
@@ -79,7 +79,7 @@
             <div class="progress-bar"><div id="bar-alkitab-komsel" class="progress-fill" style="background: var(--biru-utama);"></div></div>
         </div>
     </div>
- 
+
     <div class="card">
         <div class="card-header" style="border-bottom-color: var(--success);"><i class="fa-solid fa-clipboard-user" style="color:var(--success)"></i> KEHADIRAN JC (REAL-TIME)</div>
         <div class="flex-row">
@@ -106,7 +106,7 @@
             <div class="progress-bar"><div id="bar-hadir-jc" class="progress-fill" style="background: var(--success);"></div></div>
         </div>
     </div>
- 
+
     <div class="card">
         <div class="card-header" style="border-bottom-color: var(--merah-absen);"><i class="fa-solid fa-user-xmark" style="color:var(--merah-absen)"></i> KETIDAKHADIRAN</div>
         <div class="flex-row">
@@ -133,7 +133,7 @@
             <div class="progress-bar"><div id="bar-izin-jc" class="progress-fill" style="background: var(--merah-absen);"></div></div>
         </div>
     </div>
- 
+
     <div class="card">
         <div class="card-header" style="border-bottom-color: var(--emas-doa);"><i class="fa-solid fa-hands-praying" style="color:var(--emas-doa)"></i> DOA KOMSEL</div>
         <div class="flex-row">
@@ -154,7 +154,7 @@
             <div class="progress-bar"><div id="bar-doa-sla-jc" class="progress-fill" style="background: var(--biru-tua);"></div></div>
         </div>
     </div>
- 
+
     <div class="card">
         <div class="card-header"><i class="fa-solid fa-droplet" style="color:red"></i> GOLONGAN DARAH (GLOBAL)</div>
         <div id="darah-list">
@@ -164,10 +164,10 @@
             <div class="blood-item" onclick="bukaPopupNamaGoldar('AB')"><span>Tipe AB</span><span class="count-darah"><b id="count-darah-ab">0</b> Orang</span></div>
         </div>
     </div>
- 
+
     <a href="menu.html" class="btn-back">← KEMBALI KE MENU UTAMA</a>
 </div>
- 
+
 <div id="pop-detail-nama-darah" class="overlay">
     <div class="popup">
         <span class="close-btn" onclick="tutupPopupDarah()">&times;</span>
@@ -176,10 +176,10 @@
         <div id="list-nama-darah" class="modal-body"></div>
     </div>
 </div>
- 
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
- 
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -191,15 +191,16 @@
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
- 
+
     let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
 
     function getStartDate(monthsBack) {
         let d = new Date();
         d.setMonth(d.getMonth() - monthsBack);
+        d.setHours(0,0,0,0);
         return d; 
     }
- 
+
     function updateStatistikBar(textId, barId, value) {
         const elText = document.getElementById(textId);
         const elBar = document.getElementById(barId);
@@ -226,8 +227,8 @@
             document.getElementById("bar-laporan-orang-alkitab").style.width = Math.min((jmlLapor/50)*100, 100) + "%";
         }, err => console.error("Error Alkitab:", err));
     }
- 
-    // --- SYNC KEHADIRAN (NEW) ---
+
+    // --- SYNC KEHADIRAN (HADIR) ---
     async function syncStatistikHadir() {
         const jcHdr = document.getElementById("select-jc-laporan").value;
         const blnHdr = parseInt(document.getElementById("select-periode-laporan").value);
@@ -245,15 +246,15 @@
             document.getElementById("bar-laporan-orang-hadir").style.width = Math.min(persen, 100) + "%";
         }, err => console.error("Error Hadir:", err));
     }
- 
-    // --- SYNC KETIDAKHADIRAN (NEW) ---
+
+    // --- SYNC KETIDAKHADIRAN (IZIN/ALPHA/TIDAK HADIR) ---
     async function syncStatistikIzin() {
         const jcIz = document.getElementById("select-jc-izin").value;
         const blnIz = parseInt(document.getElementById("select-periode-izin").value);
 
         db.collection("kehadiran")
           .where("komsel", "==", jcIz)
-          .where("status", "in", ["TIDAK HADIR", "IZIN", "ALPHA"]) 
+          .where("status", "in", ["TIDAK HADIR", "IZIN", "ALPHA", "Sakit"]) 
           .where("tanggal", ">=", getStartDate(blnIz))
           .onSnapshot(snap => {
             const jml = snap.size;
@@ -264,7 +265,7 @@
             document.getElementById("bar-laporan-orang-izin").style.width = Math.min(persen, 100) + "%";
         }, err => console.error("Error Izin:", err));
     }
- 
+
     // --- SYNC DOA ---
     function syncStatistikDoa() {
         const jcDoa = document.getElementById('select-jc-doa').value;
@@ -283,7 +284,7 @@
             document.getElementById('bar-doa-sla-jc').style.width = (terjawab > 0 ? "20%" : "0%");
         });
     }
- 
+
     // --- SYNC GOLONGAN DARAH ---
     function syncGolonganDarah() {
         db.collection("users").onSnapshot((snapshot) => {
@@ -303,16 +304,16 @@
             }
         });
     }
- 
+
     function bukaPopupNamaGoldar(tipe) {
         document.getElementById('modal-title').innerText = "Pemilik Golongan Darah " + tipe;
         const container = document.getElementById('list-nama-darah');
         container.innerHTML = listNamaGoldar[tipe].map((n, i) => `<div class="nama-item">${i+1}. ${n}</div>`).join('') || "Tidak ada data.";
         document.getElementById('pop-detail-nama-darah').style.display = 'flex';
     }
- 
+
     function tutupPopupDarah() { document.getElementById('pop-detail-nama-darah').style.display = 'none'; }
- 
+
     function setupPeriodeDropdown() {
         const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin', 'select-periode-doa'];
         ids.forEach(id => {
@@ -323,7 +324,7 @@
             }
         });
     }
- 
+
     window.onload = () => {
         setupPeriodeDropdown();
         syncStatistikDoa();
