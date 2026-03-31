@@ -37,7 +37,6 @@
 
         .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
         
-        /* Profile & Media Wrapper */
         .top-section-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto 30px auto; height: 220px; overflow: hidden; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
         
         .profile-card { position: absolute; width: 100%; height: 100%; background: linear-gradient(145deg, #ffffff, #e6e6e6); border-radius: 25px; z-index: 5; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 4px solid var(--biru-safir); }
@@ -49,7 +48,6 @@
         #media-display-area { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
         #other-media { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; color: white; text-align: center; }
 
-        /* Inbox Badge & Popup */
         .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
         .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; }
         #email-badge { position: absolute; top: -8px; right: -8px; background: red; color: white; font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none; }
@@ -62,7 +60,6 @@
         .msg-item:active { background-color: #f0f0f0; }
         .badge-baru { background: #ff0000; color: white; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: bold; margin-left: 5px; }
 
-        /* Modals */
         .modal-detail { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5000; justify-content: center; align-items: center; padding: 20px; }
         .modal-detail-content { background: white; width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; animation: zoomIn 0.3s ease; }
         .modal-header { background: var(--biru-tua); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -73,7 +70,6 @@
         .btn-delete-selected { color: #ff0000; cursor: pointer; font-weight: bold; display: none; }
         @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        /* Menu Grid */
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
         .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -130,7 +126,7 @@
     </div>
 
     <header>
-        <div id="running-text" class="running-content">Selamat Datang di Portal Pondok Pemulihan Papua - Melayani Dengan Kasih dan Kuasa</div>
+        <div id="running-text" class="running-content">Selamat Datang di Portal Pondok Pemulihan Papua</div>
     </header>
 
     <div class="container">
@@ -198,6 +194,19 @@
         let ytPlayer; 
         const userEmail = localStorage.getItem("userEmail");
 
+        // --- FUNGSI SINKRONISASI RUNNING TEXT (OTOMATIS) ---
+        function syncRunningText() {
+            db.collection("running_text").orderBy("timestamp", "desc").limit(1).onSnapshot(snapshot => {
+                if (!snapshot.empty) {
+                    const data = snapshot.docs[0].data();
+                    const textElement = document.getElementById("running-text");
+                    if (textElement) {
+                        textElement.innerText = data.isi || "Selamat Datang di Pondok Pemulihan Papua";
+                    }
+                }
+            });
+        }
+
         // --- MEDIA PLAYER LOGIC ---
         function onYouTubeIframeAPIReady() {
             initMediaPlayer();
@@ -213,7 +222,6 @@
                     const type = data.tipe || "video_youtube";
                     const content = data.url || "";
                     
-                    // Reset View
                     otherMedia.style.display = 'none';
                     ytContainer.style.display = 'none';
                     otherMedia.innerHTML = '';
@@ -392,8 +400,8 @@
             updateTime(); 
             setInterval(updateTime, 1000); 
             syncUser(); 
+            syncRunningText(); // Aktifkan sinkronisasi teks otomatis
 
-            // Logic Geser Profile
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
             btnToggle.addEventListener('click', () => {
