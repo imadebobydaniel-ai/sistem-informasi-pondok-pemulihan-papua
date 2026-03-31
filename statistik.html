@@ -207,27 +207,39 @@
         if(elBar) elBar.style.width = Math.min(value, 100) + "%";
     }
 
+    // FUNGSI ALKITAB YANG SUDAH DIGABUNG & DIPERBAIKI
     async function syncStatistikAlkitab() {
         const jcAlk = document.getElementById("select-komsel-alkitab").value;
         const blnAlk = parseInt(document.getElementById("select-periode-alkitab").value);
-        db.collection("laporan_bacaan").where("komsel", "==", jcAlk).where("tanggal", ">=", getStartDate(blnAlk))
-         .onSnapshot(snap => {
+        
+        db.collection("laporan_bacaan")
+          .where("komsel", "==", jcAlk) 
+          .where("tanggal", ">=", getStartDate(blnAlk))
+          .onSnapshot(snap => {
             let userUnik = new Set();
-            snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
+            snap.forEach(doc => { 
+                const data = doc.data();
+                if(data.nama) userUnik.add(data.nama.trim()); 
+            });
+            
             const jmlLapor = userUnik.size;
             document.getElementById("text-laporan-orang-alkitab").innerText = snap.size + " Laporan";
             document.getElementById("progres-komsel-text-alkitab").innerText = jmlLapor + " Orang Melapor";
+            
             const persen = ((jmlLapor / 50) * 100).toFixed(1);
             updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', persen);
-            document.getElementById("bar-laporan-orang-alkitab").style.width = Math.min((jmlLapor/50)*100, 100) + "%";
-        }, err => console.error("Error Alkitab:", err));
+            
+            const barAtas = document.getElementById("bar-laporan-orang-alkitab");
+            if(barAtas) barAtas.style.width = Math.min(persen, 100) + "%";
+        }, err => {
+            console.error("Error Alkitab:", err);
+        });
     }
 
     async function syncStatistikHadir() {
         const jcHdr = document.getElementById("select-jc-laporan").value;
         const blnHdr = parseInt(document.getElementById("select-periode-laporan").value);
 
-        // SUDAH DIPERBAIKI: Menggunakan field 'jc' sesuai database
         db.collection("kehadiran").where("jc", "==", jcHdr).where("status", "==", "HADIR").where("tanggal", ">=", getStartDate(blnHdr))
          .onSnapshot(snap => {
             const jml = snap.size;
@@ -243,7 +255,6 @@
         const jcIz = document.getElementById("select-jc-izin").value;
         const blnIz = parseInt(document.getElementById("select-periode-izin").value);
 
-        // SUDAH DIPERBAIKI: Menggunakan field 'jc' sesuai database
         db.collection("kehadiran").where("jc", "==", jcIz).where("status", "==", "TIDAK HADIR").where("tanggal", ">=", getStartDate(blnIz))
          .onSnapshot(snap => {
             const jml = snap.size;
