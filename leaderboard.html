@@ -43,6 +43,20 @@
             overflow: hidden;
         }
 
+        /* Ikon Info Pojok Kiri */
+        .info-icon {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            font-size: 20px;
+            color: var(--biru-safir);
+            cursor: pointer;
+            opacity: 0.7;
+            transition: 0.3s;
+            z-index: 10;
+        }
+        .info-icon:hover { opacity: 1; transform: scale(1.1); }
+
         h2 { color: var(--biru-tua); font-size: 20px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; }
         .info-sub { color: #888; font-size: 13px; font-weight: 600; margin-bottom: 25px; }
 
@@ -146,6 +160,52 @@
             background: rgba(255,255,255,0.8); display: flex; flex-direction:column;
             justify-content: center; align-items: center; z-index: 2000;
         }
+
+        /* Modal Popup Transparan */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 51, 102, 0.4); 
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            width: 100%;
+            max-width: 400px;
+            padding: 25px;
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            text-align: left;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-content h3 { color: var(--biru-tua); margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .modal-body ul { padding-left: 20px; color: #444; margin: 15px 0; }
+        .modal-body li { margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
+        
+        .btn-close {
+            width: 100%;
+            background: var(--biru-tua);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            font-weight: 800;
+            margin-top: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,51,102,0.2);
+        }
     </style>
 </head>
 <body>
@@ -155,8 +215,32 @@
     <p style="margin-top: 15px; font-weight: bold;">Menghitung Skor JC...</p>
 </div>
 
+<div id="infoModal" class="modal-overlay" onclick="toggleModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3><i class="fas fa-info-circle" style="color: var(--biru-safir);"></i> Sistem Poin</h3>
+        <hr style="border: 0; border-top: 1px solid #eee;">
+        <div class="modal-body">
+            <p style="font-size: 14px; font-weight: bold; color: var(--biru-tua);">Cara Poin Dihitung:</p>
+            <ul>
+                <li><strong>Ibadah Raya / Arso 1:</strong> +10 Poin</li>
+                <li><strong>Laporan Komsel / Gabungan / Doa:</strong> +8 Poin</li>
+                <li><strong>Kelas Dasar (KD):</strong> +10 Poin</li>
+                <li><strong>Laporan Baca Alkitab:</strong> +5 Poin</li>
+            </ul>
+            <p style="font-size: 12px; color: #777; font-style: italic; background: #f9f9f9; padding: 10px; border-radius: 10px;">
+                * Poin otomatis terakumulasi jika status kegiatan adalah "HADIR" atau "SELESAI".
+            </p>
+        </div>
+        <button class="btn-close" onclick="toggleModal()">MENGERTI</button>
+    </div>
+</div>
+
 <div class="container">
     <div class="card">
+        <div class="info-icon" onclick="toggleModal()">
+            <i class="fas fa-info-circle"></i>
+        </div>
+
         <h2><i class="fas fa-trophy" style="color: var(--emas-lux);"></i> Leaderboard</h2>
         <p class="info-sub" id="current-month">Periode: Memuat...</p>
 
@@ -183,8 +267,7 @@
         </div>
     </div>
 
-    <div id="rank-list" class="rank-list">
-        </div>
+    <div id="rank-list" class="rank-list"></div>
 
     <div class="btn-back-container">
         <a href="menu.html" class="btn-back"><i class="fas fa-home"></i> KEMBALI KE MENU</a>
@@ -205,13 +288,20 @@
     const db = firebase.firestore();
     let myChart;
 
+    // Fungsi Toggle Modal
+    function toggleModal() {
+        const modal = document.getElementById('infoModal');
+        if (modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        } else {
+            modal.style.display = 'flex';
+        }
+    }
+
     function selebrasiJuara() {
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#D4AF37', '#003366', '#FFFFFF'] });
     }
 
-    // ==========================================
-    // LOGIKA PERHITUNGAN POIN GABUNGAN
-    // ==========================================
     async function syncLeaderboard() {
         document.getElementById('loading-overlay').style.display = 'flex';
         try {
@@ -228,14 +318,11 @@
                 { nama: "laporan_bacaan", poin: 5 }
             ];
 
-            // Ambil data dari semua koleksi
             await Promise.all(koleksiPoin.map(async (item) => {
                 const snapshot = await db.collection(item.nama).get();
                 snapshot.forEach((doc) => {
                     let d = doc.data();
                     let namaJC = d.jc || d.komsel || d.nama_jc || "Umum";
-                    
-                    // Standarisasi Nama JC
                     namaJC = namaJC.trim().toUpperCase();
                     if (!namaJC.startsWith("JC") && namaJC !== "UMUM") namaJC = "JC " + namaJC;
 
@@ -248,13 +335,11 @@
                 });
             }));
 
-            // Ubah ke Array & Urutkan
             let urutan = Object.keys(skorJC).map(name => ({
                 nama: name,
                 poin: skorJC[name]
             })).sort((a, b) => b.poin - a.poin);
 
-            // Simpan ke Firebase untuk konsumsi UI
             const batch = db.batch();
             urutan.forEach((item, index) => {
                 let docRef = db.collection("peringkat_jc").doc(item.nama);
@@ -280,7 +365,6 @@
     }
 
     function tampilkanData(urutan) {
-        // Update Podium
         if(urutan[0]) {
             document.getElementById('top1-name').innerText = urutan[0].nama;
             document.getElementById('top1-val').innerText = urutan[0].poin + " Pts";
@@ -294,7 +378,6 @@
             document.getElementById('top3-val').innerText = urutan[2].poin + " Pts";
         }
 
-        // Update List
         let html = "";
         urutan.forEach((item, index) => {
             const isTop = index < 3 ? 'top-three' : '';
@@ -306,7 +389,6 @@
         });
         document.getElementById('rank-list').innerHTML = html;
 
-        // Update Grafik
         const labels = urutan.map(i => i.nama);
         const values = urutan.map(i => i.poin);
         tampilkanGrafik(labels, values);
