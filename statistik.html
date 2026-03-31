@@ -194,10 +194,11 @@
  
     let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
 
+    // Fungsi pencarian waktu disesuaikan untuk field 'tanggal'
     function getStartDate(monthsBack) {
         let d = new Date();
         d.setMonth(d.getMonth() - monthsBack);
-        return firebase.firestore.Timestamp.fromDate(d);
+        return d; // Menggunakan objek Date murni agar sinkron dengan index 'tanggal'
     }
  
     function updateStatistikBar(textId, barId, value) {
@@ -211,7 +212,8 @@
         const jcAlk = document.getElementById("select-komsel-alkitab").value;
         const blnAlk = parseInt(document.getElementById("select-periode-alkitab").value);
         
-        db.collection("laporan_bacaan").where("jc", "==", jcAlk).where("timestamp", ">=", getStartDate(blnAlk))
+        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'komsel' & 'tanggal'
+        db.collection("laporan_bacaan").where("komsel", "==", jcAlk).where("tanggal", ">=", getStartDate(blnAlk))
           .onSnapshot(snap => {
             let userUnik = new Set();
             snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
@@ -228,7 +230,8 @@
         const jcHdr = document.getElementById("select-jc-laporan").value;
         const blnHdr = parseInt(document.getElementById("select-periode-laporan").value);
 
-        db.collection("kehadiran").where("jc", "==", jcHdr).where("status", "==", "HADIR").where("timestamp", ">=", getStartDate(blnHdr))
+        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'komsel' & 'tanggal'
+        db.collection("kehadiran").where("komsel", "==", jcHdr).where("status", "==", "HADIR").where("tanggal", ">=", getStartDate(blnHdr))
           .onSnapshot(snap => {
             const jml = snap.size;
             document.getElementById("text-laporan-orang-hadir").innerText = jml + " Orang";
@@ -243,7 +246,8 @@
         const jcIz = document.getElementById("select-jc-izin").value;
         const blnIz = parseInt(document.getElementById("select-periode-izin").value);
 
-        db.collection("kehadiran").where("jc", "==", jcIz).where("status", "==", "TIDAK HADIR").where("timestamp", ">=", getStartDate(blnIz))
+        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'komsel' & 'tanggal'
+        db.collection("kehadiran").where("komsel", "==", jcIz).where("status", "==", "TIDAK HADIR").where("tanggal", ">=", getStartDate(blnIz))
           .onSnapshot(snap => {
             const jml = snap.size;
             document.getElementById("text-laporan-orang-izin").innerText = jml + " Orang";
@@ -258,7 +262,8 @@
         const jcDoa = document.getElementById('select-jc-doa').value;
         const blnDoa = parseInt(document.getElementById("select-periode-doa").value);
 
-        db.collection("laporan_doa").where("jc", "==", jcDoa).where("timestamp", ">=", getStartDate(blnDoa))
+        // MENGGUNAKAN NAMA FIELD SESUAI INDEX ANDA: 'jc' & 'tglInput'
+        db.collection("laporan_doa").where("jc", "==", jcDoa).where("tglInput", ">=", getStartDate(blnDoa))
           .onSnapshot(snap => {
             let terjawab = 0;
             snap.forEach(doc => { if(doc.data().terjawab === true) terjawab++; });
