@@ -66,6 +66,7 @@
         .badge { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
         .badge-success { background: #d4edda; color: #155724; }
         .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #e2e3e5; color: #383d41; }
 
         @media print {
             .tab-menu, #loading, .action-btn, .fas.fa-arrow-left { display: none !important; }
@@ -91,6 +92,7 @@
         <button class="tab-btn" onclick="switchTab('bacaan', this)"><i class="fas fa-bible"></i> Baca Alkitab</button>
         <button class="tab-btn" onclick="switchTab('doa_komsel', this)"><i class="fas fa-hands-praying"></i> Doa Komsel</button>
         <button class="tab-btn" onclick="switchTab('peringkat_jc', this)"><i class="fas fa-trophy"></i> Peringkat JC</button>
+        <button class="tab-btn" onclick="switchTab('saran', this)"><i class="fas fa-comment-dots"></i> Saran & Tiket</button>
         
         <div style="margin-left: auto; display: flex; gap: 8px;">
             <button class="action-btn btn-pdf" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i> Export</button>
@@ -100,7 +102,7 @@
 
     <div class="stats-grid">
         <div class="chart-card">
-            <div class="chart-title">Proporsi Status Laporan</div>
+            <div class="chart-title" id="pie-title">Proporsi Status Laporan</div>
             <div style="width: 100%; height: 250px;"><canvas id="pieChart"></canvas></div>
         </div>
         <div class="chart-card">
@@ -108,7 +110,7 @@
             <div style="width: 100%; height: 250px;"><canvas id="lineChart"></canvas></div>
         </div>
         <div class="chart-card">
-            <div class="chart-title">Distribusi Per JC/Komsel</div>
+            <div class="chart-title" id="bar-title">Distribusi Per JC/Komsel</div>
             <div style="width: 100%; height: 250px;"><canvas id="barChart"></canvas></div>
         </div>
     </div>
@@ -151,7 +153,8 @@
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
         bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'Kitab', 'Pasal', 'Tanggal', 'Pesan'] },
         doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
-        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] }
+        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
+        saran: { title: 'Saran & Tiket Masuk', col: 'saran_masuk', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
     function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
@@ -161,6 +164,9 @@
         activeType = type;
         const cfg = menuConfig[type];
         document.getElementById('table-title').innerText = "Detail: " + cfg.title;
+        document.getElementById('pie-title').innerText = type === 'saran' ? "Kategori Masukan" : "Proporsi Status Laporan";
+        document.getElementById('bar-title').innerText = type === 'saran' ? "Volume per Pengirim" : "Distribusi Per JC/Komsel";
+
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
 
         db.collection(cfg.col).orderBy("tanggal", "desc").limit(50).onSnapshot((snapshot) => {
@@ -169,30 +175,45 @@
 
             snapshot.forEach((doc) => {
                 const d = doc.data();
-                const jc = d.jc || d.komsel || d.nama_jc || "Umum";
-                const tgl = d.tanggal || d.tglInput || d.periode || "-";
-                const status = (d.status || d.status_doa || d.kitab || "Hadir").toUpperCase();
 
-                stats.pie[status] = (stats.pie[status] || 0) + 1;
-                stats.line[tgl] = (stats.line[tgl] || 0) + 1;
-                stats.bar[jc] = (stats.bar[jc] || 0) + 1;
+                if(type === 'saran') {
+                    const kategori = d.kategori || "Saran & Masukan";
+                    const tgl = d.tanggal || "-";
+                    const pengirim = d.pengirim || d.nama || "Anonim";
 
-                if(type === 'bacaan') {
-                    html += `<tr><td>${d.nama}</td><td>${d.kitab}</td><td>${d.pasal}</td><td>${d.tanggal}</td><td>${d.pesan || '-'}</td></tr>`;
-                } else if(type === 'doa_komsel') {
-                    html += `<tr><td>${d.nama}</td><td>${jc}</td><td>${tgl}</td><td><span class="badge badge-success">${status}</span></td><td>${d.doa || '-'}</td></tr>`;
-                } else if(type === 'peringkat_jc') {
-                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin} Poin</td><td>${d.periode}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
-                } else {
-                    html += `<tr><td><b>${d.nama || d.nama_jc}</b></td><td>${jc}</td><td>${tgl}</td><td><span class="badge ${status === 'HADIR' || status === 'SELESAI' ? 'badge-success' : 'badge-danger'}">${status}</span></td><td>${d.alasan || d.materi || d.lokasi || '-'}</td></tr>`;
+                    stats.pie[kategori] = (stats.pie[kategori] || 0) + 1;
+                    stats.line[tgl] = (stats.line[tgl] || 0) + 1;
+                    stats.bar[pengirim] = (stats.bar[pengirim] || 0) + 1;
+
+                    html += `<tr><td><b>${pengirim}</b></td><td>${d.komsel || '-'}</td><td><span class="badge badge-info">${kategori}</span></td><td>${d.pesan || d.isi || '-'}</td><td>${tgl}</td></tr>`;
+                } 
+                else if(type === 'bacaan') {
+                    const tgl = d.tanggal || "-";
+                    stats.pie[d.kitab] = (stats.pie[d.kitab] || 0) + 1;
+                    stats.line[tgl] = (stats.line[tgl] || 0) + 1;
+                    html += `<tr><td>${d.nama}</td><td>${d.kitab}</td><td>${d.pasal}</td><td>${tgl}</td><td>${d.pesan || '-'}</td></tr>`;
+                } 
+                else {
+                    const jc = d.jc || d.komsel || d.nama_jc || "Umum";
+                    const tgl = d.tanggal || d.tglInput || d.periode || "-";
+                    const status = (d.status || d.status_doa || "Hadir").toUpperCase();
+
+                    stats.pie[status] = (stats.pie[status] || 0) + 1;
+                    stats.line[tgl] = (stats.line[tgl] || 0) + 1;
+                    stats.bar[jc] = (stats.bar[jc] || 0) + 1;
+
+                    if(type === 'doa_komsel') {
+                        html += `<tr><td>${d.nama}</td><td>${jc}</td><td>${tgl}</td><td><span class="badge badge-success">${status}</span></td><td>${d.doa || '-'}</td></tr>`;
+                    } else if(type === 'peringkat_jc') {
+                        html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin} Poin</td><td>${d.periode}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
+                    } else {
+                        html += `<tr><td><b>${d.nama || d.nama_jc}</b></td><td>${jc}</td><td>${tgl}</td><td><span class="badge ${status === 'HADIR' || status === 'SELESAI' ? 'badge-success' : 'badge-danger'}">${status}</span></td><td>${d.alasan || d.materi || d.lokasi || '-'}</td></tr>`;
+                    }
                 }
             });
 
             document.getElementById('data-list').innerHTML = html;
             refreshCharts(stats);
-            showLoading(false);
-        }, (error) => {
-            console.error("Error loading data: ", error);
             showLoading(false);
         });
     }
@@ -213,9 +234,9 @@
             });
         };
 
-        createChart('pie', 'doughnut', Object.keys(stats.pie), Object.values(stats.pie), ['#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1'], 'Status');
+        createChart('pie', 'doughnut', Object.keys(stats.pie), Object.values(stats.pie), ['#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1'], 'Kategori/Status');
         createChart('line', 'line', Object.keys(stats.line).reverse().slice(-7), Object.values(stats.line).reverse().slice(-7), 'rgba(0, 123, 255, 0.1)', 'Tren');
-        createChart('bar', 'bar', Object.keys(stats.bar), Object.values(stats.bar), '#6f42c1', 'Volume');
+        createChart('bar', 'bar', Object.keys(stats.bar).slice(0,10), Object.values(stats.bar).slice(0,10), '#6f42c1', 'Volume');
     }
 
     function switchTab(type, btn) {
@@ -234,6 +255,5 @@
 
     window.onload = () => loadData('ibadah');
 </script>
-
 </body>
 </html>
