@@ -306,6 +306,29 @@ const firebaseConfig = {
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 
+// --- FUNGSI SYNC RUNNING TEXT DARI PORTAL MEDIA ---
+function loadRunningText() {
+    db.collection("portal_media")
+      .where("tipe", "==", "teks")
+      .orderBy("urutan", "asc")
+      .limit(1)
+      .onSnapshot(snapshot => {
+        const runningTextElement = document.getElementById('running-text');
+        // Pastikan elemen 'running-text' ada di HTML sebelum mencoba mengubahnya
+        if (!runningTextElement) return;
+
+        if (!snapshot.empty) {
+            const data = snapshot.docs[0].data();
+            const teksBaru = data.isi_artikel || data.url || "Selamat Datang di Pondok Pemulihan Papua";
+            runningTextElement.innerText = teksBaru;
+        } else {
+            runningTextElement.innerText = "Selamat Datang di Pondok Pemulihan Papua";
+        }
+    }, error => {
+        console.error("Error running text:", error);
+    });
+}
+
 // 1. FUNGSI TOGGLE INPUT
 function toggleInputFields() {
     const tipe = document.getElementById('tipe_media').value;
@@ -341,7 +364,7 @@ async function setSyncStatus(isActive) {
     }
 }
 
-// 3. FUNGSI UPLOAD (DENGAN PERBAIKAN LOGIKA YOUTUBE)
+// 3. FUNGSI UPLOAD
 async function uploadKePortal() {
     const btn = document.getElementById('btnPublish');
     const judul = document.getElementById('judul').value;
@@ -352,15 +375,11 @@ async function uploadKePortal() {
 
     if(!judul) return alert("Judul wajib diisi!");
 
-    // --- LOGIKA PENANGANAN URL ---
-    
-    // Google Drive Handler
     if (urlValue.includes('drive.google.com')) {
         let fileId = urlValue.split('/d/')[1]?.split('/')[0];
         if (fileId) urlValue = `https://drive.google.com/uc?export=download&id=${fileId}`;
     }
 
-    // YouTube Handler (Support Shorts, Mobile, & Desktop)
     if (tipe === 'video_youtube' && urlValue) {
         let videoId = "";
         if (urlValue.includes('v=')) {
@@ -374,7 +393,6 @@ async function uploadKePortal() {
         }
 
         if (videoId) {
-            // Format Embed agar Autoplay & Mute (Syarat browser agar video jalan otomatis)
             urlValue = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&loop=1&playlist=${videoId}&enablejsapi=1`;
         } else {
             return alert("Link YouTube tidak valid!");
@@ -396,7 +414,6 @@ async function uploadKePortal() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // Reset Form
         document.getElementById('judul').value = "";
         document.getElementById('url_media').value = "";
         document.getElementById('isi_artikel').value = "";
@@ -411,7 +428,6 @@ async function uploadKePortal() {
 
 // 4. FUNGSI LOAD DAFTAR MEDIA & CONFIG
 function loadMedia() {
-    // Load Config Realtime
     db.collection("config").doc("running_text").onSnapshot(doc => {
         if(doc.exists) {
             const data = doc.data();
@@ -443,7 +459,6 @@ function loadMedia() {
         if(doc.exists && doc.data().mode) document.getElementById('modePutar').value = doc.data().mode;
     });
 
-    // Load Playlist Realtime
     db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
         const list = document.getElementById('mediaList');
         list.innerHTML = "";
@@ -513,7 +528,11 @@ async function saveGlobalConfig() {
     alert("Konfigurasi disimpan.");
 }
 
-window.onload = loadMedia;
+// Jalankan fungsi saat halaman dimuat
+window.onload = () => {
+    loadMedia();
+    loadRunningText();
+};
 </script>
 </body>
 </html>
