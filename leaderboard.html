@@ -43,6 +43,17 @@
             overflow: hidden;
         }
 
+        /* Animasi Pulse untuk Juara 1 */
+        .rank-1 {
+            animation: pulse-gold 2s infinite;
+        }
+
+        @keyframes pulse-gold {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
         /* Ikon Info Pojok Kiri */
         .info-icon {
             position: absolute;
@@ -161,7 +172,6 @@
             justify-content: center; align-items: center; z-index: 2000;
         }
 
-        /* Modal Popup Transparan */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -190,10 +200,6 @@
             to { transform: translateY(0); opacity: 1; }
         }
 
-        .modal-content h3 { color: var(--biru-tua); margin-top: 0; display: flex; align-items: center; gap: 10px; }
-        .modal-body ul { padding-left: 20px; color: #444; margin: 15px 0; }
-        .modal-body li { margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
-        
         .btn-close {
             width: 100%;
             background: var(--biru-tua);
@@ -204,7 +210,6 @@
             font-weight: 800;
             margin-top: 10px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,51,102,0.2);
         }
     </style>
 </head>
@@ -221,15 +226,12 @@
         <hr style="border: 0; border-top: 1px solid #eee;">
         <div class="modal-body">
             <p style="font-size: 14px; font-weight: bold; color: var(--biru-tua);">Cara Poin Dihitung:</p>
-            <ul>
+            <ul style="padding-left: 20px; font-size: 14px;">
                 <li><strong>Ibadah Raya / Arso 1:</strong> +10 Poin</li>
                 <li><strong>Laporan Komsel / Gabungan / Doa:</strong> +8 Poin</li>
                 <li><strong>Kelas Dasar (KD):</strong> +10 Poin</li>
                 <li><strong>Laporan Baca Alkitab:</strong> +5 Poin</li>
             </ul>
-            <p style="font-size: 12px; color: #777; font-style: italic; background: #f9f9f9; padding: 10px; border-radius: 10px;">
-                * Poin otomatis terakumulasi jika status kegiatan adalah "HADIR" atau "SELESAI".
-            </p>
         </div>
         <button class="btn-close" onclick="toggleModal()">MENGERTI</button>
     </div>
@@ -288,18 +290,54 @@
     const db = firebase.firestore();
     let myChart;
 
-    // Fungsi Toggle Modal
     function toggleModal() {
         const modal = document.getElementById('infoModal');
-        if (modal.style.display === 'flex') {
-            modal.style.display = 'none';
-        } else {
-            modal.style.display = 'flex';
-        }
+        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
     }
 
+    // FUNGSI SELEBRASI MERIAH
     function selebrasiJuara() {
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#D4AF37', '#003366', '#FFFFFF'] });
+        const duration = 5 * 1000; 
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 4000 };
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        const interval = setInterval(function() {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            const particleCount = 50 * (timeLeft / duration);
+            
+            // Efek Bintang Meriah (Emas)
+            confetti(Object.assign({}, defaults, { 
+                particleCount, 
+                origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+                shapes: ['star'],
+                colors: ['#D4AF37', '#FFD700']
+            }));
+
+            // Efek Bunga & Pita (Warna-warni)
+            confetti(Object.assign({}, defaults, { 
+                particleCount, 
+                origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+                shapes: ['circle', 'square'],
+                colors: ['#ff0a54', '#ff477e', '#ff7096', '#0056b3', '#90e0ef'] 
+            }));
+        }, 250);
+
+        // Ledakan besar pembuka
+        confetti({
+            particleCount: 200,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ['#D4AF37', '#003366', '#FFFFFF', '#FF0000']
+        });
     }
 
     async function syncLeaderboard() {
@@ -355,6 +393,8 @@
             
             tampilkanData(urutan);
             document.getElementById('current-month').innerText = `Periode: ${periodeSekarang}`;
+            
+            // Jalankan selebrasi setelah data muncul
             selebrasiJuara();
 
         } catch (error) {
