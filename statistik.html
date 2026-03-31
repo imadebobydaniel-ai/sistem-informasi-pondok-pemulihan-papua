@@ -205,32 +205,38 @@
             return 1;
         }
     }
+async function syncStatistikAlkitab() {
+    // Ambil nilai dari dropdown dan hilangkan spasi tambahan
+    const jcTerpilih = document.getElementById("select-komsel-alkitab").value.trim();
+    
+    db.collection("laporan_bacaan").onSnapshot(snap => {
+        let totalLaporan = 0;
+        let userUnik = new Set();
 
-    // 1. SYNC ALKITAB
-    async function syncStatistikAlkitab() {
-        const jc = document.getElementById("select-komsel-alkitab").value;
-        const totalAnggota = await getTotalAnggota(jc);
+        snap.forEach(doc => {
+            const data = doc.data();
+            // Normalisasi data dari database: ubah ke huruf besar dan buang spasi berlebih
+            const jcDatabase = (data.jc || "").toString().trim();
 
-        // Filter berdasarkan jc
-        db.collection("laporan_bacaan")
-            .where("jc", "==", jc)
-            .onSnapshot(snap => {
-                const count = snap.size;
-                console.log(`[DEBUG] Laporan Alkitab ${jc}: ${count}`);
-                
-                document.getElementById("text-laporan-orang-alkitab").innerText = count + " Orang";
-                document.getElementById("progres-komsel-text-alkitab").innerText = count + " Orang Melapor";
-                
-                // Progress berdasarkan total anggota asli di komsel tersebut
-                let realProgress = (count / totalAnggota) * 100;
-                document.getElementById("bar-laporan-orang-alkitab").style.width = Math.min(realProgress, 100) + "%";
-                
-                // Progress terhadap Target Global (100)
-                let targetProgress = (count / 100) * 100;
-                document.getElementById("txt-alkitab-komsel").innerText = targetProgress.toFixed(1) + "%";
-                document.getElementById("bar-alkitab-komsel").style.width = Math.min(targetProgress, 100) + "%";
-            });
-    }
+            if (jcDatabase === jcTerpilih) {
+                totalLaporan++; // Hitung semua baris laporan
+                if (data.nama) userUnik.add(data.nama.trim()); // Hitung orangnya saja
+            }
+        });
+
+        console.log(`[HASIL REAL] Total baris data untuk ${jcTerpilih}: ${totalLaporan}`);
+        
+        // Tampilkan jumlah baris data (Laporan Masuk)
+        document.getElementById("text-laporan-orang-alkitab").innerText = totalLaporan + " Laporan";
+        // Tampilkan jumlah orang yang melapor
+        document.getElementById("progres-komsel-text-alkitab").innerText = userUnik.size + " Orang Melapor";
+        
+        // Update Bar Progress (Target 100)
+        let persen = (totalLaporan / 100) * 100;
+        document.getElementById("txt-alkitab-komsel").innerText = Math.min(persen, 100).toFixed(1) + "%";
+        document.getElementById("bar-alkitab-komsel").style.width = Math.min(persen, 100) + "%";
+    });
+}
 
     // 2. SYNC KEHADIRAN (HADIR & IZIN)
     async function syncKehadiran(tipe) {
