@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Tiket - Dashboard Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .card-stats { border-left: 5px solid #0d6efd; }
+        .sla-urgent { color: #dc3545; font-weight: bold; }
+        .sla-normal { color: #198754; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-primary mb-4 no-print">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1"><i class="fas fa-ticket-alt me-2"></i> Portal Tiket Masuk</span>
+        <a href="admin.html" class="btn btn-light btn-sm"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+    </div>
+</nav>
+
+<div class="container-fluid px-4" id="contentToExport">
+    <div class="row mb-4 no-print">
+        <div class="col-md-3">
+            <div class="card card-stats shadow-sm p-3">
+                <small class="text-muted">Total Tiket</small>
+                <h3 id="totalTiket">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left border-warning shadow-sm p-3" style="border-left: 5px solid #ffc107;">
+                <small class="text-muted">Permohonan Doa</small>
+                <h3 id="countDoa">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left border-danger shadow-sm p-3" style="border-left: 5px solid #dc3545;">
+                <small class="text-muted">Problem Aplikasi</small>
+                <h3 id="countProblem">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left border-success shadow-sm p-3" style="border-left: 5px solid #198754;">
+                <small class="text-muted">Saran & Masukan</small>
+                <h3 id="countSaran">0</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4 no-print">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-2">
+                <select class="form-select w-auto" id="filterKategori">
+                    <option value="">Semua Kategori</option>
+                    <option value="Tiket Permohonan Doa">Tiket Permohonan Doa</option>
+                    <option value="Tiket Problem Aplikasi">Tiket Problem Aplikasi</option>
+                    <option value="Tiket Saran dan Masukan">Tiket Saran dan Masukan</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button onclick="exportPDF()" class="btn btn-danger"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                <button onclick="window.print()" class="btn btn-dark"><i class="fas fa-print"></i> Print</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white font-weight-bold">Daftar Detail Tiket</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tiketTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>No</th>
+                        <th>Kategori</th>
+                        <th>Tanggal Masuk</th>
+                        <th>Tanggal Close</th>
+                        <th>Durasi SLA</th>
+                        <th>Penyelesaian</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tiketData">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+    // Contoh Data (Nanti hubungkan dengan Firebase Firestore Anda)
+    const dataTiket = [
+        { id: 1, kategori: "Tiket Permohonan Doa", tglMasuk: "2026-03-25 08:00", tglClose: "2026-03-25 10:30", solusi: "Didoakan oleh Tim Pendoa", status: "Closed" },
+        { id: 2, kategori: "Tiket Problem Aplikasi", tglMasuk: "2026-03-26 09:00", tglClose: "2026-03-28 15:00", solusi: "Update Patch v1.2", status: "Closed" },
+        { id: 3, kategori: "Tiket Saran dan Masukan", tglMasuk: "2026-03-27 10:00", tglClose: "-", solusi: "-", status: "Open" }
+    ];
+
+    function hitungSLA(masuk, keluar) {
+        if (keluar === "-") return "Sedang Berjalan";
+        const d1 = new Date(masuk);
+        const d2 = new Date(keluar);
+        const diffMs = d2 - d1;
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        return `${diffHrs} Jam ${diffMins} Menit`;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('tiketData');
+        tbody.innerHTML = "";
+        let countDoa = 0, countProb = 0, countSaran = 0;
+
+        dataTiket.forEach((t, index) => {
+            if(t.kategori === "Tiket Permohonan Doa") countDoa++;
+            if(t.kategori === "Tiket Problem Aplikasi") countProb++;
+            if(t.kategori === "Tiket Saran dan Masukan") countSaran++;
+
+            const sla = hitungSLA(t.tglMasuk, t.tglClose);
+            tbody.innerHTML += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><span class="badge bg-info text-dark">${t.kategori}</span></td>
+                    <td>${t.tglMasuk}</td>
+                    <td>${t.tglClose}</td>
+                    <td class="${t.tglClose !== '-' ? 'sla-normal' : 'sla-urgent'}">${sla}</td>
+                    <td>${t.solusi}</td>
+                    <td><span class="badge ${t.status === 'Closed' ? 'bg-success' : 'bg-warning'}">${t.status}</span></td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('totalTiket').innerText = dataTiket.length;
+        document.getElementById('countDoa').innerText = countDoa;
+        document.getElementById('countProblem').innerText = countProb;
+        document.getElementById('countSaran').innerText = countSaran;
+    }
+
+    async function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const element = document.getElementById('contentToExport');
+        
+        await html2canvas(element).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 10, 10, 280, 150);
+            doc.save('Laporan_Tiket_Pondok_Pemulihan.pdf');
+        });
+    }
+
+    window.onload = renderTable;
+</script>
+</body>
+</html>
