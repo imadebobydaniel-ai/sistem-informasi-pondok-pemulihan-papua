@@ -317,7 +317,7 @@ function toggleInputFields() {
     teksContainer.style.display = tipe === 'teks' ? "block" : "none";
 
     if (tipe === 'gambar') labelUrl.innerText = "URL Gambar (Link Direct)";
-    else if (tipe === 'video_youtube') labelUrl.innerText = "Link YouTube (v=...)";
+    else if (tipe === 'video_youtube') labelUrl.innerText = "Link YouTube (Video/Shorts)";
     else if (tipe === 'video_player') labelUrl.innerText = "Link Direct MP4";
     else if (tipe === 'audio_player') labelUrl.innerText = "Link Direct MP3";
 }
@@ -325,9 +325,6 @@ function toggleInputFields() {
 // 2. FUNGSI SINKRONISASI (ON/OFF)
 async function setSyncStatus(isActive) {
     const text = document.getElementById('runningTextInput').value;
-    const btnOn = document.getElementById('btnSyncOn');
-    const btnOff = document.getElementById('btnSyncOff');
-    
     if(!text && isActive) return alert("Isi teks running text terlebih dahulu!");
 
     try {
@@ -338,36 +335,50 @@ async function setSyncStatus(isActive) {
             triggerUpdate: Date.now()
         }, { merge: true });
 
-        if(isActive) {
-            alert("Sinkronisasi Aktif! Monitor akan diperbarui.");
-        } else {
-            alert("Sinkronisasi Dimatikan.");
-        }
+        alert(isActive ? "Sinkronisasi Aktif!" : "Sinkronisasi Dimatikan.");
     } catch (e) {
         alert("Error: " + e.message);
     }
 }
 
-// 3. FUNGSI UPLOAD
+// 3. FUNGSI UPLOAD (DENGAN PERBAIKAN LOGIKA YOUTUBE)
 async function uploadKePortal() {
     const btn = document.getElementById('btnPublish');
     const judul = document.getElementById('judul').value;
     const tipe = document.getElementById('tipe_media').value;
     const durasi = parseInt(document.getElementById('itemDurasi').value) || 10;
-    let urlValue = document.getElementById('url_media').value;
+    let urlValue = document.getElementById('url_media').value.trim();
     const isiTeks = document.getElementById('isi_artikel').value;
 
     if(!judul) return alert("Judul wajib diisi!");
 
-    // Logika Link Google Drive & Youtube
+    // --- LOGIKA PENANGANAN URL ---
+    
+    // Google Drive Handler
     if (urlValue.includes('drive.google.com')) {
         let fileId = urlValue.split('/d/')[1]?.split('/')[0];
         if (fileId) urlValue = `https://drive.google.com/uc?export=download&id=${fileId}`;
     }
 
-    if (tipe === 'video_youtube' && urlValue && (urlValue.includes('youtube.com') || urlValue.includes('youtu.be'))) {
-        let videoId = urlValue.includes('v=') ? urlValue.split('v=')[1].split('&')[0] : urlValue.split('youtu.be/')[1];
-        if (videoId) urlValue = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&playlist=${videoId}&loop=1`;
+    // YouTube Handler (Support Shorts, Mobile, & Desktop)
+    if (tipe === 'video_youtube' && urlValue) {
+        let videoId = "";
+        if (urlValue.includes('v=')) {
+            videoId = urlValue.split('v=')[1].split('&')[0];
+        } else if (urlValue.includes('youtu.be/')) {
+            videoId = urlValue.split('youtu.be/')[1].split('?')[0];
+        } else if (urlValue.includes('shorts/')) {
+            videoId = urlValue.split('shorts/')[1].split('?')[0];
+        } else if (urlValue.includes('embed/')) {
+            videoId = urlValue.split('embed/')[1].split('?')[0];
+        }
+
+        if (videoId) {
+            // Format Embed agar Autoplay & Mute (Syarat browser agar video jalan otomatis)
+            urlValue = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&loop=1&playlist=${videoId}&enablejsapi=1`;
+        } else {
+            return alert("Link YouTube tidak valid!");
+        }
     }
 
     btn.disabled = true;
@@ -376,17 +387,23 @@ async function uploadKePortal() {
     try {
         const snapshot = await db.collection("portal_media").get();
         await db.collection("portal_media").add({
-            judul: judul, tipe: tipe, url: urlValue, isi_artikel: isiTeks,
-            urutan: snapshot.size + 1, durasi: durasi,
+            judul: judul, 
+            tipe: tipe, 
+            url: urlValue, 
+            isi_artikel: isiTeks,
+            urutan: snapshot.size + 1, 
+            durasi: durasi,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
+        // Reset Form
         document.getElementById('judul').value = "";
         document.getElementById('url_media').value = "";
         document.getElementById('isi_artikel').value = "";
         alert("Konten berhasil dipublikasikan!");
-    } catch (e) { alert("Error: " + e.message); }
-    finally {
+    } catch (e) { 
+        alert("Error: " + e.message); 
+    } finally {
         btn.disabled = false;
         btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> Publish Sekarang"; 
     }
@@ -394,7 +411,7 @@ async function uploadKePortal() {
 
 // 4. FUNGSI LOAD DAFTAR MEDIA & CONFIG
 function loadMedia() {
-    // Load Config & Status Sync secara Realtime
+    // Load Config Realtime
     db.collection("config").doc("running_text").onSnapshot(doc => {
         if(doc.exists) {
             const data = doc.data();
@@ -407,12 +424,14 @@ function loadMedia() {
             if(data.isSyncActive) {
                 statusText.innerText = "AKTIF (Sync ON)";
                 statusText.style.color = "var(--success)";
+                btnOn.style.background = "var(--success)";
                 btnOn.innerHTML = "<i class='fa-solid fa-sync fa-spin'></i> Sinkron Berjalan...";
                 btnOn.style.opacity = "1";
                 btnOff.style.opacity = "0.5";
             } else {
                 statusText.innerText = "NON-AKTIF (Sync OFF)";
                 statusText.style.color = "var(--danger)";
+                btnOn.style.background = "#334155";
                 btnOn.innerHTML = "<i class='fa-solid fa-sync'></i> Sync ke Monitor";
                 btnOn.style.opacity = "0.5";
                 btnOff.style.opacity = "1";
@@ -424,6 +443,7 @@ function loadMedia() {
         if(doc.exists && doc.data().mode) document.getElementById('modePutar').value = doc.data().mode;
     });
 
+    // Load Playlist Realtime
     db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
         const list = document.getElementById('mediaList');
         list.innerHTML = "";
@@ -460,7 +480,6 @@ function loadMedia() {
     });
 }
 
-// 5. FUNGSI PENDUKUNG LAINNYA
 async function pindahUrutan(id, arah) {
     const ref = db.collection("portal_media");
     const doc = await ref.doc(id).get();
@@ -481,11 +500,11 @@ async function playSekarang(id) {
     await db.collection("config").doc("playlist").set({ 
         activeContentId: id, forcePlay: Date.now() 
     }, { merge: true });
-    alert("Konten segera dimainkan.");
+    alert("Perintah 'Mainkan Sekarang' dikirim.");
 }
 
 async function deleteMedia(id) {
-    if(confirm("Hapus konten ini?")) await db.collection("portal_media").doc(id).delete();
+    if(confirm("Hapus konten ini dari playlist?")) await db.collection("portal_media").doc(id).delete();
 }
 
 async function saveGlobalConfig() {
