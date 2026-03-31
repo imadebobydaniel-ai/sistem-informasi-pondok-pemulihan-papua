@@ -32,10 +32,7 @@
         .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
         
         header { background: var(--biru-tua); border-bottom: 3px solid var(--hijau-zamrud); padding: 12px 0; overflow: hidden; white-space: nowrap; display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        
-        /* Container untuk membungkus marquee agar rapi */
-        .running-text-container { width: 100%; color: white; font-weight: 900; font-size: 13px; text-transform: uppercase; }
-        marquee { width: 100%; display: block; }
+        .running-content { display: inline-block; padding-left: 100%; animation: marqueeTop 30s linear infinite; font-weight: 900; font-size: 13px; color: white; text-transform: uppercase; }
 
         .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
         
@@ -124,9 +121,7 @@
     </div>
 
     <header>
-        <div class="running-text-container">
-            <marquee id="runningTextDisplay">SELAMAT DATANG | SISTEM INFORMASI INTEGRASI | PONDOK PEMULIHAN PAPUA</marquee>
-        </div>
+        <div id="running-text" class="running-content">Selamat Datang di Pondok Pemulihan Papua</div>
     </header>
 
     <div class="container">
@@ -179,14 +174,13 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // Konfigurasi Firebase (Disatukan untuk efisiensi)
         const firebaseConfig = { 
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-            authDomain: "pondok-pemulihan-papua.firebaseapp.com", 
-            projectId: "pondok-pemulihan-papua", 
-            storageBucket: "pondok-pemulihan-papua.appspot.com", 
-            messagingSenderId: "935408986877", 
-            appId: "1:935408986877:web:86f687986877" 
+            authDomain: "boby-apps-project.firebaseapp.com", 
+            projectId: "boby-apps-project", 
+            storageBucket: "boby-apps-project.appspot.com", 
+            messagingSenderId: "125984859692", 
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
         };
 
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
@@ -194,27 +188,7 @@
         let ytPlayer; 
         const userEmail = localStorage.getItem("userEmail");
 
-        // --- DINAMIS RUNNING TEXT (REAL-TIME SNAPSHOT) ---
-        function loadRunningText() {
-            db.collection("config").doc("running_text").onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const display = document.getElementById("runningTextDisplay");
-                    if (!display) return;
-                    
-                    // Logika: Jika Sync ON (isSyncActive), tampilkan pesan database. Jika OFF, tampilkan default.
-                    if (data.isSyncActive) {
-                        display.innerText = data.message || "SELAMAT DATANG";
-                    } else {
-                        display.innerText = "SELAMAT DATANG DI PONDOK PEMULIHAN PAPUA";
-                    }
-                }
-            }, error => {
-                console.error("Error monitoring running text:", error);
-            });
-        }
-
-        // --- MEDIA PLAYER REPAIR ---
+        // --- MEDIA PLAYER REPAIR (FIXED) ---
         function onYouTubeIframeAPIReady() {
             initMediaPlayer();
         }
@@ -229,6 +203,7 @@
                     const type = data.tipe || "video_youtube";
                     const content = data.url || "";
                     
+                    // Reset View
                     otherMedia.style.display = 'none';
                     ytContainer.style.display = 'none';
                     otherMedia.innerHTML = '';
@@ -278,7 +253,7 @@
             }
         }
 
-        // --- INBOX SYSTEM ---
+        // --- INBOX SYSTEM (KEEP SUCCESSFUL VERSION) ---
         function monitorEmailInbox(userJC, emailUser) {
             db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 let unreadCount = 0;
@@ -369,7 +344,7 @@
             }
         }
 
-        // --- USER SYNC & UTILITIES ---
+        // --- USER SYNC & LOGOUT ---
         function syncUser() {
             const email = localStorage.getItem("userEmail");
             const isAdmin = localStorage.getItem("adminLoggedIn");
@@ -410,18 +385,15 @@
         window.onload = () => { 
             updateTime(); setInterval(updateTime, 1000); 
             syncUser(); 
-            loadRunningText(); // Memanggil fungsi running text real-time
-            
+            // Cek jika API YouTube sudah siap (untuk jaga-jaga jika reload lambat)
             if (typeof YT !== 'undefined' && YT.Player) { initMediaPlayer(); }
 
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
-            if(btnToggle) {
-                btnToggle.addEventListener('click', () => {
-                    profileCard.classList.toggle('closed');
-                    document.getElementById('toggleIcon').className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
-                });
-            }
+            btnToggle.addEventListener('click', () => {
+                profileCard.classList.toggle('closed');
+                document.getElementById('toggleIcon').className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+            });
         };
     </script>
 </body>
