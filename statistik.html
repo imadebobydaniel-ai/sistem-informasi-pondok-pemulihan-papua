@@ -73,8 +73,8 @@
             <div id="progres-komsel-text-alkitab" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">0 Orang Melapor</div>
         </div>
         <div class="stat-item">
-            <div class="stat-label-flex"><span>PROGRES KOMSEL (vs TOTAL ANGGOTA)</span><span id="txt-alkitab-komsel">0%</span></div>
-            <div class="progress-bar"><div id="bar-alkitab-komsel" class="progress-fill" style="background: var(--biru-utama);"></div></div>
+            <div class="stat-label-flex"><span>PROGRES KOMSEL (TARGET 50)</span><span id="txt-alkitab-progres">0%</span></div>
+            <div class="progress-bar"><div id="bar-alkitab-progres" class="progress-fill" style="background: var(--biru-utama);"></div></div>
         </div>
     </div>
 
@@ -100,8 +100,8 @@
             <div id="count-lapor-hadir" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">0 Orang Hadir</div>
         </div>
         <div class="stat-item">
-            <div class="stat-label-flex"><span>PERSENTASE KEHADIRAN</span><span id="txt-hadir-jc" style="color: var(--success);">0%</span></div>
-            <div class="progress-bar"><div id="bar-hadir-jc" class="progress-fill" style="background: var(--success);"></div></div>
+            <div class="stat-label-flex"><span>PERSENTASE KEHADIRAN (TARGET 50)</span><span id="txt-kehadiran-persen" style="color: var(--success);">0%</span></div>
+            <div class="progress-bar"><div id="bar-kehadiran-progres" class="progress-fill" style="background: var(--success);"></div></div>
         </div>
     </div>
 
@@ -127,8 +127,8 @@
             <div id="count-lapor-izin" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">0 Orang Izin/Alpha</div>
         </div>
         <div class="stat-item">
-            <div class="stat-label-flex"><span>PERSENTASE TIDAK HADIR</span><span id="txt-izin-jc" style="color: var(--merah-absen);">0%</span></div>
-            <div class="progress-bar"><div id="bar-izin-jc" class="progress-fill" style="background: var(--merah-absen);"></div></div>
+            <div class="stat-label-flex"><span>PERSENTASE TIDAK HADIR (TARGET 50)</span><span id="txt-absen-persen" style="color: var(--merah-absen);">0%</span></div>
+            <div class="progress-bar"><div id="bar-absen-progres" class="progress-fill" style="background: var(--merah-absen);"></div></div>
         </div>
     </div>
 
@@ -198,14 +198,29 @@
 
     let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
 
-    // --- UTILITY: Ambil Jumlah Anggota Komsel ---
-    async function getMemberCount(jc) {
-        const snap = await db.collection("users").where("jc", "==", jc).get();
-        // Jika data jc di database pakai nama lain, sesuaikan where-nya
-        return snap.empty ? 5 : snap.size; // Default ke 5 jika tidak ditemukan anggota
+    // --- FUNGSI UPDATE SESUAI TARGET 50 ORANG ---
+    function updateStatistikAlkitab(jmlMelapor) {
+        const TARGET_MAX = 50; 
+        const persen = ((jmlMelapor / TARGET_MAX) * 100).toFixed(1);
+        document.getElementById("txt-alkitab-progres").innerText = persen + "%";
+        document.getElementById("bar-alkitab-progres").style.width = Math.min(persen, 100) + "%";
     }
 
-    // --- HANDLERS ---
+    function updateStatistikKehadiran(jmlHadir) {
+        const TARGET_MAX = 50;
+        const persen = ((jmlHadir / TARGET_MAX) * 100).toFixed(1);
+        document.getElementById("txt-kehadiran-persen").innerText = persen + "%";
+        document.getElementById("bar-kehadiran-progres").style.width = Math.min(persen, 100) + "%";
+    }
+
+    function updateStatistikAbsensi(jmlAbsen) {
+        const TARGET_MAX = 50;
+        const persen = ((jmlAbsen / TARGET_MAX) * 100).toFixed(1);
+        document.getElementById("txt-absen-persen").innerText = persen + "%";
+        document.getElementById("bar-absen-progres").style.width = Math.min(persen, 100) + "%";
+    }
+
+    // --- HANDLERS SYNC ---
     function tutupPopupDarah() { document.getElementById('pop-detail-nama-darah').style.display = 'none'; }
 
     function bukaPopupNamaGoldar(gol) {
@@ -219,31 +234,27 @@
         document.getElementById('pop-detail-nama-darah').style.display = 'flex';
     }
 
-    // --- 1. SYNC ALKITAB ---
     async function syncStatistikAlkitab() {
         const jc = document.getElementById("select-komsel-alkitab").value;
-        const totalAnggota = await getMemberCount(jc);
-
         db.collection("laporan_bacaan").where("jc", "==", jc).onSnapshot(snap => {
             let userUnik = new Set();
             snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
-
+            
             const jmlLapor = userUnik.size;
-            const persen = ((jmlLapor / totalAnggota) * 100).toFixed(1);
-
             document.getElementById("text-laporan-orang-alkitab").innerText = snap.size + " Laporan";
             document.getElementById("progres-komsel-text-alkitab").innerText = jmlLapor + " Anggota Melapor";
-            document.getElementById("txt-alkitab-komsel").innerText = persen + "%";
-            document.getElementById("bar-alkitab-komsel").style.width = Math.min(persen, 100) + "%";
-            document.getElementById("bar-laporan-orang-alkitab").style.width = Math.min(persen, 100) + "%";
+            
+            // Panggil fungsi target 50
+            updateStatistikAlkitab(jmlLapor);
+            
+            // Update bar penunjang kecil di atas
+            document.getElementById("bar-laporan-orang-alkitab").style.width = Math.min((jmlLapor/50)*100, 100) + "%";
         });
     }
 
-    // --- 2. SYNC KEHADIRAN / IZIN ---
     async function syncKehadiran(tipe) {
         const idSelect = tipe === 'HADIR' ? 'select-jc-laporan' : 'select-jc-izin';
         const jc = document.getElementById(idSelect).value;
-        const totalAnggota = await getMemberCount(jc);
         const statusTarget = tipe === 'HADIR' ? 'HADIR' : 'TIDAK HADIR';
 
         db.collection("kehadiran").where("jc", "==", jc).where("status", "==", statusTarget).onSnapshot(snap => {
@@ -251,21 +262,22 @@
             snap.forEach(doc => { if(doc.data().nama) unik.add(doc.data().nama.trim()); });
 
             const jml = unik.size;
-            const persen = ((jml / totalAnggota) * 100).toFixed(1);
             const prefix = tipe === 'HADIR' ? 'hadir' : 'izin';
 
             document.getElementById(`text-laporan-orang-${prefix}`).innerText = jml + " Orang";
             document.getElementById(`count-lapor-${prefix}`).innerText = jml + " Orang Melapor";
-            document.getElementById(`txt-${prefix}-jc`).innerText = persen + "%";
-            document.getElementById(`bar-${prefix}-jc`).style.width = Math.min(persen, 100) + "%";
-            document.getElementById(`bar-laporan-orang-${prefix}`).style.width = Math.min(persen, 100) + "%";
+            
+            // Panggil fungsi target 50 masing-masing
+            if(tipe === 'HADIR') updateStatistikKehadiran(jml);
+            else updateStatistikAbsensi(jml);
+
+            document.getElementById(`bar-laporan-orang-${prefix}`).style.width = Math.min((jml/50)*100, 100) + "%";
         });
     }
 
     function syncStatistikHadir() { syncKehadiran('HADIR'); }
     function syncStatistikIzin() { syncKehadiran('TIDAK HADIR'); }
 
-    // --- 3. SYNC DOA ---
     async function syncStatistikDoa() {
         const jc = document.getElementById('select-jc-doa').value;
         db.collection("laporan_doa").where("jc", "==", jc).onSnapshot(snap => {
@@ -275,22 +287,19 @@
                 const d = doc.data();
                 if (d.terjawab === true || d.terjawab === "YA") terjawab++;
             });
-
             const persenJawab = total > 0 ? ((terjawab / total) * 100).toFixed(1) : "0.0";
             document.getElementById("text-doa-masuk").innerText = total + " Laporan";
             document.getElementById("count-doa-masuk-orang").innerText = total + " Doa Terdata";
-            document.getElementById("bar-doa-masuk").style.width = total > 0 ? "100%" : "0%";
+            document.getElementById("bar-doa-masuk").style.width = Math.min((total/50)*100, 100) + "%";
             document.getElementById('txt-doa-jawab-jc').innerText = persenJawab + "%";
             document.getElementById('bar-doa-jawab-jc').style.width = Math.min(persenJawab, 100) + "%";
         });
     }
 
-    // --- 4. SYNC GOLONGAN DARAH ---
     function syncGolonganDarah() {
         db.collection("users").onSnapshot(snap => {
             listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
             let count = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
-            
             snap.forEach(doc => {
                 const data = doc.data();
                 let gol = (data.goldarah || data.gol || "").toString().toUpperCase().trim();
@@ -299,7 +308,6 @@
                     listNamaGoldar[gol].push(data.nama || "Tanpa Nama");
                 }
             });
-            
             ['A', 'B', 'O', 'AB'].forEach(t => {
                 document.getElementById('count-darah-' + t.toLowerCase()).innerText = count[t];
             });
