@@ -188,6 +188,24 @@
         let ytPlayer; 
         const userEmail = localStorage.getItem("userEmail");
 
+        // --- NEW: LOAD RUNNING TEXT FROM DATABASE ---
+        function loadRunningText() {
+            // Ubah dari 'portal_media' ke 'config/running_text'
+            db.collection("config").doc("running_text")
+              .onSnapshot(doc => {
+                const runningTextElement = document.getElementById('running-text');
+                if (!runningTextElement) return;
+
+                if (doc.exists) {
+                    const data = doc.data();
+                    // Ambil field 'message' sesuai di screenshot database kamu
+                    runningTextElement.innerText = data.message || "Selamat Datang";
+                }
+            }, error => {
+                console.error("Error running text:", error);
+            });
+        }
+
         // --- MEDIA PLAYER REPAIR (FIXED) ---
         function onYouTubeIframeAPIReady() {
             initMediaPlayer();
@@ -385,6 +403,7 @@
         window.onload = () => { 
             updateTime(); setInterval(updateTime, 1000); 
             syncUser(); 
+            loadRunningText(); // MEMANGGIL FUNGSI RUNNING TEXT BARU
             // Cek jika API YouTube sudah siap (untuk jaga-jaga jika reload lambat)
             if (typeof YT !== 'undefined' && YT.Player) { initMediaPlayer(); }
 
