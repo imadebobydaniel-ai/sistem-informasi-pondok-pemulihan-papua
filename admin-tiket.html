@@ -6,30 +6,22 @@
     <title>Portal Tiket - Dashboard Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
         .card-stats { border-left: 5px solid #0d6efd; }
         .sla-urgent { color: #dc3545; font-weight: bold; }
         .sla-normal { color: #198754; }
         @media print { .no-print { display: none; } }
         
-        .btn-delete {
-            background: #dc3545; color: white; border: none;
-            padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: 0.2s;
-        }
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .btn-delete:hover { background: #a71d2a; }
-        .btn-view {
-            background: #0dcaf0; color: white; border: none;
-            padding: 4px 8px; border-radius: 4px; cursor: pointer;
-        }
-        .btn-update {
-            background: #198754; color: white; border: none;
-            padding: 4px 8px; border-radius: 4px; cursor: pointer;
-        }
-        .clickable-cat {
-            cursor: pointer; color: #0d6efd; text-decoration: underline;
-        }
+        .btn-view { background: #0dcaf0; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .btn-update { background: #198754; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .clickable-cat { cursor: pointer; color: #0d6efd; text-decoration: underline; }
         .badge-proses { background-color: #fd7e14; }
         .badge-selesai { background-color: #198754; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
     </style>
 </head>
 <body class="bg-light">
@@ -43,38 +35,50 @@
 
 <div class="container-fluid px-4" id="contentToExport">
     <div class="row mb-4 no-print">
-        <div class="col-md-3">
-            <div class="card card-stats shadow-sm p-3">
+        <div class="col-md-3 mb-3">
+            <div class="card card-stats shadow-sm p-3 h-100">
                 <small class="text-muted">Total Tiket</small>
                 <h3 id="totalTiket">0</h3>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm p-3" style="border-left: 5px solid #ffc107;">
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm p-3 h-100" style="border-left: 5px solid #ffc107;">
                 <small class="text-muted">Permohonan Doa</small>
                 <h3 id="countDoa">0</h3>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm p-3" style="border-left: 5px solid #dc3545;">
-                <small class="text-muted">Problem Aplikasi</small>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm p-3 h-100" style="border-left: 5px solid #dc3545;">
+                <small class="text-muted">Masalah Aplikasi</small>
                 <h3 id="countProblem">0</h3>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm p-3" style="border-left: 5px solid #198754;">
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm p-3 h-100" style="border-left: 5px solid #198754;">
                 <small class="text-muted">Saran & Masukan</small>
                 <h3 id="countSaran">0</h3>
             </div>
         </div>
     </div>
 
+    <div class="row mb-4 no-print">
+        <div class="col-12">
+            <div class="card shadow-sm p-4">
+                <h5 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2"></i> Grafik Capaian Layanan Publik</h5>
+                <div class="chart-container">
+                    <canvas id="chartTiket"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card shadow-sm mb-4 no-print">
-        <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div class="d-flex gap-2">
                 <select class="form-select w-auto" id="filterKategori" onchange="loadTickets()">
                     <option value="">Semua Kategori</option>
                     <option value="Permohonan Doa">Permohonan Doa</option>
+                    <option value="Konseling">Konseling</option>
                     <option value="Masalah Aplikasi">Masalah Aplikasi</option>
                     <option value="Saran & Masukan">Saran & Masukan</option>
                 </select>
@@ -95,7 +99,6 @@
                         <th>No Tiket</th>
                         <th>Kategori</th>
                         <th>Tanggal Masuk</th>
-                        <th>Tanggal Close</th>
                         <th>Durasi SLA</th>
                         <th>Pengirim</th>
                         <th>Status</th>
@@ -127,22 +130,43 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Fungsi Hitung SLA (Durasi)
+    let myChart; // Variabel global untuk Chart
+
+    // Fungsi Render Grafik
+    function updateChart(cDoa, cKonseling, cProb, cSaran) {
+        const ctx = document.getElementById('chartTiket').getContext('2d');
+        if (myChart) { myChart.destroy(); }
+
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Doa', 'Konseling', 'Masalah App', 'Saran'],
+                datasets: [{
+                    label: 'Jumlah Tiket',
+                    data: [cDoa, cKonseling, cProb, cSaran],
+                    backgroundColor: ['#ffc107', '#0dcaf0', '#dc3545', '#198754'],
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+
     function hitungSLA(masukStr, timestamp) {
         if (!timestamp) return "Sedang Berjalan";
-        
-        // Mengubah string tanggal "23/3/2026" menjadi objek Date
         const parts = masukStr.split('/');
         const dMasuk = new Date(parts[2], parts[1] - 1, parts[0]);
         const dSelesai = timestamp.toDate();
-        
         const diffMs = dSelesai - dMasuk;
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
         return diffDays > 0 ? `${diffDays} Hari` : "Hari yang sama";
     }
 
-    // Fungsi Load Data Real-time dari koleksi 'saran_masukan'
     function loadTickets() {
         const filterVal = document.getElementById('filterKategori').value;
 
@@ -150,25 +174,25 @@
             const tbody = document.getElementById('tiketData');
             tbody.innerHTML = "";
             
-            let cDoa = 0, cProb = 0, cSaran = 0, total = 0;
+            let cDoa = 0, cKonseling = 0, cProb = 0, cSaran = 0, total = 0;
 
             snap.forEach((doc) => {
                 const t = doc.data();
                 const id = doc.id;
 
-                // Hitung Statistik
+                // Hitung Statistik (Menangani variasi penulisan kategori)
                 if(t.kategori === "Permohonan Doa") cDoa++;
-                if(t.kategori === "Masalah Aplikasi") cProb++;
-                if(t.kategori === "Saran & Masukan") cSaran++;
+                else if(t.kategori === "Konseling" || t.kategori === "Konseling / Keluarga") cKonseling++;
+                else if(t.kategori === "Masalah Aplikasi" || t.kategori === "Laporan Masalah") cProb++;
+                else if(t.kategori === "Saran & Masukan" || t.kategori === "Saran/Masukan") cSaran++;
+                
                 total++;
 
-                // Filter Kategori
+                // Logika Filter
                 if(filterVal !== "" && t.kategori !== filterVal) return;
 
-                const sla = (t.status === 'Selesai' || t.status === 'proses') ? 
-                             hitungSLA(t.tanggal_kirim, t.timestamp) : "-";
-                
                 const statusClass = t.status === 'Selesai' ? 'badge-selesai' : 'badge-proses';
+                const slaText = hitungSLA(t.tanggal_kirim, t.timestamp);
 
                 tbody.innerHTML += `
                     <tr>
@@ -177,79 +201,58 @@
                             <span class="badge bg-info text-dark">${t.kategori}</span>
                         </td>
                         <td>${t.tanggal_kirim} <br><small>${t.jam_kirim || ''}</small></td>
-                        <td>${t.status === 'Selesai' ? t.tanggal_kirim : '-'}</td>
-                        <td class="${t.status === 'Selesai' ? 'sla-normal' : 'sla-urgent'}">${t.status === 'Selesai' ? 'Selesai' : 'Proses'}</td>
+                        <td class="${t.status === 'Selesai' ? 'sla-normal' : 'sla-urgent'}">${t.status === 'Selesai' ? slaText : 'Proses'}</td>
                         <td><b>${t.nama}</b><br><small>${t.jc || '-'}</small></td>
-                        <td>
-                            <span class="badge ${statusClass}">${t.status ? t.status.toUpperCase() : 'PROSES'}</span>
-                        </td>
+                        <td><span class="badge ${statusClass}">${(t.status || 'proses').toUpperCase()}</span></td>
                         <td class="no-print">
                             <div class="d-flex gap-1">
-                                <button class="btn-view" onclick="showDetail('${id}')" title="Lihat Detail"><i class="fas fa-eye"></i></button>
-                                ${t.status !== 'Selesai' ? `<button class="btn-update" onclick="updateStatus('${id}')" title="Selesaikan"><i class="fas fa-check"></i></button>` : ''}
-                                <button class="btn-delete" onclick="deleteTicket('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                                <button class="btn-view" onclick="showDetail('${id}')"><i class="fas fa-eye"></i></button>
+                                ${t.status !== 'Selesai' ? `<button class="btn-update" onclick="updateStatus('${id}')"><i class="fas fa-check"></i></button>` : ''}
+                                <button class="btn-delete" onclick="deleteTicket('${id}')"><i class="fas fa-trash"></i></button>
                             </div>
                         </td>
                     </tr>
                 `;
             });
 
+            // Update UI Angka
             document.getElementById('totalTiket').innerText = total;
             document.getElementById('countDoa').innerText = cDoa;
             document.getElementById('countProblem').innerText = cProb;
             document.getElementById('countSaran').innerText = cSaran;
+
+            // Update Grafik
+            updateChart(cDoa, cKonseling, cProb, cSaran);
         });
     }
 
-    // Popup Detail
     function showDetail(id) {
         db.collection("saran_masukan").doc(id).get().then(doc => {
             if (doc.exists) {
                 const d = doc.data();
-                alert(`
-DETAIL TIKET [${d.nomor_tiket}]
----------------------------------
-Pengirim : ${d.nama}
-Email    : ${d.email}
-JC       : ${d.jc}
-Kategori : ${d.kategori}
-
-PESAN:
-"${d.isi_saran}"
-
-Status   : ${d.status || 'proses'}
-                `);
+                alert(`DETAIL TIKET: ${d.nomor_tiket}\n------------------\nPengirim: ${d.nama}\nKategori: ${d.kategori}\nPesan: ${d.isi_saran}`);
             }
         });
     }
 
-    // Update Status ke Selesai
     function updateStatus(id) {
-        if(confirm("Tandai tiket ini sebagai Selesai?")) {
-            db.collection("saran_masukan").doc(id).update({
-                status: "Selesai"
-            }).then(() => alert("Status diperbarui!"));
+        if(confirm("Selesaikan tiket ini?")) {
+            db.collection("saran_masukan").doc(id).update({ status: "Selesai", timestamp: firebase.firestore.FieldValue.serverTimestamp() });
         }
     }
 
-    // Hapus Tiket
     function deleteTicket(id) {
-        if(confirm("Hapus tiket ini secara permanen?")) {
-            db.collection("saran_masukan").doc(id).delete().then(() => {
-                alert("Tiket dihapus.");
-            });
-        }
+        if(confirm("Hapus tiket?")) { db.collection("saran_masukan").doc(id).delete(); }
     }
 
     async function exportPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l', 'mm', 'a4');
         const element = document.getElementById('contentToExport');
-        
         await html2canvas(element).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
             doc.addImage(imgData, 'PNG', 10, 10, 280, 150);
-            doc.save('Laporan_Tiket_Saran_Masukan.pdf');
+            doc.save('Laporan_Tiket_Layanan.pdf');
         });
     }
 
