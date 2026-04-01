@@ -107,55 +107,69 @@
             if (!snap.empty) {
                 const d = snap.docs[0].data();
                 userNama = d.nama;
-                userJC = d.komsel || "JC5";
+                userJC = d.komsel || "JC 5"; // Default "JC 5"
                 loadListDoa();
             }
         });
     };
 
-    // FUNGSI BARU YANG ANDA BERIKAN (Disisipkan di sini)
+    // --- FUNGSI BARU YANG DIMASUKKAN ---
     function syncStatistikDoa() {
-        const jcDoa = userJC; // Mengambil dari identitas user yang login
-        const valPeriode = new Date().getMonth() + 1; // Contoh: Ambil bulan berjalan jika select tidak ada
-        
+        // Ambil nilai dari dropdown jika ada, jika tidak pakai userJC global
+        const elSelectJC = document.getElementById('select-jc-doa');
+        const jcDoa = elSelectJC ? elSelectJC.value : userJC;
+
+        const elSelectPeriode = document.getElementById("select-periode-doa");
+        let valPeriode = elSelectPeriode ? elSelectPeriode.value : null;
+
+        // Default ke bulan sekarang jika tidak ada dropdown periode
+        if(!valPeriode || valPeriode === "-- Pilih Periode --") {
+            valPeriode = (new Date().getMonth() + 1).toString();
+        }
+
+        const blnDoa = parseInt(valPeriode);
+        const startDate = getStartDate(blnDoa);
+
         db.collection("saran_masukan")
         .where("jc", "==", jcDoa) 
-        .where("kategori", "==", "Permohonan Doa")
+        .where("timestamp", ">=", startDate)
         .onSnapshot(snap => {
-            let terjawab = 0;
+            let terjawabCount = 0;
             let totalSLA = 0;
+            let totalLaporan = 0;
 
             snap.forEach(doc => {
                 const data = doc.data();
-                if(data.status === "Terjawab") {
-                    terjawab++;
+                totalLaporan++;
+                
+                if (data.status === "Terjawab") {
+                    terjawabCount++;
                     const tglAwal = data.timestamp ? data.timestamp.toDate() : new Date();
                     const diff = Math.ceil(Math.abs(new Date() - tglAwal) / (1000 * 60 * 60 * 24));
                     totalSLA += diff;
                 }
             });
 
-            const total = snap.size;
-            const persen = total > 0 ? ((terjawab / total) * 100).toFixed(1) : 0;
-            const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
-            
-            // Update UI jika elemen ada (untuk menghindari error di halaman tanpa dashboard)
-            const elDoaMasukText = document.getElementById('text-laporan-doa-masuk');
-            if(elDoaMasukText) elDoaMasukText.innerText = total + " Laporan";
+            // Update UI (Gunakan pengecekan elemen agar tidak error)
+            const txtLaporan = document.getElementById('text-laporan-doa-masuk');
+            if (txtLaporan) txtLaporan.innerText = totalLaporan + " Laporan";
 
-            const elDoaMasukBar = document.getElementById('bar-laporan-doa-masuk');
-            if(elDoaMasukBar) {
-                const persenBarMasuk = (total / 50) * 100;
-                elDoaMasukBar.style.width = Math.min(persenBarMasuk, 100) + "%";
+            const barLaporan = document.getElementById('bar-laporan-doa-masuk');
+            if (barLaporan) {
+                const progress = (totalLaporan / 50) * 100;
+                barLaporan.style.width = Math.min(progress, 100) + "%";
             }
 
-            if(document.getElementById('txt-doa-sla-jc')) {
-                document.getElementById('txt-doa-sla-jc').innerText = rataSLA + " Hari";
-            }
+            const persenTerjawab = totalLaporan > 0 ? ((terjawabCount / totalLaporan) * 100).toFixed(1) : 0;
+            updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persenTerjawab);
+
+            const rataSLA = terjawabCount > 0 ? Math.round(totalSLA / terjawabCount) : 0;
+            const elSLA = document.getElementById('txt-doa-sla-jc');
+            if (elSLA) elSLA.innerText = rataSLA + " Hari";
         });
     }
 
-    // Fungsi Pendukung yang dibutuhkan script baru
+    // --- FUNGSI PENDUKUNG ---
     function getStartDate(month) {
         const d = new Date();
         return new Date(d.getFullYear(), month - 1, 1);
@@ -168,7 +182,7 @@
         if(bar) bar.style.width = val + "%";
     }
 
-    // Fungsi Existing lainnya
+    // --- FUNGSI EXISTING ---
     function loadListDoa() {
         db.collection("saran_masukan").where("nama", "==", userNama).orderBy("timestamp", "desc").onSnapshot(snap => {
             let html = "";
@@ -185,13 +199,13 @@
                             <span class="tiket-id">${data.nomor_tiket}</span>
                             <div class="doa-user">${data.nama} (${data.jc})</div>
                             <div class="doa-text" id="text-${doc.id}">${data.isi_saran}</div>
-                            <div class="sla-info">SLA: ${diff} Hari</div>
+                            <div class="sla-info">SLA: ${diff} Hari sejak diinput</div>
                             <input type="hidden" id="tgl-${doc.id}" value="${tglAwal.toISOString()}">
                         </div>
                     </div>`;
             });
             document.getElementById('list-doa-container').innerHTML = html;
-            syncStatistikDoa(); // Panggil sinkronisasi setiap ada perubahan data
+            syncStatistikDoa(); // Jalankan statistik
         });
     }
 
