@@ -18,9 +18,28 @@
         .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas); padding-bottom: 15px; margin-bottom: 20px; }
         .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; }
 
-        /* Stats Grid - 6 Menu Utama Kembali Normal */
+        /* Stats Grid */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-card { padding: 15px; border-radius: 10px; color: white; position: relative; min-height: 80px; }
+        
+        /* Link wrapper agar tidak ada garis bawah */
+        .stats-grid a { text-decoration: none; color: inherit; }
+
+        .stat-card { 
+            padding: 15px; 
+            border-radius: 10px; 
+            color: white; 
+            position: relative; 
+            min-height: 80px;
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+        }
+
+        /* Animasi saat kursor menyentuh menu */
+        .stat-card:hover {
+            transform: translateY(-5px);
+            filter: brightness(1.1);
+        }
+
         .stat-card h4 { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-card p { margin: 5px 0 0; font-size: 24px; font-weight: bold; }
         .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 1.8rem; opacity: 0.3; }
@@ -35,7 +54,6 @@
         table th { background: var(--primary); color: white; padding: 12px; font-size: 12px; text-align: left; }
         table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 11.5px; }
 
-        /* Grid Bawah untuk Form dan Absensi */
         .bottom-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         .card-box { background: white; padding: 18px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .card-box h3 { font-size: 14px; color: var(--primary); margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -55,24 +73,41 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card" style="background: #007bff;">
-            <h4>Portal Tiket</h4><p id="stat_tiket">0</p><i class="fas fa-ticket-alt"></i>
-        </div>
-        <div class="stat-card" style="background: #28a745;">
-            <h4>Hadir Hari Ini</h4><p id="stat_hadir">0</p><i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-card" style="background: #dc3545;">
-            <h4>Pokok Doa</h4><p id="stat_doa">0</p><i class="fas fa-hands-praying"></i>
-        </div>
-        <div class="stat-card" style="background: #6f42c1;">
-            <h4>Portal Media</h4><p id="stat_media">6</p><i class="fas fa-icons"></i>
-        </div>
-        <div class="stat-card" style="background: #fd7e14;">
-            <h4>Informasi Kegiatan</h4><p id="stat_info">0</p><i class="fas fa-calendar-alt"></i>
-        </div>
-        <div class="stat-card" style="background: #17a2b8;">
-            <h4>Statistik Big Data</h4><p id="stat_bigdata">10</p><i class="fas fa-chart-line"></i>
-        </div>
+        <a href="tiket.html">
+            <div class="stat-card" style="background: #007bff;">
+                <h4>Portal Tiket</h4><p id="stat_tiket">0</p><i class="fas fa-ticket-alt"></i>
+            </div>
+        </a>
+
+        <a href="#absensiData">
+            <div class="stat-card" style="background: #28a745;">
+                <h4>Hadir Hari Ini</h4><p id="stat_hadir">0</p><i class="fas fa-check-circle"></i>
+            </div>
+        </a>
+
+        <a href="doa.html">
+            <div class="stat-card" style="background: #dc3545;">
+                <h4>Pokok Doa</h4><p id="stat_doa">0</p><i class="fas fa-hands-praying"></i>
+            </div>
+        </a>
+
+        <a href="media.html">
+            <div class="stat-card" style="background: #6f42c1;">
+                <h4>Portal Media</h4><p id="stat_media">6</p><i class="fas fa-icons"></i>
+            </div>
+        </a>
+
+        <a href="informasi.html">
+            <div class="stat-card" style="background: #fd7e14;">
+                <h4>Informasi Kegiatan</h4><p id="stat_info">0</p><i class="fas fa-calendar-alt"></i>
+            </div>
+        </a>
+
+        <a href="bigdata.html">
+            <div class="stat-card" style="background: #17a2b8;">
+                <h4>Statistik Big Data</h4><p id="stat_bigdata">10</p><i class="fas fa-chart-line"></i>
+            </div>
+        </a>
     </div>
 
     <div class="table-controls">
@@ -142,7 +177,6 @@
     const db = firebase.firestore();
 
     window.onload = function() {
-        // Load User Table & Big Data Stat
         db.collection("users").onSnapshot(snapshot => {
             const table = document.getElementById("memberData");
             table.innerHTML = "";
@@ -161,7 +195,6 @@
             });
         });
 
-        // Load Absensi Stat
         db.collection("absensi").where("tanggal", "==", new Date().toISOString().split('T')[0])
         .onSnapshot(snap => {
             document.getElementById("stat_hadir").innerText = snap.size;
@@ -170,7 +203,6 @@
             snap.forEach(doc => { log.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;">${doc.data().nama}</div>`; });
         });
 
-        // Load Doa Stat
         db.collection("doa_global").onSnapshot(snap => { document.getElementById("stat_doa").innerText = snap.size; });
     };
 
@@ -180,7 +212,6 @@
         rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none"; });
     }
 
-    // Fungsi Tambah User Baru
     document.getElementById("formAdd").onsubmit = async (e) => {
         e.preventDefault();
         try {
