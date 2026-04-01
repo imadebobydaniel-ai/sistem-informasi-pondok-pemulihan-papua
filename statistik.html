@@ -145,6 +145,18 @@
             </div>
             <div class="input-box"><label>PERIODE</label><select id="select-periode-doa" onchange="syncStatistikDoa()"></select></div>
         </div>
+
+        <div class="progress-group-top">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span style="font-size: 11px; font-weight: bold; color: #555;">DOA YANG MASUK</span>
+                <span id="text-total-doa-masuk" style="font-size: 11px; font-weight: bold; color: var(--emas-doa);">0 Laporan</span>
+            </div>
+            <div class="progress-bar" style="height: 10px; background: #eee;">
+                <div id="bar-total-doa-masuk" class="progress-fill bg-emas-doa" style="width: 0%;"></div>
+            </div>
+            <div id="label-status-doa" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">Menampilkan aktivitas laporan doa</div>
+        </div>
+
         <div class="stat-item">
             <div class="stat-label-flex"><span>DOA TERJAWAB (%)</span><span id="txt-doa-jawab-jc" style="color: var(--emas-doa);">0.0%</span></div>
             <div class="progress-bar"><div id="bar-doa-jawab-jc" class="progress-fill bg-emas-doa"></div></div>
@@ -255,32 +267,46 @@
                 const data = doc.data();
                 if(data.nama) userUnikIzin.add(data.nama.trim());
             });
-
             const jmlIzin = userUnikIzin.size;
             let hitungPersen = (jmlIzin / TARGET_PESERTA) * 100;
             const persenTampil = hitungPersen > 100 ? 100 : hitungPersen.toFixed(1);
-
             document.getElementById("text-laporan-orang-izin").innerText = jmlIzin + " Orang";
             document.getElementById("count-lapor-izin").innerText = jmlIzin + " Orang Izin/Alpha";
-            
             updateStatistikBar('txt-izin-jc', 'bar-izin-jc', persenTampil);
-            
             const barAtasIzin = document.getElementById("bar-laporan-orang-izin");
             if(barAtasIzin) barAtasIzin.style.width = Math.min(persenTampil, 100) + "%";
-            
         }, err => console.error("Error Izin:", err));
     }
 
+    // Fungsi DOA KOMSEL diperbarui dengan Bar "Doa yang Masuk"
     function syncStatistikDoa() {
         const jcDoa = document.getElementById('select-jc-doa').value;
         const blnDoa = parseInt(document.getElementById("select-periode-doa").value);
-        db.collection("laporan_doa").where("jc", "==", jcDoa).where("tglInput", ">=", getStartDate(blnDoa))
-         .onSnapshot(snap => {
+        
+        db.collection("laporan_doa")
+          .where("jc", "==", jcDoa)
+          .where("tglInput", ">=", getStartDate(blnDoa))
+          .onSnapshot(snap => {
             let terjawab = 0;
-            snap.forEach(doc => { if(doc.data().terjawab === true) terjawab++; });
-            const total = snap.size;
-            const persen = total > 0 ? ((terjawab / total) * 100).toFixed(1) : 0;
+            const totalDoaMasuk = snap.size;
+
+            snap.forEach(doc => { 
+                if(doc.data().terjawab === true) terjawab++; 
+            });
+
+            // Update UI Doa yang Masuk
+            document.getElementById("text-total-doa-masuk").innerText = totalDoaMasuk + " Laporan";
+            const barMasuk = document.getElementById("bar-total-doa-masuk");
+            if(barMasuk) {
+                // Capaian tidak terbatas: jika ada data > 0, bar penuh sebagai tanda aktivitas
+                barMasuk.style.width = totalDoaMasuk > 0 ? "100%" : "0%";
+            }
+
+            // Update Persentase Terjawab
+            const persen = totalDoaMasuk > 0 ? ((terjawab / totalDoaMasuk) * 100).toFixed(1) : 0;
             updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persen);
+            
+            // Update SLA
             document.getElementById('txt-doa-sla-jc').innerText = (terjawab > 0 ? 2 : 0) + " Hari";
             document.getElementById('bar-doa-sla-jc').style.width = (terjawab > 0 ? "20%" : "0%");
         });
