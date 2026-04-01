@@ -18,7 +18,7 @@
         .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas); padding-bottom: 15px; margin-bottom: 20px; }
         .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; }
 
-        /* Stats Grid - DIKEMBALIKAN KE 6 KOLOM */
+        /* Stats Grid - 6 Menu Utama Kembali Normal */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .stat-card { padding: 15px; border-radius: 10px; color: white; position: relative; min-height: 80px; }
         .stat-card h4 { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -27,7 +27,7 @@
 
         .table-controls { display: flex; gap: 15px; margin-bottom: 15px; }
         .search-box { position: relative; flex: 1; }
-        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; }
+        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
         .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
 
         .table-responsive { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; margin-bottom: 25px; }
@@ -65,19 +65,19 @@
             <h4>Pokok Doa</h4><p id="stat_doa">0</p><i class="fas fa-hands-praying"></i>
         </div>
         <div class="stat-card" style="background: #6f42c1;">
-            <h4>Portal Media</h4><p id="stat_media">3</p><i class="fas fa-icons"></i>
+            <h4>Portal Media</h4><p id="stat_media">6</p><i class="fas fa-icons"></i>
         </div>
         <div class="stat-card" style="background: #fd7e14;">
             <h4>Informasi Kegiatan</h4><p id="stat_info">0</p><i class="fas fa-calendar-alt"></i>
         </div>
         <div class="stat-card" style="background: #17a2b8;">
-            <h4>Statistik Big Data</h4><p id="stat_bigdata">0</p><i class="fas fa-chart-line"></i>
+            <h4>Statistik Big Data</h4><p id="stat_bigdata">10</p><i class="fas fa-chart-line"></i>
         </div>
     </div>
 
     <div class="table-controls">
         <div class="search-box">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari nama anggota...">
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari nama, email, atau alamat...">
             <i class="fas fa-search"></i>
         </div>
     </div>
@@ -130,7 +130,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Inisialisasi Firebase Boby
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -142,12 +141,12 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Load Data
     window.onload = function() {
+        // Load User Table & Big Data Stat
         db.collection("users").onSnapshot(snapshot => {
             const table = document.getElementById("memberData");
             table.innerHTML = "";
-            document.getElementById("stat_bigdata").innerText = snapshot.size; // Update Big Data
+            document.getElementById("stat_bigdata").innerText = snapshot.size;
             snapshot.forEach(doc => {
                 const d = doc.data();
                 table.innerHTML += `<tr>
@@ -161,19 +160,39 @@
                 </tr>`;
             });
         });
-        
-        // Simpan User Baru
-        document.getElementById("formAdd").onsubmit = async (e) => {
-            e.preventDefault();
+
+        // Load Absensi Stat
+        db.collection("absensi").where("tanggal", "==", new Date().toISOString().split('T')[0])
+        .onSnapshot(snap => {
+            document.getElementById("stat_hadir").innerText = snap.size;
+            const log = document.getElementById("absensiData");
+            log.innerHTML = "";
+            snap.forEach(doc => { log.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;">${doc.data().nama}</div>`; });
+        });
+
+        // Load Doa Stat
+        db.collection("doa_global").onSnapshot(snap => { document.getElementById("stat_doa").innerText = snap.size; });
+    };
+
+    function filterTable() {
+        let input = document.getElementById("searchInput").value.toLowerCase();
+        let rows = document.querySelectorAll("#memberData tr");
+        rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none"; });
+    }
+
+    // Fungsi Tambah User Baru
+    document.getElementById("formAdd").onsubmit = async (e) => {
+        e.preventDefault();
+        try {
             await db.collection("users").add({
                 nama: document.getElementById("add_nama").value,
                 whatsapp: document.getElementById("add_wa").value,
                 password: document.getElementById("add_password").value,
-                jabatan: "Anggota", komsel: "1"
+                jabatan: "Anggota", komsel: "1", golongan_darah: "-", alamat: "-"
             });
             alert("User Admin Berhasil Ditambahkan!");
             e.target.reset();
-        };
+        } catch (err) { alert("Gagal: " + err.message); }
     };
 </script>
 </body>
