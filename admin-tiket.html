@@ -3,57 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Tiket Masuk - Admin</title>
+    <title>Portal Tiket - Dashboard Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
         .card-stats { border-left: 5px solid #0d6efd; }
-        .btn-action { padding: 5px 10px; border-radius: 4px; border: none; color: white; margin-right: 3px; }
-        .btn-view { background-color: #0dcaf0; }
-        .btn-done { background-color: #198754; }
-        .btn-delete { background-color: #dc3545; }
+        .sla-urgent { color: #dc3545; font-weight: bold; }
+        .sla-normal { color: #198754; }
+        @media print { .no-print { display: none; } }
         
-        /* Modal Style */
+        .btn-delete { background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .btn-delete:hover { background: #a71d2a; }
+        .btn-view { background: #0dcaf0; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .btn-update { background: #198754; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        
+        /* Gaya untuk area kategori yang bisa diklik (Tanda Merah Anda) */
+        .clickable-cat { cursor: pointer; transition: 0.3s; }
+        .clickable-cat:hover { opacity: 0.7; transform: scale(1.05); }
+        
+        .badge-proses { background-color: #fd7e14; }
+        .badge-selesai { background-color: #198754; }
+
+        /* Custom Modal Popup Style */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 10000;
+            background: rgba(0,0,0,0.7); display: none; align-items: center; 
+            justify-content: center; z-index: 9999; padding: 15px;
         }
-        .modal-card { background: white; width: 90%; max-width: 450px; border-radius: 8px; overflow: hidden; }
+        .modal-card { 
+            background: white; width: 100%; max-width: 500px; 
+            border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
         .ticket-header { background: #0d6efd; color: white; padding: 15px; text-align: center; }
-        .ticket-body { padding: 20px; font-size: 14px; }
-        .btn-red-custom { 
-            background: #dc3545; color: white; border: none; padding: 10px; 
-            border-radius: 5px; font-weight: bold; width: 100%; margin-bottom: 8px;
-        }
+        .ticket-body { padding: 20px; color: #333; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+        .info-label { font-weight: bold; color: #666; }
+        .message-box { background: #f8f9fa; border-left: 4px solid #0d6efd; padding: 10px; margin-top: 10px; font-style: italic; }
+        .btn-close-modal { background: #6c757d; color: white; border: none; width: 100%; padding: 10px; font-weight: bold; }
     </style>
 </head>
 <body class="bg-light">
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4>Portal Tiket Masuk</h4>
-        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">Refresh Data</button>
+<nav class="navbar navbar-dark bg-primary mb-4 no-print">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1"><i class="fas fa-ticket-alt me-2"></i> Portal Tiket Masuk</span>
+        <a href="admin.html" class="btn btn-light btn-sm"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+    </div>
+</nav>
+
+<div class="container-fluid px-4" id="contentToExport">
+    <div class="row mb-4 no-print">
+        <div class="col-md-3">
+            <div class="card card-stats shadow-sm p-3">
+                <small class="text-muted">Total Tiket</small>
+                <h3 id="totalTiket">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3" style="border-left: 5px solid #ffc107;">
+                <small class="text-muted">Permohonan Doa</small>
+                <h3 id="countDoa">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3" style="border-left: 5px solid #dc3545;">
+                <small class="text-muted">Problem Aplikasi</small>
+                <h3 id="countProblem">0</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm p-3" style="border-left: 5px solid #198754;">
+                <small class="text-muted">Saran & Masukan</small>
+                <h3 id="countSaran">0</h3>
+            </div>
+        </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-3"><div class="card shadow-sm p-3 mb-2 card-stats">Total Tiket<h3 id="totalTiket">0</h3></div></div>
-        <div class="col-md-3"><div class="card shadow-sm p-3 mb-2" style="border-left: 5px solid #ffc107;">Doa<h3 id="countDoa">0</h3></div></div>
-        <div class="col-md-3"><div class="card shadow-sm p-3 mb-2" style="border-left: 5px solid #dc3545;">Masalah<h3 id="countProblem">0</h3></div></div>
-        <div class="col-md-3"><div class="card shadow-sm p-3 mb-2" style="border-left: 5px solid #198754;">Saran<h3 id="countSaran">0</h3></div></div>
+    <div class="card shadow-sm mb-4 no-print">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-2">
+                <select class="form-select w-auto" id="filterKategori" onchange="loadTickets()">
+                    <option value="">Semua Kategori</option>
+                    <option value="Permohonan Doa">Permohonan Doa</option>
+                    <option value="Masalah Aplikasi">Masalah Aplikasi</option>
+                    <option value="Saran & Masukan">Saran & Masukan</option>
+                </select>
+                <button class="btn btn-outline-primary" onclick="loadTickets()"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+            <div class="btn-group">
+                <button onclick="exportPDF()" class="btn btn-danger"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                <button onclick="window.print()" class="btn btn-dark"><i class="fas fa-print"></i> Print</button>
+            </div>
+        </div>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-header bg-white fw-bold">Daftar Detail Tiket</div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="tiketTable">
                 <thead class="table-light">
                     <tr>
                         <th>No Tiket</th>
                         <th>Kategori</th>
+                        <th>Tanggal Masuk</th>
                         <th>Pengirim</th>
                         <th>Status</th>
-                        <th>Aksi</th>
+                        <th class="no-print">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="tiketData"></tbody>
@@ -64,29 +119,28 @@
 
 <div id="modalDetail" class="modal-overlay">
     <div class="modal-card">
-        <div id="captureArea">
-            <div class="ticket-header">
-                <h6 class="mb-0">DETAIL TIKET</h6>
-                <small id="det-nomor"></small>
-            </div>
-            <div class="ticket-body">
-                <p><strong>Pengirim:</strong> <span id="det-nama"></span></p>
-                <p><strong>Kategori:</strong> <span id="det-kategori"></span></p>
-                <hr>
-                <p><strong>ISI PESAN:</strong></p>
-                <div id="det-pesan" class="p-2 border rounded bg-light"></div>
+        <div class="ticket-header">
+            <h5 class="mb-0">ISI DETAIL PESAN</h5>
+            <small id="det-nomor"></small>
+        </div>
+        <div class="ticket-body">
+            <div class="info-row"><span class="info-label">Nama Pengirim:</span> <span id="det-nama"></span></div>
+            <div class="info-row"><span class="info-label">Asal JC:</span> <span id="det-jc"></span></div>
+            <div class="info-row"><span class="info-label">Kategori:</span> <span id="det-kategori" class="badge bg-info text-dark"></span></div>
+            <div class="info-row"><span class="info-label">Input Pada:</span> <span id="det-waktu"></span></div>
+            <div class="info-row"><span class="info-label">Status:</span> <span id="det-status"></span></div>
+            <div class="mt-3">
+                <span class="info-label">Isi Pesan:</span>
+                <div id="det-pesan" class="message-box"></div>
             </div>
         </div>
-        <div class="p-3 border-top">
-            <button onclick="copyTicketText()" class="btn-red-custom">COPY TEXT</button>
-            <button onclick="shareAsImage()" class="btn-red-custom">BAGIKAN JPG (WhatsApp)</button>
-            <button onclick="closeModal()" class="btn btn-secondary w-100 mt-2">TUTUP</button>
-        </div>
+        <button onclick="closeModal()" class="btn-close-modal">TUTUP DETAIL</button>
     </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
@@ -99,11 +153,12 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
     function loadTickets() {
-        db.collection("saran_masukan").where("jc", "==", "JC 5").orderBy("timestamp", "desc").onSnapshot(snap => {
+        const filterVal = document.getElementById('filterKategori').value;
+        db.collection("saran_masukan").orderBy("timestamp", "desc").onSnapshot(snap => {
             const tbody = document.getElementById('tiketData');
             tbody.innerHTML = "";
             let cDoa = 0, cProb = 0, cSaran = 0, total = 0;
@@ -111,24 +166,35 @@
             snap.forEach((doc) => {
                 const t = doc.data();
                 const id = doc.id;
-                total++;
+
                 if(t.kategori === "Permohonan Doa") cDoa++;
-                else if(t.kategori === "Masalah Aplikasi") cProb++;
-                else if(t.kategori === "Saran & Masukan") cSaran++;
+                if(t.kategori === "Masalah Aplikasi") cProb++;
+                if(t.kategori === "Saran & Masukan") cSaran++;
+                total++;
+
+                if(filterVal !== "" && t.kategori !== filterVal) return;
+
+                const statusClass = t.status === 'Selesai' ? 'badge-selesai' : 'badge-proses';
 
                 tbody.innerHTML += `
                     <tr>
-                        <td class="small">${t.nomor_tiket || '-'}</td>
-                        <td><span class="badge bg-info text-dark">${t.kategori}</span></td>
-                        <td>${t.nama}</td>
-                        <td><span class="badge ${t.status === 'Selesai' ? 'bg-success' : 'bg-warning'}">${(t.status || 'PROSES').toUpperCase()}</span></td>
-                        <td>
-                            <button class="btn-action btn-view" title="Lihat Detail" onclick="showDetail('${id}')"><i class="fas fa-eye"></i></button>
-                            <button class="btn-action btn-done" title="Tandai Selesai" onclick="updateStatus('${id}')"><i class="fas fa-check"></i></button>
-                            <button class="btn-action btn-delete" title="Hapus" onclick="deleteTicket('${id}')"><i class="fas fa-trash"></i></button>
+                        <td><small class="text-muted">${t.nomor_tiket || '-'}</small></td>
+                        <td class="clickable-cat" onclick="showDetail('${id}')">
+                            <span class="badge bg-info text-dark shadow-sm">${t.kategori}</span>
+                        </td>
+                        <td>${t.tanggal_kirim} <br><small>${t.jam_kirim || ''}</small></td>
+                        <td><b>${t.nama}</b><br><small>${t.jc || '-'}</small></td>
+                        <td><span class="badge ${statusClass}">${(t.status || 'PROSES').toUpperCase()}</span></td>
+                        <td class="no-print">
+                            <div class="d-flex gap-1">
+                                <button class="btn-view" onclick="showDetail('${id}')" title="Lihat Detail"><i class="fas fa-eye"></i></button>
+                                ${t.status !== 'Selesai' ? `<button class="btn-update" onclick="updateStatus('${id}')" title="Selesaikan"><i class="fas fa-check"></i></button>` : ''}
+                                <button class="btn-delete" onclick="deleteTicket('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                            </div>
                         </td>
                     </tr>`;
             });
+
             document.getElementById('totalTiket').innerText = total;
             document.getElementById('countDoa').innerText = cDoa;
             document.getElementById('countProblem').innerText = cProb;
@@ -138,46 +204,48 @@
 
     function showDetail(id) {
         db.collection("saran_masukan").doc(id).get().then(doc => {
-            const d = doc.data();
-            document.getElementById('det-nomor').innerText = d.nomor_tiket || '-';
-            document.getElementById('det-nama').innerText = d.nama;
-            document.getElementById('det-kategori').innerText = d.kategori;
-            document.getElementById('det-pesan').innerText = d.isi_saran;
-            document.getElementById('modalDetail').style.display = 'flex';
+            if (doc.exists) {
+                const d = doc.data();
+                document.getElementById('det-nomor').innerText = `[ ${d.nomor_tiket || '-'} ]`;
+                document.getElementById('det-nama').innerText = d.nama;
+                document.getElementById('det-jc').innerText = d.jc || '-';
+                document.getElementById('det-kategori').innerText = d.kategori;
+                document.getElementById('det-waktu').innerText = `${d.tanggal_kirim} pukul ${d.jam_kirim || ''}`;
+                document.getElementById('det-status').innerText = (d.status || 'proses').toUpperCase();
+                document.getElementById('det-pesan').innerText = d.isi_saran;
+                
+                document.getElementById('modalDetail').style.display = 'flex';
+            }
         });
+    }
+
+    function closeModal() {
+        document.getElementById('modalDetail').style.display = 'none';
     }
 
     function updateStatus(id) {
         if(confirm("Tandai tiket ini sebagai Selesai?")) {
-            db.collection("saran_masukan").doc(id).update({ status: "Selesai" });
+            db.collection("saran_masukan").doc(id).update({ status: "Selesai" })
+            .then(() => alert("Status diperbarui!"));
         }
     }
 
-    function closeModal() { document.getElementById('modalDetail').style.display = 'none'; }
-
-    function copyTicketText() {
-        const t = `DETAIL TIKET\nNo: ${document.getElementById('det-nomor').innerText}\nPengirim: ${document.getElementById('det-nama').innerText}\nIsi: ${document.getElementById('det-pesan').innerText}`;
-        navigator.clipboard.writeText(t).then(() => alert("Teks berhasil disalin!"));
+    function deleteTicket(id) {
+        if(confirm("Hapus tiket ini secara permanen?")) {
+            db.collection("saran_masukan").doc(id).delete();
+        }
     }
 
-    function shareAsImage() {
-        const area = document.getElementById('captureArea');
-        html2canvas(area).then(canvas => {
-            canvas.toBlob(blob => {
-                const file = new File([blob], "tiket-boby.jpg", { type: "image/jpeg" });
-                if (navigator.share) {
-                    navigator.share({ title: 'Kirim Tiket', files: [file] });
-                } else {
-                    const link = document.createElement('a');
-                    link.href = canvas.toDataURL();
-                    link.download = 'tiket-boby.jpg';
-                    link.click();
-                }
-            }, 'image/jpeg');
+    async function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const element = document.getElementById('contentToExport');
+        await html2canvas(element).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 10, 10, 280, 150);
+            doc.save('Laporan_Tiket_Masuk.pdf');
         });
     }
-
-    function deleteTicket(id) { if(confirm("Hapus data ini selamanya?")) db.collection("saran_masukan").doc(id).delete(); }
 
     window.onload = loadTickets;
 </script>
