@@ -107,6 +107,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+    // Konfigurasi didefinisikan di awal agar tidak error "not defined"
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -122,30 +123,31 @@
     let currentListener = null;
     let currentType = 'ibadah';
 
+    // Penyesuaian nama koleksi (col) dengan data di Firestore Anda
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
         arso1: { title: 'Kehadiran Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
         komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
-        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_baca', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
         doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
         peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
         saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
-    // Fungsi Pembantu format tanggal untuk PDF
+    // Perbaikan format tanggal agar aman dari error .split()
     function formatDate(rawDate) {
         if (!rawDate) return "-";
         try {
-            const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
-            return isNaN(dateObj.getTime()) ? "-" : dateObj.toLocaleDateString('id-ID');
+            // Cek jika ini adalah Firestore Timestamp
+            const dateObj = (rawDate && typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
+            if (isNaN(dateObj.getTime())) return "-";
+            return dateObj.toLocaleDateString('id-ID');
         } catch (e) { return "-"; }
     }
 
     // --- LOGIKA EXPORT PDF ---
-
-    // Mode 1: Export Tab Aktif
     function exportCurrentTabPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'pt', 'a4');
@@ -167,7 +169,6 @@
         doc.save(`Laporan_${currentType}_${new Date().getTime()}.pdf`);
     }
 
-    // Mode 2: Export Semua Tab Menjadi Satu File
     async function exportAllTabsPDF() {
         const loadingEl = document.getElementById('loading');
         loadingEl.innerText = "Menyiapkan Laporan Gabungan...";
@@ -182,22 +183,19 @@
             if (!firstPage) doc.addPage();
             firstPage = false;
 
-            // Header Halaman
             doc.setFontSize(16);
             doc.setTextColor(0, 123, 255);
             doc.text(cfg.title, 40, 40);
             doc.setDrawColor(200);
             doc.line(40, 45, 550, 45);
 
-            // Ambil Data dari Firestore (Bukan dari Tabel HTML agar akurat)
             const snap = await db.collection(cfg.col).limit(50).get();
             const rows = [];
 
             snap.forEach(docSnap => {
                 const d = docSnap.data();
-                const date = formatDate(d.tanggal || d.timestamp || d.tgl_doa || d.tgl_kirim);
+                const date = formatDate(d.tanggal || d.timestamp || d.tgl_doa || d.tgl_kirim || d.tanggal_laporan);
                 
-                // Mapping data sesuai field
                 if (key === 'peringkat_jc') {
                     rows.push([d.ranking || '-', d.nama_jc || '-', d.poin || 0, d.periode || '-', 'AKTIF']);
                 } else if (key === 'bacaan') {
@@ -230,8 +228,7 @@
         doc.save(`Laporan_Lengkap_PondokPemulihan_${new Date().getTime()}.pdf`);
     }
 
-    // --- LOGIKA DASHBOARD EXISTING ---
-
+    // --- LOGIKA DASHBOARD ---
     function switchTab(type, btn) {
         currentType = type;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -243,6 +240,7 @@
         const loadingEl = document.getElementById('loading');
         loadingEl.style.display = 'flex';
 
+        // Hentikan listener lama jika ada
         if (typeof currentListener === 'function') currentListener();
 
         const cfg = menuConfig[type];
@@ -283,6 +281,9 @@
 
             document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data tersedia</td></tr>";
             updateCharts(pieData, lineData, barData);
+            loadingEl.style.display = 'none';
+        }, (error) => {
+            console.error("Firestore Error:", error);
             loadingEl.style.display = 'none';
         });
     }
