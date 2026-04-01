@@ -219,25 +219,40 @@
         if(elBar) elBar.style.width = Math.min(value, 100) + "%";
     }
  
-    async function syncStatistikAlkitab() {
+    // --- INTEGRASI LOGIKA REAL-TIME CAPAIAN BACA ALKITAB ---
+    function syncStatistikAlkitab() {
         const jcAlk = document.getElementById("select-komsel-alkitab").value;
         const valPeriode = document.getElementById("select-periode-alkitab").value;
         if(!valPeriode) return;
  
         const blnAlk = parseInt(valPeriode);
-        db.collection("laporan_bacaan").where("komsel", "==", jcAlk).where("tanggal", ">=", getStartDate(blnAlk))
+        const target = 50;
+
+        // Listener Real-time menggunakan onSnapshot
+        db.collection("laporan_bacaan")
+        .where("jc", "==", jcAlk) // Sesuai field 'jc' di Firebase Anda
+        .where("timestamp", ">=", getStartDate(blnAlk)) // Sesuai field 'timestamp'
         .onSnapshot(snap => {
             let userUnik = new Set();
             snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
-            const jmlLapor = userUnik.size;
-            document.getElementById("text-laporan-orang-alkitab").innerText = snap.size + " Laporan";
-            document.getElementById("progres-komsel-text-alkitab").innerText = jmlLapor + " Orang Melapor";
-            const persen = ((jmlLapor / 50) * 100).toFixed(1);
-            updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', persen);
+            
+            const totalLaporan = snap.size;
+            const jmlOrangMelapor = userUnik.size;
+            const persenProgres = ((jmlOrangMelapor / target) * 100).toFixed(1);
+
+            // Update UI Real-time
+            document.getElementById("text-laporan-orang-alkitab").innerText = totalLaporan + " Laporan";
+            document.getElementById("progres-komsel-text-alkitab").innerText = jmlOrangMelapor + " Orang Melapor";
+            
+            // Bar Progress Komsel (Target 50)
+            updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', persenProgres);
+            
+            // Bar Laporan Masuk (Orange)
             const barAtas = document.getElementById("bar-laporan-orang-alkitab");
-            if(barAtas) barAtas.style.width = Math.min(persen, 100) + "%";
+            if(barAtas) barAtas.style.width = Math.min(persenProgres, 100) + "%";
         });
     }
+    // ------------------------------------------------------
  
     async function syncStatistikHadir() {
         const jcHdr = document.getElementById("select-jc-laporan").value;
@@ -280,7 +295,6 @@
         });
     }
  
-    // FUNGSI DOA YANG TELAH DIGABUNG & DIPERBAIKI
     function syncStatistikDoa() {
         const jcDoa = document.getElementById('select-jc-doa').value;
         const valPeriode = document.getElementById("select-periode-doa").value;
@@ -289,30 +303,19 @@
         const blnDoa = parseInt(valPeriode);
         const startDate = getStartDate(blnDoa);
 
-        // Ambil berdasarkan JC, lalu filter manual di client side untuk fleksibilitas kategori "Doa"
         db.collection("saran_masukan")
         .where("jc", "==", jcDoa)
         .onSnapshot(snap => {
-            let total = 0;
-            let terjawab = 0;
-            let totalSLA = 0;
+            let total = 0; let terjawab = 0; let totalSLA = 0;
 
             snap.forEach(doc => { 
                 const data = doc.data();
-                
-                // Cek kategori secara fleksibel (mengandung kata "Doa")
                 if(data.kategori && data.kategori.includes("Doa")) {
-                    
-                    // Cek validasi periode tanggal
                     const tglData = data.timestamp ? data.timestamp.toDate() : null;
-                    
                     if(!tglData || tglData >= startDate) {
-                        total++; // Hitung sebagai laporan masuk
-
+                        total++;
                         if(data.status === "Terjawab" || data.status === "Selesai") {
                             terjawab++; 
-                            
-                            // Hitung SLA (Selisih hari dari input ke hari ini)
                             if(tglData) {
                                 const diff = Math.ceil(Math.abs(new Date() - tglData) / (1000 * 60 * 60 * 24));
                                 totalSLA += diff;
@@ -322,24 +325,16 @@
                 }
             });
 
-            // Kalkulasi Statistik
             const persenJawab = total > 0 ? ((terjawab / total) * 100).toFixed(1) : 0;
             const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
             
-            // Update UI
             document.getElementById('text-laporan-doa-masuk').innerText = total + " Laporan";
             const persenMasuk = (total / 50) * 100; 
             document.getElementById('bar-laporan-doa-masuk').style.width = Math.min(persenMasuk, 100) + "%";
-
             updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persenJawab);
             document.getElementById('txt-doa-sla-jc').innerText = rataSLA + " Hari";
-            
-            // Bar SLA: Makin kecil hari, makin lebar bar (indikator performa cepat)
             const slaBarWidth = rataSLA > 0 ? Math.max(100 - (rataSLA * 10), 10) : 0;
             document.getElementById('bar-doa-sla-jc').style.width = (total > 0 ? slaBarWidth : 0) + "%";
-            
-        }, error => {
-            console.error("Error Detail Load Doa:", error);
         });
     }
  
