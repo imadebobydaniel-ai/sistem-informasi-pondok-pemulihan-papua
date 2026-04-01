@@ -20,96 +20,145 @@
         .header-section h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
         .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; }
 
-        .table-controls { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; min-height: 45px; }
-        .search-box { position: relative; flex: 1; }
-        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; outline: none; box-sizing: border-box; }
-        .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
-
-        #action-bar { display: none; align-items: center; gap: 10px; background: #f8f9fa; padding: 5px 15px; border-radius: 10px; border: 1px solid #eee; }
-        .btn-action { border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; font-size: 12px; display: flex; align-items: center; gap: 5px; }
-        #selected-count { font-size: 12px; font-weight: bold; color: var(--primary); border-right: 1px solid #ccc; padding-right: 10px; }
-
-        .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid #eee; margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; min-width: 1200px; }
-        table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 12px; }
-        table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 11.5px; vertical-align: middle; }
-        .freeze-col { position: sticky; left: 0; z-index: 2; background: white !important; border-right: 2px solid #eee; }
-
+        /* User Management & Stats */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .stat-card { padding: 15px; border-radius: 12px; color: white; position: relative; cursor: pointer; transition: transform 0.2s; height: 100%; box-sizing: border-box; text-decoration: none; display: block; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 2rem; opacity: 0.3; }
         .stat-card p { margin: 5px 0 0; font-size: 22px; font-weight: bold; }
 
-        /* Modal styling... */
+        .table-controls { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .search-box { position: relative; flex: 1; }
+        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; outline: none; box-sizing: border-box; }
+        .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
+
+        /* Modal Popup Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: none; align-items: center; 
+            justify-content: center; z-index: 9999; padding: 15px;
+        }
+        .modal-card { 
+            background: white; width: 100%; max-width: 400px; 
+            border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .modal-header { background: var(--success); color: white; padding: 15px; text-align: center; }
+        .modal-body { padding: 20px; }
+        .form-control { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+
+        /* Log Activity Table */
+        .log-section { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .log-table { width: 100%; font-size: 11px; color: #555; }
+        .log-table th { background: #f8f9fa; color: #333; }
+        .badge-admin { background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; }
+
+        .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid #eee; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 12px; }
+        table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 11.5px; }
+
+        .btn-add-user { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="admin-container">
     <div class="header-section">
-        <h2>Dashboard Administrator</h2>
-        <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Keluar</a>
+        <div>
+            <h2>Dashboard Administrator</h2>
+            <small id="roleLabel" class="badge-admin">Memuat Role...</small>
+        </div>
+        <div class="d-flex gap-2">
+            <button id="btnAddNewUser" class="btn-add-user" onclick="openAddUserModal()" style="display:none;">
+                <i class="fas fa-user-plus"></i> Add New User Admin
+            </button>
+            <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Keluar</a>
+        </div>
     </div>
 
     <div class="stats-grid">
         <a href="admin-tiket.html" class="stat-card" style="background: linear-gradient(135deg, var(--accent), var(--blue-dark));">
             <h4 style="margin:0; font-size:11px;">PORTAL TIKET</h4>
-            <p id="stat_tiket">0</p>
-            <i class="fas fa-ticket-alt"></i>
+            <p id="stat_tiket">0</p><i class="fas fa-ticket-alt"></i>
         </a>
-
         <div class="stat-card" style="background: linear-gradient(135deg, #28a745, #1e7e34);">
-            <h4 style="margin:0; font-size:11px;">HADIR HARI INI</h4><p id="stat_hadir"></p><i class="fas fa-check-circle"></i>
+            <h4 style="margin:0; font-size:11px;">HADIR HARI INI</h4><p id="stat_hadir">0</p><i class="fas fa-check-circle"></i>
         </div>
-
         <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #a71d2a);">
-            <h4 style="margin:0; font-size:11px;">POKOK DOA</h4><p id="stat_doa"></p><i class="fas fa-hands-praying"></i>
+            <h4 style="margin:0; font-size:11px;">POKOK DOA</h4><p id="stat_doa">0</p><i class="fas fa-hands-praying"></i>
         </div>
-        
         <a href="portal-media.html" class="stat-card" style="background: linear-gradient(135deg, var(--purple), #4e2a84);">
-            <h4 style="margin:0; font-size:11px;">PORTAL MEDIA</h4><p id="stat_media"></p><i class="fas fa-photo-video"></i>
+            <h4 style="margin:0; font-size:11px;">PORTAL MEDIA</h4><p id="stat_media">0</p><i class="fas fa-photo-video"></i>
         </a>
-
-        <a href="informasi-kegiatan.html" class="stat-card" style="background: linear-gradient(135deg, var(--orange), #c46210);">
-            <h4 style="margin:0; font-size:11px;">INFORMASI KEGIATAN</h4><p id="stat_kegiatan"></p><i class="fas fa-calendar-alt"></i>
-        </a>
-
-        <div class="stat-card" id="btn-statistik-bigdata" style="background: linear-gradient(135deg, var(--teal), #178a6b);" onclick="bukaStatistik()">
-            <h4 style="margin:0; font-size:11px;">STATISTIK BIG DATA</h4>
-            <p id="stat_bigdata"></p>
-            <i class="fas fa-chart-line"></i>
-        </div>
     </div>
 
     <div class="table-controls">
         <div class="search-box">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari nama, email, atau alamat...">
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari nama anggota...">
             <i class="fas fa-search"></i>
-        </div>
-        <div id="action-bar">
-            <span id="selected-count">0 Terpilih</span>
-            <button class="btn-action" style="background:var(--accent)" onclick="editSelected()"><i class="fas fa-edit"></i> Edit</button>
-            <button class="btn-action" style="background:var(--danger)" onclick="deleteSelected()"><i class="fas fa-trash"></i> Hapus</button>
         </div>
     </div>
 
     <div class="table-responsive">
-        <table id="adminTable">
+        <table>
             <thead>
                 <tr>
-                    <th style="width:40px; text-align:center;"><input type="checkbox" id="checkAll" onclick="toggleSelectAll()"></th>
-                    <th class="freeze-col">Nama Anggota</th>
+                    <th>Nama Anggota</th>
                     <th>WhatsApp</th>
-                    <th>Email</th>
-                    <th>Gol. Darah</th>
                     <th>Jabatan</th>
                     <th>JC</th>
                     <th>Alamat</th>
                 </tr>
             </thead>
-            <tbody id="memberData"></tbody>
+            <tbody id="memberData">
+                <tr><td colspan="5" style="text-align:center;">Memuat data...</td></tr>
+            </tbody>
         </table>
+    </div>
+
+    <div class="log-section">
+        <h4 style="font-size: 14px; color: var(--primary);"><i class="fas fa-history me-2"></i> Log Aktivitas Administrator</h4>
+        <div class="table-responsive">
+            <table class="log-table">
+                <thead>
+                    <tr style="background: #f1f1f1;">
+                        <th style="width: 150px;">Waktu</th>
+                        <th style="width: 150px;">User / Role</th>
+                        <th>Aktivitas / Mobilitas</th>
+                    </tr>
+                </thead>
+                <tbody id="logData"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="addUserModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:16px;">CREATE NEW ADMIN</h3>
+        </div>
+        <div class="modal-body">
+            <label class="small fw-bold">Nama Lengkap</label>
+            <input type="text" id="new_nama" class="form-control" placeholder="Nama Lengkap">
+            
+            <label class="small fw-bold">Username</label>
+            <input type="text" id="new_user" class="form-control" placeholder="Username login">
+            
+            <label class="small fw-bold">Password</label>
+            <input type="password" id="new_pass" class="form-control" placeholder="******">
+            
+            <label class="small fw-bold">Jenis User</label>
+            <select id="new_level" class="form-control">
+                <option value="Administrator">Administrator</option>
+                <option value="Admin Lite">Admin Lite</option>
+            </select>
+            
+            <div style="display:flex; gap:10px;">
+                <button onclick="saveNewUser()" style="flex:1; background:var(--primary); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;">CREATE</button>
+                <button onclick="closeUserModal()" style="flex:1; background:#eee; border:none; padding:10px; border-radius:6px; cursor:pointer;">BATAL</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -117,6 +166,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -129,38 +179,85 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    window.onload = function() { 
-        loadUsers(); 
-        updateStats(); 
+    // Simulasi Role (Nantinya diambil dari sistem login)
+    let currentRole = "Administrator"; 
+    let currentUserName = "Boby Daniel";
+
+    window.onload = function() {
+        checkAccess();
+        loadMembers();
+        updateStats();
+        loadLogs();
+        writeLog("Mengakses Dashboard Utama");
     };
 
-    function updateStats() {
-        // Mengambil jumlah tiket masuk secara real-time
-        db.collection("tiket").onSnapshot(snap => {
-            document.getElementById("stat_tiket").innerText = snap.size;
-        });
-
-        db.collection("absensi").where("tanggal", "==", new Date().toISOString().split('T')[0])
-            .onSnapshot(snap => { document.getElementById("stat_hadir").innerText = snap.size; });
-        
-        db.collection("doa_global").onSnapshot(snap => { document.getElementById("stat_doa").innerText = snap.size; });
-        db.collection("portal_media").onSnapshot(snap => { document.getElementById("stat_media").innerText = snap.size; });
-        db.collection("informasi_kegiatan").onSnapshot(snap => { document.getElementById("stat_kegiatan").innerText = snap.size; });
+    function checkAccess() {
+        document.getElementById('roleLabel').innerText = `Role: ${currentRole}`;
+        if(currentRole === "Administrator") {
+            document.getElementById('btnAddNewUser').style.display = "block";
+        }
     }
 
-    function loadUsers() {
-        db.collection("users").onSnapshot((snapshot) => {
+    // --- FUNGSI AUDIT LOG ---
+    function writeLog(activity) {
+        db.collection("activity_logs").add({
+            user: currentUserName,
+            role: currentRole,
+            activity: activity,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            timeStr: new Date().toLocaleString('id-ID')
+        });
+    }
+
+    function loadLogs() {
+        db.collection("activity_logs").orderBy("timestamp", "desc").limit(10).onSnapshot(snap => {
+            const logBody = document.getElementById("logData");
+            logBody.innerHTML = "";
+            snap.forEach(doc => {
+                const l = doc.data();
+                logBody.innerHTML += `
+                    <tr>
+                        <td style="color:#888;">${l.timeStr || '-'}</td>
+                        <td><strong>${l.user}</strong> <br><small class="badge-admin" style="font-size:9px;">${l.role}</small></td>
+                        <td style="color:var(--blue-dark); font-weight:bold;">${l.activity}</td>
+                    </tr>`;
+            });
+        });
+    }
+
+    // --- MANAJEMEN USER ---
+    function openAddUserModal() { document.getElementById('addUserModal').style.display = 'flex'; }
+    function closeUserModal() { document.getElementById('addUserModal').style.display = 'none'; }
+
+    function saveNewUser() {
+        const nama = document.getElementById('new_nama').value;
+        const user = document.getElementById('new_user').value;
+        const pass = document.getElementById('new_pass').value;
+        const level = document.getElementById('new_level').value;
+
+        if(!nama || !user || !pass) return alert("Lengkapi data!");
+
+        db.collection("users_admin").add({
+            nama: nama, username: user, password: pass, level: level,
+            created_at: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            writeLog(`Menambah User Admin Baru: ${user} (${level})`);
+            alert(`Selamat! user admin anda telah terbit\n\nMohon diingat\nUser anda : ${user}\nPasword anda : ${pass}`);
+            closeUserModal();
+        });
+    }
+
+    // --- LOAD DATA & STATS ---
+    function loadMembers() {
+        db.collection("users").limit(20).onSnapshot((snapshot) => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 tableBody.innerHTML += `
                     <tr>
-                        <td style="text-align:center;"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionBar()"></td>
-                        <td class="freeze-col"><b>${data.nama || '-'}</b></td>
+                        <td><b>${data.nama || '-'}</b></td>
                         <td>${data.whatsapp || '-'}</td>
-                        <td>${data.email || '-'}</td>
-                        <td style="text-align:center">${data.golongan_darah || '-'}</td>
                         <td>${data.jabatan || '-'}</td>
                         <td>JC ${data.komsel || '-'}</td>
                         <td>${data.alamat || '-'}</td>
@@ -169,11 +266,17 @@
         });
     }
 
-    function bukaStatistik() { window.location.href = "admin-bigdata.html"; }
+    function updateStats() {
+        db.collection("saran_masukan").onSnapshot(s => document.getElementById("stat_tiket").innerText = s.size);
+        db.collection("absensi").onSnapshot(s => document.getElementById("stat_hadir").innerText = s.size);
+        db.collection("doa_global").onSnapshot(s => document.getElementById("stat_doa").innerText = s.size);
+        db.collection("portal_media").onSnapshot(s => document.getElementById("stat_media").innerText = s.size);
+    }
+
     function filterTable() {
-        let input = document.getElementById("searchInput").value.toLowerCase();
+        let val = document.getElementById("searchInput").value.toLowerCase();
         document.querySelectorAll("#memberData tr").forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
         });
     }
 </script>
