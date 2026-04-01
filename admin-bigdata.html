@@ -99,13 +99,21 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // ... (firebaseConfig tetap sama) ...
+    // 1. DEFINISI CONFIG (Harus paling atas)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
     
+    // 2. INISIALISASI VARIABEL GLOBAL
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
     let myCharts = { pie: null, line: null, bar: null };
-    let currentListener = null;
+    let currentListener = null; // Didefinisikan sebelum fungsi digunakan
 
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
@@ -113,7 +121,7 @@
         komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
-        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Pesan'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
         doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
         peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
         saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
@@ -126,18 +134,25 @@
     }
 
     function loadDataRealtime(type) {
-        document.getElementById('loading').style.display = 'flex';
-        if (currentListener) currentListener();
+        const loadingEl = document.getElementById('loading');
+        loadingEl.style.display = 'flex';
+
+        // Berhenti mendengarkan snapshot sebelumnya jika ada
+        if (typeof currentListener === 'function') {
+            currentListener();
+        }
 
         const cfg = menuConfig[type];
         document.getElementById('table-title').innerText = "Detail: " + cfg.title;
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
 
+        // Query Firestore
         let query = db.collection(cfg.col);
         if (type === 'peringkat_jc') {
             query = query.orderBy("ranking", "asc");
         } else {
-            query = query.limit(100); 
+            // Urutkan berdasarkan tanggal terbaru jika memungkinkan
+            query = query.limit(50); 
         }
 
         currentListener = query.onSnapshot((snapshot) => {
@@ -147,66 +162,84 @@
             snapshot.forEach((doc) => {
                 const d = doc.data();
                 
-                // MAPPING DATA UNTUK KONSISTENSI
+                // Normalisasi Data
                 const nama = d.nama || d.pengirim || d.Nama || "-";
                 const jc = d.jc || d.komsel || d.nama_jc || d.kelas || d.Komsel || "Umum";
                 const status = (d.status || d.status_doa || "HADIR").toUpperCase();
                 
-                // PENANGANAN TANGGAL
+                // Penanganan Tanggal yang Aman
                 const rawDate = d.tanggal || d.timestamp || d.tgl_doa || d.tgl_kirim || d.tanggal_laporan;
                 let displayDate = "-"; 
-                let chartLabel = "Unknown";
+                let chartLabel = "Lainnya";
 
                 if (rawDate) {
-                    const dateObj = (rawDate && typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
-                    if (!isNaN(dateObj)) {
-                        displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                        chartLabel = dateObj.toLocaleDateString('id-ID');
-                    }
+                    try {
+                        const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                            chartLabel = dateObj.toLocaleDateString('id-ID');
+                        }
+                    } catch (e) { console.error("Date error", e); }
                 }
 
-                // CHART DATA
+                // Hitung Chart
                 pieData[status] = (pieData[status] || 0) + 1;
                 barData[jc] = (barData[jc] || 0) + 1;
                 lineData[chartLabel] = (lineData[chartLabel] || 0) + 1;
 
-                // RENDER BARIS BERDASARKAN URUTAN FIELDS DI menuConfig
+                // Render Baris sesuai tipe
                 if (type === 'peringkat_jc') {
                     html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
-                } 
-                else if (type === 'bacaan') {
-                    // Fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Pesan']
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td><b style="color:var(--primary)">${d.pasal_utama || d.pasal || "-"}</b></td><td><span class="badge badge-success">${displayDate}</span></td><td>${d.pesan || "-"}</td></tr>`;
-                } 
-                else if (type === 'saran') {
-                    // Fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal']
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.kategori || "-"}</td><td>${d.isi_pesan || "-"}</td><td><span class="badge badge-success">${displayDate}</span></td></tr>`;
-                } 
-                else if (type === 'doa_komsel') {
-                    // Fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa']
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td><span class="badge badge-success">${displayDate}</span></td><td>${d.status_doa || "-"}</td><td>${d.pokok_doa || "-"}</td></tr>`;
-                }
-                else if (type === 'absen_kd') {
-                    // Fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi']
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td><span class="badge badge-success">${displayDate}</span></td><td>${status}</td><td>${d.materi || "-"}</td></tr>`;
-                }
-                else {
-                    // General (Ibadah & Komsel) 
-                    // Fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan/Materi']
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td><span class="badge badge-success">${displayDate}</span></td><td>${status}</td><td>${d.keterangan || d.materi || d.lokasi || "-"}</td></tr>`;
+                } else if (type === 'bacaan') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td><b style="color:var(--primary)">${d.pasal_utama || "-"}</b></td><td><span class="badge badge-success">${displayDate}</span></td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                } else if (type === 'saran') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.kategori || "-"}</td><td>${d.isi_pesan || "-"}</td><td>${displayDate}</td></tr>`;
+                } else {
+                    let colAkhir = d.keterangan || d.materi || d.lokasi || d.pokok_doa || "-";
+                    let colTengah = (type === 'doa_komsel') ? d.status_doa : status;
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${displayDate}</td><td>${colTengah}</td><td>${colAkhir}</td></tr>`;
                 }
             });
 
-            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>Tidak ada data</td></tr>";
+            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data tersedia</td></tr>";
             updateCharts(pieData, lineData, barData);
-            document.getElementById('loading').style.display = 'none';
+            loadingEl.style.display = 'none';
         }, (err) => {
-            console.error("Error Firestore:", err);
-            document.getElementById('loading').style.display = 'none';
+            console.error("Firestore Error:", err);
+            loadingEl.style.display = 'none';
+            document.getElementById('data-list').innerHTML = `<tr><td colspan='10' style='text-align:center; color:red;'>Error: ${err.message}</td></tr>`;
         });
     }
 
-    // ... (updateCharts tetap sama) ...
+    function updateCharts(pieData, lineData, barData) {
+        const ctxPie = document.getElementById('pieChart');
+        const ctxLine = document.getElementById('lineChart');
+        const ctxBar = document.getElementById('barChart');
+
+        if (myCharts.pie) myCharts.pie.destroy();
+        myCharts.pie = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: { labels: Object.keys(pieData), datasets: [{ data: Object.values(pieData), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const lineLabels = Object.keys(lineData).sort().slice(-7);
+        if (myCharts.line) myCharts.line.destroy();
+        myCharts.line = new Chart(ctxLine, {
+            type: 'line',
+            data: { labels: lineLabels, datasets: [{ label: 'Aktivitas', data: lineLabels.map(l => lineData[l]), borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        if (myCharts.bar) myCharts.bar.destroy();
+        myCharts.bar = new Chart(ctxBar, {
+            type: 'bar',
+            data: { labels: Object.keys(barData), datasets: [{ label: 'Total Laporan', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    window.onload = () => loadDataRealtime('ibadah');
 </script>
 </body>
 </html>
