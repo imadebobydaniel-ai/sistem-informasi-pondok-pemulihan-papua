@@ -28,8 +28,13 @@
             white-space: nowrap; display: flex; align-items: center; gap: 8px; font-size: 13px;
         }
         .tab-btn.active { background: var(--primary); color: white; transform: translateY(-3px); }
+        
+        /* Container Tombol Aksi */
+        .action-group { margin-left: auto; display: flex; gap: 8px; }
         .action-btn { padding: 10px 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; display: flex; align-items: center; gap: 8px; color: white; font-size: 12px; }
         .btn-print { background: var(--dark); }
+        .btn-pdf { background: var(--danger); } /* Warna merah untuk PDF */
+
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
         .chart-title { font-weight: bold; margin-bottom: 15px; color: var(--dark); width: 100%; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -40,7 +45,7 @@
         td { padding: 12px 15px; border-bottom: 1px solid #f1f1f1; }
         .badge { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
         .badge-success { background: #d4edda; color: #155724; }
-        @media print { .tab-menu, #loading, .action-btn, .fas.fa-arrow-left { display: none !important; } }
+        @media print { .tab-menu, #loading, .action-group, .fas.fa-arrow-left { display: none !important; } }
     </style>
 </head>
 <body>
@@ -63,8 +68,10 @@
         <button class="tab-btn" onclick="switchTab('doa_komsel', this)"><i class="fas fa-hands-praying"></i> Doa Komsel</button>
         <button class="tab-btn" onclick="switchTab('peringkat_jc', this)"><i class="fas fa-trophy"></i> Peringkat JC</button>
         <button class="tab-btn" onclick="switchTab('saran', this)"><i class="fas fa-comment-dots"></i> Saran & Tiket</button>
-        <div style="margin-left: auto;">
-            <button class="action-btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print Laporan</button>
+        
+        <div class="action-group">
+            <button class="action-btn btn-pdf" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Export PDF</button>
+            <button class="action-btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
         </div>
     </div>
 
@@ -99,7 +106,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // 1. DEFINISI CONFIG (Harus paling atas)
+    // 1. DEFINISI CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -109,11 +116,12 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     
-    // 2. INISIALISASI VARIABEL GLOBAL
+    // 2. INISIALISASI
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     let myCharts = { pie: null, line: null, bar: null };
-    let currentListener = null; // Didefinisikan sebelum fungsi digunakan
+    let currentListener = null;
+    let currentType = 'ibadah'; // Menyimpan tipe yang sedang aktif
 
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
@@ -128,6 +136,7 @@
     };
 
     function switchTab(type, btn) {
+        currentType = type;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         loadDataRealtime(type);
@@ -137,22 +146,17 @@
         const loadingEl = document.getElementById('loading');
         loadingEl.style.display = 'flex';
 
-        // Berhenti mendengarkan snapshot sebelumnya jika ada
-        if (typeof currentListener === 'function') {
-            currentListener();
-        }
+        if (typeof currentListener === 'function') currentListener();
 
         const cfg = menuConfig[type];
         document.getElementById('table-title').innerText = "Detail: " + cfg.title;
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
 
-        // Query Firestore
         let query = db.collection(cfg.col);
         if (type === 'peringkat_jc') {
             query = query.orderBy("ranking", "asc");
         } else {
-            // Urutkan berdasarkan tanggal terbaru jika memungkinkan
-            query = query.limit(50); 
+            query = query.limit(100); 
         }
 
         currentListener = query.onSnapshot((snapshot) => {
@@ -161,13 +165,10 @@
 
             snapshot.forEach((doc) => {
                 const d = doc.data();
-                
-                // Normalisasi Data
                 const nama = d.nama || d.pengirim || d.Nama || "-";
                 const jc = d.jc || d.komsel || d.nama_jc || d.kelas || d.Komsel || "Umum";
                 const status = (d.status || d.status_doa || "HADIR").toUpperCase();
                 
-                // Penanganan Tanggal yang Aman
                 const rawDate = d.tanggal || d.timestamp || d.tgl_doa || d.tgl_kirim || d.tanggal_laporan;
                 let displayDate = "-"; 
                 let chartLabel = "Lainnya";
@@ -182,12 +183,10 @@
                     } catch (e) { console.error("Date error", e); }
                 }
 
-                // Hitung Chart
                 pieData[status] = (pieData[status] || 0) + 1;
                 barData[jc] = (barData[jc] || 0) + 1;
                 lineData[chartLabel] = (lineData[chartLabel] || 0) + 1;
 
-                // Render Baris sesuai tipe
                 if (type === 'peringkat_jc') {
                     html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
                 } else if (type === 'bacaan') {
@@ -204,11 +203,30 @@
             document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data tersedia</td></tr>";
             updateCharts(pieData, lineData, barData);
             loadingEl.style.display = 'none';
-        }, (err) => {
-            console.error("Firestore Error:", err);
-            loadingEl.style.display = 'none';
-            document.getElementById('data-list').innerHTML = `<tr><td colspan='10' style='text-align:center; color:red;'>Error: ${err.message}</td></tr>`;
         });
+    }
+
+    // FUNGSI EXPORT PDF
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        const title = menuConfig[currentType].title;
+
+        doc.setFontSize(18);
+        doc.text("Laporan Statistik: " + title, 40, 40);
+        doc.setFontSize(10);
+        doc.text("Dicetak pada: " + new Date().toLocaleString('id-ID'), 40, 60);
+
+        doc.autoTable({
+            html: '#mainTable',
+            startY: 80,
+            theme: 'grid',
+            headStyles: { fillStyle: [0, 123, 255] },
+            styles: { fontSize: 8 },
+            margin: { left: 40, right: 40 }
+        });
+
+        doc.save(`Laporan_${title}_${new Date().getTime()}.pdf`);
     }
 
     function updateCharts(pieData, lineData, barData) {
