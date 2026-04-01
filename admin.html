@@ -3,170 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrator - Pondok Pemulihan Regional</title>
+    <title>Big Data Dashboard - Pondok Pemulihan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
     <style>
-        :root { 
-            --primary: #003366; --accent: #007bff; --dark: #333; 
-            --light: #f4f7f6; --success: #28a745; --emas: #D4AF37;
-            --danger: #dc3545; --purple: #6f42c1; --orange: #fd7e14;
-            --teal: #20c997; --blue-dark: #0056b3;
+        :root {
+            --primary: #007bff; --success: #28a745; --danger: #dc3545;
+            --warning: #ffc107; --purple: #6f42c1; --dark: #1a1a1a;
+            --light: #f8f9fa;
         }
-
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); margin: 0; padding: 10px; }
-        .admin-container { max-width: 1400px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        body { font-family: 'Segoe UI', sans-serif; background: #eef2f7; margin: 0; padding: 20px; color: var(--dark); }
+        .container { max-width: 1400px; margin: auto; }
+        #loading {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center;
+            align-items: center; font-weight: bold; color: var(--primary);
+        }
+        .tab-menu { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; align-items: center; border-bottom: 2px solid #ddd; }
+        .tab-btn {
+            padding: 12px 18px; border: none; border-radius: 12px; background: white;
+            cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            white-space: nowrap; display: flex; align-items: center; gap: 8px; font-size: 13px;
+        }
+        .tab-btn.active { background: var(--primary); color: white; transform: translateY(-3px); }
         
-        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas); padding-bottom: 15px; margin-bottom: 20px; }
-        .header-section h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
-        .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; }
+        .action-group { margin-left: auto; display: flex; gap: 8px; }
+        .action-btn { padding: 10px 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; display: flex; align-items: center; gap: 8px; color: white; font-size: 12px; }
+        .btn-print { background: var(--dark); }
+        .btn-pdf { background: var(--danger); }
+        .btn-add-admin { background: var(--success); }
 
-        /* User Management & Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { padding: 15px; border-radius: 12px; color: white; position: relative; cursor: pointer; transition: transform 0.2s; height: 100%; box-sizing: border-box; text-decoration: none; display: block; }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 2rem; opacity: 0.3; }
-        .stat-card p { margin: 5px 0 0; font-size: 22px; font-weight: bold; }
-
-        .table-controls { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px; }
-        .search-box { position: relative; flex: 1; }
-        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; outline: none; box-sizing: border-box; }
-        .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
-
-        /* Modal Popup Styles */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); display: none; align-items: center; 
-            justify-content: center; z-index: 9999; padding: 15px;
-        }
-        .modal-card { 
-            background: white; width: 100%; max-width: 400px; 
-            border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .modal-header { background: var(--success); color: white; padding: 15px; text-align: center; }
-        .modal-body { padding: 20px; }
-        .form-control { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-
-        /* Log Activity Table */
-        .log-section { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
-        .log-table { width: 100%; font-size: 11px; color: #555; }
-        .log-table th { background: #f8f9fa; color: #333; }
-        .badge-admin { background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; }
-
-        .table-responsive { overflow-x: auto; border-radius: 10px; border: 1px solid #eee; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        table th { background: var(--primary); color: white; padding: 12px; text-align: left; font-size: 12px; }
-        table td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 11.5px; }
-
-        .btn-add-user { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
+        .chart-title { font-weight: bold; margin-bottom: 15px; color: var(--dark); width: 100%; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .data-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .table-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .table-wrapper { overflow-x: auto; max-height: 500px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
+        th { background: #f8f9fa; padding: 15px; text-align: left; border-bottom: 2px solid #eee; position: sticky; top: 0; z-index: 5; }
+        td { padding: 12px 15px; border-bottom: 1px solid #f1f1f1; }
+        .badge { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-success { background: #d4edda; color: #155724; }
+        @media print { .tab-menu, #loading, .action-group, .fas.fa-arrow-left, .btn-add-admin { display: none !important; } }
     </style>
 </head>
 <body>
 
-<div class="admin-container">
-    <div class="header-section">
-        <div>
-            <h2>Dashboard Administrator</h2>
-            <small id="roleLabel" class="badge-admin">Memuat Role...</small>
-        </div>
-        <div class="d-flex gap-2">
-            <button id="btnAddNewUser" class="btn-add-user" onclick="openAddUserModal()" style="display:none;">
-                <i class="fas fa-user-plus"></i> Add New User Admin
-            </button>
-            <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Keluar</a>
+<div id="loading">Sinkronisasi Data Real-time...</div>
+
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+        <h2><i class="fas fa-database"></i> Dashboard Statistik Central</h2>
+        <a href="admin.html" style="text-decoration:none; color: var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali</a>
+    </div>
+
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="switchTab('ibadah', this)"><i class="fas fa-church"></i> Ibadah Raya</button>
+        <button class="tab-btn" onclick="switchTab('arso1', this)"><i class="fas fa-map-marker-alt"></i> Ibadah Arso 1</button>
+        <button class="tab-btn" onclick="switchTab('komsel', this)"><i class="fas fa-users"></i> Komsel Reguler</button>
+        <button class="tab-btn" onclick="switchTab('komsel_gabungan', this)"><i class="fas fa-layer-group"></i> Komsel Gabungan</button>
+        <button class="tab-btn" onclick="switchTab('absen_kd', this)"><i class="fas fa-graduation-cap"></i> Absen KD</button>
+        <button class="tab-btn" onclick="switchTab('bacaan', this)"><i class="fas fa-bible"></i> Baca Alkitab</button>
+        <button class="tab-btn" onclick="switchTab('doa_komsel', this)"><i class="fas fa-hands-praying"></i> Doa Komsel</button>
+        <button class="tab-btn" onclick="switchTab('peringkat_jc', this)"><i class="fas fa-trophy"></i> Peringkat JC</button>
+        <button class="tab-btn" onclick="switchTab('saran', this)"><i class="fas fa-comment-dots"></i> Saran & Tiket</button>
+        
+        <div class="action-group">
+            <button class="action-btn btn-pdf" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Export PDF</button>
+            <button class="action-btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
         </div>
     </div>
 
     <div class="stats-grid">
-        <a href="admin-tiket.html" class="stat-card" style="background: linear-gradient(135deg, var(--accent), var(--blue-dark));">
-            <h4 style="margin:0; font-size:11px;">PORTAL TIKET</h4>
-            <p id="stat_tiket">0</p><i class="fas fa-ticket-alt"></i>
-        </a>
-        <div class="stat-card" style="background: linear-gradient(135deg, #28a745, #1e7e34);">
-            <h4 style="margin:0; font-size:11px;">HADIR HARI INI</h4><p id="stat_hadir">0</p><i class="fas fa-check-circle"></i>
+        <div class="chart-card">
+            <div class="chart-title">Proporsi Status</div>
+            <div style="width: 100%; height: 250px;"><canvas id="pieChart"></canvas></div>
         </div>
-        <div class="stat-card" style="background: linear-gradient(135deg, #dc3545, #a71d2a);">
-            <h4 style="margin:0; font-size:11px;">POKOK DOA</h4><p id="stat_doa">0</p><i class="fas fa-hands-praying"></i>
+        <div class="chart-card">
+            <div class="chart-title">Tren Aktivitas (Real-time)</div>
+            <div style="width: 100%; height: 250px;"><canvas id="lineChart"></canvas></div>
         </div>
-        <a href="portal-media.html" class="stat-card" style="background: linear-gradient(135deg, var(--purple), #4e2a84);">
-            <h4 style="margin:0; font-size:11px;">PORTAL MEDIA</h4><p id="stat_media">0</p><i class="fas fa-photo-video"></i>
-        </a>
-    </div>
-
-    <div class="table-controls">
-        <div class="search-box">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari nama anggota...">
-            <i class="fas fa-search"></i>
+        <div class="chart-card">
+            <div class="chart-title">Distribusi Per Komsel/JC</div>
+            <div style="width: 100%; height: 250px;"><canvas id="barChart"></canvas></div>
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nama Anggota</th>
-                    <th>WhatsApp</th>
-                    <th>Jabatan</th>
-                    <th>JC</th>
-                    <th>Alamat</th>
-                </tr>
-            </thead>
-            <tbody id="memberData">
-                <tr><td colspan="5" style="text-align:center;">Memuat data...</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="log-section">
-        <h4 style="font-size: 14px; color: var(--primary);"><i class="fas fa-history me-2"></i> Log Aktivitas Administrator</h4>
-        <div class="table-responsive">
-            <table class="log-table">
-                <thead>
-                    <tr style="background: #f1f1f1;">
-                        <th style="width: 150px;">Waktu</th>
-                        <th style="width: 150px;">User / Role</th>
-                        <th>Aktivitas / Mobilitas</th>
-                    </tr>
-                </thead>
-                <tbody id="logData"></tbody>
+    <div class="data-section">
+        <div class="table-header-flex">
+            <div class="chart-title" id="table-title" style="margin: 0; border: none; padding: 0;">Memuat Data...</div>
+            <button class="action-btn btn-add-admin" onclick="openAddUserModal()">
+                <i class="fas fa-user-plus"></i> Add New User Admin
+            </button>
+        </div>
+        
+        <div class="table-wrapper">
+            <table id="mainTable">
+                <thead id="table-head"></thead>
+                <tbody id="data-list"></tbody>
             </table>
-        </div>
-    </div>
-</div>
-
-<div id="addUserModal" class="modal-overlay">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3 style="margin:0; font-size:16px;">CREATE NEW ADMIN</h3>
-        </div>
-        <div class="modal-body">
-            <label class="small fw-bold">Nama Lengkap</label>
-            <input type="text" id="new_nama" class="form-control" placeholder="Nama Lengkap">
-            
-            <label class="small fw-bold">Username</label>
-            <input type="text" id="new_user" class="form-control" placeholder="Username login">
-            
-            <label class="small fw-bold">Password</label>
-            <input type="password" id="new_pass" class="form-control" placeholder="******">
-            
-            <label class="small fw-bold">Jenis User</label>
-            <select id="new_level" class="form-control">
-                <option value="Administrator">Administrator</option>
-                <option value="Admin Lite">Admin Lite</option>
-            </select>
-            
-            <div style="display:flex; gap:10px;">
-                <button onclick="saveNewUser()" style="flex:1; background:var(--primary); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;">CREATE</button>
-                <button onclick="closeUserModal()" style="flex:1; background:#eee; border:none; padding:10px; border-radius:6px; cursor:pointer;">BATAL</button>
-            </div>
         </div>
     </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -175,110 +121,139 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    let myCharts = { pie: null, line: null, bar: null };
+    let currentListener = null;
+    let currentType = 'ibadah';
 
-    // Simulasi Role (Nantinya diambil dari sistem login)
-    let currentRole = "Administrator"; 
-    let currentUserName = "Boby Daniel";
-
-    window.onload = function() {
-        checkAccess();
-        loadMembers();
-        updateStats();
-        loadLogs();
-        writeLog("Mengakses Dashboard Utama");
+    const menuConfig = {
+        ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        arso1: { title: 'Kehadiran Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
+        komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
+        absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
+        doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
+        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
+        saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
-    function checkAccess() {
-        document.getElementById('roleLabel').innerText = `Role: ${currentRole}`;
-        if(currentRole === "Administrator") {
-            document.getElementById('btnAddNewUser').style.display = "block";
+    function openAddUserModal() {
+        alert("Fungsi Tambah User Admin dipanggil!");
+        // Tambahkan logika modal Anda di sini
+    }
+
+    function switchTab(type, btn) {
+        currentType = type;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadDataRealtime(type);
+    }
+
+    function loadDataRealtime(type) {
+        const loadingEl = document.getElementById('loading');
+        loadingEl.style.display = 'flex';
+        if (typeof currentListener === 'function') currentListener();
+
+        const cfg = menuConfig[type];
+        document.getElementById('table-title').innerText = "Detail: " + cfg.title;
+        document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
+
+        let query = db.collection(cfg.col);
+        if (type === 'peringkat_jc') {
+            query = query.orderBy("ranking", "asc");
+        } else {
+            query = query.limit(100); 
         }
-    }
 
-    // --- FUNGSI AUDIT LOG ---
-    function writeLog(activity) {
-        db.collection("activity_logs").add({
-            user: currentUserName,
-            role: currentRole,
-            activity: activity,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            timeStr: new Date().toLocaleString('id-ID')
-        });
-    }
-
-    function loadLogs() {
-        db.collection("activity_logs").orderBy("timestamp", "desc").limit(10).onSnapshot(snap => {
-            const logBody = document.getElementById("logData");
-            logBody.innerHTML = "";
-            snap.forEach(doc => {
-                const l = doc.data();
-                logBody.innerHTML += `
-                    <tr>
-                        <td style="color:#888;">${l.timeStr || '-'}</td>
-                        <td><strong>${l.user}</strong> <br><small class="badge-admin" style="font-size:9px;">${l.role}</small></td>
-                        <td style="color:var(--blue-dark); font-weight:bold;">${l.activity}</td>
-                    </tr>`;
-            });
-        });
-    }
-
-    // --- MANAJEMEN USER ---
-    function openAddUserModal() { document.getElementById('addUserModal').style.display = 'flex'; }
-    function closeUserModal() { document.getElementById('addUserModal').style.display = 'none'; }
-
-    function saveNewUser() {
-        const nama = document.getElementById('new_nama').value;
-        const user = document.getElementById('new_user').value;
-        const pass = document.getElementById('new_pass').value;
-        const level = document.getElementById('new_level').value;
-
-        if(!nama || !user || !pass) return alert("Lengkapi data!");
-
-        db.collection("users_admin").add({
-            nama: nama, username: user, password: pass, level: level,
-            created_at: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
-            writeLog(`Menambah User Admin Baru: ${user} (${level})`);
-            alert(`Selamat! user admin anda telah terbit\n\nMohon diingat\nUser anda : ${user}\nPasword anda : ${pass}`);
-            closeUserModal();
-        });
-    }
-
-    // --- LOAD DATA & STATS ---
-    function loadMembers() {
-        db.collection("users").limit(20).onSnapshot((snapshot) => {
-            const tableBody = document.getElementById("memberData");
-            tableBody.innerHTML = "";
+        currentListener = query.onSnapshot((snapshot) => {
+            let html = "";
+            let pieData = {}; let barData = {}; let lineData = {};
             snapshot.forEach((doc) => {
-                const data = doc.data();
-                tableBody.innerHTML += `
-                    <tr>
-                        <td><b>${data.nama || '-'}</b></td>
-                        <td>${data.whatsapp || '-'}</td>
-                        <td>${data.jabatan || '-'}</td>
-                        <td>JC ${data.komsel || '-'}</td>
-                        <td>${data.alamat || '-'}</td>
-                    </tr>`;
+                const d = doc.data();
+                const nama = d.nama || d.pengirim || d.Nama || "-";
+                const jc = d.jc || d.komsel || d.nama_jc || d.kelas || d.Komsel || "Umum";
+                const status = (d.status || d.status_doa || "HADIR").toUpperCase();
+                const rawDate = d.tanggal || d.timestamp || d.tgl_doa || d.tgl_kirim || d.tanggal_laporan;
+                let displayDate = "-"; 
+                let chartLabel = "Lainnya";
+                if (rawDate) {
+                    try {
+                        const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                            chartLabel = dateObj.toLocaleDateString('id-ID');
+                        }
+                    } catch (e) { console.error("Date error", e); }
+                }
+                pieData[status] = (pieData[status] || 0) + 1;
+                barData[jc] = (barData[jc] || 0) + 1;
+                lineData[chartLabel] = (lineData[chartLabel] || 0) + 1;
+
+                if (type === 'peringkat_jc') {
+                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
+                } else if (type === 'bacaan') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td><b style="color:var(--primary)">${d.pasal_utama || "-"}</b></td><td><span class="badge badge-success">${displayDate}</span></td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                } else if (type === 'saran') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.kategori || "-"}</td><td>${d.isi_pesan || "-"}</td><td>${displayDate}</td></tr>`;
+                } else {
+                    let colAkhir = d.keterangan || d.materi || d.lokasi || d.pokok_doa || "-";
+                    let colTengah = (type === 'doa_komsel') ? d.status_doa : status;
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${displayDate}</td><td>${colTengah}</td><td>${colAkhir}</td></tr>`;
+                }
             });
+            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data tersedia</td></tr>";
+            updateCharts(pieData, lineData, barData);
+            loadingEl.style.display = 'none';
         });
     }
 
-    function updateStats() {
-        db.collection("saran_masukan").onSnapshot(s => document.getElementById("stat_tiket").innerText = s.size);
-        db.collection("absensi").onSnapshot(s => document.getElementById("stat_hadir").innerText = s.size);
-        db.collection("doa_global").onSnapshot(s => document.getElementById("stat_doa").innerText = s.size);
-        db.collection("portal_media").onSnapshot(s => document.getElementById("stat_media").innerText = s.size);
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        const title = menuConfig[currentType].title;
+        doc.setFontSize(18);
+        doc.text("Laporan Statistik: " + title, 40, 40);
+        doc.setFontSize(10);
+        doc.text("Dicetak pada: " + new Date().toLocaleString('id-ID'), 40, 60);
+        doc.autoTable({
+            html: '#mainTable',
+            startY: 80,
+            theme: 'grid',
+            headStyles: { fillStyle: [0, 123, 255] },
+            styles: { fontSize: 8 },
+            margin: { left: 40, right: 40 }
+        });
+        doc.save(`Laporan_${title}_${new Date().getTime()}.pdf`);
     }
 
-    function filterTable() {
-        let val = document.getElementById("searchInput").value.toLowerCase();
-        document.querySelectorAll("#memberData tr").forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
+    function updateCharts(pieData, lineData, barData) {
+        const ctxPie = document.getElementById('pieChart');
+        const ctxLine = document.getElementById('lineChart');
+        const ctxBar = document.getElementById('barChart');
+        if (myCharts.pie) myCharts.pie.destroy();
+        myCharts.pie = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: { labels: Object.keys(pieData), datasets: [{ data: Object.values(pieData), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        const lineLabels = Object.keys(lineData).sort().slice(-7);
+        if (myCharts.line) myCharts.line.destroy();
+        myCharts.line = new Chart(ctxLine, {
+            type: 'line',
+            data: { labels: lineLabels, datasets: [{ label: 'Aktivitas', data: lineLabels.map(l => lineData[l]), borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+        if (myCharts.bar) myCharts.bar.destroy();
+        myCharts.bar = new Chart(ctxBar, {
+            type: 'bar',
+            data: { labels: Object.keys(barData), datasets: [{ label: 'Total Laporan', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
     }
+    window.onload = () => loadDataRealtime('ibadah');
 </script>
 </body>
 </html>
