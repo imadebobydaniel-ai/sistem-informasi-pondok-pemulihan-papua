@@ -28,12 +28,10 @@
             white-space: nowrap; display: flex; align-items: center; gap: 8px; font-size: 13px;
         }
         .tab-btn.active { background: var(--primary); color: white; transform: translateY(-3px); }
-        
         .action-group { margin-left: auto; display: flex; gap: 8px; }
         .action-btn { padding: 10px 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.3s; display: flex; align-items: center; gap: 8px; color: white; font-size: 12px; }
         .btn-print { background: var(--dark); }
         .btn-pdf { background: var(--danger); }
-
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
         .chart-title { font-weight: bold; margin-bottom: 15px; color: var(--dark); width: 100%; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -118,6 +116,7 @@
     const db = firebase.firestore();
     let myCharts = { pie: null, line: null, bar: null };
     let currentListener = null;
+    let currentType = 'ibadah';
 
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
@@ -132,6 +131,7 @@
     };
 
     function switchTab(type, btn) {
+        currentType = type;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         loadDataRealtime(type);
@@ -146,8 +146,12 @@
         document.getElementById('table-title').innerText = "Detail: " + cfg.title;
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
 
-        let query = db.collection(cfg.col).orderBy("timestamp", "desc").limit(50);
-        if (type === 'peringkat_jc') query = db.collection(cfg.col).orderBy("ranking", "asc");
+        let query = db.collection(cfg.col);
+        if (type === 'peringkat_jc') {
+            query = query.orderBy("ranking", "asc");
+        } else {
+            query = query.limit(100); 
+        }
 
         currentListener = query.onSnapshot((snapshot) => {
             let html = "";
@@ -155,19 +159,42 @@
 
             snapshot.forEach((doc) => {
                 const d = doc.data();
+                const nama = d.nama || d.pengirim || d.Nama || "-";
+                const jc = d.jc || d.komsel || d.nama_jc || d.kelas || d.Komsel || "Umum";
                 const status = (d.status || d.status_doa || "HADIR").toUpperCase();
-                const jc = d.jc || d.komsel || d.nama_jc || d.kelas || "Umum";
                 
-                // Kalkulasi data grafik
+                const rawDate = d.tanggal || d.timestamp || d.tgl_doa || d.tgl_kirim || d.tanggal_laporan;
+                let displayDate = "-"; 
+                let chartLabel = "Lainnya";
+
+                if (rawDate) {
+                    try {
+                        const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
+                        if (!isNaN(dateObj.getTime())) {
+                            displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                            chartLabel = dateObj.toLocaleDateString('id-ID');
+                        }
+                    } catch (e) { console.error("Date error", e); }
+                }
+
                 pieData[status] = (pieData[status] || 0) + 1;
                 barData[jc] = (barData[jc] || 0) + 1;
+                lineData[chartLabel] = (lineData[chartLabel] || 0) + 1;
 
-                // Logika tabel singkat
-                const nama = d.nama || d.pengirim || d.Nama || "-";
-                html += `<tr><td>${nama}</td><td>${jc}</td><td>-</td><td>${status}</td><td>-</td></tr>`;
+                if (type === 'peringkat_jc') {
+                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
+                } else if (type === 'bacaan') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td><b style="color:var(--primary)">${d.pasal_utama || "-"}</b></td><td><span class="badge badge-success">${displayDate}</span></td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                } else if (type === 'saran') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.kategori || "-"}</td><td>${d.isi_pesan || "-"}</td><td>${displayDate}</td></tr>`;
+                } else {
+                    let colAkhir = d.keterangan || d.materi || d.lokasi || d.pokok_doa || "-";
+                    let colTengah = (type === 'doa_komsel') ? d.status_doa : status;
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${displayDate}</td><td>${colTengah}</td><td>${colAkhir}</td></tr>`;
+                }
             });
 
-            document.getElementById('data-list').innerHTML = html;
+            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data tersedia</td></tr>";
             updateCharts(pieData, lineData, barData);
             loadingEl.style.display = 'none';
         });
@@ -178,12 +205,14 @@
         const ctxLine = document.getElementById('lineChart');
         const ctxBar = document.getElementById('barChart');
 
-        // PERBAIKAN WARNA: Memastikan label "HADIR" hijau dan "TIDAK HADIR" merah
+        // LOGIKA PERBAIKAN WARNA TERTUKAR
         const labels = Object.keys(pieData);
-        const colors = labels.map(label => {
-            if (label === 'HADIR') return '#28a745'; // Hijau
-            if (label === 'TIDAK HADIR' || label === 'ALPHA' || label === 'ABSEN') return '#dc3545'; // Merah
-            return '#ffc107'; // Kuning untuk lainnya (Izin, dsb)
+        const dynamicColors = labels.map(label => {
+            const l = label.toUpperCase();
+            if (l === 'HADIR') return '#28a745'; // Hijau
+            if (l === 'TIDAK HADIR' || l === 'ALPHA' || l === 'ABSEN') return '#dc3545'; // Merah
+            if (l === 'IZIN') return '#ffc107'; // Kuning
+            return '#007bff'; // Biru (Default)
         });
 
         if (myCharts.pie) myCharts.pie.destroy();
@@ -193,25 +222,45 @@
                 labels: labels, 
                 datasets: [{ 
                     data: Object.values(pieData), 
-                    backgroundColor: colors 
+                    backgroundColor: dynamicColors 
                 }] 
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
 
+        const lineLabels = Object.keys(lineData).sort().slice(-7);
         if (myCharts.line) myCharts.line.destroy();
         myCharts.line = new Chart(ctxLine, {
             type: 'line',
-            data: { labels: Object.keys(lineData), datasets: [{ label: 'Aktivitas', data: Object.values(lineData), borderColor: '#007bff' }] },
+            data: { labels: lineLabels, datasets: [{ label: 'Aktivitas', data: lineLabels.map(l => lineData[l]), borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
 
         if (myCharts.bar) myCharts.bar.destroy();
         myCharts.bar = new Chart(ctxBar, {
             type: 'bar',
-            data: { labels: Object.keys(barData), datasets: [{ label: 'Total', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
+            data: { labels: Object.keys(barData), datasets: [{ label: 'Total Laporan', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
+    }
+
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        const title = menuConfig[currentType].title;
+        doc.setFontSize(18);
+        doc.text("Laporan Statistik: " + title, 40, 40);
+        doc.setFontSize(10);
+        doc.text("Dicetak pada: " + new Date().toLocaleString('id-ID'), 40, 60);
+        doc.autoTable({
+            html: '#mainTable',
+            startY: 80,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 123, 255] },
+            styles: { fontSize: 8 },
+            margin: { left: 40, right: 40 }
+        });
+        doc.save(`Laporan_${title}_${new Date().getTime()}.pdf`);
     }
 
     window.onload = () => loadDataRealtime('ibadah');
