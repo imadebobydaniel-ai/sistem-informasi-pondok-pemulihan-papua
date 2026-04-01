@@ -45,7 +45,6 @@
             cursor: pointer; font-weight: bold; transition: 0.3s;
             display: flex; align-items: center; gap: 8px; color: white; font-size: 12px;
         }
-        .btn-pdf { background: var(--danger); }
         .btn-print { background: var(--dark); }
 
         .stats-grid {
@@ -129,7 +128,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Firebase Initialization
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -151,11 +149,29 @@
         komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
-        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'Kitab', 'Pasal', 'Tanggal', 'Pesan'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_alkitab', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Pesan'] },
         doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
         peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
         saran: { title: 'Saran & Tiket Masuk', col: 'saran_masuk', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
+
+    // Fungsi format tanggal Indonesia
+    function formatIndoDate(timestamp) {
+        if (!timestamp) return "-";
+        try {
+            // Cek apakah timestamp adalah Firebase Timestamp object
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return "-";
+        }
+    }
 
     function switchTab(type, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -165,8 +181,6 @@
 
     function loadDataRealtime(type) {
         document.getElementById('loading').style.display = 'flex';
-        
-        // Unsubscribe from previous listener if exists
         if (currentListener) currentListener();
 
         const cfg = menuConfig[type];
@@ -174,10 +188,13 @@
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
 
         let query = db.collection(cfg.col);
+        
+        // Pengurutan pintar berdasarkan koleksi
         if (type === 'peringkat_jc') {
             query = query.orderBy("ranking", "asc");
+        } else if (type === 'bacaan') {
+            query = query.orderBy("timestamp", "desc");
         } else {
-            // Coba urutkan berdasarkan tanggal jika field ada
             query = query.limit(100); 
         }
 
@@ -189,40 +206,40 @@
 
             snapshot.forEach((doc) => {
                 const d = doc.data();
-                const status = (d.status || d.status_doa || "PROSES").toUpperCase();
+                const status = (d.status || d.status_doa || "HADIR").toUpperCase();
                 const jc = d.jc || d.komsel || d.nama_jc || d.kelas || "Umum";
-                const tgl = d.tanggal || d.tgl_doa || d.tgl_kirim || "Lainnya";
+                
+                // Gunakan formatter untuk tanggal
+                const rawDate = d.timestamp || d.tanggal || d.tgl_doa || d.tgl_kirim;
+                const displayDate = (type === 'bacaan' || d.timestamp) ? formatIndoDate(rawDate) : (rawDate || "-");
 
-                // Update Stats
                 pieData[status] = (pieData[status] || 0) + 1;
                 barData[jc] = (barData[jc] || 0) + 1;
-                lineData[tgl] = (lineData[tgl] || 0) + 1;
+                lineData[displayDate.split(',')[0]] = (lineData[displayDate.split(',')[0]] || 0) + 1;
 
-                // Build Table Row
                 if(type === 'peringkat_jc') {
                     html += `<tr><td>#${d.ranking}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
                 } else {
                     html += `<tr>
                         <td>${d.nama || d.pengirim || '-'}</td>
                         <td>${jc}</td>
-                        <td>${tgl}</td>
-                        <td><span class="badge ${status === 'HADIR' || status === 'TERJAWAB' ? 'badge-success' : 'badge-danger'}">${status}</span></td>
-                        <td>${d.keterangan || d.materi || d.isi_pesan || d.pokok_doa || d.kitab || '-'}</td>
+                        <td>${type === 'bacaan' ? `<b>${d.pasal || '-'}</b>` : (d.pasal || d.materi || d.kategori || '-')}</td>
+                        <td><span class="badge bg-success">${displayDate}</span></td>
+                        <td>${d.pesan || d.isi_pesan || d.pokok_doa || d.keterangan || '-'}</td>
                     </tr>`;
                 }
             });
 
-            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>Tidak ada data tersedia</td></tr>";
+            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='5' style='text-align:center;'>Tidak ada data</td></tr>";
             updateCharts(pieData, lineData, barData);
             document.getElementById('loading').style.display = 'none';
-        }, (error) => {
-            console.error("Firestore Error: ", error);
+        }, (err) => {
+            console.error(err);
             document.getElementById('loading').style.display = 'none';
         });
     }
 
     function updateCharts(pieData, lineData, barData) {
-        // Pie Chart
         if (myCharts.pie) myCharts.pie.destroy();
         myCharts.pie = new Chart(document.getElementById('pieChart'), {
             type: 'doughnut',
@@ -233,7 +250,6 @@
             options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // Line Chart
         const lineLabels = Object.keys(lineData).sort().slice(-7);
         if (myCharts.line) myCharts.line.destroy();
         myCharts.line = new Chart(document.getElementById('lineChart'), {
@@ -245,19 +261,17 @@
             options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // Bar Chart
         if (myCharts.bar) myCharts.bar.destroy();
         myCharts.bar = new Chart(document.getElementById('barChart'), {
             type: 'bar',
             data: {
                 labels: Object.keys(barData),
-                datasets: [{ label: 'Total Laporan', data: Object.values(barData), backgroundColor: '#6f42c1' }]
+                datasets: [{ label: 'Total', data: Object.values(barData), backgroundColor: '#6f42c1' }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    // Inisialisasi awal
     window.onload = () => loadDataRealtime('ibadah');
 </script>
 </body>
