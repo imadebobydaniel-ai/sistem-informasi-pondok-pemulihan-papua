@@ -9,7 +9,7 @@
         :root { 
             --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7fa; --putih: #ffffff;
             --biru-utama: #007bff; --ungu-global: #6f42c1; --merah-absen: #dc3545;
-            --success: #28a745; --orange: #ff9800; --emas-doa: #D4AF37; 
+            --success: #28a745; --orange: #ff9800; --emas-doa: #D4AF37;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
@@ -145,18 +145,6 @@
             </div>
             <div class="input-box"><label>PERIODE</label><select id="select-periode-doa" onchange="syncStatistikDoa()"></select></div>
         </div>
-
-        <div class="progress-group-top">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span style="font-size: 11px; font-weight: bold; color: #555;">DOA YANG MASUK</span>
-                <span id="text-total-doa-masuk" style="font-size: 11px; font-weight: bold; color: var(--emas-doa);">0 Laporan</span>
-            </div>
-            <div class="progress-bar" style="height: 10px; background: #eee;">
-                <div id="bar-total-doa-masuk" class="progress-fill bg-emas-doa" style="width: 0%;"></div>
-            </div>
-            <div id="label-status-doa" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">Menampilkan aktivitas laporan doa</div>
-        </div>
-
         <div class="stat-item">
             <div class="stat-label-flex"><span>DOA TERJAWAB (%)</span><span id="txt-doa-jawab-jc" style="color: var(--emas-doa);">0.0%</span></div>
             <div class="progress-bar"><div id="bar-doa-jawab-jc" class="progress-fill bg-emas-doa"></div></div>
@@ -177,4 +165,175 @@
         </div>
     </div>
 
-    <a href="menu.html" class="btn-back">← KEMBALI KE MENU UTAMA
+    <a href="menu.html" class="btn-back">← KEMBALI KE MENU UTAMA</a>
+</div>
+
+<div id="pop-detail-nama-darah" class="overlay">
+    <div class="popup">
+        <span class="close-btn" onclick="tutupPopupDarah()">&times;</span>
+        <h3 id="modal-title" style="margin:0; color:var(--biru-tua); font-size: 16px;">Daftar Nama</h3>
+        <hr style="border: 1px solid #f1f1f1; margin: 15px 0;">
+        <div id="list-nama-darah" class="modal-body"></div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+
+    function getStartDate(monthsBack) {
+        let d = new Date();
+        d.setMonth(d.getMonth() - monthsBack);
+        return d;
+    }
+
+    function updateStatistikBar(textId, barId, value) {
+        const elText = document.getElementById(textId);
+        const elBar = document.getElementById(barId);
+        if(elText) elText.innerText = value + "%";
+        if(elBar) elBar.style.width = Math.min(value, 100) + "%";
+    }
+
+    async function syncStatistikAlkitab() {
+        const jcAlk = document.getElementById("select-komsel-alkitab").value;
+        const valPeriode = document.getElementById("select-periode-alkitab").value;
+        if(!valPeriode) return; // Jika kosong, jangan tarik data
+
+        const blnAlk = parseInt(valPeriode);
+        db.collection("laporan_bacaan").where("komsel", "==", jcAlk).where("tanggal", ">=", getStartDate(blnAlk))
+         .onSnapshot(snap => {
+            let userUnik = new Set();
+            snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
+            const jmlLapor = userUnik.size;
+            document.getElementById("text-laporan-orang-alkitab").innerText = snap.size + " Laporan";
+            document.getElementById("progres-komsel-text-alkitab").innerText = jmlLapor + " Orang Melapor";
+            const persen = ((jmlLapor / 50) * 100).toFixed(1);
+            updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', persen);
+            const barAtas = document.getElementById("bar-laporan-orang-alkitab");
+            if(barAtas) barAtas.style.width = Math.min(persen, 100) + "%";
+        });
+    }
+
+    async function syncStatistikHadir() {
+        const jcHdr = document.getElementById("select-jc-laporan").value;
+        const valPeriode = document.getElementById("select-periode-laporan").value;
+        if(!valPeriode) return;
+
+        const blnHdr = parseInt(valPeriode);
+        db.collection("kehadiran").where("jc", "==", jcHdr).where("status", "==", "HADIR").where("tanggal", ">=", getStartDate(blnHdr))
+         .onSnapshot(snap => {
+            let userUnikHadir = new Set();
+            snap.forEach(doc => { if(doc.data().nama) userUnikHadir.add(doc.data().nama.trim()); });
+            const jmlHadir = userUnikHadir.size;
+            const persen = ((jmlHadir / 50) * 100).toFixed(1);
+            document.getElementById("text-laporan-orang-hadir").innerText = jmlHadir + " Orang";
+            document.getElementById("count-lapor-hadir").innerText = jmlHadir + " Orang Hadir";
+            updateStatistikBar('txt-hadir-jc', 'bar-hadir-jc', persen);
+            document.getElementById("bar-laporan-orang-hadir").style.width = Math.min(persen, 100) + "%";
+        });
+    }
+
+    async function syncStatistikIzin() {
+        const jcIz = document.getElementById("select-jc-izin").value;
+        const valPeriode = document.getElementById("select-periode-izin").value;
+        if(!valPeriode) return;
+
+        const blnIz = parseInt(valPeriode);
+        const TARGET_PESERTA = 50; 
+        db.collection("kehadiran").where("jc", "==", jcIz).where("status", "==", "Tidak Hadir").where("tanggal", ">=", getStartDate(blnIz))
+         .onSnapshot(snap => {
+            let userUnikIzin = new Set();
+            snap.forEach(doc => { if(doc.data().nama) userUnikIzin.add(doc.data().nama.trim()); });
+            const jmlIzin = userUnikIzin.size;
+            let hitungPersen = (jmlIzin / TARGET_PESERTA) * 100;
+            const persenTampil = hitungPersen > 100 ? 100 : hitungPersen.toFixed(1);
+            document.getElementById("text-laporan-orang-izin").innerText = jmlIzin + " Orang";
+            document.getElementById("count-lapor-izin").innerText = jmlIzin + " Orang Izin/Alpha";
+            updateStatistikBar('txt-izin-jc', 'bar-izin-jc', persenTampil);
+            const barAtasIzin = document.getElementById("bar-laporan-orang-izin");
+            if(barAtasIzin) barAtasIzin.style.width = Math.min(persenTampil, 100) + "%";
+        });
+    }
+
+    function syncStatistikDoa() {
+        const jcDoa = document.getElementById('select-jc-doa').value;
+        const valPeriode = document.getElementById("select-periode-doa").value;
+        if(!valPeriode) return;
+
+        const blnDoa = parseInt(valPeriode);
+        db.collection("laporan_doa").where("jc", "==", jcDoa).where("tglInput", ">=", getStartDate(blnDoa))
+        .onSnapshot(snap => {
+            let terjawab = 0;
+            snap.forEach(doc => { if(doc.data().terjawab === true) terjawab++; });
+            const total = snap.size;
+            const persen = total > 0 ? ((terjawab / total) * 100).toFixed(1) : 0;
+            updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persen);
+            document.getElementById('txt-doa-sla-jc').innerText = (terjawab > 0 ? 2 : 0) + " Hari";
+            document.getElementById('bar-doa-sla-jc').style.width = (terjawab > 0 ? "20%" : "0%");
+        });
+    }
+
+    function syncGolonganDarah() {
+        db.collection("users").onSnapshot((snapshot) => {
+            listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
+            let rekapDarah = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const gol = (data.goldarah || data.golongan_darah || "").toUpperCase().trim();
+                if (rekapDarah.hasOwnProperty(gol)) {
+                    rekapDarah[gol]++;
+                    listNamaGoldar[gol].push(data.nama || "Tanpa Nama");
+                }
+            });
+            for (let tipe in rekapDarah) {
+                const el = document.getElementById('count-darah-' + tipe.toLowerCase());
+                if (el) el.innerText = rekapDarah[tipe];
+            }
+        });
+    }
+
+    function bukaPopupNamaGoldar(tipe) {
+        document.getElementById('modal-title').innerText = "Pemilik Golongan Darah " + tipe;
+        const container = document.getElementById('list-nama-darah');
+        container.innerHTML = listNamaGoldar[tipe].map((n, i) => `<div class="nama-item">${i+1}. ${n}</div>`).join('') || "Tidak ada data.";
+        document.getElementById('pop-detail-nama-darah').style.display = 'flex';
+    }
+
+    function tutupPopupDarah() { document.getElementById('pop-detail-nama-darah').style.display = 'none'; }
+
+    function setupPeriodeDropdown() {
+        const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin', 'select-periode-doa'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                // Tambahkan opsi default kosong agar tidak langsung narik data
+                let options = `<option value="">-- Pilih Periode --</option>`;
+                for (let i = 1; i <= 12; i++) {
+                    options += `<option value="${i}">${i} Bulan terakhir</option>`;
+                }
+                el.innerHTML = options;
+            }
+        });
+    }
+
+    window.onload = () => {
+        setupPeriodeDropdown();
+        // Hanya sinkronkan data yang tidak butuh dropdown periode saat load
+        syncGolonganDarah(); 
+    };
+</script>
+</body>
+</html>
