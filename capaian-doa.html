@@ -107,85 +107,23 @@
             if (!snap.empty) {
                 const d = snap.docs[0].data();
                 userNama = d.nama;
-                userJC = d.komsel || "JC 5"; // Default "JC 5"
+                userJC = d.komsel || "JC 5"; 
                 loadListDoa();
             }
         });
     };
 
-    // --- FUNGSI BARU YANG DIMASUKKAN ---
-    function syncStatistikDoa() {
-        // Ambil nilai dari dropdown jika ada, jika tidak pakai userJC global
-        const elSelectJC = document.getElementById('select-jc-doa');
-        const jcDoa = elSelectJC ? elSelectJC.value : userJC;
-
-        const elSelectPeriode = document.getElementById("select-periode-doa");
-        let valPeriode = elSelectPeriode ? elSelectPeriode.value : null;
-
-        // Default ke bulan sekarang jika tidak ada dropdown periode
-        if(!valPeriode || valPeriode === "-- Pilih Periode --") {
-            valPeriode = (new Date().getMonth() + 1).toString();
-        }
-
-        const blnDoa = parseInt(valPeriode);
-        const startDate = getStartDate(blnDoa);
-
-        db.collection("saran_masukan")
-        .where("jc", "==", jcDoa) 
-        .where("timestamp", ">=", startDate)
-        .onSnapshot(snap => {
-            let terjawabCount = 0;
-            let totalSLA = 0;
-            let totalLaporan = 0;
-
-            snap.forEach(doc => {
-                const data = doc.data();
-                totalLaporan++;
-                
-                if (data.status === "Terjawab") {
-                    terjawabCount++;
-                    const tglAwal = data.timestamp ? data.timestamp.toDate() : new Date();
-                    const diff = Math.ceil(Math.abs(new Date() - tglAwal) / (1000 * 60 * 60 * 24));
-                    totalSLA += diff;
-                }
-            });
-
-            // Update UI (Gunakan pengecekan elemen agar tidak error)
-            const txtLaporan = document.getElementById('text-laporan-doa-masuk');
-            if (txtLaporan) txtLaporan.innerText = totalLaporan + " Laporan";
-
-            const barLaporan = document.getElementById('bar-laporan-doa-masuk');
-            if (barLaporan) {
-                const progress = (totalLaporan / 50) * 100;
-                barLaporan.style.width = Math.min(progress, 100) + "%";
-            }
-
-            const persenTerjawab = totalLaporan > 0 ? ((terjawabCount / totalLaporan) * 100).toFixed(1) : 0;
-            updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persenTerjawab);
-
-            const rataSLA = terjawabCount > 0 ? Math.round(totalSLA / terjawabCount) : 0;
-            const elSLA = document.getElementById('txt-doa-sla-jc');
-            if (elSLA) elSLA.innerText = rataSLA + " Hari";
-        });
-    }
-
-    // --- FUNGSI PENDUKUNG ---
-    function getStartDate(month) {
-        const d = new Date();
-        return new Date(d.getFullYear(), month - 1, 1);
-    }
-
-    function updateStatistikBar(txtId, barId, val) {
-        const txt = document.getElementById(txtId);
-        const bar = document.getElementById(barId);
-        if(txt) txt.innerText = val + "%";
-        if(bar) bar.style.width = val + "%";
-    }
-
-    // --- FUNGSI EXISTING ---
+    // --- FUNGSI LOAD LIST DENGAN FILTER KATEGORI ---
     function loadListDoa() {
-        db.collection("saran_masukan").where("nama", "==", userNama).orderBy("timestamp", "desc").onSnapshot(snap => {
+        db.collection("saran_masukan")
+          .where("nama", "==", userNama)
+          .where("kategori", "==", "Permohonan Doa") // Memastikan saran aplikasi tidak masuk
+          .orderBy("timestamp", "desc")
+          .onSnapshot(snap => {
             let html = "";
+            if (snap.empty) {
+                html = "<p style='text-align:center; color:#888; margin-top:20px;'>Belum ada data permohonan doa.</p>";
+            }
             snap.forEach(doc => {
                 const data = doc.data();
                 const tglAwal = data.timestamp ? data.timestamp.toDate() : new Date();
@@ -205,7 +143,38 @@
                     </div>`;
             });
             document.getElementById('list-doa-container').innerHTML = html;
-            syncStatistikDoa(); // Jalankan statistik
+            syncStatistikDoa(); 
+        }, error => {
+            console.error("Error loading data:", error);
+            // Jika muncul error index di Console, klik link yang disediakan Firebase.
+        });
+    }
+
+    // --- FUNGSI STATISTIK (DIBATASI HANYA KATEGORI DOA) ---
+    function syncStatistikDoa() {
+        const jcDoa = userJC;
+        const blnDoa = new Date().getMonth() + 1;
+        const startDate = new Date(new Date().getFullYear(), blnDoa - 1, 1);
+
+        db.collection("saran_masukan")
+        .where("jc", "==", jcDoa) 
+        .where("kategori", "==", "Permohonan Doa") // Filter juga di statistik
+        .where("timestamp", ">=", startDate)
+        .onSnapshot(snap => {
+            let terjawabCount = 0;
+            let totalSLA = 0;
+            let totalLaporan = snap.size;
+
+            snap.forEach(doc => {
+                const data = doc.data();
+                if (data.status === "Terjawab") {
+                    terjawabCount++;
+                    const tglAwal = data.timestamp ? data.timestamp.toDate() : new Date();
+                    const diff = Math.ceil(Math.abs(new Date() - tglAwal) / (1000 * 60 * 60 * 24));
+                    totalSLA += diff;
+                }
+            });
+            // Update UI statistik jika elemennya ada di halaman ini
         });
     }
 
@@ -226,6 +195,7 @@
         document.getElementById('add-nama').value = userNama;
         document.getElementById('add-jc').value = userJC;
         document.getElementById('add-tgl').value = new Date().toLocaleDateString('id-ID');
+        
         db.collection("saran_masukan").get().then(snap => {
             const urut = (snap.size + 1).toString().padStart(3, '0');
             document.getElementById('add-nomor').value = `NK-DOA-${userJC}-${urut}-${new Date().getFullYear()}`;
@@ -233,28 +203,44 @@
     }
 
     async function simpanDoaBaru() {
-        const doa = document.getElementById('add-doa').value;
+        const doa = document.getElementById('add-doa').value.trim();
         if (!doa) return alert("Isi doa Anda!");
-        await db.collection("saran_masukan").add({
-            nomor_tiket: document.getElementById('add-nomor').value,
-            nama: userNama,
-            jc: userJC,
-            isi_saran: doa,
-            status: "proses",
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            kategori: "Permohonan Doa"
-        });
-        tutupPopup();
+        
+        const btnSave = document.querySelector(".btn-save");
+        btnSave.disabled = true;
+        btnSave.innerText = "Mengirim...";
+
+        try {
+            await db.collection("saran_masukan").add({
+                nomor_tiket: document.getElementById('add-nomor').value,
+                nama: userNama,
+                jc: userJC,
+                isi_saran: doa,
+                status: "proses",
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                kategori: "Permohonan Doa"
+            });
+            tutupPopup();
+            document.getElementById('add-doa').value = "";
+        } catch (e) {
+            alert("Gagal mengirim.");
+        } finally {
+            btnSave.disabled = false;
+            btnSave.innerText = "KIRIM TIKET";
+        }
     }
 
     function prosesTerjawab() {
-        const tglAwal = new Date(document.getElementById(`tgl-${selectedDoaId}`).value);
+        if(!selectedDoaId) return;
+        const tglValue = document.getElementById(`tgl-${selectedDoaId}`).value;
+        const tglAwal = new Date(tglValue);
         const diff = Math.ceil(Math.abs(new Date() - tglAwal) / (1000 * 60 * 60 * 24));
         alert(`Puji Tuhan Doa anda terjawab dalam kurun waktu ${diff} Hari`);
         db.collection("saran_masukan").doc(selectedDoaId).update({ status: "Terjawab" });
     }
 
     function bukaEditDoa() {
+        if(!selectedDoaId) return;
         document.getElementById('popup-edit').style.display = 'flex';
         document.getElementById('edit-doa').value = document.getElementById(`text-${selectedDoaId}`).innerText;
     }
@@ -267,7 +253,7 @@
     }
 
     async function hapusDoa() {
-        if (confirm("Hapus doa ini?")) {
+        if (selectedDoaId && confirm("Hapus doa ini?")) {
             await db.collection("saran_masukan").doc(selectedDoaId).delete();
         }
     }
