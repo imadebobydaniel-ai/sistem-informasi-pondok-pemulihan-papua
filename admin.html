@@ -70,6 +70,7 @@
         <a href="portal-media.html"><div class="stat-card" style="background: #6f42c1;"><h4>Portal Media</h4><p id="stat_media">0</p><i class="fas fa-icons"></i></div></a>
         <a href="informasi-kegiatan.html"><div class="stat-card" style="background: #fd7e14;"><h4>Informasi Kegiatan</h4><p id="stat_info">0</p><i class="fas fa-calendar-alt"></i></div></a>
         <a href="admin-bigdata.html"><div class="stat-card" style="background: #17a2b8;"><h4>Big Data</h4><p id="stat_bigdata">0</p><i class="fas fa-chart-line"></i></div></a>
+        <a href="manajemen-user.html"><div class="stat-card" style="background: var(--cyan);"><h4>Manajemen User</h4><p id="totalAdmin">0</p><i class="fas fa-users-cog"></i></div></a>
     </div>
 
     <div id="actionMenu">
@@ -120,6 +121,7 @@
     const db = firebase.firestore();
 
     window.onload = function() {
+        // Load Data Member (Collection: users)
         db.collection("users").onSnapshot(snapshot => {
             const table = document.getElementById("memberData");
             table.innerHTML = "";
@@ -141,6 +143,11 @@
             updateActionMenu();
         });
 
+        // Load Total Admin (Collection: admins)
+        db.collection("admins").onSnapshot(snap => {
+            document.getElementById("totalAdmin").innerText = snap.size;
+        });
+
         const today = new Date().toISOString().split('T')[0];
         db.collection("absensi").where("tanggal", "==", today)
         .onSnapshot(snap => {
@@ -156,6 +163,7 @@
         });
     };
 
+    // Fungsi bantu (Toggle, Update Menu, Filter, dll tetap sama)
     function toggleAll(source) {
         const checkboxes = document.querySelectorAll('.user-checkbox');
         checkboxes.forEach(cb => cb.checked = source.checked);
