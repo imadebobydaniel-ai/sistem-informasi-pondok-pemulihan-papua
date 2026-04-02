@@ -6,70 +6,111 @@
     <title>Manajemen User - Pondok Pemulihan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; }
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --dark: #333; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
         
-        /* Baris Tombol Aksi di Atas Tabel */
-        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
-        
-        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 8px; }
         .btn-add { background: var(--success); color: white; }
         .btn-edit { background: var(--warning); color: black; }
         .btn-delete { background: var(--danger); color: white; }
-        .btn-add:hover { background: #218838; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #f8f9fa; color: #333; padding: 15px 12px; text-align: left; border-bottom: 2px solid #dee2e6; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-        
-        .check-col { width: 40px; text-align: center; }
-        input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
-        
-        .selected-row { background-color: #f0f7ff; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 15px; text-align: left; border-bottom: 2px solid #dee2e6; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+
+        /* MODAL CSS */
+        .modal-overlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            z-index: 1000; 
+            justify-content: center; align-items: center; 
+        }
+        .modal-box { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            width: 450px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+        }
+        .modal-box h3 { margin-top: 0; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666; }
+        .form-group input, .form-group select { 
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; 
+        }
+        .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-full { flex: 1; justify-content: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h2><i class="fas fa-users-cog"></i> Manajemen User</h2>
-        <a href="admin.html" style="text-decoration:none; color: var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+        <h2><i class="fas fa-users-cog"></i> Manajemen Data Anggota</h2>
+        <a href="admin.html" style="text-decoration:none; color: var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali</a>
     </div>
 
     <div class="action-bar">
-        <button class="btn btn-add" onclick="tambahUser()">
+        <button class="btn btn-add" onclick="openModal()">
             <i class="fas fa-user-plus"></i> Tambah Anggota Baru
         </button>
-        
-        <div id="bulkActions" style="display: flex; gap: 10px; border-left: 2px solid #ddd; padding-left: 15px;">
-            <button class="btn btn-edit" id="btnBulkEdit" onclick="editTerpilih()" disabled>
-                <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="btn btn-delete" id="btnBulkDelete" onclick="hapusTerpilih()" disabled>
-                <i class="fas fa-trash"></i> Hapus
-            </button>
-            <span id="countText" style="font-size: 12px; color: #666; align-self: center; margin-left: 5px;">0 Terpilih</span>
-        </div>
+        <button class="btn btn-edit" id="btnEdit" disabled onclick="editUser()"><i class="fas fa-edit"></i> Edit</button>
+        <button class="btn btn-delete" id="btnDelete" disabled onclick="hapusUser()"><i class="fas fa-trash"></i> Hapus</button>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                <th width="40"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                 <th>Nama Anggota</th>
                 <th>Email</th>
-                <th>Jabatan</th>
-                <th>JC</th>
+                <th>Nomor HP</th>
+                <th>Jenis Admin</th>
             </tr>
         </thead>
-        <tbody id="user-list">
-            </tbody>
+        <tbody id="user-list"></tbody>
     </table>
+</div>
+
+<div class="modal-overlay" id="modalUser">
+    <div class="modal-box">
+        <h3>Tambah User Baru</h3>
+        <div class="form-group">
+            <label>Nama Lengkap</label>
+            <input type="text" id="popNama" placeholder="Masukkan nama lengkap...">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="popEmail" placeholder="contoh@gmail.com">
+        </div>
+        <div class="form-group">
+            <label>Nomor HP</label>
+            <input type="number" id="popHp" placeholder="0812...">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="popPass" placeholder="******">
+        </div>
+        <div class="form-group">
+            <label>Pilih Jenis Admin</label>
+            <select id="popRole">
+                <option value="Administrator Super Apps">Administrator Super Apps</option>
+                <option value="Admin Lite">Admin Lite</option>
+                <option value="Viewer">Viewer</option>
+            </select>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-delete btn-full" onclick="closeModal()">Batal</button>
+            <button class="btn btn-add btn-full" onclick="createUser()">Create User</button>
+        </div>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -86,78 +127,66 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 1. Fungsi Aktifkan Tombol Tambah User
-    function tambahUser() {
-        window.location.href = "tambah-user.html"; // Pastikan file ini ada
+    // Fungsi Modal
+    function openModal() { document.getElementById('modalUser').style.display = 'flex'; }
+    function closeModal() { document.getElementById('modalUser').style.display = 'none'; }
+
+    // CREATE USER KE FIREBASE
+    function createUser() {
+        const data = {
+            nama: document.getElementById('popNama').value,
+            email: document.getElementById('popEmail').value,
+            hp: document.getElementById('popHp').value,
+            password: document.getElementById('popPass').value, // Catatan: Sebaiknya gunakan Firebase Auth untuk password
+            jabatan: document.getElementById('popRole').value,
+            createdAt: new Date()
+        };
+
+        if(!data.nama || !data.email) return alert("Nama dan Email wajib diisi!");
+
+        db.collection("users").add(data).then(() => {
+            alert("User Berhasil Dibuat!");
+            closeModal();
+            // Reset Form
+            document.querySelectorAll('.modal-box input').forEach(i => i.value = "");
+        });
     }
 
-    // 2. Load Data & Hilangkan Aksi di Baris Nama
+    // LOAD DATA KE TABEL
     function loadUsers() {
-        db.collection("users").onSnapshot(snapshot => {
+        db.collection("users").orderBy("createdAt", "desc").onSnapshot(snapshot => {
             let html = "";
             snapshot.forEach(doc => {
                 const u = doc.data();
                 html += `
-                <tr id="row-${doc.id}">
-                    <td class="check-col">
-                        <input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateUI()">
-                    </td>
+                <tr>
+                    <td><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateButtons()"></td>
                     <td><b>${u.nama || '-'}</b></td>
                     <td>${u.email || '-'}</td>
-                    <td>${u.jabatan || '-'}</td>
-                    <td>${u.komsel || '-'}</td>
+                    <td>${u.hp || '-'}</td>
+                    <td><span style="background:#eee; padding:3px 8px; border-radius:4px; font-size:11px;">${u.jabatan || '-'}</span></td>
                 </tr>`;
             });
             document.getElementById('user-list').innerHTML = html;
-            updateUI();
         });
     }
 
-    // 3. Logika Checkbox All
+    // LOGIKA CHECKBOX & TOMBOL
     function toggleAll(source) {
-        const checkboxes = document.querySelectorAll('.user-checkbox');
-        checkboxes.forEach(cb => {
-            cb.checked = source.checked;
-        });
-        updateUI();
+        document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
+        updateButtons();
     }
 
-    // 4. Update UI Tombol (Aktifkan/Nonaktifkan Edit & Hapus)
-    function updateUI() {
+    function updateButtons() {
         const checked = document.querySelectorAll('.user-checkbox:checked');
-        const btnEdit = document.getElementById('btnBulkEdit');
-        const btnDelete = document.getElementById('btnBulkDelete');
-        const countText = document.getElementById('countText');
-
-        btnDelete.disabled = checked.length === 0;
-        // Edit hanya aktif jika tepat 1 user dipilih
-        btnEdit.disabled = checked.length !== 1;
-        
-        countText.innerText = `${checked.length} Terpilih`;
-        
-        // Highlight baris yang terpilih
-        document.querySelectorAll('#user-list tr').forEach(row => row.classList.remove('selected-row'));
-        checked.forEach(cb => {
-            document.getElementById(`row-${cb.value}`).classList.add('selected-row');
-        });
+        document.getElementById('btnEdit').disabled = checked.length !== 1;
+        document.getElementById('btnDelete').disabled = checked.length === 0;
     }
 
-    // 5. Fungsi Hapus Terpilih
-    function hapusTerpilih() {
-        const terpilih = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-        if (confirm(`Hapus ${terpilih.length} anggota yang dipilih secara permanen?`)) {
-            terpilih.forEach(id => {
-                db.collection("users").doc(id).delete();
-            });
-            document.getElementById('checkAll').checked = false;
-        }
-    }
-
-    // 6. Fungsi Edit Terpilih
-    function editTerpilih() {
-        const checkbox = document.querySelector('.user-checkbox:checked');
-        if (checkbox) {
-            window.location.href = `edit-user.html?id=${checkbox.value}`;
+    function hapusUser() {
+        const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        if(confirm(`Hapus ${ids.length} user?`)) {
+            ids.forEach(id => db.collection("users").doc(id).delete());
         }
     }
 
