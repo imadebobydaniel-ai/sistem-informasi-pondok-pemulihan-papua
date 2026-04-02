@@ -62,9 +62,13 @@
         .period-select { padding: 8px; border-radius: 8px; border: 1px solid #ccc; outline: none; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
-        .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
+        .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
         .chart-title { font-weight: bold; margin-bottom: 15px; color: var(--dark); width: 100%; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         
+        /* Gaya untuk Penjelasan Visual */
+        .visual-insight { margin-top: 15px; font-size: 11.5px; color: #555; line-height: 1.5; padding: 10px; background: #f9f9f9; border-radius: 8px; border-left: 3px solid var(--primary); }
+        .visual-insight b { color: var(--dark); }
+
         .data-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .table-wrapper { overflow-x: auto; margin-top: 15px; max-height: 500px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
@@ -137,14 +141,23 @@
         <div class="chart-card">
             <div class="chart-title">Proporsi Status</div>
             <canvas id="pieChart"></canvas>
+            <div class="visual-insight" id="insight-pie">
+                <b>Analisis:</b> Menghitung persentase <b>Kehadiran vs Ketidakhadiran</b>. Area hijau dominan menunjukkan jemaat aktif terlibat.
+            </div>
         </div>
         <div class="chart-card">
             <div class="chart-title">Tren Aktivitas</div>
             <canvas id="lineChart"></canvas>
+            <div class="visual-insight" id="insight-line">
+                <b>Analisis:</b> Menunjukkan <b>Dinamika Pelayanan</b> harian. Titik puncak (peak) menandakan hari dengan laporan terbanyak.
+            </div>
         </div>
         <div class="chart-card">
             <div class="chart-title">Distribusi JC</div>
             <canvas id="barChart"></canvas>
+            <div class="visual-insight" id="insight-bar">
+                <b>Analisis:</b> Membandingkan <b>Total Aktivitas antar JC</b>. JC dengan batang tertinggi memiliki tingkat laporan paling rajin.
+            </div>
         </div>
     </div>
 
@@ -230,10 +243,22 @@
             const { html, pData, bData, lData } = formatTableData(type, snapshot);
             document.getElementById('data-list').innerHTML = html;
             renderCharts(pData, lData, bData);
+            updateInsights(pData, bData, cfg.title);
         });
     }
 
-    // Fungsi pembantu untuk memproses snapshot menjadi HTML dan Data Grafik
+    // Update teks penjelasan berdasarkan data
+    function updateInsights(p, b, title) {
+        const total = Object.values(p).reduce((a, b) => a + b, 0);
+        const hadir = p['HADIR'] || 0;
+        const persen = total > 0 ? Math.round((hadir/total)*100) : 0;
+        
+        document.getElementById('insight-pie').innerHTML = `<b>Analisis:</b> Dari total ${total} data, tingkat kehadiran mencapai <b>${persen}%</b>. Ini mencerminkan loyalitas jemaat pada menu ${title}.`;
+        
+        const topJC = Object.keys(b).reduce((a, x) => b[a] > b[x] ? a : x, "N/A");
+        document.getElementById('insight-bar').innerHTML = `<b>Analisis:</b> Kelompok <b>${topJC}</b> menjadi kontributor aktif terbesar. Sangat baik untuk dijadikan acuan bagi kelompok lain.`;
+    }
+
     function formatTableData(type, snapshot) {
         let html = "";
         let pData = {}, bData = {}, lData = {};
@@ -269,80 +294,79 @@
     }
 
     function renderCharts(p, l, b) {
+        const options = { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } };
+        
         if (myCharts.pie) myCharts.pie.destroy();
         myCharts.pie = new Chart(document.getElementById('pieChart'), {
             type: 'doughnut',
-            data: { labels: Object.keys(p), datasets: [{ data: Object.values(p), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] }
+            data: { labels: Object.keys(p), datasets: [{ data: Object.values(p), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] },
+            options: options
         });
+        
         if (myCharts.line) myCharts.line.destroy();
         myCharts.line = new Chart(document.getElementById('lineChart'), {
             type: 'line',
-            data: { labels: Object.keys(l), datasets: [{ label: 'Aktivitas', data: Object.values(l), borderColor: '#007bff', fill: true, tension: 0.3 }] }
+            data: { labels: Object.keys(l), datasets: [{ label: 'Aktivitas', data: Object.values(l), borderColor: '#007bff', fill: true, tension: 0.3, backgroundColor: 'rgba(0,123,255,0.1)' }] },
+            options: options
         });
+        
         if (myCharts.bar) myCharts.bar.destroy();
         myCharts.bar = new Chart(document.getElementById('barChart'), {
             type: 'bar',
-            data: { labels: Object.keys(b), datasets: [{ label: 'Total', data: Object.values(b), backgroundColor: '#6f42c1' }] }
+            data: { labels: Object.keys(b), datasets: [{ label: 'Total Laporan', data: Object.values(b), backgroundColor: '#6f42c1' }] },
+            options: options
         });
     }
 
-    // Fungsi inti yang diperbaiki untuk mengambil data Firebase secara dinamis saat Export
     async function processTabToPDF(doc, type, isNewPage = false) {
         if (isNewPage) doc.addPage();
         const pageWidth = doc.internal.pageSize.getWidth();
         const cfg = menuConfig[type];
         const periodText = document.getElementById('periodSelect').options[document.getElementById('periodSelect').selectedIndex].text;
 
-        // Ambil data terbaru khusus untuk PDF (karena mungkin tabnya sedang tidak aktif)
         const snapshot = await db.collection(cfg.col).orderBy("timestamp", "desc").get();
-        const { tableRows, pData, bData, lData } = formatTableData(type, snapshot);
+        const { tableRows, pData, bData } = formatTableData(type, snapshot);
 
-        // Header
-        try {
-            const logo = "https://raw.githubusercontent.com/imadebobydaniel-ai/sistem-informasi-komsel-jc/main/logo_pondok.png"; 
-            doc.addImage(logo, 'PNG', 40, 30, 60, 60);
-        } catch(e) {}
-
+        // Header GBI
         doc.setTextColor(0, 0, 0);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(20);
-        doc.text("GEREJA BETHEL INDONESIA", 115, 50);
-        doc.setFontSize(16);
-        doc.text("Pondok Pemulihan Papua", 115, 70); 
-        doc.setFontSize(10);
+        doc.setFontSize(18);
+        doc.text("GEREJA BETHEL INDONESIA", pageWidth/2, 50, { align: 'center' });
+        doc.setFontSize(14);
+        doc.text("Pondok Pemulihan Papua", pageWidth/2, 70, { align: 'center' }); 
+        doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.text(`Laporan Statistik: ${cfg.title} | Periode: ${periodText}`, 115, 85);
-        doc.line(40, 100, pageWidth - 40, 100);
+        doc.text(`Laporan Statistik: ${cfg.title} | Periode: ${periodText}`, pageWidth/2, 85, { align: 'center' });
+        doc.line(40, 95, pageWidth - 40, 95);
 
+        // Kata Pengantar & AI Insight
         doc.setFont("helvetica", "bold");
-        doc.text("KATA PENGANTAR", 40, 130);
+        doc.text("INTERPRETASI DATA", 40, 120);
         doc.setFont("helvetica", "normal");
-        doc.text(`Laporan aktivitas digital menu ${cfg.title} untuk memantau perkembangan pelayanan jemaat.`, 40, 145);
+        doc.setFontSize(8.5);
+        
+        const total = tableRows.length;
+        const insightText = `Berdasarkan sistem digital, tercatat ${total} aktivitas pada periode ini. Secara sistematis, data menunjukkan grafik yang cukup dinamis dalam pelayanan digital.`;
+        doc.text(doc.splitTextToSize(insightText, pageWidth - 80), 40, 135);
 
-        doc.setFillColor(240, 240, 240);
-        doc.rect(40, 165, pageWidth - 80, 30, 'F');
-        doc.setFont("helvetica", "italic");
-        doc.text(`AI Insight: Data sistem menunjukkan total ${tableRows.length} aktivitas tercatat pada periode ini.`, 50, 183);
-
-        // Jika tab sedang aktif, kita bisa capture chart yang ada di screen
+        // Visual Capture (Hanya untuk tab aktif agar grafik ter-render)
         if (type === currentType) {
             const canvasCharts = await html2canvas(document.getElementById('capture-charts'), { scale: 2 });
             const imgCharts = canvasCharts.toDataURL('image/png');
-            doc.addImage(imgCharts, 'PNG', 40, 210, pageWidth - 80, 180);
+            doc.addImage(imgCharts, 'PNG', 40, 160, pageWidth - 80, 180);
         } else {
-            // Jika tab tidak aktif, beri placeholder atau teks (karena Chart.js butuh canvas terlihat untuk di-render)
-            doc.setFont("helvetica", "normal");
-            doc.text("[ Grafik tersedia di Dashboard Digital ]", pageWidth/2, 300, { align: "center" });
+            doc.setFont("helvetica", "italic");
+            doc.text("[ Grafik Detail Tersedia di Sistem Cloud Dashboard ]", pageWidth/2, 220, { align: "center" });
         }
 
-        // Tabel Data
+        // Tabel
         doc.autoTable({
             head: [cfg.fields],
             body: tableRows,
-            startY: type === currentType ? 410 : 330,
+            startY: type === currentType ? 360 : 250,
             theme: 'grid',
             headStyles: { fillColor: [0, 123, 255] },
-            styles: { fontSize: 8 },
+            styles: { fontSize: 7.5 },
             margin: { left: 40, right: 40 }
         });
     }
