@@ -25,30 +25,14 @@
             align-items: center; font-weight: bold; color: var(--primary);
         }
 
-        /* --- PERBAIKAN MENU TAB & SLIDER --- */
         .tab-menu { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            gap: 15px; 
-            margin-bottom: 20px; 
-            border-bottom: 2px solid #ddd; 
-            padding-bottom: 10px;
-            position: relative; /* Penting untuk referensi dropdown */
+            display: flex; justify-content: space-between; align-items: center; 
+            gap: 15px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px;
         }
 
-        /* Area tombol kategori yang bisa di-scroll */
         .tab-btns-wrapper {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto; /* Slider aktif di sini */
-            flex-grow: 1;
-            padding-bottom: 5px;
-            scrollbar-width: thin;
+            display: flex; gap: 10px; overflow-x: auto; flex-grow: 1; padding-bottom: 5px;
         }
-        .tab-btns-wrapper::-webkit-scrollbar { height: 4px; }
-        .tab-btns-wrapper::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-
         .tab-btn {
             padding: 10px 16px; border: none; border-radius: 10px; background: white;
             cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -56,17 +40,7 @@
         }
         .tab-btn.active { background: var(--primary); color: white; transform: translateY(-2px); }
         
-        /* Area Action (Export/Print) agar tidak ikut ter-scroll */
-        .action-group { 
-            display: flex; 
-            gap: 8px; 
-            flex-shrink: 0; /* Jangan biarkan tombol ini mengecil atau tergeser */
-        }
-
-        .filter-container { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .period-select { padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-weight: bold; outline: none; cursor: pointer; background: var(--light); }
-
-        /* --- STYLES FOR DROPDOWN (Z-INDEX FIXED) --- */
+        .action-group { display: flex; gap: 8px; flex-shrink: 0; }
         .dropdown { position: relative; display: inline-block; }
         .action-btn { 
             padding: 10px 14px; border: none; border-radius: 10px; cursor: pointer; 
@@ -77,47 +51,30 @@
         .btn-pdf { background: var(--danger); }
         
         .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%; /* Muncul tepat di bawah tombol */
-            background-color: white;
-            min-width: 190px;
-            box-shadow: 0px 8px 25px rgba(0,0,0,0.2);
-            z-index: 9999 !important; /* Paling atas agar tidak tertutup chart/tabel */
-            border-radius: 12px;
-            margin-top: 10px;
-            overflow: hidden;
-            border: 1px solid #eee;
+            display: none; position: absolute; right: 0; top: 100%; background-color: white;
+            min-width: 190px; box-shadow: 0px 8px 25px rgba(0,0,0,0.2); z-index: 9999;
+            border-radius: 12px; margin-top: 10px; overflow: hidden; border: 1px solid #eee;
         }
-        .dropdown-content a {
-            color: #333;
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-            font-size: 13px;
-            transition: 0.2s;
-            border-bottom: 1px solid #f9f9f9;
-        }
+        .dropdown-content a { color: #333; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px; }
         .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
         .show { display: block; }
 
-        /* Chart & Table Styles */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
         .chart-title { font-weight: bold; margin-bottom: 15px; color: var(--dark); width: 100%; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
         .data-section { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .table-wrapper { overflow-x: auto; margin-top: 15px; max-height: 500px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
         th { background: #f8f9fa; padding: 15px; text-align: left; border-bottom: 2px solid #eee; position: sticky; top: 0; z-index: 5; }
         td { padding: 12px 15px; border-bottom: 1px solid #f1f1f1; }
         
-        @media print { .tab-menu, .filter-container, #loading, .action-group, .fas.fa-arrow-left, .dropdown { display: none !important; } }
+        @media print { .tab-menu, .filter-container, #loading, .action-group, .dropdown { display: none !important; } }
     </style>
 </head>
 <body>
 
-<div id="loading">Sinkronisasi Data Real-time...</div>
+<div id="loading">Memproses Laporan...</div>
 
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
@@ -144,52 +101,40 @@
                     <i class="fas fa-file-pdf"></i> Export PDF <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
                 </button>
                 <div id="pdfDropdown" class="dropdown-content">
-                    <a href="javascript:void(0)" onclick="handleExport('single')"><i class="fas fa-file"></i> Tab Saat Ini Saja</a>
-                    <a href="javascript:void(0)" onclick="handleExport('all')"><i class="fas fa-copy"></i> Gabungkan Semua Tab</a>
-                </div>
-            </div>
-
-            <div class="dropdown">
-                <button class="action-btn btn-print" onclick="toggleDropdown('printDropdown')">
-                    <i class="fas fa-print"></i> Print <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
-                </button>
-                <div id="printDropdown" class="dropdown-content">
-                    <a href="javascript:void(0)" onclick="window.print()"><i class="fas fa-print"></i> Print Halaman Ini</a>
-                    <a href="javascript:void(0)" onclick="alert('Fitur Print Gabungan sedang dikembangkan')"><i class="fas fa-layer-group"></i> Print Semua Data</a>
+                    <a href="javascript:void(0)" onclick="handleExport('single')">Cetak Tab & Grafik Ini</a>
+                    <a href="javascript:void(0)" onclick="handleExport('all')">Gabung Semua Tab</a>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="filter-container">
-        <label for="periodSelect"><b><i class="fas fa-calendar-alt"></i> Pilih Periode:</b></label>
+        <label><b>Pilih Periode:</b></label>
         <select id="periodSelect" class="period-select" onchange="loadDataRealtime(currentType)">
             <option value="0">Semua Data</option>
             <option value="1">1 Bulan Terakhir</option>
-            <option value="2">2 Bulan Terakhir</option>
             <option value="3">3 Bulan Terakhir</option>
-            <option value="6">6 Bulan Terakhir</option>
             <option value="12">12 Bulan Terakhir</option>
         </select>
     </div>
 
-    <div class="stats-grid">
+    <div class="stats-grid" id="capture-charts">
         <div class="chart-card">
             <div class="chart-title">Proporsi Status</div>
-            <div style="width: 100%; height: 250px;"><canvas id="pieChart"></canvas></div>
+            <canvas id="pieChart"></canvas>
         </div>
         <div class="chart-card">
-            <div class="chart-title">Tren Aktivitas (Real-time)</div>
-            <div style="width: 100%; height: 250px;"><canvas id="lineChart"></canvas></div>
+            <div class="chart-title">Tren Aktivitas</div>
+            <canvas id="lineChart"></canvas>
         </div>
         <div class="chart-card">
-            <div class="chart-title">Distribusi Per Komsel/JC</div>
-            <div style="width: 100%; height: 250px;"><canvas id="barChart"></canvas></div>
+            <div class="chart-title">Distribusi JC</div>
+            <canvas id="barChart"></canvas>
         </div>
     </div>
 
     <div class="data-section">
-        <div class="chart-title" id="table-title" style="text-align: left;">Memuat Data...</div>
+        <div class="chart-title" id="table-title" style="text-align: left;">Memuat...</div>
         <div class="table-wrapper">
             <table id="mainTable">
                 <thead id="table-head"></thead>
@@ -204,6 +149,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
+    // Config Firebase (Pastikan punya lu)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -212,36 +158,27 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
     let myCharts = { pie: null, line: null, bar: null };
-    let currentListener = null;
     let currentType = 'ibadah';
+    let currentListener = null;
 
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
-        arso1: { title: 'Kehadiran Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
         komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
         bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
-        doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
+        doa_komsel: { title: 'Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
         peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
-        saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
+        saran: { title: 'Saran & Tiket', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
     function toggleDropdown(id) {
-        const dropdown = document.getElementById(id);
-        const wasShow = dropdown.classList.contains('show');
-        document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show'));
-        if(!wasShow) dropdown.classList.add('show');
-    }
-
-    window.onclick = function(event) {
-        if (!event.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show'));
-        }
+        document.getElementById(id).classList.toggle('show');
     }
 
     function switchTab(type, btn) {
@@ -251,127 +188,107 @@
         loadDataRealtime(type);
     }
 
+    // --- REALTIME DATA LOAD ---
     function loadDataRealtime(type) {
-        const loadingEl = document.getElementById('loading');
-        const periodValue = parseInt(document.getElementById('periodSelect').value);
-        loadingEl.style.display = 'flex';
-        
-        if (typeof currentListener === 'function') currentListener();
-
         const cfg = menuConfig[type];
         document.getElementById('table-title').innerText = "Detail: " + cfg.title;
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
+        
+        if (currentListener) currentListener();
 
-        let query = db.collection(cfg.col);
-        if (periodValue > 0) {
-            const cutoff = new Date();
-            cutoff.setMonth(cutoff.getMonth() - periodValue);
-            query = query.where("timestamp", ">=", cutoff);
-        }
-        query = query.orderBy("timestamp", "desc").limit(200);
-
-        currentListener = query.onSnapshot((snapshot) => {
+        currentListener = db.collection(cfg.col).orderBy("timestamp", "desc").onSnapshot(snapshot => {
             let html = "";
-            let pieData = {}; let barData = {}; let lineData = {};
+            let pData = {}, bData = {}, lData = {};
 
-            snapshot.forEach((doc) => {
+            snapshot.forEach(doc => {
                 const d = doc.data();
-                const nama = d.nama || d.pengirim || d.Nama || "-";
-                const jc = d.jc || d.komsel || d.nama_jc || d.kelas || d.Komsel || "Umum";
+                const nama = d.nama || d.Nama || d.pengirim || "-";
+                const jc = d.jc || d.JC || d.komsel || d.nama_jc || "Umum";
                 const status = (d.status || d.status_doa || "HADIR").toUpperCase();
-                
-                const rawDate = d.timestamp || d.tanggal || d.tgl_doa || d.tgl_kirim;
-                let displayDate = "-"; 
-                let chartLabel = "Lainnya";
+                const tgl = d.timestamp ? d.timestamp.toDate().toLocaleDateString('id-ID') : "-";
 
-                if (rawDate) {
-                    const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
-                    displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                    chartLabel = dateObj.toLocaleDateString('id-ID');
-                }
+                // Logic Stats
+                pData[status] = (pData[status] || 0) + 1;
+                bData[jc] = (bData[jc] || 0) + 1;
+                lData[tgl] = (lData[tgl] || 0) + 1;
 
-                pieData[status] = (pieData[status] || 0) + 1;
-                barData[jc] = (barData[jc] || 0) + 1;
-                lineData[chartLabel] = (lineData[chartLabel] || 0) + 1;
-
-                if (type === 'peringkat_jc') {
-                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td>AKTIF</td></tr>`;
-                } else if (type === 'bacaan') {
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.pasal_utama || "-"}</td><td>${displayDate}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                if (type === 'bacaan') {
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.pasal_utama || "-"}</td><td>${tgl}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                } else if (type === 'peringkat_jc') {
+                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td>AKTIF</td></tr>`;
                 } else {
-                    let colAkhir = d.keterangan || d.materi || d.lokasi || d.pokok_doa || "-";
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${displayDate}</td><td>${status}</td><td>${colAkhir}</td></tr>`;
+                    let ket = d.keterangan || d.materi || d.lokasi || d.pokok_doa || d.isi_pesan || "-";
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${tgl}</td><td>${status}</td><td>${ket}</td></tr>`;
                 }
             });
-
-            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data</td></tr>";
-            updateCharts(pieData, lineData, barData);
-            loadingEl.style.display = 'none';
+            document.getElementById('data-list').innerHTML = html;
+            renderCharts(pData, lData, bData);
         });
     }
 
-    function updateCharts(pieData, lineData, barData) {
+    function renderCharts(p, l, b) {
         if (myCharts.pie) myCharts.pie.destroy();
         myCharts.pie = new Chart(document.getElementById('pieChart'), {
             type: 'doughnut',
-            data: { labels: Object.keys(pieData), datasets: [{ data: Object.values(pieData), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: Object.keys(p), datasets: [{ data: Object.values(p), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] }
         });
-
-        const lineLabels = Object.keys(lineData).sort();
         if (myCharts.line) myCharts.line.destroy();
         myCharts.line = new Chart(document.getElementById('lineChart'), {
             type: 'line',
-            data: { labels: lineLabels, datasets: [{ label: 'Aktivitas', data: lineLabels.map(l => lineData[l]), borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: Object.keys(l), datasets: [{ label: 'Aktivitas', data: Object.values(l), borderColor: '#007bff', fill: true }] }
         });
-
         if (myCharts.bar) myCharts.bar.destroy();
         myCharts.bar = new Chart(document.getElementById('barChart'), {
             type: 'bar',
-            data: { labels: Object.keys(barData), datasets: [{ label: 'Total', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
-            options: { responsive: true, maintainAspectRatio: false }
+            data: { labels: Object.keys(b), datasets: [{ label: 'Total', data: Object.values(b), backgroundColor: '#6f42c1' }] }
         });
     }
 
+    // --- EXPORT PDF ENGINE (SANGAT AKURAT) ---
     async function processTabToPDF(doc, type, isNewPage = false) {
         if (isNewPage) doc.addPage();
-        const cfg = menuConfig[type];
-        const periodSelect = document.getElementById('periodSelect');
-        const periodText = periodSelect.options[periodSelect.selectedIndex].text;
         const pageWidth = doc.internal.pageSize.getWidth();
+        const cfg = menuConfig[type];
+
+        // Header Kertas (Simetris)
+        try {
+            const logo = "https://raw.githubusercontent.com/imadebobydaniel-ai/sistem-informasi-komsel-jc/main/logo_pondok.png"; 
+            doc.addImage(logo, 'PNG', 30, 25, 45, 45);
+        } catch(e) {}
 
         doc.setFont("helvetica", "bold");
-        doc.textAlign = "center";
         doc.setFontSize(16);
-        doc.text("GEREJA BETHEL INDONESIA", pageWidth / 2, 55);
-        doc.setFontSize(14);
-        doc.text("Pondok Pemulihan Papua", pageWidth / 2, 75);
-        doc.setLineWidth(1.5);
-        doc.line(40, 100, pageWidth - 40, 100);
-
+        doc.text("GEREJA BETHEL INDONESIA", pageWidth / 2, 45, { align: "center" });
         doc.setFontSize(12);
-        doc.text(`LAPORAN STATISTIK: ${cfg.title.toUpperCase()}`, pageWidth / 2, 130);
-        doc.setFontSize(10);
-        doc.text(`Periode: ${periodText} | Dicetak pada: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 150);
+        doc.text("Pondok Pemulihan Papua", pageWidth / 2, 60, { align: "center" });
+        doc.line(30, 75, pageWidth - 30, 75);
 
+        doc.setFontSize(11);
+        doc.text(`LAPORAN: ${cfg.title.toUpperCase()}`, pageWidth / 2, 95, { align: "center" });
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 110, { align: "center" });
+
+        // AMBIL GRAFIK SEBAGAI GAMBAR
+        const canvasCharts = await html2canvas(document.getElementById('capture-charts'));
+        const imgCharts = canvasCharts.toDataURL('image/png');
+        doc.addImage(imgCharts, 'PNG', 30, 125, pageWidth - 60, 150);
+
+        // TABEL DATA
         doc.autoTable({
             html: type === currentType ? '#mainTable' : null,
-            startY: 170,
+            startY: 290,
             theme: 'grid',
             headStyles: { fillColor: [0, 123, 255] },
-            styles: { fontSize: 8 }
+            styles: { fontSize: 7 }
         });
-
-        return doc;
     }
 
     async function handleExport(mode) {
+        document.getElementById('loading').style.display = 'flex';
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'pt', 'a4');
-        const loadingEl = document.getElementById('loading');
-        
-        loadingEl.style.display = 'flex';
+
         if (mode === 'single') {
             await processTabToPDF(doc, currentType);
         } else {
@@ -380,8 +297,9 @@
                 await processTabToPDF(doc, keys[i], i > 0);
             }
         }
-        doc.save(`Laporan_Pondok_Pemulihan_${new Date().getTime()}.pdf`);
-        loadingEl.style.display = 'none';
+        
+        doc.save(`Laporan_Pondok_Pemulihan_${Date.now()}.pdf`);
+        document.getElementById('loading').style.display = 'none';
     }
 
     window.onload = () => loadDataRealtime('ibadah');
