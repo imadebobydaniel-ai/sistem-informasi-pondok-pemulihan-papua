@@ -21,11 +21,20 @@
         /* Stats Grid */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
         .stats-grid a { text-decoration: none; color: inherit; }
-        .stat-card { padding: 15px; border-radius: 10px; color: white; position: relative; min-height: 80px; cursor: pointer; transition: transform 0.2s; }
+        .stat-card { 
+            padding: 20px 15px; 
+            border-radius: 10px; 
+            color: white; 
+            position: relative; 
+            min-height: 60px; /* Diperkecil karena angka dihapus */
+            cursor: pointer; 
+            transition: transform 0.2s; 
+            display: flex;
+            align-items: center;
+        }
         .stat-card:hover { transform: translateY(-5px); filter: brightness(1.1); }
-        .stat-card h4 { margin: 0; font-size: 10px; text-transform: uppercase; }
-        .stat-card p { margin: 5px 0 0; font-size: 24px; font-weight: bold; }
-        .stat-card i { position: absolute; right: 10px; bottom: 10px; font-size: 1.8rem; opacity: 0.3; }
+        .stat-card h4 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card i { position: absolute; right: 15px; font-size: 1.5rem; opacity: 0.4; }
 
         /* Action Menu */
         #actionMenu { 
@@ -64,18 +73,40 @@
     </div>
 
     <div class="stats-grid">
-        <a href="admin-tiket.html"><div class="stat-card" style="background: #007bff;"><h4>Portal Tiket</h4><p id="stat_tiket">0</p><i class="fas fa-ticket-alt"></i></div></a>
-        <a href="#memberData"><div class="stat-card" style="background: #28a745;"><h4>Hadir Hari Ini</h4><p id="stat_hadir">0</p><i class="fas fa-check-circle"></i></div></a>
-        
-        <a href="portal-media.html"><div class="stat-card" style="background: #6f42c1;"><h4>Portal Media</h4><p id="stat_media">0</p><i class="fas fa-icons"></i></div></a>
-        <a href="informasi-kegiatan.html"><div class="stat-card" style="background: #fd7e14;"><h4>Informasi Kegiatan</h4><p id="stat_info">0</p><i class="fas fa-calendar-alt"></i></div></a>
-        <a href="admin-bigdata.html"><div class="stat-card" style="background: #17a2b8;"><h4>Big Data</h4><p id="stat_bigdata">0</p><i class="fas fa-chart-line"></i></div></a>
-        
+        <a href="admin-tiket.html">
+            <div class="stat-card" style="background: #007bff;">
+                <h4>Portal Tiket</h4>
+                <i class="fas fa-ticket-alt"></i>
+            </div>
+        </a>
+        <a href="#memberData">
+            <div class="stat-card" style="background: #28a745;">
+                <h4>Hadir Hari Ini</h4>
+                <i class="fas fa-check-circle"></i>
+            </div>
+        </a>
+        <a href="portal-media.html">
+            <div class="stat-card" style="background: #6f42c1;">
+                <h4>Portal Media</h4>
+                <i class="fas fa-icons"></i>
+            </div>
+        </a>
+        <a href="informasi-kegiatan.html">
+            <div class="stat-card" style="background: #fd7e14;">
+                <h4>Informasi Kegiatan</h4>
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+        </a>
+        <a href="admin-bigdata.html">
+            <div class="stat-card" style="background: #17a2b8;">
+                <h4>Big Data</h4>
+                <i class="fas fa-chart-line"></i>
+            </div>
+        </a>
         <a href="manajemen-user.html">
             <div class="stat-card" style="background: var(--emas); color: #333;">
                 <h4 style="color: #333;">Manajemen User</h4>
-                <p id="totalAdmin" style="color: #333;">0</p>
-                <i class="fas fa-users-cog" style="color: #333; opacity: 0.5;"></i>
+                <i class="fas fa-users-cog" style="color: #333; opacity: 0.6;"></i>
             </div>
         </a>
     </div>
@@ -116,6 +147,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -128,10 +160,10 @@
     const db = firebase.firestore();
 
     window.onload = function() {
+        // Tetap mengambil data untuk mengisi tabel, tapi tidak lagi menampilkan angka di menu
         db.collection("users").onSnapshot(snapshot => {
             const table = document.getElementById("memberData");
             table.innerHTML = "";
-            document.getElementById("stat_bigdata").innerText = snapshot.size;
             snapshot.forEach(doc => {
                 const d = doc.data();
                 table.innerHTML += `
@@ -147,20 +179,6 @@
                 </tr>`;
             });
             updateActionMenu();
-        });
-
-        db.collection("admins").onSnapshot(snap => {
-            document.getElementById("totalAdmin").innerText = snap.size;
-        });
-
-        const today = new Date().toISOString().split('T')[0];
-        db.collection("absensi").where("tanggal", "==", today)
-        .onSnapshot(snap => {
-            document.getElementById("stat_hadir").innerText = snap.size;
-        });
-
-        db.collection("media").onSnapshot(snap => {
-            document.getElementById("stat_media").innerText = snap.size;
         });
     };
 
