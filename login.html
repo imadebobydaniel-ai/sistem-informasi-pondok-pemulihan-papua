@@ -122,7 +122,7 @@
         }
     });
 
-    // FUNGSI LOGIN UTAMA
+    // FUNGSI LOGIN UTAMA (Update Realtime)
     async function prosesLogin() {
         const emailInput = document.getElementById('email').value.trim();
         const passInput = document.getElementById('pass').value;
@@ -137,7 +137,15 @@
         btn.disabled = true;
 
         try {
-            // 1. CEK DI KOLEKSI ADMIN TERLEBIH DAHULU
+            // 1. CEK AKUN MASTER / STATIS (Darurat)
+            if (emailInput === "admin" && passInput === "bukadong821") {
+                alert("Login Administrator Berhasil (Akun Master)!");
+                window.location.href = "admin.html";
+                return;
+            }
+
+            // 2. CEK DI KOLEKSI ADMIN (Hasil Manajemen User)
+            // Pastikan nama koleksi 'admin_users' sesuai dengan database Anda
             const adminSnapshot = await db.collection("admin_users")
                 .where("email", "==", emailInput)
                 .where("password", "==", passInput)
@@ -145,15 +153,14 @@
 
             if (!adminSnapshot.empty) {
                 const adminData = adminSnapshot.docs[0].data();
-                // Simpan Log Login (Optional)
-                saveLoginLog(adminData.nama, emailInput);
+                saveLoginLog(adminData.nama || "Admin", emailInput);
                 
                 alert("Login Administrator Berhasil!");
-                window.location.href = "admin.html"; // Arahkan ke Dashboard Admin
+                window.location.href = "admin.html"; 
                 return;
             }
 
-            // 2. JIKA BUKAN ADMIN, CEK DI KOLEKSI USER BIASA (ANGGOTA)
+            // 3. CEK DI KOLEKSI ANGGOTA (User Biasa)
             const userSnapshot = await db.collection("users")
                 .where("email", "==", emailInput)
                 .where("password", "==", passInput)
@@ -165,9 +172,9 @@
                 localStorage.setItem("userName", userData.nama);
                 
                 alert("Login Anggota Berhasil!");
-                window.location.href = "menu.html"; // Arahkan ke Menu Anggota
+                window.location.href = "menu.html"; 
             } else {
-                throw new Error("Email atau Password salah.");
+                throw new Error("Email atau Password tidak ditemukan atau salah.");
             }
 
         } catch (e) {
@@ -177,15 +184,13 @@
         }
     }
 
-    // Fungsi mencatat log login ke Firestore
     function saveLoginLog(nama, email) {
         db.collection("login_logs").add({
             userName: nama,
             userEmail: email,
             loginTime: new Date(),
-            logoutTime: null,
-            duration: "Masih Aktif"
-        });
+            status: "Login Berhasil"
+        }).catch(err => console.log("Gagal catat log:", err));
     }
 
     function showError(pesan) {
