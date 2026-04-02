@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Big Data Dashboard - Pondok Pemulihan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
         :root {
@@ -29,7 +31,6 @@
         }
         .tab-btn.active { background: var(--primary); color: white; transform: translateY(-3px); }
         
-        /* Dropdown Periode Style */
         .filter-container { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .period-select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-weight: bold; outline: none; cursor: pointer; background: var(--light); }
 
@@ -85,14 +86,7 @@
             <option value="1">1 Bulan Terakhir</option>
             <option value="2">2 Bulan Terakhir</option>
             <option value="3">3 Bulan Terakhir</option>
-            <option value="4">4 Bulan Terakhir</option>
-            <option value="5">5 Bulan Terakhir</option>
             <option value="6">6 Bulan Terakhir</option>
-            <option value="7">7 Bulan Terakhir</option>
-            <option value="8">8 Bulan Terakhir</option>
-            <option value="9">9 Bulan Terakhir</option>
-            <option value="10">10 Bulan Terakhir</option>
-            <option value="11">11 Bulan Terakhir</option>
             <option value="12">12 Bulan Terakhir</option>
         </select>
     </div>
@@ -144,15 +138,15 @@
     let currentType = 'ibadah';
 
     const menuConfig = {
-        ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'], dateField: 'timestamp' },
-        arso1: { title: 'Kehadiran Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'], dateField: 'timestamp' },
-        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'], dateField: 'timestamp' },
-        komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'], dateField: 'timestamp' },
-        absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'], dateField: 'timestamp' },
-        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'], dateField: 'timestamp' },
-        doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'], dateField: 'timestamp' },
-        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'], dateField: 'timestamp' },
-        saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'], dateField: 'timestamp' }
+        ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        arso1: { title: 'Kehadiran Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
+        komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
+        absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
+        doa_komsel: { title: 'Hasil Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
+        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
+        saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
     function switchTab(type, btn) {
@@ -170,24 +164,16 @@
         if (typeof currentListener === 'function') currentListener();
 
         const cfg = menuConfig[type];
-        document.getElementById('table-title').innerText = "Detail: " + cfg.title + (periodValue > 0 ? ` (${periodValue} Bulan Terakhir)` : "");
+        document.getElementById('table-title').innerText = "Detail: " + cfg.title;
         document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
 
         let query = db.collection(cfg.col);
-
-        // LOGIKA FILTER TANGGAL (Firestore Query)
         if (periodValue > 0) {
             const cutoff = new Date();
             cutoff.setMonth(cutoff.getMonth() - periodValue);
-            // Mencari field tanggal yang ada di doc (timestamp/tanggal/tgl_doa)
             query = query.where("timestamp", ">=", cutoff);
         }
-
-        if (type === 'peringkat_jc') {
-            query = query.orderBy("ranking", "asc");
-        } else {
-            query = query.orderBy("timestamp", "desc").limit(200); 
-        }
+        query = query.orderBy("timestamp", "desc").limit(200);
 
         currentListener = query.onSnapshot((snapshot) => {
             let html = "";
@@ -204,13 +190,9 @@
                 let chartLabel = "Lainnya";
 
                 if (rawDate) {
-                    try {
-                        const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
-                        if (!isNaN(dateObj.getTime())) {
-                            displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                            chartLabel = dateObj.toLocaleDateString('id-ID');
-                        }
-                    } catch (e) { console.error("Date error", e); }
+                    const dateObj = (typeof rawDate.toDate === 'function') ? rawDate.toDate() : new Date(rawDate);
+                    displayDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    chartLabel = dateObj.toLocaleDateString('id-ID');
                 }
 
                 pieData[status] = (pieData[status] || 0) + 1;
@@ -218,72 +200,119 @@
                 lineData[chartLabel] = (lineData[chartLabel] || 0) + 1;
 
                 if (type === 'peringkat_jc') {
-                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td><span class="badge badge-success">AKTIF</span></td></tr>`;
+                    html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc || '-'}</td><td>${d.poin || 0}</td><td>${d.periode || '-'}</td><td>AKTIF</td></tr>`;
                 } else if (type === 'bacaan') {
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td><b style="color:var(--primary)">${d.pasal_utama || "-"}</b></td><td><span class="badge badge-success">${displayDate}</span></td><td>${d.pasal_hikmat || "-"}</td></tr>`;
-                } else if (type === 'saran') {
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.kategori || "-"}</td><td>${d.isi_pesan || "-"}</td><td>${displayDate}</td></tr>`;
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.pasal_utama || "-"}</td><td>${displayDate}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
                 } else {
                     let colAkhir = d.keterangan || d.materi || d.lokasi || d.pokok_doa || "-";
-                    let colTengah = (type === 'doa_komsel') ? d.status_doa : status;
-                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${displayDate}</td><td>${colTengah}</td><td>${colAkhir}</td></tr>`;
+                    html += `<tr><td>${nama}</td><td>${jc}</td><td>${displayDate}</td><td>${status}</td><td>${colAkhir}</td></tr>`;
                 }
             });
 
-            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data tersedia untuk periode ini</td></tr>";
+            document.getElementById('data-list').innerHTML = html || "<tr><td colspan='10' style='text-align:center;'>Tidak ada data</td></tr>";
             updateCharts(pieData, lineData, barData);
-            loadingEl.style.display = 'none';
-        }, (err) => {
-            console.error("Firestore Error:", err);
             loadingEl.style.display = 'none';
         });
     }
 
     function updateCharts(pieData, lineData, barData) {
-        const ctxPie = document.getElementById('pieChart');
-        const ctxLine = document.getElementById('lineChart');
-        const ctxBar = document.getElementById('barChart');
-
-        const labels = Object.keys(pieData);
-        const dynamicColors = labels.map(label => {
-            const l = label.toUpperCase();
-            if (l === 'HADIR') return '#28a745'; 
-            if (l === 'TIDAK HADIR' || l === 'ALPHA' || l === 'ABSEN') return '#dc3545';
-            if (l === 'IZIN') return '#ffc107';
-            return '#007bff';
-        });
-
         if (myCharts.pie) myCharts.pie.destroy();
-        myCharts.pie = new Chart(ctxPie, {
+        myCharts.pie = new Chart(document.getElementById('pieChart'), {
             type: 'doughnut',
-            data: { labels: labels, datasets: [{ data: Object.values(pieData), backgroundColor: dynamicColors }] },
+            data: { labels: Object.keys(pieData), datasets: [{ data: Object.values(pieData), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
 
         const lineLabels = Object.keys(lineData).sort();
         if (myCharts.line) myCharts.line.destroy();
-        myCharts.line = new Chart(ctxLine, {
+        myCharts.line = new Chart(document.getElementById('lineChart'), {
             type: 'line',
-            data: { labels: lineLabels, datasets: [{ label: 'Aktivitas', data: lineLabels.map(l => lineData[l]), borderColor: '#007bff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] },
+            data: { labels: lineLabels, datasets: [{ label: 'Aktivitas', data: lineLabels.map(l => lineData[l]), borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)' }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
 
         if (myCharts.bar) myCharts.bar.destroy();
-        myCharts.bar = new Chart(ctxBar, {
+        myCharts.bar = new Chart(document.getElementById('barChart'), {
             type: 'bar',
-            data: { labels: Object.keys(barData), datasets: [{ label: 'Total Laporan', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
+            data: { labels: Object.keys(barData), datasets: [{ label: 'Total', data: Object.values(barData), backgroundColor: '#6f42c1' }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    function downloadPDF() {
+    // --- FUNGSI DOWNLOAD PDF KEREN ---
+    async function downloadPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'pt', 'a4');
-        const title = menuConfig[currentType].title;
-        doc.setFontSize(18);
-        doc.text("Laporan Statistik: " + title, 40, 40);
-        doc.autoTable({ html: '#mainTable', startY: 80, theme: 'grid', styles: { fontSize: 8 } });
-        doc.save(`Laporan_${title}_${new Date().getTime()}.pdf`);
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const periodText = document.getElementById('periodSelect').options[document.getElementById('periodSelect').selectedIndex].text;
+        const cfg = menuConfig[currentType];
+        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        // --- 1. KOP SURAT ---
+        try {
+            const logoImg = "logo_pondok.png"; 
+            doc.addImage(logoImg, 'PNG', 40, 30, 60, 60);
+        } catch (e) { console.log("Logo skip."); }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("GEREJA BETHEL INDONESIA", 110, 50);
+        doc.setFontSize(14);
+        doc.text("Pondok Pemulihan Papua", 110, 70);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("Sub Kop: Laporan Progres Komsel JC Periode " + periodText, 110, 85);
+        
+        doc.setLineWidth(1.5);
+        doc.line(40, 100, pageWidth - 40, 100);
+
+        // --- 2. PENGANTAR ---
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("KATA PENGANTAR", 40, 130);
+        
+        doc.setFont("helvetica", "normal");
+        const kataPengantar = `Berikut kami laporkan Laporan ${cfg.title} yang mencakup data nama-nama yang melakukan progres laporan pada sistem digital Pondok Pemulihan Papua.`;
+        doc.text(doc.splitTextToSize(kataPengantar, pageWidth - 80), 40, 145);
+
+        // INSIGHT AI
+        const rowCount = document.querySelectorAll('#data-list tr').length;
+        const aiInsight = `Berdasarkan data sistem, terdapat total ${rowCount} aktivitas tercatat pada periode ${periodText}. Secara sistematis, tren menunjukkan grafik yang cukup dinamis dalam pelayanan digital.`;
+        doc.setFont("helvetica", "italic");
+        doc.text(doc.splitTextToSize("AI Insight: " + aiInsight, pageWidth - 80), 40, 175);
+
+        // --- 3. TABEL ---
+        doc.autoTable({
+            html: '#mainTable',
+            startY: 210,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 123, 255] },
+            styles: { fontSize: 8 }
+        });
+
+        // --- 4. GRAFIK (Halaman Baru) ---
+        doc.addPage();
+        doc.setFont("helvetica", "bold");
+        doc.text("LAMPIRAN GRAFIK ANALISTIK", 40, 40);
+
+        const charts = document.querySelectorAll('.chart-card');
+        let currentY = 60;
+        for (let i = 0; i < charts.length; i++) {
+            const canvas = await html2canvas(charts[i]);
+            if (currentY > 600) { doc.addPage(); currentY = 40; }
+            doc.addImage(canvas.toDataURL('image/png'), 'PNG', 40, currentY, 515, 200);
+            currentY += 220;
+        }
+
+        // --- 5. PENUTUP ---
+        const finalY = doc.internal.pageSize.getHeight() - 100;
+        doc.setFont("helvetica", "normal");
+        doc.text("Demikian Laporan ini dibuat, atas perhatiannya diucapkan terimakasih.", 40, finalY);
+        doc.text(`Jayapura, ${today}`, pageWidth - 180, finalY + 30);
+        doc.text("Administrator", pageWidth - 160, finalY + 70);
+
+        doc.save(`Laporan_${cfg.title}_${new Date().getTime()}.pdf`);
     }
 
     window.onload = () => loadDataRealtime('ibadah');
