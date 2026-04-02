@@ -16,20 +16,9 @@
         
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; }
         
-        /* Container untuk input password agar ikon bisa diposisikan absolut */
-        .password-container {
-            position: relative;
-            width: 100%;
-        }
+        .password-container { position: relative; width: 100%; }
+        .password-container input { width: 100%; padding-right: 40px; box-sizing: border-box; }
 
-        /* Penyesuaian input password agar teks tidak tertutup ikon */
-        .password-container input {
-            width: 100%;
-            padding-right: 40px; 
-            box-sizing: border-box; 
-        }
-
-        /* Styling Ikon Mata */
         .toggle-password {
             position: absolute;
             right: 15px; 
@@ -42,20 +31,13 @@
             transition: color 0.2s;
         }
 
-        .toggle-password:hover {
-            color: #333; 
-        }
-
-        /* LOGIKA ANIMASI BERKEDIP */
         @keyframes eyeBlink {
             0%, 100% { opacity: 1; }  
             20% { opacity: 0; }       
             40% { opacity: 1; }       
         }
 
-        .eye-blinking {
-            animation: eyeBlink 3s infinite; 
-        }
+        .eye-blinking { animation: eyeBlink 3s infinite; }
 
         .btn-blue { background: #007bff; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
         .btn-blue:disabled { background: #ccc; cursor: not-allowed; }
@@ -63,7 +45,6 @@
         .link-regis { display: block; color: #007bff; text-decoration: none; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
         .link-admin { display: block; color: #888; text-decoration: none; font-size: 12px; }
 
-        /* Style Overlay Error */
         #error-block { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .error-card { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .btn-close-error { background: #dc3545; color: white; border: none; padding: 12px 0; width: 100%; border-radius: 10px; font-weight: bold; margin-top: 20px; cursor: pointer; }
@@ -76,10 +57,10 @@
         <img src="logo_pondok.png" alt="Logo" class="logo-main">
         <span id="text-org">PONDOK PEMULIHAN PAPUA</span>
         <span id="text-system">Sistem Informasi Komsel JC</span>
-        <span id="text-status">Login Anggota Komsel</span>
+        <span id="text-status">Login Administrator / Anggota</span>
     </div>
 
-    <input type="email" id="email" placeholder="Email Anggota">
+    <input type="email" id="email" placeholder="Email Terdaftar">
 
     <div class="password-container">
         <input type="password" id="pass" placeholder="Password">
@@ -91,7 +72,7 @@
     <div class="footer-links">
         <a href="registrasi.html" class="link-regis">BELUM PUNYA AKUN? DAFTAR SEKARANG</a>
         <a href="login_cyber.html" class="link-admin">
-            <i class="fa-solid fa-user-shield"></i> LOGIN ADMINISTRATOR
+            <i class="fa-solid fa-user-shield"></i> LOGIN KHUSUS CYBER
         </a>
     </div>
 </div>
@@ -109,7 +90,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Inisialisasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -119,80 +99,93 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 2. LOGIKA TOGGLE PASSWORD (SCRIPT BARU)
+    // Toggle Password Visibility
     document.addEventListener("DOMContentLoaded", function() {
-        const passwordInput = document.getElementById('pass'); // Menggunakan ID 'pass' sesuai HTML Anda
+        const passwordInput = document.getElementById('pass');
         const toggleIcon = document.getElementById('toggle-icon');
-
         if (passwordInput && toggleIcon) {
-            // Tambahkan class animasi berkedip saat halaman dimuat
             toggleIcon.classList.add('eye-blinking');
-
-            // Logika Klik untuk Tampilkan/Sembunyikan Password
             toggleIcon.addEventListener('click', function() {
                 if (passwordInput.type === 'password') {
                     passwordInput.type = 'text';
-                    toggleIcon.classList.remove('fa-eye');
-                    toggleIcon.classList.add('fa-eye-slash');
+                    toggleIcon.classList.replace('fa-eye', 'fa-eye-slash');
                     toggleIcon.classList.remove('eye-blinking'); 
                 } else {
                     passwordInput.type = 'password';
-                    toggleIcon.classList.remove('fa-eye-slash');
-                    toggleIcon.classList.add('fa-eye');
+                    toggleIcon.classList.replace('fa-eye-slash', 'fa-eye');
                     toggleIcon.classList.add('eye-blinking');
                 }
             });
         }
     });
 
-    // 3. Fungsi Login
+    // FUNGSI LOGIN UTAMA
     async function prosesLogin() {
         const emailInput = document.getElementById('email').value.trim();
         const passInput = document.getElementById('pass').value;
         const btn = document.getElementById('btn-login');
 
         if(!emailInput || !passInput) {
-            showError("Data Kosong: Harap isi email dan password Anda.");
+            showError("Harap isi email dan password.");
             return;
         }
 
-        btn.innerText = "MEMPROSES...";
+        btn.innerText = "MENGECEK AKSES...";
         btn.disabled = true;
 
         try {
-            const snapshot = await db.collection("users")
+            // 1. CEK DI KOLEKSI ADMIN TERLEBIH DAHULU
+            const adminSnapshot = await db.collection("admin_users")
                 .where("email", "==", emailInput)
+                .where("password", "==", passInput)
                 .get();
 
-            if (snapshot.empty) {
-                throw new Error("Akun tidak ditemukan. Pastikan email sudah terdaftar.");
+            if (!adminSnapshot.empty) {
+                const adminData = adminSnapshot.docs[0].data();
+                // Simpan Log Login (Optional)
+                saveLoginLog(adminData.nama, emailInput);
+                
+                alert("Login Administrator Berhasil!");
+                window.location.href = "admin.html"; // Arahkan ke Dashboard Admin
+                return;
             }
 
-            const doc = snapshot.docs[0];
-            const userDoc = doc.data();
+            // 2. JIKA BUKAN ADMIN, CEK DI KOLEKSI USER BIASA (ANGGOTA)
+            const userSnapshot = await db.collection("users")
+                .where("email", "==", emailInput)
+                .where("password", "==", passInput)
+                .get();
 
-            if (userDoc.password === passInput) {
-                localStorage.setItem("userId", doc.id);
-                localStorage.setItem("userEmail", emailInput);
-                localStorage.setItem("userName", userDoc.nama);
-                localStorage.setItem("userJC", String(userDoc.komsel || "1")); 
+            if (!userSnapshot.empty) {
+                const userData = userSnapshot.docs[0].data();
+                localStorage.setItem("userId", userSnapshot.docs[0].id);
+                localStorage.setItem("userName", userData.nama);
                 
-                window.location.href = "menu.html";
+                alert("Login Anggota Berhasil!");
+                window.location.href = "menu.html"; // Arahkan ke Menu Anggota
             } else {
-                throw new Error("Password salah. Silakan periksa kembali.");
+                throw new Error("Email atau Password salah.");
             }
 
         } catch (e) {
-            console.error("Login Error:", e);
             showError(e.message);
             btn.innerText = "MASUK";
             btn.disabled = false;
         }
+    }
+
+    // Fungsi mencatat log login ke Firestore
+    function saveLoginLog(nama, email) {
+        db.collection("login_logs").add({
+            userName: nama,
+            userEmail: email,
+            loginTime: new Date(),
+            logoutTime: null,
+            duration: "Masih Aktif"
+        });
     }
 
     function showError(pesan) {
