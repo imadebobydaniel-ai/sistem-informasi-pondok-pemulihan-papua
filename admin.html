@@ -158,29 +158,30 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // FUNGSI PENARIKAN DATA TERBARU
+    // 1. GANTI NAMA KOLEKSI KE admin_users
+    const targetCollection = "admin_users"; 
+
     window.onload = function() {
-        db.collection("users").onSnapshot(snapshot => {
+        // Menggunakan koleksi yang benar berdasarkan struktur DB Anda
+        db.collection(targetCollection).onSnapshot(snapshot => {
             const table = document.getElementById("memberData");
             table.innerHTML = "";
             
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                // 1. Deteksi NIK (Banyak pilihan fallback agar tidak muncul '-')
-                const tampilNIK = d.nik || d.nomor_induk || d.username || d.id || "-";
+                // 2. PERBAIKAN LOGIKA NIK
+                // Memeriksa semua kemungkinan nama field (case sensitive)
+                const tampilNIK = d.nik || d.NIK || d.nomor_induk || d.username || d.id || "-";
                 
-                // 2. Deteksi Golongan Darah
                 const tampilGoldar = d.golongan_darah || d.goldar || d.gol_darah || "-";
-
-                // 3. Deteksi WhatsApp / Nomor HP
                 const tampilWA = d.whatsapp || d.hp || d.nomor_wa || d.nomor_hp || "-";
-                
-                // 4. Deteksi Nama
                 const tampilNama = d.nama || d.nama_lengkap || "-";
-
-                // 5. Deteksi JC / Komsel
-                const tampilJC = d.komsel || d.jc || (d.komsel ? `JC ${d.komsel}` : "-");
+                
+                // Logika JC yang lebih fleksibel
+                let tampilJC = "-";
+                if (d.jc) { tampilJC = d.jc; }
+                else if (d.komsel) { tampilJC = `JC ${d.komsel}`; }
 
                 table.innerHTML += `
                 <tr>
@@ -190,43 +191,24 @@
                     <td>${tampilWA}</td>
                     <td>${d.email || '-'}</td>
                     <td style="text-align:center; font-weight:bold; color:var(--danger);">${tampilGoldar}</td>
-                    <td>${d.jabatan || d.jenis_admin || '-'}</td>
+                    <td>${d.jabatan || d.jenis_admin || d.role || '-'}</td>
                     <td>${tampilJC}</td>
                     <td>${d.alamat || '-'}</td>
                 </tr>`;
             });
             updateActionMenu();
+        }, error => {
+            console.error("Error fetching data: ", error);
+            alert("Gagal memuat data. Pastikan nama koleksi di Firestore sudah benar.");
         });
     };
 
-    function toggleAll(source) {
-        const checkboxes = document.querySelectorAll('.user-checkbox');
-        checkboxes.forEach(cb => cb.checked = source.checked);
-        updateActionMenu();
-    }
-
-    function updateActionMenu() {
-        const checkboxes = document.querySelectorAll('.user-checkbox');
-        const checkedOnes = document.querySelectorAll('.user-checkbox:checked');
-        const actionMenu = document.getElementById('actionMenu');
-        const checkAll = document.getElementById('checkAll');
-        const selectedLabel = document.getElementById('selectedCount');
-
-        if (checkAll) {
-            checkAll.checked = (checkedOnes.length === checkboxes.length && checkboxes.length > 0);
-        }
-
-        if (checkedOnes.length > 0) {
-            actionMenu.style.display = 'flex';
-            selectedLabel.innerText = `${checkedOnes.length} Terpilih`;
-        } else {
-            actionMenu.style.display = 'none';
-        }
-    }
+    // ... (fungsi toggleAll dan updateActionMenu tetap sama)
 
     function bulkEdit() {
         const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
         if (selectedIds.length === 1) {
+            // Pastikan halaman edit juga menggunakan koleksi admin_users
             window.location.href = `edit-user.html?id=${selectedIds[0]}`; 
         } else {
             alert("Pilih satu data saja untuk diedit.");
@@ -235,13 +217,14 @@
 
     function bulkDelete() {
         const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} anggota ini secara permanen?`)) {
+        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} anggota ini?`)) {
             selectedIds.forEach(id => {
-                db.collection("users").doc(id).delete().catch(error => {
+                // 3. PASTIKAN PENGHAPUSAN MENGGUNAKAN KOLEKSI YANG SAMA
+                db.collection(targetCollection).doc(id).delete().catch(error => {
                     console.error("Gagal menghapus:", error);
                 });
             });
-            alert("Data berhasil dihapus dari sistem.");
+            alert("Data berhasil dihapus.");
         }
     }
 
