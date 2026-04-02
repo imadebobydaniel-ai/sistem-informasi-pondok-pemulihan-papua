@@ -165,4 +165,208 @@
 
 <script>
     const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let myCharts = { pie: null, line: null, bar: null };
+    let currentType = 'ibadah';
+    let currentListener = null;
+
+    const menuConfig = {
+        ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
+        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
+        komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
+        absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
+        doa_komsel: { title: 'Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
+        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
+        saran: { title: 'Saran & Tiket', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
+    };
+
+    function toggleDropdown(id) { document.getElementById(id).classList.toggle('show'); }
+
+    function switchTab(type, btn) {
+        currentType = type;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadDataRealtime(type);
+    }
+
+    function loadDataRealtime(type) {
+        const cfg = menuConfig[type];
+        const periodVal = document.getElementById('periodSelect').value;
+        document.getElementById('table-title').innerText = "Detail: " + cfg.title;
+        document.getElementById('table-head').innerHTML = `<tr>${cfg.fields.map(f => `<th>${f}</th>`).join('')}</tr>`;
+        
+        if (currentListener) currentListener();
+
+        let query = db.collection(cfg.col).orderBy("timestamp", "desc");
+        const now = new Date();
+
+        if (periodVal === "this_month") {
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            query = query.where("timestamp", ">=", startOfMonth);
+        } else if (!isNaN(periodVal) && periodVal > 0) {
+            const cutoff = new Date();
+            cutoff.setMonth(cutoff.getMonth() - parseInt(periodVal));
+            query = query.where("timestamp", ">=", cutoff);
+        } else if (isNaN(periodVal) && periodVal !== "0") {
+            const monthsMap = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+            const targetMonth = monthsMap[periodVal];
+            const start = new Date(now.getFullYear(), targetMonth, 1);
+            const end = new Date(now.getFullYear(), targetMonth + 1, 0, 23, 59, 59);
+            query = query.where("timestamp", ">=", start).where("timestamp", "<=", end);
+        }
+
+        currentListener = query.onSnapshot(snapshot => {
+            const { html, pData, bData, lData } = formatTableData(type, snapshot);
+            document.getElementById('data-list').innerHTML = html;
+            renderCharts(pData, lData, bData);
+        });
+    }
+
+    // Fungsi pembantu untuk memproses snapshot menjadi HTML dan Data Grafik
+    function formatTableData(type, snapshot) {
+        let html = "";
+        let pData = {}, bData = {}, lData = {};
+        let tableRows = [];
+
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            const nama = d.nama || d.Nama || d.pengirim || "-";
+            const jc = d.jc || d.JC || d.komsel || d.nama_jc || "Umum";
+            const status = (d.status || d.status_doa || "HADIR").toUpperCase();
+            const tgl = d.timestamp ? d.timestamp.toDate().toLocaleDateString('id-ID') : "-";
+
+            pData[status] = (pData[status] || 0) + 1;
+            bData[jc] = (bData[jc] || 0) + 1;
+            lData[tgl] = (lData[tgl] || 0) + 1;
+
+            let row = [];
+            if (type === 'bacaan') {
+                html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.pasal_utama || "-"}</td><td>${tgl}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                row = [nama, jc, d.pasal_utama || "-", tgl, d.pasal_hikmat || "-"];
+            } else if (type === 'peringkat_jc') {
+                html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td>AKTIF</td></tr>`;
+                row = [`#${d.ranking || '-'}`, d.nama_jc, d.poin, d.periode, "AKTIF"];
+            } else {
+                let ket = d.alasan || d.keterangan || d.materi || d.lokasi || d.pokok_doa || d.isi_pesan || "-";
+                html += `<tr><td>${nama}</td><td>${jc}</td><td>${tgl}</td><td>${status}</td><td>${ket}</td></tr>`;
+                row = [nama, jc, tgl, status, ket];
+            }
+            tableRows.push(row);
+        });
+
+        return { html, pData, bData, lData, tableRows };
+    }
+
+    function renderCharts(p, l, b) {
+        if (myCharts.pie) myCharts.pie.destroy();
+        myCharts.pie = new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: { labels: Object.keys(p), datasets: [{ data: Object.values(p), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] }
+        });
+        if (myCharts.line) myCharts.line.destroy();
+        myCharts.line = new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: { labels: Object.keys(l), datasets: [{ label: 'Aktivitas', data: Object.values(l), borderColor: '#007bff', fill: true, tension: 0.3 }] }
+        });
+        if (myCharts.bar) myCharts.bar.destroy();
+        myCharts.bar = new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: { labels: Object.keys(b), datasets: [{ label: 'Total', data: Object.values(b), backgroundColor: '#6f42c1' }] }
+        });
+    }
+
+    // Fungsi inti yang diperbaiki untuk mengambil data Firebase secara dinamis saat Export
+    async function processTabToPDF(doc, type, isNewPage = false) {
+        if (isNewPage) doc.addPage();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const cfg = menuConfig[type];
+        const periodText = document.getElementById('periodSelect').options[document.getElementById('periodSelect').selectedIndex].text;
+
+        // Ambil data terbaru khusus untuk PDF (karena mungkin tabnya sedang tidak aktif)
+        const snapshot = await db.collection(cfg.col).orderBy("timestamp", "desc").get();
+        const { tableRows, pData, bData, lData } = formatTableData(type, snapshot);
+
+        // Header
+        try {
+            const logo = "https://raw.githubusercontent.com/imadebobydaniel-ai/sistem-informasi-komsel-jc/main/logo_pondok.png"; 
+            doc.addImage(logo, 'PNG', 40, 30, 60, 60);
+        } catch(e) {}
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text("GEREJA BETHEL INDONESIA", 115, 50);
+        doc.setFontSize(16);
+        doc.text("Pondok Pemulihan Papua", 115, 70); 
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Laporan Statistik: ${cfg.title} | Periode: ${periodText}`, 115, 85);
+        doc.line(40, 100, pageWidth - 40, 100);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("KATA PENGANTAR", 40, 130);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Laporan aktivitas digital menu ${cfg.title} untuk memantau perkembangan pelayanan jemaat.`, 40, 145);
+
+        doc.setFillColor(240, 240, 240);
+        doc.rect(40, 165, pageWidth - 80, 30, 'F');
+        doc.setFont("helvetica", "italic");
+        doc.text(`AI Insight: Data sistem menunjukkan total ${tableRows.length} aktivitas tercatat pada periode ini.`, 50, 183);
+
+        // Jika tab sedang aktif, kita bisa capture chart yang ada di screen
+        if (type === currentType) {
+            const canvasCharts = await html2canvas(document.getElementById('capture-charts'), { scale: 2 });
+            const imgCharts = canvasCharts.toDataURL('image/png');
+            doc.addImage(imgCharts, 'PNG', 40, 210, pageWidth - 80, 180);
+        } else {
+            // Jika tab tidak aktif, beri placeholder atau teks (karena Chart.js butuh canvas terlihat untuk di-render)
+            doc.setFont("helvetica", "normal");
+            doc.text("[ Grafik tersedia di Dashboard Digital ]", pageWidth/2, 300, { align: "center" });
+        }
+
+        // Tabel Data
+        doc.autoTable({
+            head: [cfg.fields],
+            body: tableRows,
+            startY: type === currentType ? 410 : 330,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 123, 255] },
+            styles: { fontSize: 8 },
+            margin: { left: 40, right: 40 }
+        });
+    }
+
+    async function handleExport(mode) {
+        document.getElementById('loading').style.display = 'flex';
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+
+        if (mode === 'single') {
+            await processTabToPDF(doc, currentType);
+        } else {
+            const keys = Object.keys(menuConfig);
+            for (let i = 0; i < keys.length; i++) {
+                await processTabToPDF(doc, keys[i], i > 0);
+            }
+        }
+        
+        doc.save(`Laporan_Pondok_Pemulihan_${Date.now()}.pdf`);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('pdfDropdown').classList.remove('show');
+    }
+
+    window.onload = () => loadDataRealtime('ibadah');
+</script>
+</body>
+</html>
