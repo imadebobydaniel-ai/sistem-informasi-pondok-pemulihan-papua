@@ -22,10 +22,9 @@
         th { background: #f8f9fa; padding: 15px; text-align: left; border-bottom: 2px solid #dee2e6; font-size: 14px; }
         td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
 
-        /* Modal Styles */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
         .modal-box { background: white; padding: 30px; border-radius: 15px; width: 450px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .modal-lrg { width: 800px; } /* Modal lebih lebar untuk Log */
+        .modal-lrg { width: 800px; }
         .modal-box h3 { margin-top: 0; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666; }
@@ -38,13 +37,13 @@
 
 <div class="container">
     <div class="header">
-        <h2><i class="fas fa-users-cog"></i> Manajemen Data Anggota</h2>
-        <a href="admin.html" style="text-decoration:none; color: var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali</a>
+        <h2><i class="fas fa-users-cog"></i> Manajemen User Admin</h2>
+        <a href="admin.html" style="text-decoration:none; color: var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
     </div>
 
     <div class="action-bar">
         <button class="btn btn-add" onclick="openModal('modalUser', false)">
-            <i class="fas fa-user-plus"></i> Tambah Anggota Baru
+            <i class="fas fa-user-plus"></i> Tambah Admin Baru
         </button>
         <button class="btn btn-edit" id="btnEdit" disabled onclick="editUser()"><i class="fas fa-edit"></i> Edit</button>
         <button class="btn btn-delete" id="btnDelete" disabled onclick="hapusUser()"><i class="fas fa-trash"></i> Hapus</button>
@@ -58,7 +57,7 @@
             <tr>
                 <th width="40"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                 <th>Nama Lengkap</th>
-                <th>Email (User Admin)</th>
+                <th>Email (Username Login)</th>
                 <th>Nomor HP</th>
                 <th>Jenis Admin</th>
                 <th>Password</th>
@@ -97,7 +96,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-delete btn-full" onclick="closeModal('modalUser')">Batal</button>
-            <button class="btn btn-add btn-full" id="btnSave" onclick="saveData()">Simpan User</button>
+            <button class="btn btn-add btn-full" id="btnSave" onclick="saveData()">Simpan Akun Admin</button>
         </div>
     </div>
 </div>
@@ -108,15 +107,14 @@
         <div style="max-height: 400px; overflow-y: auto;">
             <table>
                 <thead>
-                    <tr style="position: sticky; top: 0; background: #f8f9fa;">
+                    <tr style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;">
                         <th>Nama / Email</th>
                         <th>Jam Login</th>
                         <th>Jam Logout</th>
                         <th>Durasi Aktif</th>
                     </tr>
                 </thead>
-                <tbody id="log-list">
-                    </tbody>
+                <tbody id="log-list"></tbody>
             </table>
         </div>
         <div class="modal-footer">
@@ -141,11 +139,10 @@
 
     let currentEditId = null;
 
-    // FUNGSI MODAL
     function openModal(id, isEdit = false) {
         document.getElementById(id).style.display = 'flex';
         if(id === 'modalUser') {
-            document.getElementById('modalTitle').innerText = isEdit ? "Edit Data User" : "Tambah User Baru";
+            document.getElementById('modalTitle').innerText = isEdit ? "Edit Data User Admin" : "Tambah User Admin Baru";
             if(!isEdit) resetForm();
         }
     }
@@ -156,7 +153,8 @@
         document.querySelectorAll('#modalUser input').forEach(i => i.value = "");
     }
 
-    // LOGIKA MANAJEMEN USER (SIMPAN/LOAD/HAPUS)
+    // --- LOGIKA UTAMA: MENGGUNAKAN KOLEKSI admin_users ---
+
     function saveData() {
         const data = {
             nama: document.getElementById('popNama').value,
@@ -169,19 +167,24 @@
         if(!data.nama || !data.email || !data.password) return alert("Lengkapi data!");
 
         if(currentEditId) {
-            db.collection("users").doc(currentEditId).update(data).then(() => {
-                alert("Berhasil!"); closeModal('modalUser');
+            // Update khusus ke koleksi admin_users
+            db.collection("admin_users").doc(currentEditId).update(data).then(() => {
+                alert("Akun Admin berhasil diperbarui!"); 
+                closeModal('modalUser');
             });
         } else {
             data.createdAt = new Date();
-            db.collection("users").add(data).then(() => {
-                alert("Berhasil!"); closeModal('modalUser');
+            // Simpan khusus ke koleksi admin_users
+            db.collection("admin_users").add(data).then(() => {
+                alert("Akun Admin baru berhasil dibuat!"); 
+                closeModal('modalUser');
             });
         }
     }
 
     function loadUsers() {
-        db.collection("users").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+        // Ambil data hanya dari admin_users
+        db.collection("admin_users").orderBy("createdAt", "desc").onSnapshot(snapshot => {
             let html = "";
             snapshot.forEach(doc => {
                 const u = doc.data();
@@ -198,7 +201,29 @@
         });
     }
 
-    // LOGIKA LOG AKTIVITAS
+    function hapusUser() {
+        const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        if(confirm(`Hapus ${ids.length} akun administrator? Tindakan ini tidak menghapus data anggota di Dashboard.`)) {
+            // Hapus hanya dari koleksi admin_users
+            ids.forEach(id => db.collection("admin_users").doc(id).delete());
+        }
+    }
+
+    function editUser() {
+        const id = document.querySelector('.user-checkbox:checked').value;
+        currentEditId = id;
+        db.collection("admin_users").doc(id).get().then(doc => {
+            const u = doc.data();
+            document.getElementById('popNama').value = u.nama;
+            document.getElementById('popEmail').value = u.email;
+            document.getElementById('popHp').value = u.hp;
+            document.getElementById('popPass').value = u.password;
+            document.getElementById('popRole').value = u.jabatan;
+            openModal('modalUser', true);
+        });
+    }
+
+    // --- LOGIKA LOG ---
     function openLogModal() {
         openModal('modalLog');
         db.collection("login_logs").orderBy("loginTime", "desc").limit(50).onSnapshot(snapshot => {
@@ -223,34 +248,18 @@
         });
     }
 
-    // Helper Buttons
     function updateButtons() {
         const checked = document.querySelectorAll('.user-checkbox:checked');
         document.getElementById('btnEdit').disabled = checked.length !== 1;
         document.getElementById('btnDelete').disabled = checked.length === 0;
     }
+    
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateButtons();
     }
-    function editUser() {
-        const id = document.querySelector('.user-checkbox:checked').value;
-        currentEditId = id;
-        db.collection("users").doc(id).get().then(doc => {
-            const u = doc.data();
-            document.getElementById('popNama').value = u.nama;
-            document.getElementById('popEmail').value = u.email;
-            document.getElementById('popHp').value = u.hp;
-            document.getElementById('popPass').value = u.password;
-            document.getElementById('popRole').value = u.jabatan;
-            openModal('modalUser', true);
-        });
-    }
-    function hapusUser() {
-        const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-        if(confirm(`Hapus ${ids.length} user?`)) ids.forEach(id => db.collection("users").doc(id).delete());
-    }
 
+    // Jalankan load data admin saat halaman dibuka
     loadUsers();
 </script>
 </body>
