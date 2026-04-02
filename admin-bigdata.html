@@ -239,80 +239,86 @@
         });
     }
 
-    // --- FUNGSI DOWNLOAD PDF KEREN ---
-    async function downloadPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'pt', 'a4');
+    // --- FUNGSI DOWNLOAD PDF (MODE GABUNGAN / SINGLE) ---
+    async function processTabToPDF(doc, type, isNewPage = false) {
+        if (isNewPage) doc.addPage();
+        
+        const cfg = menuConfig[type];
+        const periodSelect = document.getElementById('periodSelect');
+        const periodText = periodSelect.options[periodSelect.selectedIndex].text;
         const pageWidth = doc.internal.pageSize.getWidth();
-        const periodText = document.getElementById('periodSelect').options[document.getElementById('periodSelect').selectedIndex].text;
-        const cfg = menuConfig[currentType];
-        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const date = new Date();
+        const namaBulan = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
 
         // --- 1. KOP SURAT ---
         try {
             const logoImg = "logo_pondok.png"; 
             doc.addImage(logoImg, 'PNG', 40, 30, 60, 60);
-        } catch (e) { console.log("Logo skip."); }
+        } catch (e) {}
 
         doc.setFont("helvetica", "bold");
+        doc.textAlign = "center";
         doc.setFontSize(16);
-        doc.text("GEREJA BETHEL INDONESIA", 110, 50);
+        doc.text("GEREJA BETHEL INDONESIA", pageWidth / 2, 55);
         doc.setFontSize(14);
-        doc.text("Pondok Pemulihan Papua", 110, 70);
-        
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Sub Kop: Laporan Progres Komsel JC Periode " + periodText, 110, 85);
-        
+        doc.text("Pondok Pemulihan Papua", pageWidth / 2, 75);
         doc.setLineWidth(1.5);
         doc.line(40, 100, pageWidth - 40, 100);
 
-        // --- 2. PENGANTAR ---
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
-        doc.text("KATA PENGANTAR", 40, 130);
-        
-        doc.setFont("helvetica", "normal");
-        const kataPengantar = `Berikut kami laporkan Laporan ${cfg.title} yang mencakup data nama-nama yang melakukan progres laporan pada sistem digital Pondok Pemulihan Papua.`;
-        doc.text(doc.splitTextToSize(kataPengantar, pageWidth - 80), 40, 145);
+        // --- 2. JUDUL DINAMIS ---
+        doc.setFontSize(12);
+        doc.text(`LAPORAN BULAN ${namaBulan}`, pageWidth / 2, 130);
 
-        // INSIGHT AI
-        const rowCount = document.querySelectorAll('#data-list tr').length;
-        const aiInsight = `Berdasarkan data sistem, terdapat total ${rowCount} aktivitas tercatat pada periode ${periodText}. Secara sistematis, tren menunjukkan grafik yang cukup dinamis dalam pelayanan digital.`;
-        doc.setFont("helvetica", "italic");
-        doc.text(doc.splitTextToSize("AI Insight: " + aiInsight, pageWidth - 80), 40, 175);
+        // --- 3. TABEL DATA ---
+        doc.textAlign = "left";
+        doc.setFontSize(10);
+        doc.text(`Kategori: ${cfg.title} (${periodText})`, 40, 155);
 
-        // --- 3. TABEL ---
+        // Logic Table: Jika Single Tab ambil dari DOM, jika gabungan tarik dari Firestore (simplified)
         doc.autoTable({
-            html: '#mainTable',
-            startY: 210,
+            html: type === currentType ? '#mainTable' : null,
+            startY: 170,
             theme: 'grid',
             headStyles: { fillColor: [0, 123, 255] },
             styles: { fontSize: 8 }
         });
 
-        // --- 4. GRAFIK (Halaman Baru) ---
-        doc.addPage();
-        doc.setFont("helvetica", "bold");
-        doc.text("LAMPIRAN GRAFIK ANALISTIK", 40, 40);
+        return doc;
+    }
 
-        const charts = document.querySelectorAll('.chart-card');
-        let currentY = 60;
-        for (let i = 0; i < charts.length; i++) {
-            const canvas = await html2canvas(charts[i]);
-            if (currentY > 600) { doc.addPage(); currentY = 40; }
-            doc.addImage(canvas.toDataURL('image/png'), 'PNG', 40, currentY, 515, 200);
-            currentY += 220;
+    async function downloadPDF() {
+        const choice = confirm("Pilih Mode Export:\n\nOK: Export Tab Saat Ini Saja\nCancel: Gabungkan Semua Tab Jadi Satu File PDF");
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        const loadingEl = document.getElementById('loading');
+        loadingEl.style.display = 'flex';
+        loadingEl.innerText = "Sedang Memproses PDF...";
+
+        if (choice) {
+            // MODE: SINGLE TAB
+            await processTabToPDF(doc, currentType);
+        } else {
+            // MODE: SEMUA TAB
+            const keys = Object.keys(menuConfig);
+            for (let i = 0; i < keys.length; i++) {
+                loadingEl.innerText = `Memproses: ${menuConfig[keys[i]].title}...`;
+                await processTabToPDF(doc, keys[i], i > 0);
+            }
         }
 
-        // --- 5. PENUTUP ---
-        const finalY = doc.internal.pageSize.getHeight() - 100;
-        doc.setFont("helvetica", "normal");
-        doc.text("Demikian Laporan ini dibuat, atas perhatiannya diucapkan terimakasih.", 40, finalY);
-        doc.text(`Jayapura, ${today}`, pageWidth - 180, finalY + 30);
-        doc.text("Administrator", pageWidth - 160, finalY + 70);
+        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const finalY = doc.internal.pageSize.getHeight() - 80;
+        const pageWidth = doc.internal.pageSize.getWidth();
 
-        doc.save(`Laporan_${cfg.title}_${new Date().getTime()}.pdf`);
+        // Footer di halaman terakhir
+        doc.setFontSize(10);
+        doc.text("Demikian laporan ini dibuat untuk dipergunakan sebagaimana mestinya.", 40, finalY);
+        doc.text(`Jayapura, ${today}`, pageWidth - 180, finalY + 25);
+        doc.text("Administrator", pageWidth - 155, finalY + 60);
+
+        doc.save(`Laporan_Pondok_Pemulihan_${new Date().getTime()}.pdf`);
+        loadingEl.style.display = 'none';
     }
 
     window.onload = () => loadDataRealtime('ibadah');
