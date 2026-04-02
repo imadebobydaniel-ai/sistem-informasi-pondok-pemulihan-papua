@@ -25,22 +25,51 @@
             align-items: center; font-weight: bold; color: var(--primary);
         }
 
-        .tab-menu { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; align-items: center; border-bottom: 2px solid #ddd; }
-        .tab-btn {
-            padding: 12px 18px; border: none; border-radius: 12px; background: white;
-            cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            white-space: nowrap; display: flex; align-items: center; gap: 8px; font-size: 13px;
+        /* --- PERBAIKAN MENU TAB & SLIDER --- */
+        .tab-menu { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            gap: 15px; 
+            margin-bottom: 20px; 
+            border-bottom: 2px solid #ddd; 
+            padding-bottom: 10px;
+            position: relative; /* Penting untuk referensi dropdown */
         }
-        .tab-btn.active { background: var(--primary); color: white; transform: translateY(-3px); }
-        
-        .filter-container { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .period-select { padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-weight: bold; outline: none; cursor: pointer; background: var(--light); }
 
-        /* --- STYLES FOR DROPDOWN --- */
-        .action-group { margin-left: auto; display: flex; gap: 10px; }
+        /* Area tombol kategori yang bisa di-scroll */
+        .tab-btns-wrapper {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto; /* Slider aktif di sini */
+            flex-grow: 1;
+            padding-bottom: 5px;
+            scrollbar-width: thin;
+        }
+        .tab-btns-wrapper::-webkit-scrollbar { height: 4px; }
+        .tab-btns-wrapper::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+
+        .tab-btn {
+            padding: 10px 16px; border: none; border-radius: 10px; background: white;
+            cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            white-space: nowrap; display: flex; align-items: center; gap: 8px; font-size: 12px;
+        }
+        .tab-btn.active { background: var(--primary); color: white; transform: translateY(-2px); }
+        
+        /* Area Action (Export/Print) agar tidak ikut ter-scroll */
+        .action-group { 
+            display: flex; 
+            gap: 8px; 
+            flex-shrink: 0; /* Jangan biarkan tombol ini mengecil atau tergeser */
+        }
+
+        .filter-container { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .period-select { padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-weight: bold; outline: none; cursor: pointer; background: var(--light); }
+
+        /* --- STYLES FOR DROPDOWN (Z-INDEX FIXED) --- */
         .dropdown { position: relative; display: inline-block; }
         .action-btn { 
-            padding: 10px 15px; border: none; border-radius: 10px; cursor: pointer; 
+            padding: 10px 14px; border: none; border-radius: 10px; cursor: pointer; 
             font-weight: bold; transition: 0.3s; display: flex; align-items: center; 
             gap: 8px; color: white; font-size: 12px; 
         }
@@ -51,12 +80,13 @@
             display: none;
             position: absolute;
             right: 0;
+            top: 100%; /* Muncul tepat di bawah tombol */
             background-color: white;
-            min-width: 200px;
-            box-shadow: 0px 8px 16px rgba(0,0,0,0.15);
-            z-index: 1000;
+            min-width: 190px;
+            box-shadow: 0px 8px 25px rgba(0,0,0,0.2);
+            z-index: 9999 !important; /* Paling atas agar tidak tertutup chart/tabel */
             border-radius: 12px;
-            margin-top: 8px;
+            margin-top: 10px;
             overflow: hidden;
             border: 1px solid #eee;
         }
@@ -67,10 +97,12 @@
             display: block;
             font-size: 13px;
             transition: 0.2s;
+            border-bottom: 1px solid #f9f9f9;
         }
         .dropdown-content a:hover { background-color: #f8f9fa; color: var(--primary); }
         .show { display: block; }
 
+        /* Chart & Table Styles */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .chart-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
         .chart-title { font-weight: bold; margin-bottom: 15px; color: var(--dark); width: 100%; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -94,15 +126,17 @@
     </div>
 
     <div class="tab-menu">
-        <button class="tab-btn active" onclick="switchTab('ibadah', this)"><i class="fas fa-church"></i> Ibadah Raya</button>
-        <button class="tab-btn" onclick="switchTab('arso1', this)"><i class="fas fa-map-marker-alt"></i> Ibadah Arso 1</button>
-        <button class="tab-btn" onclick="switchTab('komsel', this)"><i class="fas fa-users"></i> Komsel Reguler</button>
-        <button class="tab-btn" onclick="switchTab('komsel_gabungan', this)"><i class="fas fa-layer-group"></i> Komsel Gabungan</button>
-        <button class="tab-btn" onclick="switchTab('absen_kd', this)"><i class="fas fa-graduation-cap"></i> Absen KD</button>
-        <button class="tab-btn" onclick="switchTab('bacaan', this)"><i class="fas fa-bible"></i> Baca Alkitab</button>
-        <button class="tab-btn" onclick="switchTab('doa_komsel', this)"><i class="fas fa-hands-praying"></i> Doa Komsel</button>
-        <button class="tab-btn" onclick="switchTab('peringkat_jc', this)"><i class="fas fa-trophy"></i> Peringkat JC</button>
-        <button class="tab-btn" onclick="switchTab('saran', this)"><i class="fas fa-comment-dots"></i> Saran & Tiket</button>
+        <div class="tab-btns-wrapper">
+            <button class="tab-btn active" onclick="switchTab('ibadah', this)"><i class="fas fa-church"></i> Ibadah Raya</button>
+            <button class="tab-btn" onclick="switchTab('arso1', this)"><i class="fas fa-map-marker-alt"></i> Ibadah Arso 1</button>
+            <button class="tab-btn" onclick="switchTab('komsel', this)"><i class="fas fa-users"></i> Komsel Reguler</button>
+            <button class="tab-btn" onclick="switchTab('komsel_gabungan', this)"><i class="fas fa-layer-group"></i> Komsel Gabungan</button>
+            <button class="tab-btn" onclick="switchTab('absen_kd', this)"><i class="fas fa-graduation-cap"></i> Absen KD</button>
+            <button class="tab-btn" onclick="switchTab('bacaan', this)"><i class="fas fa-bible"></i> Baca Alkitab</button>
+            <button class="tab-btn" onclick="switchTab('doa_komsel', this)"><i class="fas fa-hands-praying"></i> Doa Komsel</button>
+            <button class="tab-btn" onclick="switchTab('peringkat_jc', this)"><i class="fas fa-trophy"></i> Peringkat JC</button>
+            <button class="tab-btn" onclick="switchTab('saran', this)"><i class="fas fa-comment-dots"></i> Saran & Tiket</button>
+        </div>
         
         <div class="action-group">
             <div class="dropdown">
@@ -197,15 +231,13 @@
         saran: { title: 'Saran & Tiket Masuk', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
     };
 
-    // --- FUNGSI DROPDOWN ---
     function toggleDropdown(id) {
-        document.querySelectorAll('.dropdown-content').forEach(d => {
-            if(d.id !== id) d.classList.remove('show');
-        });
-        document.getElementById(id).classList.toggle("show");
+        const dropdown = document.getElementById(id);
+        const wasShow = dropdown.classList.contains('show');
+        document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show'));
+        if(!wasShow) dropdown.classList.add('show');
     }
 
-    // Tutup dropdown kalau klik di luar
     window.onclick = function(event) {
         if (!event.target.closest('.dropdown')) {
             document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show'));
@@ -302,22 +334,12 @@
         });
     }
 
-    // --- FUNGSI EXPORT PDF ---
     async function processTabToPDF(doc, type, isNewPage = false) {
         if (isNewPage) doc.addPage();
-        
         const cfg = menuConfig[type];
         const periodSelect = document.getElementById('periodSelect');
         const periodText = periodSelect.options[periodSelect.selectedIndex].text;
         const pageWidth = doc.internal.pageSize.getWidth();
-        const date = new Date();
-        const namaBulan = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }).toUpperCase();
-
-        // 1. Kop Surat
-        try {
-            const logoImg = "logo_pondok.png"; 
-            doc.addImage(logoImg, 'PNG', 40, 30, 60, 60);
-        } catch (e) {}
 
         doc.setFont("helvetica", "bold");
         doc.textAlign = "center";
@@ -328,15 +350,13 @@
         doc.setLineWidth(1.5);
         doc.line(40, 100, pageWidth - 40, 100);
 
-        // 2. Judul
         doc.setFontSize(12);
         doc.text(`LAPORAN STATISTIK: ${cfg.title.toUpperCase()}`, pageWidth / 2, 130);
         doc.setFontSize(10);
         doc.text(`Periode: ${periodText} | Dicetak pada: ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, 150);
 
-        // 3. Tabel
         doc.autoTable({
-            html: type === currentType ? '#mainTable' : null, // Jika mode single ambil data di layar
+            html: type === currentType ? '#mainTable' : null,
             startY: 170,
             theme: 'grid',
             headStyles: { fillColor: [0, 123, 255] },
@@ -352,20 +372,14 @@
         const loadingEl = document.getElementById('loading');
         
         loadingEl.style.display = 'flex';
-        document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show'));
-
         if (mode === 'single') {
-            loadingEl.innerText = "Memproses Tab Saat Ini...";
             await processTabToPDF(doc, currentType);
         } else {
             const keys = Object.keys(menuConfig);
             for (let i = 0; i < keys.length; i++) {
-                loadingEl.innerText = `Memproses: ${menuConfig[keys[i]].title}...`;
-                // Catatan: Untuk mode 'all', idealnya tarik data baru dari Firebase agar akurat
                 await processTabToPDF(doc, keys[i], i > 0);
             }
         }
-
         doc.save(`Laporan_Pondok_Pemulihan_${new Date().getTime()}.pdf`);
         loadingEl.style.display = 'none';
     }
