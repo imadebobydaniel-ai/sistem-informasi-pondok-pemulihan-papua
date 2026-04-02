@@ -6,21 +6,26 @@
     <title>Manajemen User - Pondok Pemulihan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --dark: #333; }
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; --info: #17a2b8; --dark: #333; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
-        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
-        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
         .btn-add { background: var(--success); color: white; }
         .btn-edit { background: var(--warning); color: black; }
         .btn-delete { background: var(--danger); color: white; }
+        .btn-log { background: var(--info); color: white; }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        table { width: 100%; border-collapse: collapse; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #f8f9fa; padding: 15px; text-align: left; border-bottom: 2px solid #dee2e6; font-size: 14px; }
         td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+
+        /* Modal Styles */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-box { background: white; padding: 30px; border-radius: 15px; width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-box { background: white; padding: 30px; border-radius: 15px; width: 450px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-lrg { width: 800px; } /* Modal lebih lebar untuk Log */
         .modal-box h3 { margin-top: 0; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #666; }
@@ -38,11 +43,14 @@
     </div>
 
     <div class="action-bar">
-        <button class="btn btn-add" onclick="openModal(false)">
+        <button class="btn btn-add" onclick="openModal('modalUser', false)">
             <i class="fas fa-user-plus"></i> Tambah Anggota Baru
         </button>
         <button class="btn btn-edit" id="btnEdit" disabled onclick="editUser()"><i class="fas fa-edit"></i> Edit</button>
         <button class="btn btn-delete" id="btnDelete" disabled onclick="hapusUser()"><i class="fas fa-trash"></i> Hapus</button>
+        <button class="btn btn-log" onclick="openLogModal()">
+            <i class="fas fa-history"></i> Log Aktivitas Login
+        </button>
     </div>
 
     <table>
@@ -88,8 +96,31 @@
             </select>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-delete btn-full" onclick="closeModal()">Batal</button>
+            <button class="btn btn-delete btn-full" onclick="closeModal('modalUser')">Batal</button>
             <button class="btn btn-add btn-full" id="btnSave" onclick="saveData()">Simpan User</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalLog">
+    <div class="modal-box modal-lrg">
+        <h3><i class="fas fa-history"></i> Log Aktivitas Login</h3>
+        <div style="max-height: 400px; overflow-y: auto;">
+            <table>
+                <thead>
+                    <tr style="position: sticky; top: 0; background: #f8f9fa;">
+                        <th>Nama / Email</th>
+                        <th>Jam Login</th>
+                        <th>Jam Logout</th>
+                        <th>Durasi Aktif</th>
+                    </tr>
+                </thead>
+                <tbody id="log-list">
+                    </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-delete btn-full" onclick="closeModal('modalLog')">Tutup</button>
         </div>
     </div>
 </div>
@@ -110,20 +141,22 @@
 
     let currentEditId = null;
 
-    function openModal(isEdit = false) {
-        document.getElementById('modalUser').style.display = 'flex';
-        document.getElementById('modalTitle').innerText = isEdit ? "Edit Data User" : "Tambah User Baru";
-        if(!isEdit) resetForm();
+    // FUNGSI MODAL
+    function openModal(id, isEdit = false) {
+        document.getElementById(id).style.display = 'flex';
+        if(id === 'modalUser') {
+            document.getElementById('modalTitle').innerText = isEdit ? "Edit Data User" : "Tambah User Baru";
+            if(!isEdit) resetForm();
+        }
     }
-
-    function closeModal() { document.getElementById('modalUser').style.display = 'none'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
     function resetForm() {
         currentEditId = null;
-        document.querySelectorAll('.modal-box input').forEach(i => i.value = "");
+        document.querySelectorAll('#modalUser input').forEach(i => i.value = "");
     }
 
-    // SIMPAN DATA (CREATE & UPDATE)
+    // LOGIKA MANAJEMEN USER (SIMPAN/LOAD/HAPUS)
     function saveData() {
         const data = {
             nama: document.getElementById('popNama').value,
@@ -133,19 +166,16 @@
             jabatan: document.getElementById('popRole').value,
             updatedAt: new Date()
         };
-
-        if(!data.nama || !data.email || !data.password) return alert("Nama, Email, dan Password wajib diisi!");
+        if(!data.nama || !data.email || !data.password) return alert("Lengkapi data!");
 
         if(currentEditId) {
             db.collection("users").doc(currentEditId).update(data).then(() => {
-                alert("Data berhasil diupdate!");
-                closeModal();
+                alert("Berhasil!"); closeModal('modalUser');
             });
         } else {
             data.createdAt = new Date();
             db.collection("users").add(data).then(() => {
-                alert("User baru berhasil ditambahkan!");
-                closeModal();
+                alert("Berhasil!"); closeModal('modalUser');
             });
         }
     }
@@ -155,13 +185,12 @@
             let html = "";
             snapshot.forEach(doc => {
                 const u = doc.data();
-                html += `
-                <tr>
+                html += `<tr>
                     <td><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateButtons()"></td>
-                    <td><b>${u.nama || '-'}</b></td>
-                    <td>${u.email || '-'}</td>
-                    <td>${u.hp || '-'}</td>
-                    <td><span style="background:#eee; padding:3px 8px; border-radius:4px; font-size:11px;">${u.jabatan || '-'}</span></td>
+                    <td><b>${u.nama}</b></td>
+                    <td>${u.email}</td>
+                    <td>${u.hp}</td>
+                    <td><span style="background:#eee; padding:3px 8px; border-radius:4px; font-size:11px;">${u.jabatan}</span></td>
                     <td><span style="color:#aaa; font-style:italic;">******</span></td>
                 </tr>`;
             });
@@ -169,17 +198,41 @@
         });
     }
 
+    // LOGIKA LOG AKTIVITAS
+    function openLogModal() {
+        openModal('modalLog');
+        db.collection("login_logs").orderBy("loginTime", "desc").limit(50).onSnapshot(snapshot => {
+            let html = "";
+            if(snapshot.empty) {
+                html = "<tr><td colspan='4' align='center'>Belum ada data login.</td></tr>";
+            }
+            snapshot.forEach(doc => {
+                const log = doc.data();
+                const loginStr = log.loginTime ? log.loginTime.toDate().toLocaleString('id-ID') : '-';
+                const logoutStr = log.logoutTime ? log.logoutTime.toDate().toLocaleString('id-ID') : 'Masih Aktif';
+                const durasi = log.duration ? log.duration : '-';
+
+                html += `<tr>
+                    <td>${log.userName}<br><small style="color:blue">${log.userEmail}</small></td>
+                    <td>${loginStr}</td>
+                    <td>${logoutStr}</td>
+                    <td><b style="color:var(--success)">${durasi}</b></td>
+                </tr>`;
+            });
+            document.getElementById('log-list').innerHTML = html;
+        });
+    }
+
+    // Helper Buttons
     function updateButtons() {
         const checked = document.querySelectorAll('.user-checkbox:checked');
         document.getElementById('btnEdit').disabled = checked.length !== 1;
         document.getElementById('btnDelete').disabled = checked.length === 0;
     }
-
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateButtons();
     }
-
     function editUser() {
         const id = document.querySelector('.user-checkbox:checked').value;
         currentEditId = id;
@@ -190,16 +243,12 @@
             document.getElementById('popHp').value = u.hp;
             document.getElementById('popPass').value = u.password;
             document.getElementById('popRole').value = u.jabatan;
-            openModal(true);
+            openModal('modalUser', true);
         });
     }
-
     function hapusUser() {
         const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-        if(confirm(`Hapus ${ids.length} user?`)) {
-            ids.forEach(id => db.collection("users").doc(id).delete());
-            document.getElementById('checkAll').checked = false;
-        }
+        if(confirm(`Hapus ${ids.length} user?`)) ids.forEach(id => db.collection("users").doc(id).delete());
     }
 
     loadUsers();
