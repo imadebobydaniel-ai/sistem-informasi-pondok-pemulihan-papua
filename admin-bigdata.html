@@ -179,10 +179,11 @@
     let currentType = 'ibadah';
     let currentListener = null;
 
+    // --- KONFIGURASI MENU (DENGAN UPDATE LOKASI GPS) ---
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
         arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
-        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi'] },
+        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi', 'Lokasi GPS'] },
         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
         bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
@@ -200,7 +201,6 @@
         loadDataRealtime(type);
     }
 
-    // Fungsi pembantu untuk mengubah format tanggal ke Indonesia (Rinci + Jam)
     function formatFullDate(date) {
         const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         const d = date.getDate();
@@ -244,6 +244,7 @@
         });
     }
 
+    // --- LOGIKA FORMAT TABEL DENGAN LOKASI GPS ---
     function formatTableData(type, snapshot) {
         let html = "";
         let pData = {}, bData = {}, lData = {};
@@ -275,6 +276,19 @@
             } else if (type === 'peringkat_jc') {
                 html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td>AKTIF</td></tr>`;
                 row = [`#${d.ranking || '-'}`, d.nama_jc, d.poin, d.periode, "AKTIF"];
+            } else if (type === 'komsel') {
+                // UPDATE KHUSUS KOMSEL REGULER
+                let materi = d.materi || "-";
+                let alamat = d.lokasi_alamat || "Lokasi tidak terdeteksi";
+                html += `<tr>
+                            <td>${nama}</td>
+                            <td>${jc}</td>
+                            <td>${tglTampil}</td>
+                            <td>${status}</td>
+                            <td>${materi}</td>
+                            <td style="font-size: 10px; color: #555;"><i class="fas fa-map-marker-alt"></i> ${alamat}</td>
+                         </tr>`;
+                row = [nama, jc, tglTampil, status, materi, alamat];
             } else {
                 let ket = d.alasan || d.keterangan || d.materi || d.lokasi || d.pokok_doa || d.isi_pesan || "-";
                 html += `<tr><td>${nama}</td><td>${jc}</td><td>${tglTampil}</td><td>${status}</td><td>${ket}</td></tr>`;
@@ -340,7 +354,7 @@
             startY: 160,
             theme: 'grid',
             headStyles: { fillColor: [0, 123, 255] },
-            styles: { fontSize: 8 },
+            styles: { fontSize: 7 }, // Dikecilkan sedikit agar alamat muat
             margin: { left: 40, right: 40 }
         });
 
