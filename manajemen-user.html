@@ -6,36 +6,65 @@
     <title>Manajemen User - Pondok Pemulihan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #ffc107; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #007bff; color: white; padding: 12px; text-align: left; }
-        td { padding: 10px; border-bottom: 1px solid #eee; }
-        .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-add { background: #28a745; color: white; }
-        .btn-edit { background: #ffc107; color: black; }
-        .btn-delete { background: #dc3545; color: white; }
+        
+        /* Baris Tombol Aksi di Atas Tabel */
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+        
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-add { background: var(--success); color: white; }
+        .btn-edit { background: var(--warning); color: black; }
+        .btn-delete { background: var(--danger); color: white; }
+        .btn-add:hover { background: #218838; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #f8f9fa; color: #333; padding: 15px 12px; text-align: left; border-bottom: 2px solid #dee2e6; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        
+        .check-col { width: 40px; text-align: center; }
+        input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
+        
+        .selected-row { background-color: #f0f7ff; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h2><i class="fas fa-users-cog"></i> Manajemen Data Anggota</h2>
-        <a href="admin.html" style="text-decoration:none; color: #007bff; font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+        <h2><i class="fas fa-users-cog"></i> Manajemen User</h2>
+        <a href="admin.html" style="text-decoration:none; color: var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
     </div>
 
-    <button class="btn btn-add" onclick="tambahUser()"><i class="fas fa-user-plus"></i> Tambah Anggota Baru</button>
+    <div class="action-bar">
+        <button class="btn btn-add" onclick="tambahUser()">
+            <i class="fas fa-user-plus"></i> Tambah Anggota Baru
+        </button>
+        
+        <div id="bulkActions" style="display: flex; gap: 10px; border-left: 2px solid #ddd; padding-left: 15px;">
+            <button class="btn btn-edit" id="btnBulkEdit" onclick="editTerpilih()" disabled>
+                <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn btn-delete" id="btnBulkDelete" onclick="hapusTerpilih()" disabled>
+                <i class="fas fa-trash"></i> Hapus
+            </button>
+            <span id="countText" style="font-size: 12px; color: #666; align-self: center; margin-left: 5px;">0 Terpilih</span>
+        </div>
+    </div>
 
     <table>
         <thead>
             <tr>
+                <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                 <th>Nama Anggota</th>
                 <th>Email</th>
                 <th>Jabatan</th>
                 <th>JC</th>
-                <th>Aksi</th>
             </tr>
         </thead>
         <tbody id="user-list">
@@ -46,7 +75,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script>
-    // Konfigurasi Firebase Boby
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -58,25 +86,79 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Fungsi Load Data Anggota (Collection: users)
+    // 1. Fungsi Aktifkan Tombol Tambah User
+    function tambahUser() {
+        window.location.href = "tambah-user.html"; // Pastikan file ini ada
+    }
+
+    // 2. Load Data & Hilangkan Aksi di Baris Nama
     function loadUsers() {
         db.collection("users").onSnapshot(snapshot => {
             let html = "";
             snapshot.forEach(doc => {
                 const u = doc.data();
-                html += `<tr>
-                    <td>${u.nama || '-'}</td>
+                html += `
+                <tr id="row-${doc.id}">
+                    <td class="check-col">
+                        <input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateUI()">
+                    </td>
+                    <td><b>${u.nama || '-'}</b></td>
                     <td>${u.email || '-'}</td>
                     <td>${u.jabatan || '-'}</td>
-                    <td>${u.jc || '-'}</td>
-                    <td>
-                        <button class="btn btn-edit" onclick="editUser('${doc.id}')">Edit</button>
-                        <button class="btn btn-delete" onclick="hapusUser('${doc.id}')">Hapus</button>
-                    </td>
+                    <td>${u.komsel || '-'}</td>
                 </tr>`;
             });
             document.getElementById('user-list').innerHTML = html;
+            updateUI();
         });
+    }
+
+    // 3. Logika Checkbox All
+    function toggleAll(source) {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = source.checked;
+        });
+        updateUI();
+    }
+
+    // 4. Update UI Tombol (Aktifkan/Nonaktifkan Edit & Hapus)
+    function updateUI() {
+        const checked = document.querySelectorAll('.user-checkbox:checked');
+        const btnEdit = document.getElementById('btnBulkEdit');
+        const btnDelete = document.getElementById('btnBulkDelete');
+        const countText = document.getElementById('countText');
+
+        btnDelete.disabled = checked.length === 0;
+        // Edit hanya aktif jika tepat 1 user dipilih
+        btnEdit.disabled = checked.length !== 1;
+        
+        countText.innerText = `${checked.length} Terpilih`;
+        
+        // Highlight baris yang terpilih
+        document.querySelectorAll('#user-list tr').forEach(row => row.classList.remove('selected-row'));
+        checked.forEach(cb => {
+            document.getElementById(`row-${cb.value}`).classList.add('selected-row');
+        });
+    }
+
+    // 5. Fungsi Hapus Terpilih
+    function hapusTerpilih() {
+        const terpilih = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        if (confirm(`Hapus ${terpilih.length} anggota yang dipilih secara permanen?`)) {
+            terpilih.forEach(id => {
+                db.collection("users").doc(id).delete();
+            });
+            document.getElementById('checkAll').checked = false;
+        }
+    }
+
+    // 6. Fungsi Edit Terpilih
+    function editTerpilih() {
+        const checkbox = document.querySelector('.user-checkbox:checked');
+        if (checkbox) {
+            window.location.href = `edit-user.html?id=${checkbox.value}`;
+        }
     }
 
     loadUsers();
