@@ -25,24 +25,6 @@
             align-items: center; font-weight: bold; color: var(--primary);
         }
 
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); display: none; justify-content: center;
-            align-items: center; z-index: 10000;
-        }
-        .modal-content {
-            background: white; padding: 30px; border-radius: 20px; text-align: center;
-            max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .icon-warning { font-size: 50px; color: var(--danger); margin-bottom: 15px; }
-        .modal-content h2 { margin: 0 0 10px; color: var(--dark); }
-        .modal-content p { color: #666; line-height: 1.5; margin-bottom: 20px; }
-        .modal-content button { 
-            background: var(--primary); color: white; border: none; padding: 10px 25px; 
-            border-radius: 8px; cursor: pointer; font-weight: bold;
-        }
-
         .tab-menu { 
             display: flex; justify-content: space-between; align-items: center; 
             gap: 15px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px;
@@ -65,7 +47,7 @@
             font-weight: bold; transition: 0.3s; display: flex; align-items: center; 
             gap: 8px; color: white; font-size: 12px; 
         }
-        .btn-pdf { background: var(--danger); display: none; /* Hidden by default */ }
+        .btn-pdf { background: var(--danger); }
         
         .dropdown-content {
             display: none; position: absolute; right: 0; top: 100%; background-color: white;
@@ -96,15 +78,6 @@
 
 <div id="loading">Memproses Laporan...</div>
 
-<div id="accessDeniedModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="icon-warning"><i class="fas fa-exclamation-triangle"></i></div>
-        <h2>Akses Terbatas</h2>
-        <p>Maaf, peran Anda tidak diizinkan untuk mengekstrak laporan PDF. Silakan hubungi <strong>Super Admin</strong> untuk bantuan.</p>
-        <button onclick="closeModal()">Mengerti</button>
-    </div>
-</div>
-
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
         <h2><i class="fas fa-database"></i> Dashboard Statistik Central</h2>
@@ -126,7 +99,7 @@
         
         <div class="action-group">
             <div class="dropdown">
-                <button id="btnExportPDF" class="action-btn btn-pdf" onclick="toggleDropdown('pdfDropdown')">
+                <button class="action-btn btn-pdf" onclick="toggleDropdown('pdfDropdown')">
                     <i class="fas fa-file-pdf"></i> Export PDF <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
                 </button>
                 <div id="pdfDropdown" class="dropdown-content">
@@ -188,11 +161,9 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -203,46 +174,12 @@
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const auth = firebase.auth();
 
     let myCharts = { pie: null, line: null, bar: null };
     let currentType = 'ibadah';
     let currentListener = null;
-    let currentUserRole = 'viewer'; // Default role
 
-    // --- MANAJEMEN AKSES & MODAL ---
-    function closeModal() { document.getElementById('accessDeniedModal').style.display = 'none'; }
-    function showAccessDeniedModal() { document.getElementById('accessDeniedModal').style.display = 'flex'; }
-
-    function checkUserAccess() {
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                db.collection('admins').doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        currentUserRole = doc.data().role;
-                        applyRoleSettings(currentUserRole);
-                    } else {
-                        console.error("User not in admin collection.");
-                        applyRoleSettings('viewer');
-                    }
-                });
-            } else {
-                window.location.href = "login.html"; // Redirect if not logged in
-            }
-        });
-    }
-
-    function applyRoleSettings(role) {
-        const exportBtn = document.getElementById('btnExportPDF');
-        if (role === 'super_admin') {
-            if (exportBtn) exportBtn.style.display = 'flex';
-        } else {
-            if (exportBtn) exportBtn.remove(); // Hapus permanen dari DOM untuk non-admin
-            console.log(`Role: ${role}. Fitur ekspor dikunci.`);
-        }
-    }
-
-    // --- LOGIKA DASHBOARD ---
+    // --- KONFIGURASI MENU (DENGAN UPDATE LOKASI GPS) ---
     const menuConfig = {
         ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
         arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
@@ -264,6 +201,16 @@
         loadDataRealtime(type);
     }
 
+    function formatFullDate(date) {
+        const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        const d = date.getDate();
+        const m = months[date.getMonth()];
+        const y = date.getFullYear();
+        const jam = date.getHours().toString().padStart(2, '0');
+        const menit = date.getMinutes().toString().padStart(2, '0');
+        return `${d} ${m} ${y} - Pukul ${jam}:${menit}`;
+    }
+
     function loadDataRealtime(type) {
         const cfg = menuConfig[type];
         const periodVal = document.getElementById('periodSelect').value;
@@ -282,6 +229,12 @@
             const cutoff = new Date();
             cutoff.setMonth(cutoff.getMonth() - parseInt(periodVal));
             query = query.where("timestamp", ">=", cutoff);
+        } else if (isNaN(periodVal) && periodVal !== "0") {
+            const monthsMap = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+            const targetMonth = monthsMap[periodVal];
+            const start = new Date(now.getFullYear(), targetMonth, 1);
+            const end = new Date(now.getFullYear(), targetMonth + 1, 0, 23, 59, 59);
+            query = query.where("timestamp", ">=", start).where("timestamp", "<=", end);
         }
 
         currentListener = query.onSnapshot(snapshot => {
@@ -291,10 +244,12 @@
         });
     }
 
+    // --- LOGIKA FORMAT TABEL DENGAN LOKASI GPS ---
     function formatTableData(type, snapshot) {
         let html = "";
         let pData = {}, bData = {}, lData = {};
         let tableRows = [];
+
         snapshot.forEach(doc => {
             const d = doc.data();
             const nama = d.nama || d.Nama || d.pengirim || "-";
@@ -302,16 +257,46 @@
             const status = (d.status || d.status_doa || "HADIR").toUpperCase();
             
             let tglTampil = "-";
-            if (d.timestamp) tglTampil = d.timestamp.toDate().toLocaleString('id-ID');
+            let tglGrafik = "-"; 
+            
+            if (d.timestamp) {
+                const dateObj = d.timestamp.toDate();
+                tglTampil = formatFullDate(dateObj); 
+                tglGrafik = dateObj.toLocaleDateString('id-ID'); 
+            }
 
             pData[status] = (pData[status] || 0) + 1;
             bData[jc] = (bData[jc] || 0) + 1;
-            lData[tglTampil.split(' ')[0]] = (lData[tglTampil.split(' ')[0]] || 0) + 1;
+            lData[tglGrafik] = (lData[tglGrafik] || 0) + 1;
 
-            let rowData = [nama, jc, tglTampil, status, d.keterangan || "-"];
-            html += `<tr>${rowData.map(r => `<td>${r}</td>`).join('')}</tr>`;
-            tableRows.push(rowData);
+            let row = [];
+            if (type === 'bacaan') {
+                html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.pasal_utama || "-"}</td><td>${tglTampil}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                row = [nama, jc, d.pasal_utama || "-", tglTampil, d.pasal_hikmat || "-"];
+            } else if (type === 'peringkat_jc') {
+                html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td>AKTIF</td></tr>`;
+                row = [`#${d.ranking || '-'}`, d.nama_jc, d.poin, d.periode, "AKTIF"];
+            } else if (type === 'komsel') {
+                // UPDATE KHUSUS KOMSEL REGULER
+                let materi = d.materi || "-";
+                let alamat = d.lokasi_alamat || "Lokasi tidak terdeteksi";
+                html += `<tr>
+                            <td>${nama}</td>
+                            <td>${jc}</td>
+                            <td>${tglTampil}</td>
+                            <td>${status}</td>
+                            <td>${materi}</td>
+                            <td style="font-size: 10px; color: #555;"><i class="fas fa-map-marker-alt"></i> ${alamat}</td>
+                         </tr>`;
+                row = [nama, jc, tglTampil, status, materi, alamat];
+            } else {
+                let ket = d.alasan || d.keterangan || d.materi || d.lokasi || d.pokok_doa || d.isi_pesan || "-";
+                html += `<tr><td>${nama}</td><td>${jc}</td><td>${tglTampil}</td><td>${status}</td><td>${ket}</td></tr>`;
+                row = [nama, jc, tglTampil, status, ket];
+            }
+            tableRows.push(row);
         });
+
         return { html, pData, bData, lData, tableRows };
     }
 
@@ -321,17 +306,86 @@
             type: 'doughnut',
             data: { labels: Object.keys(p), datasets: [{ data: Object.values(p), backgroundColor: ['#28a745', '#dc3545', '#ffc107', '#007bff'] }] }
         });
-        // (Visualisasi chart lainnya...)
+        if (myCharts.line) myCharts.line.destroy();
+        myCharts.line = new Chart(document.getElementById('lineChart'), {
+            type: 'line',
+            data: { labels: Object.keys(l), datasets: [{ label: 'Aktivitas', data: Object.values(l), borderColor: '#007bff', fill: true, tension: 0.3 }] }
+        });
+        if (myCharts.bar) myCharts.bar.destroy();
+        myCharts.bar = new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: { labels: Object.keys(b), datasets: [{ label: 'Total', data: Object.values(b), backgroundColor: '#6f42c1' }] }
+        });
     }
 
-    // --- LOGIKA EKSPOR PDF (DIPROTEKSI) ---
-    async function handleExport(mode) {
-        // Cek Role sebelum eksekusi (Hard Lock)
-        if (currentUserRole !== 'super_admin') {
-            showAccessDeniedModal();
-            return;
+    async function processTabToPDF(doc, type, isNewPage = false) {
+        if (isNewPage) doc.addPage();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const cfg = menuConfig[type];
+        const periodText = document.getElementById('periodSelect').options[document.getElementById('periodSelect').selectedIndex].text;
+
+        const snapshot = await db.collection(cfg.col).orderBy("timestamp", "desc").get();
+        const { tableRows } = formatTableData(type, snapshot);
+
+        try {
+            const logo = "https://raw.githubusercontent.com/imadebobydaniel-ai/sistem-informasi-komsel-jc/main/logo_pondok.png";
+            doc.addImage(logo, 'PNG', 40, 30, 60, 60);
+        } catch(e) {}
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text("GEREJA BETHEL INDONESIA", 115, 50);
+        doc.setFontSize(16);
+        doc.text("Pondok Pemulihan Papua", 115, 70); 
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Laporan Statistik: ${cfg.title} | Periode: ${periodText}`, 115, 85);
+        doc.line(40, 100, pageWidth - 40, 100);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("KATA PENGANTAR", 40, 130);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Berikut adalah detail laporan aktivitas digital untuk menu ${cfg.title}.`, 40, 145);
+
+        doc.autoTable({
+            head: [cfg.fields],
+            body: tableRows,
+            startY: 160,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 123, 255] },
+            styles: { fontSize: 7 }, // Dikecilkan sedikit agar alamat muat
+            margin: { left: 40, right: 40 }
+        });
+
+        let finalY = doc.lastAutoTable.finalY + 30;
+        if (finalY > 550) { doc.addPage(); finalY = 50; }
+
+        doc.setFont("helvetica", "bold");
+        doc.text("VISUALISASI & STATISTIK", 40, finalY);
+        
+        if (type === currentType) {
+            const canvasCharts = await html2canvas(document.getElementById('capture-charts'), { scale: 2 });
+            const imgCharts = canvasCharts.toDataURL('image/png');
+            doc.addImage(imgCharts, 'PNG', 40, finalY + 20, pageWidth - 80, 180);
+            finalY += 220;
+        } else {
+            doc.setFont("helvetica", "italic");
+            doc.text("[ Grafik hanya tersedia pada export tab yang aktif ]", 40, finalY + 20);
+            finalY += 40;
         }
 
+        if (finalY > 750) { doc.addPage(); finalY = 50; }
+        doc.setFillColor(240, 240, 240);
+        doc.rect(40, finalY, pageWidth - 80, 40, 'F');
+        doc.setFont("helvetica", "bolditalic");
+        doc.setFontSize(9);
+        doc.text(`KESIMPULAN: Total ${tableRows.length} data berhasil diverifikasi.`, 50, finalY + 18);
+        doc.setFont("helvetica", "normal");
+        doc.text("Demikian laporan ini dibuat secara otomatis oleh sistem untuk digunakan sebagaimana mestinya.", 50, finalY + 32);
+    }
+
+    async function handleExport(mode) {
         document.getElementById('loading').style.display = 'flex';
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'pt', 'a4');
@@ -350,27 +404,7 @@
         document.getElementById('pdfDropdown').classList.remove('show');
     }
 
-    async function processTabToPDF(doc, type, isNewPage = false) {
-        if (isNewPage) doc.addPage();
-        const cfg = menuConfig[type];
-        const snapshot = await db.collection(cfg.col).get();
-        const { tableRows } = formatTableData(type, snapshot);
-
-        doc.setFontSize(18);
-        doc.text(`Laporan: ${cfg.title}`, 40, 50);
-        doc.autoTable({
-            head: [cfg.fields],
-            body: tableRows,
-            startY: 70,
-            theme: 'grid',
-            styles: { fontSize: 8 }
-        });
-    }
-
-    window.onload = () => {
-        checkUserAccess();
-        loadDataRealtime('ibadah');
-    };
+    window.onload = () => loadDataRealtime('ibadah');
 </script>
 </body>
 </html>
