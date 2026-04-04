@@ -7,17 +7,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        .reg-container { width: 100%; max-width: 400px; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 20px; }
+        .reg-container { width: 100%; max-width: 400px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 20px; }
+        
+        /* LOGO DIPERBESAR AGAR PROPORSIONAL */
         .header-logo { text-align: center; margin-bottom: 15px; }
-        .header-logo img { width: 60px; height: auto; }
+        .header-logo img { 
+            width: 100px; /* Sebelumnya 60px */
+            height: auto; 
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
         .header-text { text-align: center; margin-bottom: 20px; }
-        .header-text h2 { margin: 0; font-size: 18px; color: #333; }
-        .header-text p { margin: 5px 0 0; font-size: 13px; color: #666; }
+        .header-text h2 { margin: 5px 0 0; font-size: 18px; color: #333; font-weight: bold; }
+        .header-text p { margin: 5px 0 0; font-size: 14px; color: #666; }
+        
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 12px; font-weight: bold; color: #444; margin-bottom: 5px; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; outline: none; background: #fafafa; }
         .form-group input:focus { border-color: #28a745; background: #fff; }
-        .time-info { font-size: 11px; color: #dc3545; text-align: right; margin-bottom: 15px; font-weight: bold; }
+        
+        .time-info { font-size: 11px; color: #dc3545; text-align: center; margin-bottom: 15px; font-weight: bold; background: #fff1f1; padding: 5px; border-radius: 5px; }
         .btn-submit { width: 100%; padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
         .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
         .btn-back-login { display: block; text-align: center; text-decoration: none; color: #666; font-size: 14px; font-weight: bold; padding: 10px; border: 1px solid #ddd; border-radius: 10px; }
@@ -103,7 +112,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -115,7 +123,6 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 2. Real-time Clock (WIT)
     function updateClock() {
         const now = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -125,7 +132,6 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // 3. Generate Auto NIJ (NIJ-PPP-LOKASI-NOMOR-TAHUN)
     async function updateNIJPreview() {
         const lokasi = document.getElementById("lokasi").value;
         const nijInput = document.getElementById("nij-display");
@@ -140,7 +146,6 @@
         } catch (e) { nijInput.value = "Error koneksi database"; }
     }
 
-    // 4. Main Registration Logic
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
         const fileInput = document.getElementById("berkas_jemaat");
@@ -163,15 +168,13 @@
         btn.disabled = true;
 
         try {
-            // --- PROTEKSI DUPLIKAT ---
             const emailCheck = await db.collection("users").where("email", "==", email).get();
             if (!emailCheck.empty) {
                 alert("Email sudah terdaftar!");
                 btn.innerText = "DAFTAR SEKARANG"; btn.disabled = false; return;
             }
 
-            // --- PROSES CLOUDINARY (dxzllsbg) ---
-            btn.innerText = "Mengunggah Berkas ke Server...";
+            btn.innerText = "Mengunggah Berkas...";
             const file = fileInput.files[0];
             const formData = new FormData();
             formData.append('file', file);
@@ -186,7 +189,6 @@
 
             if(!urlBerkas) throw new Error("Gagal mengunggah berkas ke Cloudinary.");
 
-            // --- SIMPAN KE FIRESTORE ---
             btn.innerText = "Finalisasi Data...";
             const userData = {
                 nama: nama,
@@ -197,14 +199,12 @@
                 goldarah: darah,
                 lokasi_berjemaat: lokasi,
                 nij: nij,
-                url_dokumen_fisik: urlBerkas, // Link Cloudinary KK/Akta/Baptis
+                url_dokumen_fisik: urlBerkas,
                 status: "Aktif",
                 tanggalDaftar: new Date().toLocaleString('id-ID')
             };
 
             const userRef = await db.collection("users").add(userData);
-            
-            // Simpan ke Admin Repository
             await db.collection("Administrator").doc("profile biodata")
                     .collection("daftar_anggota").doc(userRef.id).set(userData);
             
@@ -217,7 +217,6 @@
         }
     }
 
-    // Password Toggle
     document.getElementById('eyeIcon').addEventListener('click', function() {
         const passInput = document.getElementById('pass');
         passInput.type = passInput.type === 'password' ? 'text' : 'password';
