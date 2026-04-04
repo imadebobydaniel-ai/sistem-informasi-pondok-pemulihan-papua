@@ -70,10 +70,10 @@
         .rank-2 .trophy-box { background: linear-gradient(135deg, #E0E0E0, #BDBDBD); color: white; }
         .rank-3 .trophy-box { background: linear-gradient(135deg, #f0a26d, #CD7F32); color: white; }
 
-        .podium-name { font-weight: 900; font-size: 14px; color: var(--biru-tua); }
-        .podium-score { font-size: 11px; background: var(--biru-tua); color: white; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
+        .podium-name { font-weight: 900; font-size: 14px; color: var(--biru-tua); margin-top: 5px;}
+        .podium-score { font-size: 11px; background: var(--biru-tua); color: white; padding: 2px 8px; border-radius: 10px; font-weight: 700; margin-top: 4px;}
         
-        .chart-box { height: 180px; width: 100%; margin-top: 15px; background: #fdfdfd; border-radius: 15px; }
+        .chart-box { height: 180px; width: 100%; margin-top: 15px; background: #fdfdfd; border-radius: 15px; padding: 10px; box-sizing: border-box;}
 
         .rank-list { text-align: left; }
         .rank-item {
@@ -82,13 +82,13 @@
             margin-bottom: 10px; border: 1.5px solid #f0f0f0;
         }
         .rank-item.top-three { border-left: 5px solid var(--emas-lux); background: linear-gradient(to right, #fffdf5, #ffffff); }
-        .rank-jc { font-weight: 800; color: var(--biru-tua); }
+        .rank-jc { font-weight: 800; color: var(--biru-tua); font-size: 15px; }
         .rank-val { background: var(--biru-safir); color: white; padding: 5px 12px; border-radius: 50px; font-size: 12px; font-weight: 900; }
 
         .btn-back-container { position: fixed; bottom: 0; left: 0; width: 100%; padding: 20px; background: white; border-top: 1px solid #eee; z-index: 1000; box-sizing: border-box; }
-        .btn-back { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--biru-tua); color: white; padding: 18px; border-radius: 50px; text-decoration: none; font-weight: 800; }
+        .btn-back { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--biru-tua); color: white; padding: 18px; border-radius: 50px; text-decoration: none; font-weight: 800; box-shadow: 0 8px 25px rgba(0,51,102,0.3); }
 
-        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.9); display: flex; flex-direction:column; justify-content: center; align-items: center; z-index: 2000; }
+        #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.95); display: flex; flex-direction:column; justify-content: center; align-items: center; z-index: 2000; }
     </style>
 </head>
 <body>
@@ -135,6 +135,7 @@
 </div>
 
 <script>
+    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -153,17 +154,13 @@
         const durasi = 4 * 1000;
         const selesai = Date.now() + durasi;
 
-        // Suara kembang api (opsional: bisa tambahkan audio jika perlu)
-        
         const interval = setInterval(function() {
             const sisaWaktu = selesai - Date.now();
             if (sisaWaktu <= 0) return clearInterval(interval);
 
-            const particleCount = 40 * (sisaWaktu / durasi);
-
-            // 1. Efek Bintang Emas Berjatuhan
+            // 1. Efek Bintang Emas dari Samping
             confetti({
-                particleCount: 2,
+                particleCount: 3,
                 angle: 60,
                 spread: 55,
                 origin: { x: 0 },
@@ -171,7 +168,7 @@
                 shapes: ['star']
             });
             confetti({
-                particleCount: 2,
+                particleCount: 3,
                 angle: 120,
                 spread: 55,
                 origin: { x: 1 },
@@ -179,14 +176,14 @@
                 shapes: ['star']
             });
 
-            // 2. Efek Bunga (Emoji) yang ramai
+            // 2. Efek Bunga & Cahaya (Emoji) Acak
             const scalar = 2;
             const bunga = confetti.shapeFromText({ text: '🌸', scalar });
-            const daun = confetti.shapeFromText({ text: '✨', scalar });
+            const kilau = confetti.shapeFromText({ text: '✨', scalar });
 
             confetti({
                 particleCount: 1,
-                shapes: [bunga, daun],
+                shapes: [bunga, kilau],
                 origin: {
                     x: Math.random(),
                     y: Math.random() - 0.2
@@ -194,9 +191,9 @@
                 gravity: 0.6,
                 ticks: 300
             });
-        }, 100);
+        }, 150);
 
-        // Ledakan besar di tengah saat awal
+        // Ledakan besar di tengah
         confetti({
             particleCount: 150,
             spread: 100,
@@ -211,32 +208,59 @@
             let skorJC = {};
             let periode = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
             
-            const koleksi = ["kehadiran", "kehadiran_arso1", "laporan_komsel", "laporan_gabungan", "laporan_doa", "kehadiran_kd", "laporan_bacaan"];
-            const poinMap = { "kehadiran": 10, "kehadiran_arso1": 10, "laporan_komsel": 8, "laporan_gabungan": 8, "laporan_doa": 8, "kehadiran_kd": 10, "laporan_bacaan": 5 };
+            // Definisi Kategori dan Poin sesuai permintaan
+            const koleksiPoin = [
+                { nama: "kehadiran", poin: 10 },
+                { nama: "kehadiran_arso1", poin: 10 },
+                { nama: "kehadiran_kd", poin: 10 },
+                { nama: "laporan_komsel", poin: 8 },
+                { nama: "laporan_gabungan", poin: 8 },
+                { nama: "laporan_doa", poin: 8 },
+                { nama: "laporan_bacaan", poin: 5 }
+            ];
 
-            await Promise.all(koleksi.map(async (col) => {
-                const snap = await db.collection(col).get();
+            // Ambil data dari semua koleksi Firebase
+            await Promise.all(koleksiPoin.map(async (item) => {
+                const snap = await db.collection(item.nama).get();
                 snap.forEach(doc => {
                     let d = doc.data();
+                    // Deteksi nama JC dari berbagai kemungkinan field
                     let nama = (d.jc || d.komsel || d.nama_jc || "Umum").trim().toUpperCase();
+                    
+                    // Normalisasi Nama (Tambah "JC " jika belum ada)
                     if (!nama.startsWith("JC") && nama !== "UMUM") nama = "JC " + nama;
                     
                     if (!skorJC[nama]) skorJC[nama] = 0;
+                    
+                    // Syarat: Status "HADIR", "SELESAI", atau khusus Laporan Bacaan
                     const status = (d.status || d.status_doa || "HADIR").toUpperCase();
-                    if (status === "HADIR" || status === "SELESAI" || col === "laporan_bacaan") {
-                        skorJC[nama] += poinMap[col];
+                    if (status === "HADIR" || status === "SELESAI" || item.nama === "laporan_bacaan") {
+                        skorJC[nama] += item.poin;
                     }
                 });
             }));
 
+            // Mengurutkan berdasarkan poin tertinggi
             let urutan = Object.keys(skorJC).map(n => ({ nama: n, poin: skorJC[n] })).sort((a, b) => b.poin - a.poin);
             
-            // Render UI
+            // --- Update UI ---
             document.getElementById('current-month').innerText = `Periode: ${periode}`;
-            if(urutan[0]) { document.getElementById('top1-name').innerText = urutan[0].nama; document.getElementById('top1-val').innerText = urutan[0].poin + " Pts"; }
-            if(urutan[1]) { document.getElementById('top2-name').innerText = urutan[1].nama; document.getElementById('top2-val').innerText = urutan[1].poin + " Pts"; }
-            if(urutan[2]) { document.getElementById('top3-name').innerText = urutan[2].nama; document.getElementById('top3-val').innerText = urutan[2].poin + " Pts"; }
+            
+            // Update Podium Top 3
+            if(urutan[0]) { 
+                document.getElementById('top1-name').innerText = urutan[0].nama; 
+                document.getElementById('top1-val').innerText = urutan[0].poin + " Pts"; 
+            }
+            if(urutan[1]) { 
+                document.getElementById('top2-name').innerText = urutan[1].nama; 
+                document.getElementById('top2-val').innerText = urutan[1].poin + " Pts"; 
+            }
+            if(urutan[2]) { 
+                document.getElementById('top3-name').innerText = urutan[2].nama; 
+                document.getElementById('top3-val').innerText = urutan[2].poin + " Pts"; 
+            }
 
+            // Update List ke Bawah
             let html = "";
             urutan.forEach((item, i) => {
                 html += `<div class="rank-item ${i < 3 ? 'top-three' : ''}">
@@ -246,13 +270,17 @@
             });
             document.getElementById('rank-list').innerHTML = html;
 
+            // Render Grafik Bar
             tampilkanGrafik(urutan.map(i => i.nama), urutan.map(i => i.poin));
             
-            // TRIGGER EFEK MERIAH
+            // Jalankan Selebrasi
             setTimeout(selebrasiMeriah, 500);
 
-        } catch (e) { console.error(e); }
-        finally { document.getElementById('loading-overlay').style.display = 'none'; }
+        } catch (e) { 
+            console.error("Gagal Sinkronisasi:", e); 
+        } finally { 
+            document.getElementById('loading-overlay').style.display = 'none'; 
+        }
     }
 
     function tampilkanGrafik(labels, values) {
@@ -262,12 +290,20 @@
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [{ data: values, backgroundColor: '#0056b3', borderRadius: 5 }]
+                datasets: [{ 
+                    data: values, 
+                    backgroundColor: '#0056b3', 
+                    borderRadius: 5 
+                }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true, 
+                maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: { y: { display: false }, x: { grid: { display: false } } }
+                scales: { 
+                    y: { display: false, beginAtZero: true }, 
+                    x: { grid: { display: false } } 
+                }
             }
         });
     }
