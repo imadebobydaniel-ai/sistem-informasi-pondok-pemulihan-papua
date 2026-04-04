@@ -27,6 +27,7 @@
         .doa-text { font-size: 13px; color: #444; line-height: 1.4; margin-bottom: 10px; }
         .sla-info { font-size: 11px; color: #888; background: #f8f9fa; padding: 5px; border-radius: 5px; display: inline-block; }
 
+        /* Popups & Overlays */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .popup { background: white; width: 100%; max-width: 350px; border-radius: 20px; padding: 20px; position: relative; border-top: 5px solid var(--emas); max-height: 90vh; overflow-y: auto; }
         .popup h3 { margin-top: 0; color: var(--biru-tua); font-size: 16px; text-align: center; }
@@ -35,9 +36,37 @@
         .form-group input, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fdfdfd; box-sizing: border-box; }
         .btn-save { width: 100%; background: var(--biru-tua); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-cancel { display: block; text-align: center; margin-top: 15px; color: #888; font-size: 12px; cursor: pointer; text-decoration: none; }
+
+        /* Custom Notification System (Toast & Dialog) */
+        .toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; }
+        .toast-box { background: var(--biru-tua); color: white; padding: 15px 20px; border-radius: 12px; border-left: 6px solid var(--emas); box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 10px; display: flex; align-items: center; gap: 12px; animation: slideIn 0.4s ease-out; }
+        @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .dialog-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 51, 102, 0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px; }
+        .dialog-box { background: white; width: 100%; max-width: 320px; border-radius: 20px; padding: 25px; text-align: center; border-top: 6px solid var(--emas); }
+        .dialog-box h4 { margin: 0 0 10px 0; color: var(--biru-tua); }
+        .dialog-box p { font-size: 14px; color: #555; margin-bottom: 20px; }
+        .dialog-input { width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #eee; border-radius: 10px; text-align: center; font-size: 16px; box-sizing: border-box; }
+        .dialog-buttons { display: flex; gap: 10px; }
+        .btn-dialog { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .btn-confirm { background: var(--biru-tua); color: white; }
+        .btn-cancel-dialog { background: #eee; color: #666; }
     </style>
 </head>
 <body>
+
+<div id="toast-container" class="toast-container"></div>
+<div id="custom-dialog" class="dialog-overlay">
+    <div class="dialog-box">
+        <h4 id="dialog-title">Verifikasi</h4>
+        <p id="dialog-msg">Silahkan masukkan password anda</p>
+        <input type="password" id="dialog-input" class="dialog-input" placeholder="Password...">
+        <div class="dialog-buttons">
+            <button class="btn-dialog btn-cancel-dialog" onclick="closeDialog(false)">BATAL</button>
+            <button class="btn-dialog btn-confirm" onclick="closeDialog(true)">OK</button>
+        </div>
+    </div>
+</div>
 
 <div class="header-app">CAPAIAN DOA KOMSEL</div>
 
@@ -99,6 +128,34 @@
 
     let userNama = "", userJC = "", selectedDoaId = null;
 
+    // --- SISTEM NOTIFIKASI CUSTOM ---
+    function showToast(pesan) {
+        const container = document.getElementById('toast-container');
+        const box = document.createElement('div');
+        box.className = 'toast-box';
+        box.innerHTML = `<i class="fa-solid fa-bell" style="color:var(--emas)"></i> <span>${pesan}</span>`;
+        container.appendChild(box);
+        setTimeout(() => { box.style.opacity = '0'; setTimeout(() => box.remove(), 500); }, 3000);
+    }
+
+    let dialogResolve;
+    function openDialog(title, msg, withInput = true) {
+        document.getElementById('dialog-title').innerText = title;
+        document.getElementById('dialog-msg').innerText = msg;
+        const inputField = document.getElementById('dialog-input');
+        inputField.style.display = withInput ? 'block' : 'none';
+        inputField.type = "password";
+        inputField.value = "";
+        document.getElementById('custom-dialog').style.display = 'flex';
+        return new Promise(resolve => { dialogResolve = resolve; });
+    }
+
+    function closeDialog(result) {
+        const val = document.getElementById('dialog-input').value;
+        document.getElementById('custom-dialog').style.display = 'none';
+        dialogResolve(result ? (val || true) : false);
+    }
+
     window.onload = function() {
         const email = localStorage.getItem("userEmail");
         if (!email) return window.location.href = "index.html";
@@ -113,9 +170,7 @@
         });
     };
 
-    // --- FUNGSI LOAD LIST DENGAN FILTER KOMSEL (PRIVASI TERJAGA) ---
     function loadListDoa() {
-        // Filter menggunakan userJC agar anggota di komsel yang sama bisa melihat listnya
         db.collection("saran_masukan")
           .where("jc", "==", userJC) 
           .where("kategori", "==", "Permohonan Doa")
@@ -144,28 +199,7 @@
                       </div>`;
               });
               document.getElementById('list-doa-container').innerHTML = html;
-              syncStatistikDoa(); 
-          }, error => {
-              console.error("Error loading data:", error);
-              // Catatan: Jika error Index muncul di console, klik link yang diberikan oleh Firebase.
           });
-    }
-
-    function syncStatistikDoa() {
-        const startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-        db.collection("saran_masukan")
-        .where("jc", "==", userJC) 
-        .where("kategori", "==", "Permohonan Doa")
-        .where("timestamp", ">=", startDate)
-        .onSnapshot(snap => {
-            let terjawabCount = 0;
-            let totalLaporan = snap.size;
-            snap.forEach(doc => {
-                if (doc.data().status === "Terjawab") terjawabCount++;
-            });
-            // Update UI statistik di sini jika diperlukan
-        });
     }
 
     function toggleControls() {
@@ -194,12 +228,10 @@
 
     async function simpanDoaBaru() {
         const doa = document.getElementById('add-doa').value.trim();
-        if (!doa) return alert("Isi doa Anda!");
-        
+        if (!doa) return showToast("Isi doa Anda!");
         const btnSave = document.querySelector(".btn-save");
         btnSave.disabled = true;
         btnSave.innerText = "Mengirim...";
-
         try {
             await db.collection("saran_masukan").add({
                 nomor_tiket: document.getElementById('add-nomor').value,
@@ -210,10 +242,11 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 kategori: "Permohonan Doa"
             });
+            showToast("Tiket Doa berhasil dikirim");
             tutupPopup();
             document.getElementById('add-doa').value = "";
         } catch (e) {
-            alert("Gagal mengirim.");
+            showToast("Gagal mengirim.");
         } finally {
             btnSave.disabled = false;
             btnSave.innerText = "KIRIM TIKET";
@@ -225,26 +258,64 @@
         const tglValue = document.getElementById(`tgl-${selectedDoaId}`).value;
         const tglAwal = new Date(tglValue);
         const diff = Math.ceil(Math.abs(new Date() - tglAwal) / (1000 * 60 * 60 * 24));
-        alert(`Puji Tuhan Doa anda terjawab dalam kurun waktu ${diff} Hari`);
+        
+        showToast(`Puji Tuhan Doa anda terjawab dalam ${diff} Hari`);
         db.collection("saran_masukan").doc(selectedDoaId).update({ status: "Terjawab" });
     }
 
-    function bukaEditDoa() {
+    async function bukaEditDoa() {
         if(!selectedDoaId) return;
-        document.getElementById('popup-edit').style.display = 'flex';
-        document.getElementById('edit-doa').value = document.getElementById(`text-${selectedDoaId}`).innerText;
+        const pass = await openDialog("Edit Doa", "Masukkan Password Anda untuk mengedit:");
+        if (!pass) return;
+
+        try {
+            const email = localStorage.getItem("userEmail");
+            const userSnap = await db.collection("users").where("email", "==", email).get();
+            
+            if (!userSnap.empty) {
+                if (pass === userSnap.docs[0].data().password) {
+                    document.getElementById('popup-edit').style.display = 'flex';
+                    document.getElementById('edit-doa').value = document.getElementById(`text-${selectedDoaId}`).innerText;
+                } else {
+                    showToast("Password salah! Akses ditolak.");
+                }
+            }
+        } catch (error) {
+            showToast("Terjadi kesalahan verifikasi.");
+        }
     }
 
     async function updateDoa() {
         await db.collection("saran_masukan").doc(selectedDoaId).update({
             isi_saran: document.getElementById('edit-doa').value
         });
+        showToast("Perubahan disimpan.");
         tutupPopup();
     }
 
     async function hapusDoa() {
-        if (selectedDoaId && confirm("Hapus doa ini?")) {
-            await db.collection("saran_masukan").doc(selectedDoaId).delete();
+        if(!selectedDoaId) return;
+        
+        const yakin = await openDialog("Hapus Doa", "Apakah anda yakin akan menghapus Doa ini?", false);
+        if (!yakin) return;
+
+        const pass = await openDialog("Verifikasi", "Masukkan Password untuk menghapus:");
+        if (!pass) return;
+
+        try {
+            const email = localStorage.getItem("userEmail");
+            const userSnap = await db.collection("users").where("email", "==", email).get();
+
+            if (!userSnap.empty && pass === userSnap.docs[0].data().password) {
+                await db.collection("saran_masukan").doc(selectedDoaId).delete();
+                showToast("Doa berhasil dihapus.");
+                selectedDoaId = null;
+                toggleControls();
+            } else {
+                showToast("Password salah!");
+            }
+        } catch (error) {
+            showToast("Gagal menghapus data.");
         }
     }
 
