@@ -44,7 +44,35 @@
         
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; opacity: 0.8; }
 
-        /* --- CSS UPDATE EFEK 3D NYATA --- */
+        /* --- STYLE TAMBAHAN TEKS MEDIA --- */
+        #text-media-container {
+            width: 100%;
+            height: 100%;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #001f3f, #003366);
+            color: white;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        #text-media-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--emas-lux);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        #text-media-body {
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
         .menu-grid { 
             display: grid; 
             grid-template-columns: repeat(2, 1fr); 
@@ -63,13 +91,8 @@
             color: var(--biru-tua); 
             font-weight: 800; 
             font-size: 12px; 
-            
-            /* EFEK SHADOW 3D */
             border: 1px solid rgba(255, 255, 255, 0.8); 
-            box-shadow: 
-                6px 6px 16px rgba(0, 0, 0, 0.15),   
-                -4px -4px 12px rgba(255, 255, 255, 0.9); 
-            
+            box-shadow: 6px 6px 16px rgba(0, 0, 0, 0.15), -4px -4px 12px rgba(255, 255, 255, 0.9); 
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
             position: relative;
             overflow: hidden;
@@ -86,18 +109,8 @@
 
         .menu-box:active { 
             transform: scale(0.92); 
-            box-shadow: 
-                inset 4px 4px 8px rgba(0, 0, 0, 0.1), 
-                inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.1), inset -4px -4px 8px rgba(255, 255, 255, 0.9);
         }
-
-        @media (min-width: 768px) {
-            .menu-box:hover {
-                transform: translateY(-5px);
-                box-shadow: 10px 15px 25px rgba(0, 0, 0, 0.2);
-            }
-        }
-        /* --- END UPDATE 3D --- */
 
         /* --- CSS EFEK ULANG TAHUN --- */
         .ultah-active { position: relative; animation: gold-glow 2s infinite alternate; border: 4px solid var(--emas-lux) !important; }
@@ -125,10 +138,6 @@
         .modal-header { background: var(--biru-tua); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; text-align: left; line-height: 1.6; }
         .modal-footer { padding: 15px; border-top: 1px solid #eee; text-align: right; }
-
-        .inbox-controls { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border-radius: 10px; margin-bottom: 10px; font-size: 12px; }
-        .btn-delete-selected { color: #ff0000; cursor: pointer; font-weight: bold; display: none; }
-        @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); }
         #admin-badge { display: none; background: red; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-top: 5px; font-weight: bold; }
@@ -210,6 +219,10 @@
             <div id="media-display-area">
                 <div id="player" style="width: 100%; height: 100%;"></div> 
                 <div id="other-media"></div>
+                <div id="text-media-container">
+                    <div id="text-media-title"></div>
+                    <div id="text-media-body"></div>
+                </div>
             </div>
             <canvas id="birthday-canvas"></canvas>
         </div>
@@ -263,27 +276,42 @@
             });
         }
 
-        // PLAYER LOGIC
+        // PLAYER LOGIC (DIPERBARUI)
         function onYouTubeIframeAPIReady() { initMediaPlayer(); }
+
         function initMediaPlayer() {
             db.collection("portal_media").orderBy("urutan", "asc").limit(1).onSnapshot(snapshot => {
                 const otherMedia = document.getElementById('other-media');
                 const ytContainer = document.getElementById('player');
+                const textContainer = document.getElementById('text-media-container');
+                const textTitle = document.getElementById('text-media-title');
+                const textBody = document.getElementById('text-media-body');
+
                 if (!snapshot.empty) {
                     const data = snapshot.docs[0].data();
-                    const type = data.tipe || "youtube";
+                    const type = (data.tipe || "youtube").toLowerCase();
                     const content = data.url || "";
+                    const judulTeks = data.judul || "PENGUMUMAN";
+                    const isiTeks = data.isi || "";
+
+                    // Reset tampilan
                     otherMedia.style.display = 'none';
                     ytContainer.style.display = 'none';
+                    textContainer.style.display = 'none';
+
                     if (type === "video_youtube" || type === "youtube") {
                         ytContainer.style.display = 'block';
                         playYouTube(content);
                     } else if (type === "video") {
                         otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<video src="${content}" autoplay controls style="width:100%; height:100%; object-fit:contain;"></video>`;
+                        otherMedia.innerHTML = `<video src="${content}" autoplay loop muted controls style="width:100%; height:100%; object-fit:contain;"></video>`;
                     } else if (type === "gambar") {
                         otherMedia.style.display = 'flex';
                         otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
+                    } else if (type === "teks" || type === "pengumuman") {
+                        textContainer.style.display = 'flex';
+                        textTitle.innerText = judulTeks;
+                        textBody.innerText = content || isiTeks;
                     }
                 }
             });
@@ -314,7 +342,7 @@
             db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
                 let unreadCount = 0;
                 const listDiv = document.getElementById('list-pesan');
-                listDiv.innerHTML = `<div class="inbox-controls"><label><input type="checkbox" onclick="toggleSelectAll(this)"> Pilih Semua</label><span id="btnHapusMassal" class="btn-delete-selected" onclick="hapusPesanTerpilih()">Hapus</span></div>`;
+                listDiv.innerHTML = ""; 
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const target = data.target_jc || data.target;
@@ -323,8 +351,7 @@
                         if (isUnread) unreadCount++;
                         listDiv.innerHTML += `
                             <div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : ''}" onclick="bukaDetailPesan('${doc.id}')">
-                                <input type="checkbox" class="msg-check" value="${doc.id}">
-                                <div style="flex:1; margin-left:10px;">
+                                <div style="flex:1;">
                                     <b>${data.judul}</b><br><small>${data.kategori}</small>
                                     ${isUnread ? '<span class="badge-baru">Baru</span>' : ''}
                                 </div>
