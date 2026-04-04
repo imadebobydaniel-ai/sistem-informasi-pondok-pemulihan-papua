@@ -203,7 +203,7 @@
         return null; 
     }
 
-    // --- REGISTRATION HANDLER (REVISED) ---
+    // --- REGISTRATION HANDLER ---
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
         const fileInput = document.getElementById("berkas_jemaat");
@@ -219,7 +219,7 @@
         btn.disabled = true;
 
         try {
-            // 1. CEK DUPLIKAT
+            // 1. CEK DUPLIKAT DI FIREBASE
             const pesanError = await cekDuplikat(email, hp, ktp, kk);
             if (pesanError) {
                 alert("Pendaftaran Gagal: " + pesanError);
@@ -230,22 +230,29 @@
 
             btn.innerText = "Mengunggah Berkas...";
 
-            // 2. Upload Cloudinary - Nama Cloud diperbarui menjadi 'dxzllsbgi'
+            // 2. UPLOAD CLOUDINARY
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('upload_preset', 'pope_preset');
+            
             const cloudResponse = await fetch('https://api.cloudinary.com/v1_1/dxzllsbgi/upload', { 
                 method: 'POST', 
                 body: formData 
             });
             const cloudData = await cloudResponse.json();
             
-            // Periksa jika unggahan gagal
+            // --- LOGIKA PENGAMAN BARU ---
             if (!cloudData.secure_url) {
-                throw new Error("Gagal mengunggah berkas. Periksa pengaturan Cloudinary Anda.");
+                console.error("Gagal mendapat URL dari Cloudinary:", cloudData);
+                alert("Gagal mengunggah berkas. Pastikan koneksi stabil dan ukuran file tidak terlalu besar.");
+                btn.innerText = "FINALISASI & DAFTAR";
+                btn.disabled = false;
+                return; // BERHENTI, JANGAN LANJUT KE FIREBASE
             }
 
-            // 3. Simpan Firestore
+            btn.innerText = "Menyimpan Data...";
+
+            // 3. SIMPAN KE FIRESTORE (Jika upload sukses)
             const userData = {
                 nama: document.getElementById("nama").value,
                 prov_lahir: document.getElementById("provinsi_lahir").value,
@@ -263,7 +270,7 @@
                 pasangan: document.getElementById("pasangan").value,
                 lokasi_berjemaat: document.getElementById("lokasi").value,
                 nij: document.getElementById("nij-display").value,
-                url_berkas: cloudData.secure_url,
+                url_berkas: cloudData.secure_url, // Menggunakan URL yang divalidasi
                 status: "Pending",
                 tanggalDaftar: new Date().toLocaleString('id-ID')
             };
@@ -272,8 +279,10 @@
             await db.collection("Administrator").doc("profile biodata").collection("daftar_anggota").doc(userRef.id).set(userData);
 
             document.getElementById('blocking-message').style.display = 'flex';
+            
         } catch (e) {
-            alert("Terjadi kesalahan: " + e.message);
+            console.error("Error Sistem:", e);
+            alert("Terjadi kesalahan sistem: " + e.message);
             btn.innerText = "FINALISASI & DAFTAR"; 
             btn.disabled = false;
         }
@@ -295,7 +304,7 @@
         window.scrollTo(0, 0);
     }
 
-    // --- API WILAYAH ---
+    // --- API WILAYAH INDONESIA ---
     async function loadProvinsi() {
         const resp = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         const data = await resp.json();
@@ -316,7 +325,7 @@
     }
     loadProvinsi();
 
-    // --- NIJ PREVIEW ---
+    // --- GENERATE NIJ PREVIEW ---
     async function updateNIJPreview() {
         const lokasi = document.getElementById("lokasi").value;
         const nijInput = document.getElementById("nij-display");
@@ -336,7 +345,8 @@
     function updateClock() {
         const now = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-        document.getElementById('current-time').innerText = now.toLocaleDateString('id-ID', options) + " WIT";
+        const timeStr = now.toLocaleDateString('id-ID', options);
+        document.getElementById('current-time').innerText = timeStr + " WIT";
     }
     setInterval(updateClock, 1000); updateClock();
 
