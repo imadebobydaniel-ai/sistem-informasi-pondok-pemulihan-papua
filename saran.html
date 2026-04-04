@@ -24,7 +24,7 @@
             width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ddd; 
             margin-bottom: 15px; font-family: inherit; font-size: 14px; box-sizing: border-box; outline: none;
         }
-        textarea { height: 120px; resize: none; background: #fafafa; }
+        textarea { height: 160px; resize: none; background: #fafafa; }
         
         .btn-kirim { 
             width: 100%; background: var(--biru-tua); color: white; border: none; 
@@ -36,11 +36,9 @@
 
         .btn-back { display: block; margin-top: 20px; text-decoration: none; color: #888; font-size: 13px; }
 
-        /* Notifikasi Sukses */
         #success-screen { display: none; }
         .icon-check { font-size: 50px; color: #28a745; margin-bottom: 15px; }
         
-        /* Block Display Nomor Tiket */
         .ticket-display {
             background: #f8f9fa; 
             padding: 15px; 
@@ -63,12 +61,15 @@
 
         <select id="kategori-tiket">
             <option value="Permohonan Doa">🙏 Permohonan Doa</option>
+            <option value="Pelayanan & Kunjungan Pastoral">🏠 Pelayanan & Kunjungan Pastoral</option>
+            <option value="Pelayanan Duka">🕊️ Pelayanan Duka</option>
+            <option value="Appointment">📅 Appointment</option>
             <option value="Konseling">🤝 Konseling / Keluarga</option>
             <option value="Laporan Masalah">⚠️ Masalah Aplikasi</option>
             <option value="Saran/Masukan">💡 Saran & Masukan</option>
         </select>
 
-        <textarea id="pesan-tiket" placeholder="Tuliskan detail permohonan atau laporan Anda..."></textarea>
+        <textarea id="pesan-tiket" placeholder="Perihal: &#10;Ditujukan Kepada: &#10;(Gembala Sidang / PKS / Koordinator / Pendoa Syafaat / Full Timer / Administrator)"></textarea>
 
         <button class="btn-kirim" onclick="kirimTiket()" id="btn-submit">
             <i class="fa-solid fa-paper-plane"></i> KIRIM TIKET
@@ -132,7 +133,7 @@
         const komsel = document.getElementById('txt-komsel').innerText;
 
         if (!pesan || nama === "Memuat...") {
-            return alert("Mohon isi pesan Anda!");
+            return alert("Mohon isi detail permohonan Anda!");
         }
 
         btn.disabled = true;
@@ -141,17 +142,13 @@
         try {
             const now = new Date();
             const tahun = now.getFullYear();
-            
-            // Format waktu untuk Database & WhatsApp
             const hariNama = now.toLocaleDateString('id-ID', { weekday: 'long' });
             const tglLengkap = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             const jamLengkap = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             
-            // Generate nomor tiket
             const randomNum = Math.floor(100 + Math.random() * 900);
             const nomorTiket = `NK-TIKET-${randomNum}-${tahun}`;
 
-            // 1. Simpan ke Firebase (Koleksi Tunggal)
             await db.collection("saran_masukan").add({
                 nomor_tiket: nomorTiket,         
                 nama: nama,                      
@@ -166,24 +163,21 @@
                 sla_days: 0                      
             });
 
-            // 2. Tampilkan Nomor Tiket di Block Display Sukses
             document.getElementById('display-nomor-tiket').innerText = nomorTiket;
             document.getElementById('form-screen').style.display = "none";
             document.getElementById('success-screen').style.display = "block";
 
-            // 3. Susun Format Pesan WhatsApp
             const formatPesanWA = `Halo Admin, Terimakasih anda telah mengirimkan *${kategori}* anda kepada Admin Komsel JC Pondok pemulihan Papua.\n\n` +
                                   `📌 *DETAIL TIKET LAYANAN*:\n` +
                                   `- Nomor Tiket: *${nomorTiket}*\n` +
                                   `- Waktu: ${hariNama}, ${tglLengkap} | ${jamLengkap}\n` +
                                   `- Atas Nama: ${nama}\n` +
                                   `- Unit/JC: ${komsel}\n\n` +
+                                  `📝 *DETAIL PESAN*:\n${pesan}\n\n` +
                                   `Mohon ditunggu respon dari tim admin kami. GBU!`;
 
-            // Membuat link WA (User akan mengirim pesan ini sebagai konfirmasi)
             const linkWA = `https://api.whatsapp.com/send?text=${encodeURIComponent(formatPesanWA)}`;
             
-            // 4. Jeda 5 detik agar user bisa melihat nomor tiket, lalu buka WA & Redirect
             setTimeout(() => {
                 window.open(linkWA, '_blank');
                 window.location.href = "menu.html"; 
