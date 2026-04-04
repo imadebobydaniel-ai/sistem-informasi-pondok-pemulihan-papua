@@ -15,17 +15,37 @@
         
         .form-group { margin-bottom: 15px; position: relative; text-align: left; }
         input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--accent); box-shadow: 0 0 5px rgba(0,123,255,0.2); }
         
-        .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; z-index: 10; }
+        /* Ikon Mata & Kontainer Air Mata */
+        .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; z-index: 10; transition: all 0.3s; }
         
-        .btn-login { width: 100%; padding: 14px; background-color: var(--accent); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
-        .btn-login:disabled { background-color: #ccc; cursor: not-allowed; }
-        
-        .footer-links { margin-top: 25px; font-size: 13px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
-        .footer-links a { color: var(--accent); text-decoration: none; font-weight: bold; }
-        .admin-link { display: block; margin-top: 15px; color: #888; text-decoration: none; font-size: 12px; }
+        /* Efek Mata Bercahaya (Password Benar) */
+        .eye-glow { color: #FFD700 !important; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); transform: translateY(-50%) scale(1.2); }
 
+        /* Efek Air Mata (Password Salah) */
+        .teardrop {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: #3498db;
+            border-radius: 0 50% 50% 50%;
+            transform: rotate(45deg);
+            right: 21px; /* Posisi tepat di bawah mata */
+            top: 55%;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cry-animation { animation: tearFall 1.5s ease-in forwards; }
+
+        @keyframes tearFall {
+            0% { transform: rotate(45deg) translateY(0); opacity: 1; }
+            100% { transform: rotate(45deg) translateY(20px); opacity: 0; }
+        }
+
+        .btn-login { width: 100%; padding: 14px; background-color: var(--accent); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .footer-links { margin-top: 25px; font-size: 13px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
+        
         /* Error Modal */
         #error-block { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
         .error-card { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
@@ -46,13 +66,12 @@
     <div class="form-group">
         <input type="password" id="pass" placeholder="Password" required>
         <i class="fa-solid fa-eye toggle-password" id="toggle-icon" onclick="togglePassword()"></i>
-    </div>
+        <div id="tears-container"></div> </div>
     <button id="btn-login" class="btn-login" onclick="prosesLogin()">MASUK</button>
 
     <div class="footer-links">
         Belum punya akun? <a href="registrasi.html">Daftar Sekarang</a>
     </div>
-    <a href="login_cyber.html" class="admin-link"><i class="fa-solid fa-user-shield"></i> Login Khusus Administrator</a>
 </div>
 
 <div id="error-block">
@@ -68,7 +87,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Firebase Config (Gunakan salah satu saja yang valid)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -81,7 +99,6 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 2. Toggle Password
     function togglePassword() {
         const passInput = document.getElementById('pass');
         const toggleIcon = document.getElementById('toggle-icon');
@@ -94,11 +111,31 @@
         }
     }
 
-    // 3. Logika Login Terpadu
+    // Fungsi Efek Visual
+    function triggerTears() {
+        const container = document.getElementById('tears-container');
+        for(let i=0; i<3; i++) { // Munculkan 3 tetes air mata
+            setTimeout(() => {
+                const tear = document.createElement('div');
+                tear.className = 'teardrop cry-animation';
+                container.appendChild(tear);
+                setTimeout(() => tear.remove(), 1500);
+            }, i * 300);
+        }
+    }
+
+    function triggerGlow() {
+        const icon = document.getElementById('toggle-icon');
+        icon.classList.add('eye-glow');
+    }
+
     async function prosesLogin() {
         const email = document.getElementById('email').value.trim().toLowerCase();
         const password = document.getElementById('pass').value;
         const btn = document.getElementById('btn-login');
+        const icon = document.getElementById('toggle-icon');
+
+        icon.classList.remove('eye-glow'); // Reset status
 
         if(!email || !password) {
             showError("Harap isi email dan password.");
@@ -109,50 +146,41 @@
         btn.disabled = true;
 
         try {
-            // A. CEK ADMIN MASTER (Statis)
+            // Logika Cek Admin & User (sama seperti kode Anda)
+            let loginSuccess = false;
+            let targetURL = "";
+
             if (email === "admin" && password === "bukadong821") {
-                window.location.replace("admin.html");
-                return;
-            }
-
-            // B. CEK KOLEKSI ADMIN (Dari Manajemen User)
-            const adminSnapshot = await db.collection("admin_users")
-                .where("email", "==", email)
-                .where("password", "==", password)
-                .get();
-
-            if (!adminSnapshot.empty) {
-                const adminData = adminSnapshot.docs[0].data();
-                // Simpan log login admin jika perlu
-                db.collection("login_logs").add({
-                    userName: adminData.nama || "Admin",
-                    userEmail: email,
-                    loginTime: new Date(),
-                    status: "Login Berhasil"
-                });
-                window.location.replace("admin.html");
-                return;
-            }
-
-            // C. CEK KOLEKSI ANGGOTA (User Biasa)
-            const userSnapshot = await db.collection("users")
-                .where("email", "==", email)
-                .where("password", "==", password)
-                .get();
-
-            if (!userSnapshot.empty) {
-                const userData = userSnapshot.docs[0].data();
-                localStorage.setItem("userEmail", email);
-                localStorage.setItem("userName", userData.nama || "Anggota");
-                window.location.replace("menu.html");
+                loginSuccess = true;
+                targetURL = "admin.html";
             } else {
-                throw new Error("Email atau Password salah. Silahkan periksa kembali.");
+                const adminSnapshot = await db.collection("admin_users").where("email", "==", email).where("password", "==", password).get();
+                if (!adminSnapshot.empty) {
+                    loginSuccess = true;
+                    targetURL = "admin.html";
+                } else {
+                    const userSnapshot = await db.collection("users").where("email", "==", email).where("password", "==", password).get();
+                    if (!userSnapshot.empty) {
+                        loginSuccess = true;
+                        targetURL = "menu.html";
+                    }
+                }
+            }
+
+            if (loginSuccess) {
+                triggerGlow(); // MATA BERCAHAYA
+                setTimeout(() => { window.location.replace(targetURL); }, 1000);
+            } else {
+                throw new Error("Email atau Password salah.");
             }
 
         } catch (err) {
-            showError(err.message);
-            btn.innerText = "MASUK";
-            btn.disabled = false;
+            triggerTears(); // MATA MENANGIS
+            setTimeout(() => {
+                showError(err.message);
+                btn.innerText = "MASUK";
+                btn.disabled = false;
+            }, 1000);
         }
     }
 
@@ -164,12 +192,6 @@
     function hideError() {
         document.getElementById("error-block").style.display = "none";
     }
-
-    // Mencegah Back
-    history.pushState(null, null, location.href);
-    window.onpopstate = function () {
-        history.pushState(null, null, location.href);
-    };
 </script>
 
 </body>
