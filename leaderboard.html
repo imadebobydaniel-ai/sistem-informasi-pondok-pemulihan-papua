@@ -41,7 +41,48 @@
             overflow: hidden;
         }
 
-        /* Animasi Juara 1 */
+        /* --- STYLE MODAL POIN --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 3000; 
+            left: 0; top: 0; 
+            width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 20px;
+            width: 85%;
+            max-width: 400px;
+            position: relative;
+            text-align: left;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px; right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #888;
+        }
+
+        .modal-content h3 { color: var(--biru-tua); margin-top: 0; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        .point-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f9f9f9; font-size: 14px; }
+        .point-val { font-weight: bold; color: var(--biru-safir); }
+
+        /* --- ANIMASI JUARA --- */
         .rank-1 { animation: celebrate 2s infinite ease-in-out; }
         @keyframes celebrate {
             0%, 100% { transform: translateY(0); }
@@ -52,12 +93,13 @@
             position: absolute; top: 15px; left: 20px;
             font-size: 20px; color: var(--biru-safir);
             cursor: pointer; opacity: 0.7; z-index: 10;
+            transition: 0.3s;
         }
+        .info-icon:hover { opacity: 1; transform: scale(1.1); }
 
         h2 { color: var(--biru-tua); font-size: 20px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase; }
         .info-sub { color: #888; font-size: 13px; font-weight: 600; margin-bottom: 25px; }
 
-        /* Podium */
         .podium-container { display: flex; justify-content: center; align-items: flex-end; margin-bottom: 30px; gap: 10px; }
         .podium-item { flex: 1; display: flex; flex-direction: column; align-items: center; }
         
@@ -93,6 +135,19 @@
 </head>
 <body>
 
+<div id="pointModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <h3><i class="fas fa-info-circle"></i> Sistem Poin</h3>
+        <div class="point-item"><span>Ibadah Raya / Arso 1</span> <span class="point-val">+10 Pts</span></div>
+        <div class="point-item"><span>Kelas Dasar (KD)</span> <span class="point-val">+10 Pts</span></div>
+        <div class="point-item"><span>Laporan Komsel / Gabungan</span> <span class="point-val">+8 Pts</span></div>
+        <div class="point-item"><span>Laporan Doa</span> <span class="point-val">+8 Pts</span></div>
+        <div class="point-item"><span>Laporan Baca Alkitab</span> <span class="point-val">+5 Pts</span></div>
+        <p style="font-size: 11px; color: #888; margin-top: 15px;">*Poin otomatis terupdate saat laporan disetujui.</p>
+    </div>
+</div>
+
 <div id="loading-overlay">
     <i class="fas fa-sync fa-spin fa-3x" style="color: var(--biru-safir);"></i>
     <p style="margin-top: 15px; font-weight: bold;">Menghitung Skor Terupdate...</p>
@@ -100,7 +155,7 @@
 
 <div class="container">
     <div class="card">
-        <div class="info-icon"><i class="fas fa-award"></i></div>
+        <div class="info-icon" id="openModal"><i class="fas fa-award"></i></div>
         <h2><i class="fas fa-crown" style="color: var(--emas-lux);"></i> Leaderboard</h2>
         <p class="info-sub" id="current-month">Periode: Memuat...</p>
 
@@ -135,6 +190,15 @@
 </div>
 
 <script>
+    // --- LOGIC MODAL POIN ---
+    const modal = document.getElementById("pointModal");
+    const infoBtn = document.getElementById("openModal");
+    const closeBtn = document.getElementById("closeModal");
+
+    infoBtn.onclick = () => modal.style.display = "block";
+    closeBtn.onclick = () => modal.style.display = "none";
+    window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
+
     // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -149,57 +213,16 @@
     const db = firebase.firestore();
     let myChart;
 
-    // --- FUNGSI EFEK MERIAH (Bintang & Bunga) ---
     function selebrasiMeriah() {
         const durasi = 4 * 1000;
         const selesai = Date.now() + durasi;
-
         const interval = setInterval(function() {
             const sisaWaktu = selesai - Date.now();
             if (sisaWaktu <= 0) return clearInterval(interval);
-
-            // 1. Efek Bintang Emas dari Samping
-            confetti({
-                particleCount: 3,
-                angle: 60,
-                spread: 55,
-                origin: { x: 0 },
-                colors: ['#FFD700', '#D4AF37'],
-                shapes: ['star']
-            });
-            confetti({
-                particleCount: 3,
-                angle: 120,
-                spread: 55,
-                origin: { x: 1 },
-                colors: ['#FFD700', '#D4AF37'],
-                shapes: ['star']
-            });
-
-            // 2. Efek Bunga & Cahaya (Emoji) Acak
-            const scalar = 2;
-            const bunga = confetti.shapeFromText({ text: '🌸', scalar });
-            const kilau = confetti.shapeFromText({ text: '✨', scalar });
-
-            confetti({
-                particleCount: 1,
-                shapes: [bunga, kilau],
-                origin: {
-                    x: Math.random(),
-                    y: Math.random() - 0.2
-                },
-                gravity: 0.6,
-                ticks: 300
-            });
+            confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FFD700', '#D4AF37'], shapes: ['star'] });
+            confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#D4AF37'], shapes: ['star'] });
         }, 150);
-
-        // Ledakan besar di tengah
-        confetti({
-            particleCount: 150,
-            spread: 100,
-            origin: { y: 0.6 },
-            colors: ['#0056b3', '#FFD700', '#ffffff']
-        });
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 }, colors: ['#0056b3', '#FFD700', '#ffffff'] });
     }
 
     async function syncLeaderboard() {
@@ -208,7 +231,6 @@
             let skorJC = {};
             let periode = new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
             
-            // Definisi Kategori dan Poin sesuai permintaan
             const koleksiPoin = [
                 { nama: "kehadiran", poin: 10 },
                 { nama: "kehadiran_arso1", poin: 10 },
@@ -219,20 +241,14 @@
                 { nama: "laporan_bacaan", poin: 5 }
             ];
 
-            // Ambil data dari semua koleksi Firebase
             await Promise.all(koleksiPoin.map(async (item) => {
                 const snap = await db.collection(item.nama).get();
                 snap.forEach(doc => {
                     let d = doc.data();
-                    // Deteksi nama JC dari berbagai kemungkinan field
                     let nama = (d.jc || d.komsel || d.nama_jc || "Umum").trim().toUpperCase();
-                    
-                    // Normalisasi Nama (Tambah "JC " jika belum ada)
                     if (!nama.startsWith("JC") && nama !== "UMUM") nama = "JC " + nama;
-                    
                     if (!skorJC[nama]) skorJC[nama] = 0;
                     
-                    // Syarat: Status "HADIR", "SELESAI", atau khusus Laporan Bacaan
                     const status = (d.status || d.status_doa || "HADIR").toUpperCase();
                     if (status === "HADIR" || status === "SELESAI" || item.nama === "laporan_bacaan") {
                         skorJC[nama] += item.poin;
@@ -240,13 +256,10 @@
                 });
             }));
 
-            // Mengurutkan berdasarkan poin tertinggi
             let urutan = Object.keys(skorJC).map(n => ({ nama: n, poin: skorJC[n] })).sort((a, b) => b.poin - a.poin);
             
-            // --- Update UI ---
             document.getElementById('current-month').innerText = `Periode: ${periode}`;
             
-            // Update Podium Top 3
             if(urutan[0]) { 
                 document.getElementById('top1-name').innerText = urutan[0].nama; 
                 document.getElementById('top1-val').innerText = urutan[0].poin + " Pts"; 
@@ -260,7 +273,6 @@
                 document.getElementById('top3-val').innerText = urutan[2].poin + " Pts"; 
             }
 
-            // Update List ke Bawah
             let html = "";
             urutan.forEach((item, i) => {
                 html += `<div class="rank-item ${i < 3 ? 'top-three' : ''}">
@@ -269,11 +281,7 @@
                 </div>`;
             });
             document.getElementById('rank-list').innerHTML = html;
-
-            // Render Grafik Bar
             tampilkanGrafik(urutan.map(i => i.nama), urutan.map(i => i.poin));
-            
-            // Jalankan Selebrasi
             setTimeout(selebrasiMeriah, 500);
 
         } catch (e) { 
