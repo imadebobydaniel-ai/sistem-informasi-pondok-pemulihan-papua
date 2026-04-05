@@ -16,8 +16,19 @@
         .step-indicator { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 10px; }
         .step { flex: 1; height: 6px; background: #eee; border-radius: 10px; transition: 0.4s; }
         .step.active { background: #28a745; box-shadow: 0 0 8px rgba(40, 167, 69, 0.4); }
-        .form-step { display: none; animation: fadeIn 0.4s ease; }
-        .form-step.active { display: block !important; }
+        
+        /* PERBAIKAN CSS FORM STEP */
+        .form-step { 
+            display: none; 
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .form-step.active { 
+            display: block !important; 
+            opacity: 1;
+            animation: fadeIn 0.4s ease; 
+        }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 12px; font-weight: bold; color: #444; margin-bottom: 5px; }
@@ -93,31 +104,32 @@
             <div class="form-group"><label>Alamat*</label><textarea id="alamat" rows="2"></textarea></div>
             <div class="grid-2">
                 <div class="form-group"><label>Status Pernikahan*</label><select id="status_pernikahan"><option value="">-- Pilih --</option><option value="Menikah">Menikah</option><option value="Single">Single</option><option value="Duda">Duda</option><option value="Janda">Janda</option></select></div>
-               <div class="form-group">
-    <label>Pekerjaan*</label>
-    <select id="pekerjaan">
-        <option value="">-- Pilih --</option>
-        <option value="TNI">TNI</option>
-        <option value="Polri">Polri</option>
-        <option value="ASN">ASN</option>
-        <option value="P3K">P3K</option>
-        <option value="Honorer">Honorer</option>
-        <option value="Pegawai Swasta">Pegawai Swasta</option>
-        <option value="Pegawai BUMN">Pegawai BUMN</option>
-        <option value="Wiraswasta">Wiraswasta</option>
-        <option value="Profesional Muda">Profesional Muda</option>
-        <option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option>
-        <option value="Kader Partai">Kader Partai</option>
-        <option value="Pejabat Publik">Pejabat Publik</option>
-        <option value="Pejabat Executive">Pejabat Executive</option>
-        <option value="Diplomat">Diplomat</option>
-        <option value="Aktivis">Aktivis</option>
-        <option value="Pekerja Seni">Pekerja Seni</option>
-        <option value="Freelancer">Freelancer</option>
-        <option value="Mahasiswa">Mahasiswa</option>
-        <option value="Lainnya">Lainnya</option>
-    </select>
-</div>
+                <div class="form-group">
+                    <label>Pekerjaan*</label>
+                    <select id="pekerjaan">
+                        <option value="">-- Pilih --</option>
+                        <option value="TNI">TNI</option>
+                        <option value="Polri">Polri</option>
+                        <option value="ASN">ASN</option>
+                        <option value="P3K">P3K</option>
+                        <option value="Honorer">Honorer</option>
+                        <option value="Pegawai Swasta">Pegawai Swasta</option>
+                        <option value="Pegawai BUMN">Pegawai BUMN</option>
+                        <option value="Wiraswasta">Wiraswasta</option>
+                        <option value="Profesional Muda">Profesional Muda</option>
+                        <option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option>
+                        <option value="Kader Partai">Kader Partai</option>
+                        <option value="Pejabat Publik">Pejabat Publik</option>
+                        <option value="Pejabat Executive">Pejabat Executive</option>
+                        <option value="Diplomat">Diplomat</option>
+                        <option value="Aktivis">Aktivis</option>
+                        <option value="Pekerja Seni">Pekerja Seni</option>
+                        <option value="Freelancer">Freelancer</option>
+                        <option value="Mahasiswa">Mahasiswa</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+            </div>
             <div class="grid-2">
                 <div class="form-group"><label>Jumlah Anak</label><input type="number" id="jml_anak" value="0"></div>
                 <div class="form-group"><label>Orang Serumah</label><input type="number" id="jml_serumah" value="1"></div>
@@ -218,7 +230,7 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // --- 2. DATA DINAMIS (KOMSEL & JABATAN) ---
+    // --- 2. DATA DINAMIS ---
     const dataKomsel = {
         "ABE": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "STN": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -247,12 +259,13 @@
         "Fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
     };
 
-    // --- 3. LOGIKA FORM (UPDATED) ---
+    // --- 3. PERBAIKAN LOGIKA NAVIGASI ---
     function nextStep(n) {
-        // 1. Sembunyikan semua step form
-        document.querySelectorAll('.form-step').forEach(step => {
+        // 1. Sembunyikan semua step
+        const steps = document.querySelectorAll('.form-step');
+        steps.forEach(step => {
             step.classList.remove('active');
-            step.style.display = 'none'; // Memastikan benar-benar hilang
+            step.style.display = 'none';
         });
 
         // 2. Tampilkan step yang dituju
@@ -262,7 +275,12 @@
             targetStep.style.display = 'block';
         }
 
-        // 3. Update Bar Indikator
+        // 3. Trigger NIJ jika masuk ke Step 2
+        if (n === 2) {
+            updateNIJPreview();
+        }
+
+        // 4. Update Bar Indikator
         document.querySelectorAll('.step').forEach((bar, index) => {
             if (index < n) {
                 bar.classList.add('active');
@@ -276,13 +294,24 @@
 
     async function updateNIJPreview() {
         const lokasi = document.getElementById("lokasi").value;
-        if (!lokasi) return;
-        const snap = await db.collection("users").get();
-        const urut = String(snap.size + 1).padStart(3, '0');
-        document.getElementById("nij-display").value = `NIJ-PPP-${lokasi}-${urut}-2026`;
+        const displayInput = document.getElementById("nij-display");
+        
+        if (!lokasi) {
+            displayInput.value = "Pilih lokasi dahulu...";
+            return;
+        }
+        
+        try {
+            const snap = await db.collection("users").get();
+            const urut = String(snap.size + 1).padStart(3, '0');
+            const tahun = new Date().getFullYear();
+            displayInput.value = `NIJ-PPP-${lokasi}-${urut}-${tahun}`;
+        } catch (error) {
+            console.error("Gagal mengambil data NIJ:", error);
+        }
     }
 
-    // --- 4. HANDLE REGISTRASI (FULL CONFIG) ---
+    // --- 4. HANDLE REGISTRASI ---
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
         const fileInput = document.getElementById("berkas_jemaat");
