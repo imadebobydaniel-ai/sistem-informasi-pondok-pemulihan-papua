@@ -17,7 +17,6 @@
         .step { flex: 1; height: 6px; background: #eee; border-radius: 10px; transition: 0.4s; }
         .step.active { background: #28a745; box-shadow: 0 0 8px rgba(40, 167, 69, 0.4); }
         
-        /* PERBAIKAN CSS FORM STEP */
         .form-step { 
             display: none; 
             opacity: 0;
@@ -118,24 +117,11 @@
                         <option value="Wiraswasta">Wiraswasta</option>
                         <option value="Profesional Muda">Profesional Muda</option>
                         <option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option>
-                        <option value="Kader Partai">Kader Partai</option>
-                        <option value="Pejabat Publik">Pejabat Publik</option>
-                        <option value="Pejabat Executive">Pejabat Executive</option>
-                        <option value="Diplomat">Diplomat</option>
-                        <option value="Aktivis">Aktivis</option>
-                        <option value="Pekerja Seni">Pekerja Seni</option>
-                        <option value="Freelancer">Freelancer</option>
                         <option value="Mahasiswa">Mahasiswa</option>
                         <option value="Lainnya">Lainnya</option>
                     </select>
                 </div>
             </div>
-            <div class="grid-2">
-                <div class="form-group"><label>Jumlah Anak</label><input type="number" id="jml_anak" value="0"></div>
-                <div class="form-group"><label>Orang Serumah</label><input type="number" id="jml_serumah" value="1"></div>
-            </div>
-            <div class="form-group"><label>Nama Pasangan</label><input type="text" id="pasangan" placeholder="Kosongkan jika single"></div>
-            
             <div class="btn-group">
                 <a href="login.html" class="btn-prev" style="text-decoration: none; text-align: center; line-height: 1.5;">Kembali</a>
                 <button type="button" class="btn-next" onclick="nextStep(2)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
@@ -217,7 +203,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
-    // --- 1. KONFIGURASI FIREBASE ---
+    // 1. FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -230,7 +216,7 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // --- 2. DATA DINAMIS ---
+    // 2. DATA DINAMIS
     const dataKomsel = {
         "ABE": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "STN": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -248,6 +234,15 @@
     };
 
     const dataSpesifik = {
+        "Anggota Jemaat Ordinari": [
+            "Praise & Worship (Singers/Musician)", 
+            "Multimedia & Creative", 
+            "Sound & Electrical", 
+            "Usher & Hospitality", 
+            "Pendoa Syafaat", 
+            "Dekorasi & Event",
+            "Lainnya"
+        ],
         "Koordinator Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
         "Koordinator Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
         "Koordinator Sound Engineering & Elektrical": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
@@ -259,71 +254,76 @@
         "Fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
     };
 
-    // --- 3. PERBAIKAN LOGIKA NAVIGASI ---
+    // 3. LOGIKA FORM
     function nextStep(n) {
-        // 1. Sembunyikan semua step
         const steps = document.querySelectorAll('.form-step');
         steps.forEach(step => {
             step.classList.remove('active');
             step.style.display = 'none';
         });
 
-        // 2. Tampilkan step yang dituju
         const targetStep = document.getElementById('step-' + n);
         if (targetStep) {
             targetStep.classList.add('active');
             targetStep.style.display = 'block';
         }
 
-        // 3. Trigger NIJ jika masuk ke Step 2
-        if (n === 2) {
-            updateNIJPreview();
-        }
+        if (n === 2) updateNIJPreview();
 
-        // 4. Update Bar Indikator
         document.querySelectorAll('.step').forEach((bar, index) => {
-            if (index < n) {
-                bar.classList.add('active');
-            } else {
-                bar.classList.remove('active');
-            }
+            if (index < n) bar.classList.add('active');
+            else bar.classList.remove('active');
         });
-
         window.scrollTo(0, 0);
+    }
+
+    function updateSubJabatan() {
+        const jab = document.getElementById("jabatan_jemaat").value;
+        const sub = document.getElementById("sub_jabatan");
+        sub.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
+        
+        if (dataSubJabatan[jab]) {
+            dataSubJabatan[jab].forEach(i => sub.add(new Option(i, i)));
+        }
+        
+        // PENTING: Reset/Update dropdown pelayanan setiap kali jabatan utama berubah
+        updateSpesifikPelayanan(); 
+    }
+
+    function updateSpesifikPelayanan() {
+        const sub = document.getElementById("sub_jabatan").value;
+        const pel = document.getElementById("pelayanan");
+        pel.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
+        if (dataSpesifik[sub]) {
+            dataSpesifik[sub].forEach(i => pel.add(new Option(i, i)));
+        }
+    }
+
+    function updateKomsel() {
+        const lok = document.getElementById("lokasi").value;
+        const sel = document.getElementById("komsel");
+        sel.innerHTML = '<option value="">-- Pilih Komsel --</option>';
+        if (dataKomsel[lok]) dataKomsel[lok].forEach(i => sel.add(new Option(i, i)));
     }
 
     async function updateNIJPreview() {
         const lokasi = document.getElementById("lokasi").value;
         const displayInput = document.getElementById("nij-display");
-        
-        if (!lokasi) {
-            displayInput.value = "Pilih lokasi dahulu...";
-            return;
-        }
-        
+        if (!lokasi) { displayInput.value = "Pilih lokasi dahulu..."; return; }
         try {
             const snap = await db.collection("users").get();
             const urut = String(snap.size + 1).padStart(3, '0');
             const tahun = new Date().getFullYear();
             displayInput.value = `NIJ-PPP-${lokasi}-${urut}-${tahun}`;
-        } catch (error) {
-            console.error("Gagal mengambil data NIJ:", error);
-        }
+        } catch (error) { console.error("Gagal NIJ:", error); }
     }
 
-    // --- 4. HANDLE REGISTRASI ---
     async function handleRegistrasi() {
         const btn = document.getElementById("btnSubmit");
         const fileInput = document.getElementById("berkas_jemaat");
         const email = document.getElementById("email").value.trim().toLowerCase();
         const password = document.getElementById("pass").value;
-        
-        const fields = [
-            { id: "nama", label: "Nama Lengkap" }, { id: "email", label: "Email" },
-            { id: "pass", label: "Password" }, { id: "lokasi", label: "Lokasi Berjemaat" }
-        ];
-        let empty = fields.filter(f => !document.getElementById(f.id).value.trim());
-        if (empty.length > 0) return alert("Lengkapi data: " + empty.map(e => e.label).join(", "));
+
         if (fileInput.files.length === 0) return alert("Unggah foto KTP/KK!");
 
         btn.innerText = "Mendaftarkan...";
@@ -346,16 +346,16 @@
                 whatsapp: document.getElementById("hp").value,
                 lokasi_berjemaat: document.getElementById("lokasi").value,
                 komsel: document.getElementById("komsel").value,
+                jabatan: document.getElementById("jabatan_jemaat").value,
+                sub_jabatan: document.getElementById("sub_jabatan").value,
+                fungsi_pelayanan: document.getElementById("pelayanan").value,
                 nij: document.getElementById("nij-display").value,
                 url_berkas: cloudData.secure_url,
                 status: "Pending",
-                isEmailVerified: false,
                 tanggalDaftar: new Date().toLocaleString('id-ID')
             };
 
             await db.collection("users").doc(userCredential.user.uid).set(userData);
-            await db.collection("Administrator").doc("profile biodata").collection("daftar_anggota").doc(userCredential.user.uid).set(userData);
-
             document.getElementById('blocking-message').style.display = 'flex';
         } catch (e) {
             alert("Error: " + e.message);
@@ -364,7 +364,7 @@
         }
     }
 
-    // --- 5. UTILITY FUNCTIONS ---
+    // --- Helper Functions ---
     async function loadProvinsi() {
         const resp = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         const data = await resp.json();
@@ -382,27 +382,6 @@
         let options = '<option value="">Pilih Kota</option>';
         data.forEach(k => options += `<option value="${k.name}">${k.name}</option>`);
         document.getElementById('kota_lahir').innerHTML = options;
-    }
-
-    function updateKomsel() {
-        const lok = document.getElementById("lokasi").value;
-        const sel = document.getElementById("komsel");
-        sel.innerHTML = '<option value="">-- Pilih Komsel --</option>';
-        if (dataKomsel[lok]) dataKomsel[lok].forEach(i => sel.add(new Option(i, i)));
-    }
-
-    function updateSubJabatan() {
-        const jab = document.getElementById("jabatan_jemaat").value;
-        const sub = document.getElementById("sub_jabatan");
-        sub.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
-        if (dataSubJabatan[jab]) dataSubJabatan[jab].forEach(i => sub.add(new Option(i, i)));
-    }
-
-    function updateSpesifikPelayanan() {
-        const sub = document.getElementById("sub_jabatan").value;
-        const pel = document.getElementById("pelayanan");
-        pel.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
-        if (dataSpesifik[sub]) dataSpesifik[sub].forEach(i => pel.add(new Option(i, i)));
     }
 
     function toggleAgreeButton() { document.getElementById('btn-agree-submit').disabled = !document.getElementById('check-agree').checked; }
