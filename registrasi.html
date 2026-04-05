@@ -126,6 +126,7 @@
 
         <div class="form-step" id="step-2">
             <h3 style="font-size: 15px; color: #28a745;"><i class="fa-solid fa-church"></i> Data Gerejawi</h3>
+            
             <div class="form-group">
                 <label>Lokasi Berjemaat*</label>
                 <select id="lokasi" onchange="updateKomsel(); updateNIJPreview();">
@@ -137,37 +138,45 @@
                     <option value="ARS2">Arso 2</option>
                 </select>
             </div>
+
             <div class="form-group">
                 <label>Komsel / Jemaat Cell*</label>
                 <select id="komsel">
                     <option value="">-- Pilih Komsel --</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label>Jabatan Utama*</label>
+                <label>Jabatan di Jemaat*</label>
                 <select id="jabatan_jemaat" onchange="updateSubJabatan()">
                     <option value="">-- Pilih Jabatan --</option>
                     <option value="Gembala Sidang">Gembala Sidang</option>
                     <option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option>
+                    <option value="PKS Komsel">PKS Komsel</option>
+                    <option value="Fulltimer">Fulltimer</option>
                     <option value="Anggota Jemaat">Anggota Jemaat</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label>Sub Bidang Jabatan*</label>
+                <label>Sub Bidang Jabatan di Jemaat*</label>
                 <select id="sub_jabatan" onchange="updateSpesifikPelayanan()">
                     <option value="">-- Pilih Sub Bidang --</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label>Fungsi Pelayanan Spesifik</label>
+                <label>Spesifik Bidang Jabatan Pelayanan</label>
                 <select id="pelayanan">
-                    <option value="">-- Pilih Fungsi --</option>
+                    <option value="">-- Pilih Fungsi Spesifik --</option>
                 </select>
             </div>
+
             <div class="form-group">
                 <label>NIJ (Otomatis)</label>
                 <input type="text" id="nij-display" readonly>
             </div>
+
             <div class="btn-group">
                 <button type="button" class="btn-prev" onclick="nextStep(1)">Kembali</button>
                 <button type="button" class="btn-next" onclick="nextStep(3)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
@@ -224,14 +233,52 @@
     };
 
     const dataSubJabatan = {
-        "Gembala Sidang": ["Gembala Sidang Jemaat", "Pdt. Pembantu"],
-        "Pemimpin / Koordinator": ["Koordinator Multimedia", "Koordinator Praise & Worship", "Koordinator User"],
+        "Gembala Sidang": ["Gembala Sidang Jemaat", "Pdt. Pembantu", "Pdt. Muda"],
+        "Pemimpin / Koordinator": [
+            "Sekretaris Gereja", "Bendahara Gereja", "Komite Gereja", "Koordinator Lansia", 
+            "Koordinator Bapak", "Koordinator Ibu", "Koordinator Profesi", "Koordinator Mahasiswa", 
+            "Koordinator Pelajar", "Koordinator Sekolah minggu", "Koordinator Praise & Worship", 
+            "Koordinator Tamborin, flag", "Koordinator Multimedia", "Koordinator Sound Engineering & Elektrical", 
+            "Koordinator Pelayanan Misi", "Koordinator Pendoa", "Koordinator User", 
+            "Koordinator parkir dan keamanan", "Koordinator dekorasi dan event"
+        ],
+        "PKS Komsel": ["PKS Komsel"],
+        "Fulltimer": ["Fulltimer Gereja"],
         "Anggota Jemaat": ["Anggota Jemaat Ordinari"]
     };
 
     const dataSpesifik = {
-        "Koordinator Multimedia": ["Director media", "Streaming operator", "Video switcher"],
-        "Koordinator Praise & Worship": ["Drum Player", "Keyboard Player", "Singers"]
+        "Koordinator Praise & Worship": [
+            "Drum Player", "Keyboard Player", "Piano Player", "Bass Player", 
+            "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", 
+            "Vocal coach", "Worship leader", "Singers", "choirs"
+        ],
+        "Koordinator Multimedia": [
+            "Director media", "Floor director", "Campers", "Crew equipment", 
+            "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"
+        ],
+        "Koordinator Sound Engineering & Elektrical": [
+            "Sound engineering", "Crew equipment", "Elektrical & Peripheral"
+        ],
+        "Koordinator User": [
+            "Front Desk user", "User direct", "Event organizer", "General Affairs"
+        ],
+        "Koordinator parkir dan keamanan": [
+            "Parkir leader", "Parkir Crew", "Security"
+        ],
+        "Koordinator Pelayanan Misi": [
+            "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", 
+            "Team Road Map", "Public Relations"
+        ],
+        "Koordinator Pendoa": ["Team Doa Syafaat"],
+        "Koordinator dekorasi dan event": [
+            "Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"
+        ],
+        "Fulltimer Gereja": [
+            "Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", 
+            "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", 
+            "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"
+        ]
     };
 
     // --- LOGIKA DROPDOWN ---
@@ -250,7 +297,11 @@
     function updateSubJabatan() {
         const jabatan = document.getElementById("jabatan_jemaat").value;
         const subSelect = document.getElementById("sub_jabatan");
+        const pelayananSelect = document.getElementById("pelayanan");
+        
         subSelect.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
+        pelayananSelect.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
+
         if (dataSubJabatan[jabatan]) {
             dataSubJabatan[jabatan].forEach(item => {
                 let opt = document.createElement("option"); opt.value = item; opt.text = item;
@@ -262,12 +313,17 @@
     function updateSpesifikPelayanan() {
         const sub = document.getElementById("sub_jabatan").value;
         const spesifikSelect = document.getElementById("pelayanan");
-        spesifikSelect.innerHTML = '<option value="">-- Pilih Fungsi --</option>';
+        spesifikSelect.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
+        
         if (dataSpesifik[sub]) {
             dataSpesifik[sub].forEach(item => {
                 let opt = document.createElement("option"); opt.value = item; opt.text = item;
                 spesifikSelect.appendChild(opt);
             });
+        } else {
+            let opt = document.createElement("option");
+            opt.value = "-"; opt.text = "Tidak ada fungsi spesifik";
+            spesifikSelect.appendChild(opt);
         }
     }
 
