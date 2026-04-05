@@ -58,7 +58,9 @@
         
         .badge-pending { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
         .badge-aktif { background: var(--success); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
-        .blood-badge { font-size: 10px; background: #ffebee; color: #c62828; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-top: 4px; display: inline-block; border: 1px solid #ef9a9a; }
+        
+        /* Tombol Status Bendera di Tabel */
+        .btn-status-toggle { border: none; padding: 4px 10px; border-radius: 4px; color: white; font-size: 14px; cursor: pointer; margin-left: 5px; }
 
         .modal {
             display: none; 
@@ -82,8 +84,6 @@
         .form-group input, .form-group select, .form-group textarea {
             width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
         }
-        .password-container { position: relative; }
-        .password-container i { position: absolute; right: 12px; top: 38px; cursor: pointer; color: #888; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     </style>
 </head>
@@ -159,40 +159,6 @@
 
             <div class="grid-2">
                 <div class="form-group">
-                    <label>Golongan Darah</label>
-                    <select id="edit-darah">
-                        <option value="-">-</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="AB">AB</option>
-                        <option value="O">O</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Status Pernikahan</label>
-                    <select id="edit-status-nikah">
-                        <option value="Single">Single</option>
-                        <option value="Menikah">Menikah</option>
-                        <option value="Relationship">Relationship</option>
-                        <option value="Janda">Janda</option>
-                        <option value="Duda">Duda</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Alamat Lengkap</label>
-                <textarea id="edit-alamat" rows="2"></textarea>
-            </div>
-
-            <div class="form-group password-container">
-                <label>Password Akun</label>
-                <input type="password" id="edit-password" placeholder="Masukkan password baru...">
-                <i class="fas fa-eye" id="togglePassword" onclick="togglePasswordVisibility()"></i>
-            </div>
-
-            <div class="grid-2">
-                <div class="form-group">
                     <label>Lokasi Berjemaat</label>
                     <select id="edit-lokasi" onchange="updateEditKomsel()">
                         <option value="">-- Pilih Lokasi --</option>
@@ -224,13 +190,27 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Status Akun</label>
-                    <select id="edit-status-akun">
-                        <option value="Aktif">Aktif</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Non-Aktif">Non-Aktif</option>
+                    <label>Sub Bidang Jabatan</label>
+                    <select id="edit-sub-jabatan">
+                        <option value="">-- Pilih Sub Bidang --</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label>Fungsi Pelayanan Spesifik</label>
+                <select id="edit-fungsi">
+                    <option value="">-- Pilih Fungsi --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Status Akun</label>
+                <select id="edit-status-akun">
+                    <option value="Aktif">Aktif</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Non-Aktif">Non-Aktif</option>
+                </select>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -245,7 +225,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -258,13 +237,14 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Data Dropdown (Sesuai kode awal Anda)
     const dataKomsel = {
         "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
-        "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
-        "Doyo": ["Komsel Bapak doyo", "Komsel Ibu doyo"],
-        "Arso 1": ["Komsel Keluarga Arso 1"],
-        "Arso 2": ["Komsel Keluarga Arso 2"]
+        "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"]
+    };
+
+    const dataSubJabatan = {
+        "Pemimpin / Koordinator": ["Koordinator Multimedia", "Koordinator Musik", "Koordinator Usher", "Koordinator Doa"],
+        "Anggota Jemaat": ["Anggota Jemaat Ordinari", "Jemaat Baru"]
     };
 
     window.onload = function() { loadMembersRealtime(); };
@@ -275,22 +255,30 @@
             tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
-                const statusClass = (d.status || '').toLowerCase() === 'aktif' ? 'badge-aktif' : 'badge-pending';
+                const status = (d.status || 'Pending').toLowerCase();
+                const statusBadge = status === 'aktif' ? 'badge-aktif' : 'badge-pending';
+                
+                // Ikon bendera/kotak merah sesuai coretan digambar
+                const statusBtnColor = status === 'aktif' ? '#28a745' : '#dc3545';
+                const statusIcon = status === 'aktif' ? 'fa-check-square' : 'fa-stop-circle';
+
                 tableBody.innerHTML += `
                 <tr>
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${d.nij || '-'}</td>
                     <td><strong>${d.nama || '-'}</strong></td>
                     <td><i class="fab fa-whatsapp" style="color:green;"></i> ${d.whatsapp || '-'}<br><small>${d.email || '-'}</small></td>
-                    <td>
-                        <small>${d.kota_lahir || '-'}, ${d.tgl_lahir || '-'}</small><br>
-                        <span class="blood-badge">Gol: ${d.darah || '-'}</span>
-                    </td>
+                    <td><small>${d.kota_lahir || '-'}, ${d.tgl_lahir || '-'}</small></td>
                     <td><small>${d.alamat || '-'}</small></td>
                     <td>${d.status_pernikahan || '-'}<br><small>${d.pekerjaan || '-'}</small></td>
                     <td><span style="color:var(--primary); font-weight:bold;">${d.lokasi_berjemaat || '-'}</span><br><small>${d.wilayah_komsel || '-'}</small></td>
-                    <td><strong>${d.jabatan_jemaat || '-'}</strong></td>
-                    <td><span class="${statusClass}">${d.status || 'Pending'}</span></td>
+                    <td><strong>${d.jabatan_jemaat || '-'}</strong><br><small>${d.sub_bidang || ''}</small></td>
+                    <td>
+                        <span class="${statusBadge}">${d.status || 'Pending'}</span>
+                        <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${d.status}')">
+                            <i class="fas ${statusIcon}"></i>
+                        </button>
+                    </td>
                     <td>
                         <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button>
                     </td>
@@ -300,16 +288,34 @@
         });
     }
 
-    // Fungsi View Password
-    function togglePasswordVisibility() {
-        const passInput = document.getElementById('edit-password');
-        const icon = document.getElementById('togglePassword');
-        if (passInput.type === "password") {
-            passInput.type = "text";
-            icon.classList.replace("fa-eye", "fa-eye-slash");
-        } else {
-            passInput.type = "password";
-            icon.classList.replace("fa-eye-slash", "fa-eye");
+    function toggleUserStatus(id, currentStatus) {
+        const newStatus = currentStatus === 'Aktif' ? 'Pending' : 'Aktif';
+        db.collection("users").doc(id).update({ status: newStatus });
+    }
+
+    function updateEditKomsel(selectedVal) {
+        const lokasi = document.getElementById("edit-lokasi").value;
+        const select = document.getElementById("edit-komsel");
+        select.innerHTML = '<option value="">-- Pilih Komsel --</option>';
+        if (dataKomsel[lokasi]) {
+            dataKomsel[lokasi].forEach(item => {
+                let opt = document.createElement("option"); opt.value = item; opt.text = item;
+                if(item === selectedVal) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function updateEditSubJabatan(selectedSub, selectedFungsi) {
+        const jabatan = document.getElementById("edit-jabatan").value;
+        const subSelect = document.getElementById("edit-sub-jabatan");
+        subSelect.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
+        if (dataSubJabatan[jabatan]) {
+            dataSubJabatan[jabatan].forEach(item => {
+                let opt = document.createElement("option"); opt.value = item; opt.text = item;
+                if(item === selectedSub) opt.selected = true;
+                subSelect.appendChild(opt);
+            });
         }
     }
 
@@ -324,15 +330,12 @@
             document.getElementById('edit-nama').value = d.nama || '';
             document.getElementById('edit-whatsapp').value = d.whatsapp || '';
             document.getElementById('edit-email').value = d.email || '';
-            document.getElementById('edit-darah').value = d.darah || '-';
-            document.getElementById('edit-status-nikah').value = d.status_pernikahan || 'Single';
-            document.getElementById('edit-alamat').value = d.alamat || '';
-            document.getElementById('edit-password').value = d.password || '';
             document.getElementById('edit-lokasi').value = d.lokasi_berjemaat || '';
             document.getElementById('edit-jabatan').value = d.jabatan_jemaat || '';
             document.getElementById('edit-status-akun').value = d.status || 'Pending';
             
             updateEditKomsel(d.wilayah_komsel);
+            updateEditSubJabatan(d.sub_bidang);
             document.getElementById('editModal').style.display = 'block';
         });
     }
@@ -346,13 +349,10 @@
             nama: document.getElementById('edit-nama').value,
             whatsapp: document.getElementById('edit-whatsapp').value,
             email: document.getElementById('edit-email').value,
-            darah: document.getElementById('edit-darah').value,
-            status_pernikahan: document.getElementById('edit-status-nikah').value,
-            alamat: document.getElementById('edit-alamat').value,
-            password: document.getElementById('edit-password').value,
             lokasi_berjemaat: document.getElementById('edit-lokasi').value,
             wilayah_komsel: document.getElementById('edit-komsel').value,
             jabatan_jemaat: document.getElementById('edit-jabatan').value,
+            sub_bidang: document.getElementById('edit-sub-jabatan').value,
             status: document.getElementById('edit-status-akun').value
         };
         db.collection("users").doc(id).update(data).then(() => {
@@ -360,20 +360,6 @@
             closeEditModal();
         });
     };
-
-    // Helper functions (update dropdown, delete, etc) tetap sama...
-    function updateEditKomsel(val) {
-        const lokasi = document.getElementById("edit-lokasi").value;
-        const select = document.getElementById("edit-komsel");
-        select.innerHTML = '<option value="">-- Pilih Komsel --</option>';
-        if (dataKomsel[lokasi]) {
-            dataKomsel[lokasi].forEach(item => {
-                let opt = document.createElement("option"); opt.value = item; opt.text = item;
-                if(item === val) opt.selected = true;
-                select.appendChild(opt);
-            });
-        }
-    }
 
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
@@ -394,8 +380,6 @@
             row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
         });
     }
-
-    window.onclick = function(e) { if (e.target == document.getElementById('editModal')) closeEditModal(); }
 </script>
 </body>
 </html>
