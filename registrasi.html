@@ -157,13 +157,25 @@
             <div class="form-group"><label>Lokasi Berjemaat</label>
                 <select id="lokasi" required onchange="updateNIJPreview()">
                     <option value="">-- Pilih Lokasi --</option>
-                    <option value="ABE">Abepura</option><option value="STN">Sentani</option><option value="DYO">Doyo</option>
-                    <option value="AR1">Arso 1</option><option value="AR2">Arso 2</option>
+                    <option value="ABE">Abepura</option>
+                    <option value="STN">Sentani</option>
+                    <option value="DYO">Doyo</option>
+                    <option value="AR1">Arso 1</option>
+                    <option value="AR2">Arso 2</option>
                 </select>
             </div>
             <div class="grid-2">
-                <div class="form-group"><label>Aktif Komsel?</label><select id="aktif_komsel"><option value="Ya">Ya</option><option value="Tidak">Tidak</option></select></div>
-                <div class="form-group"><label>Wilayah Komsel</label><input type="text" id="wilayah_komsel" placeholder="Nama Komsel"></div>
+                <div class="form-group"><label>Aktif Komsel?</label>
+                    <select id="aktif_komsel">
+                        <option value="Ya">Ya</option>
+                        <option value="Tidak">Tidak</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Wilayah Komsel</label>
+                    <select id="wilayah_komsel">
+                        <option value="">-- Pilih Komsel --</option>
+                    </select>
+                </div>
             </div>
             <div class="form-group"><label>Jabatan di Jemaat</label><input type="text" id="jabatan_jemaat" placeholder="Anggota / Penatua / Diaken"></div>
             <div class="form-group"><label>Spesifik Jabatan Pelayanan</label><input type="text" id="pelayanan" placeholder="Usher / Multimedia / Singer"></div>
@@ -214,15 +226,60 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // --- LOGIKA BARU: KONTROL INPUT PASANGAN BERDASARKAN STATUS ---
+    // Data Komsel berdasarkan Lokasi
+    const dataKomsel = {
+        "ABE": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
+        "STN": ["Komsel Lansia Sentani", "Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
+        "DYO": ["Komsel Bapak Doyo", "Komsel Ibu Doyo"],
+        "AR1": ["Komsel Keluarga Arso 1"],
+        "AR2": ["Komsel Keluarga Arso 2"]
+    };
+
+    // Fungsi Update Dropdown Komsel
+    function updateKomselOptions() {
+        const lokasi = document.getElementById("lokasi").value;
+        const komselSelect = document.getElementById("wilayah_komsel");
+        
+        komselSelect.innerHTML = '<option value="">-- Pilih Komsel --</option>';
+        
+        if (dataKomsel[lokasi]) {
+            dataKomsel[lokasi].forEach(namaKomsel => {
+                const option = document.createElement("option");
+                option.value = namaKomsel;
+                option.text = namaKomsel;
+                komselSelect.appendChild(option);
+            });
+        }
+    }
+
+    // Update NIJ Preview & Komsel Options
+    async function updateNIJPreview() {
+        const lokasi = document.getElementById("lokasi").value;
+        const nijInput = document.getElementById("nij-display");
+        
+        updateKomselOptions();
+
+        if (!lokasi) { nijInput.value = ""; return; }
+        
+        try {
+            const snap = await db.collection("users").get();
+            const nomorUrut = String(snap.size + 1).padStart(3, '0');
+            const tahun = new Date().getFullYear();
+            nijInput.value = `NIJ-PPP-${lokasi}-${nomorUrut}-${tahun}`;
+        } catch (e) {
+            console.error("Gagal mengambil data NIJ:", e);
+        }
+    }
+
+    // Kontrol Input Pasangan berdasarkan Status Pernikahan
     document.getElementById('status_pernikahan').addEventListener('change', function() {
         const status = this.value;
         const inputPasangan = document.getElementById('pasangan');
         
         if (status === "Single" || status === "Janda" || status === "Duda") {
-            inputPasangan.value = ""; // Kosongkan otomatis
+            inputPasangan.value = "";
             inputPasangan.placeholder = "Tidak perlu diisi (Status: " + status + ")";
-            inputPasangan.style.backgroundColor = "#e9ecef"; // Beri warna abu-abu
+            inputPasangan.style.backgroundColor = "#e9ecef";
             inputPasangan.readOnly = true; 
         } else {
             inputPasangan.placeholder = "Masukkan nama lengkap pasangan";
@@ -230,7 +287,6 @@
             inputPasangan.readOnly = false;
         }
     });
-    // -------------------------------------------------------------
 
     function nextStep(n) {
         const currentStep = document.querySelector('.form-step.active');
@@ -297,6 +353,10 @@
                 jml_serumah: document.getElementById("jml_serumah").value,
                 pasangan: document.getElementById("pasangan").value,
                 lokasi_berjemaat: document.getElementById("lokasi").value,
+                wilayah_komsel: document.getElementById("wilayah_komsel").value,
+                aktif_komsel: document.getElementById("aktif_komsel").value,
+                jabatan_jemaat: document.getElementById("jabatan_jemaat").value,
+                pelayanan: document.getElementById("pelayanan").value,
                 nij: document.getElementById("nij-display").value,
                 url_berkas: cloudData.secure_url,
                 status: "Pending",
@@ -333,18 +393,10 @@
         document.getElementById('kota_lahir').innerHTML = options;
     }
 
-    async function updateNIJPreview() {
-        const lokasi = document.getElementById("lokasi").value;
-        const nijInput = document.getElementById("nij-display");
-        if (!lokasi) { nijInput.value = ""; return; }
-        const snap = await db.collection("users").get();
-        const nomorUrut = String(snap.size + 1).padStart(3, '0');
-        const tahun = new Date().getFullYear();
-        nijInput.value = `NIJ-PPP-${lokasi}-${nomorUrut}-${tahun}`;
-    }
-
     function toggleAgreeButton() { document.getElementById('btn-agree-submit').disabled = !document.getElementById('check-agree').checked; }
     function closeTermsModal() { document.getElementById('terms-modal').style.display = 'none'; }
+    
+    // Inisialisasi
     loadProvinsi();
 
     document.getElementById('eyeIcon').addEventListener('click', function() {
