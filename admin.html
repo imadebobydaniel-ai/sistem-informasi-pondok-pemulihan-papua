@@ -60,6 +60,31 @@
         .badge-pending { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
         .badge-aktif { background: var(--success); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
         .blood-badge { font-size: 10px; background: #eee; color: #333; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-top: 4px; display: inline-block; }
+
+        /* Style untuk Modal Edit */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 2000; 
+            left: 0; top: 0; width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.6); 
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 50px auto;
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 13px;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     </style>
 </head>
 <body>
@@ -111,9 +136,55 @@
                     <th>Aksi</th>
                 </tr>
             </thead>
-            <tbody id="memberData">
-                </tbody>
+            <tbody id="memberData"></tbody>
         </table>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3 style="color:var(--primary); margin-top:0;"><i class="fas fa-edit"></i> Edit Data Jemaat</h3>
+        <hr>
+        <form id="formEdit">
+            <input type="hidden" id="edit-id">
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="edit-nama" required>
+            </div>
+            <div class="grid-2">
+                <div class="form-group"><label>WhatsApp</label><input type="tel" id="edit-whatsapp"></div>
+                <div class="form-group"><label>Email</label><input type="email" id="edit-email"></div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Lokasi Berjemaat</label>
+                    <select id="edit-lokasi">
+                        <option value="ABE">Abepura</option>
+                        <option value="STN">Sentani</option>
+                        <option value="DYO">Doyo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status Akun</label>
+                    <select id="edit-status">
+                        <option value="Aktif">Aktif</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Jabatan</label>
+                <select id="edit-jabatan">
+                    <option value="Anggota Jemaat">Anggota Jemaat</option>
+                    <option value="PKS Komsel">PKS Komsel</option>
+                    <option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="closeEditModal()" class="btn-action" style="background:#6c757d; flex:1;">Batal</button>
+                <button type="submit" class="btn-action" style="background:var(--success); flex:1;">Simpan Perubahan</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -121,7 +192,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -131,31 +201,24 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    // Inisialisasi Firebase
     if (!firebase.apps.length) { 
         firebase.initializeApp(firebaseConfig); 
     }
     const db = firebase.firestore();
 
-    // Jalankan pemanggilan data real-time saat halaman siap
     window.onload = function() {
         loadMembersRealtime();
     };
 
     function loadMembersRealtime() {
-        // Mendengarkan perubahan data secara langsung (Real-time)
         db.collection("users").orderBy("tanggalDaftar", "desc").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
             
             snapshot.forEach(doc => {
                 const d = doc.data();
-                
-                // Menentukan Label Status & Kelas CSS
                 const statusValue = d.status || 'Pending';
                 const statusClass = statusValue.toLowerCase() === 'aktif' ? 'badge-aktif' : 'badge-pending';
-                
-                // Mengatasi field Golongan Darah (darah atau golongan_darah)
                 const golDarah = d.darah || d.golongan_darah || '-';
 
                 tableBody.innerHTML += `
@@ -166,7 +229,7 @@
                     <td class="nij-col">${d.nij || '-'}</td>
                     <td><strong>${d.nama || '-'}</strong></td>
                     <td>
-                        <i class="fab fa-whatsapp text-success"></i> ${d.whatsapp || '-'}<br>
+                        <i class="fab fa-whatsapp" style="color:green;"></i> ${d.whatsapp || '-'}<br>
                         <small class="text-muted">${d.email || '-'}</small>
                     </td>
                     <td>
@@ -211,14 +274,68 @@
         });
     }
 
-    // Fungsi UI: Centang semua checkbox
+    // --- FUNGSI MODAL & EDIT ---
+
+    function bulkEdit() {
+        const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        
+        if (selectedIds.length === 0) return;
+        if (selectedIds.length > 1) {
+            alert("Pilih satu data saja untuk diedit sekaligus.");
+            return;
+        }
+
+        const userId = selectedIds[0];
+        db.collection("users").doc(userId).get().then((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById('edit-id').value = userId;
+                document.getElementById('edit-nama').value = data.nama || '';
+                document.getElementById('edit-whatsapp').value = data.whatsapp || '';
+                document.getElementById('edit-email').value = data.email || '';
+                document.getElementById('edit-lokasi').value = data.lokasi_berjemaat || '';
+                document.getElementById('edit-status').value = data.status || 'Pending';
+                document.getElementById('edit-jabatan').value = data.jabatan_jemaat || '';
+                
+                document.getElementById('editModal').style.display = 'block';
+            }
+        });
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    // Handle Update ke Firebase
+    document.getElementById('formEdit').onsubmit = function(e) {
+        e.preventDefault();
+        const id = document.getElementById('edit-id').value;
+        
+        const updatedData = {
+            nama: document.getElementById('edit-nama').value,
+            whatsapp: document.getElementById('edit-whatsapp').value,
+            email: document.getElementById('edit-email').value,
+            lokasi_berjemaat: document.getElementById('edit-lokasi').value,
+            status: document.getElementById('edit-status').value,
+            jabatan_jemaat: document.getElementById('edit-jabatan').value
+        };
+
+        db.collection("users").doc(id).update(updatedData)
+        .then(() => {
+            alert("Data berhasil diperbarui!");
+            closeEditModal();
+        })
+        .catch(err => alert("Gagal update: " + err));
+    };
+
+    // --- FUNGSI PENDUKUNG LAINNYA ---
+
     function toggleAll(source) {
         const checkboxes = document.querySelectorAll('.user-checkbox');
         checkboxes.forEach(cb => cb.checked = source.checked);
         updateActionMenu();
     }
 
-    // Fungsi UI: Menampilkan menu aksi (Bulk Edit/Delete) jika ada yang dipilih
     function updateActionMenu() {
         const checkboxes = document.querySelectorAll('.user-checkbox');
         const checkedOnes = document.querySelectorAll('.user-checkbox:checked');
@@ -238,18 +355,13 @@
         }
     }
 
-    // Fungsi Hapus Satuan
     function deleteUser(id) {
         if (confirm("Hapus anggota ini secara permanen?")) {
             db.collection("users").doc(id).delete()
-            .then(() => {
-                // Notifikasi bisa ditambahkan di sini, tapi onSnapshot akan otomatis refresh tabel
-            })
             .catch(err => alert("Gagal hapus: " + err));
         }
     }
 
-    // Fungsi Hapus Massal
     function bulkDelete() {
         const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
         if (confirm(`Hapus ${selectedIds.length} data terpilih?`)) {
@@ -264,13 +376,19 @@
         }
     }
 
-    // Fungsi Pencarian/Filter Tabel
     function filterTable() {
         let input = document.getElementById("searchInput").value.toLowerCase();
         let rows = document.querySelectorAll("#memberData tr");
         rows.forEach(row => {
             row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
         });
+    }
+
+    // Klik di luar modal untuk menutup
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('editModal')) {
+            closeEditModal();
+        }
     }
 </script>
 </body>
