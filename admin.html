@@ -56,12 +56,10 @@
         .nij-col { color: var(--accent); font-weight: bold; font-family: monospace; font-size: 12px; }
         .check-col { width: 40px; text-align: center; }
         
-        /* Badge Status Styles */
         .badge-pending { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
         .badge-aktif { background: var(--success); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
         .blood-badge { font-size: 10px; background: #eee; color: #333; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-top: 4px; display: inline-block; }
 
-        /* Style untuk Modal Edit */
         .modal {
             display: none; 
             position: fixed; 
@@ -72,11 +70,11 @@
         }
         .modal-content {
             background-color: white;
-            margin: 50px auto;
+            margin: 30px auto;
             padding: 25px;
             border-radius: 15px;
             width: 90%;
-            max-width: 500px;
+            max-width: 550px;
             box-shadow: 0 5px 30px rgba(0,0,0,0.3);
         }
         .form-group { margin-bottom: 15px; }
@@ -131,7 +129,7 @@
                     <th>Status / Pekerjaan</th>
                     <th>Lokasi / Komsel</th>
                     <th>Jabatan / Pelayanan</th>
-                    <th>Status</th>
+                    <th>Status Akun</th>
                     <th>Berkas</th>
                     <th>Aksi</th>
                 </tr>
@@ -147,39 +145,73 @@
         <hr>
         <form id="formEdit">
             <input type="hidden" id="edit-id">
+            
             <div class="form-group">
                 <label>Nama Lengkap</label>
                 <input type="text" id="edit-nama" required>
             </div>
+
             <div class="grid-2">
                 <div class="form-group"><label>WhatsApp</label><input type="tel" id="edit-whatsapp"></div>
                 <div class="form-group"><label>Email</label><input type="email" id="edit-email"></div>
             </div>
+
             <div class="grid-2">
                 <div class="form-group">
                     <label>Lokasi Berjemaat</label>
-                    <select id="edit-lokasi">
-                        <option value="ABE">Abepura</option>
-                        <option value="STN">Sentani</option>
-                        <option value="DYO">Doyo</option>
+                    <select id="edit-lokasi" onchange="updateEditKomsel()">
+                        <option value="">-- Pilih Lokasi --</option>
+                        <option value="Abepura">Abepura</option>
+                        <option value="Sentani">Sentani</option>
+                        <option value="Doyo">Doyo</option>
+                        <option value="Arso 1">Arso 1</option>
+                        <option value="Arso 2">Arso 2</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Status Akun</label>
-                    <select id="edit-status">
-                        <option value="Aktif">Aktif</option>
-                        <option value="Pending">Pending</option>
+                    <label>Komsel / Jemaat Cell</label>
+                    <select id="edit-komsel">
+                        <option value="">-- Pilih Komsel --</option>
                     </select>
                 </div>
             </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Jabatan Utama</label>
+                    <select id="edit-jabatan" onchange="updateEditSubJabatan()">
+                        <option value="">-- Pilih Jabatan --</option>
+                        <option value="Gembala Sidang">Gembala Sidang</option>
+                        <option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option>
+                        <option value="PKS Komsel">PKS Komsel</option>
+                        <option value="Fulltimer">Fulltimer</option>
+                        <option value="Anggota Jemaat">Anggota Jemaat</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Sub Bidang Jabatan</label>
+                    <select id="edit-sub-jabatan" onchange="updateEditFungsi()">
+                        <option value="">-- Pilih Sub Bidang --</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="form-group">
-                <label>Jabatan</label>
-                <select id="edit-jabatan">
-                    <option value="Anggota Jemaat">Anggota Jemaat</option>
-                    <option value="PKS Komsel">PKS Komsel</option>
-                    <option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option>
+                <label>Fungsi Pelayanan Spesifik</label>
+                <select id="edit-fungsi">
+                    <option value="">-- Pilih Fungsi Pelayanan --</option>
                 </select>
             </div>
+
+            <div class="form-group">
+                <label>Status Akun</label>
+                <select id="edit-status">
+                    <option value="Aktif">Aktif</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Non-Aktif">Non-Aktif</option>
+                </select>
+            </div>
+
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button type="button" onclick="closeEditModal()" class="btn-action" style="background:#6c757d; flex:1;">Batal</button>
                 <button type="submit" class="btn-action" style="background:var(--success); flex:1;">Simpan Perubahan</button>
@@ -192,6 +224,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -201,195 +234,186 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    if (!firebase.apps.length) { 
-        firebase.initializeApp(firebaseConfig); 
-    }
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    window.onload = function() {
-        loadMembersRealtime();
+    // Data Dropdown Berjenjang
+    const dataKomsel = {
+        "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
+        "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
+        "Doyo": ["Komsel Bapak doyo", "Komsel Ibu doyo"],
+        "Arso 1": ["Komsel Keluarga Arso 1"],
+        "Arso 2": ["Komsel Keluarga Arso 2"]
     };
+
+    const dataSubJabatan = {
+        "Gembala Sidang": ["Gembala Sidang Jemaat", "Pdt. Pembantu", "Pdt. Muda"],
+        "Pemimpin / Koordinator": ["Sekretaris Gereja", "Bendahara Gereja", "Komite Gereja", "Koordinator Lansia", "Koordinator Bapak", "Koordinator Ibu", "Koordinator Profesi", "Koordinator Mahasiswa", "Koordinator Pelajar", "Koordinator Sekolah minggu", "Koordinator Praise & Worship", "Koordinator Tamborin, flag", "Koordinator Multimedia", "Koordinator Sound Engineering & Elektrical", "Koordinator Pelayanan Misi", "Koordinator Pendoa", "Koordinator User", "Koordinator parkir dan keamanan", "Koordinator dekorasi dan event"],
+        "PKS Komsel": ["PKS Komsel"],
+        "Fulltimer": ["Fulltimer Gereja"],
+        "Anggota Jemaat": ["Anggota Jemaat Ordinari"]
+    };
+
+    const dataFungsi = {
+        "Koordinator Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
+        "Koordinator Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
+        "Koordinator Sound Engineering & Elektrical": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
+        "Koordinator User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
+        "Koordinator parkir dan keamanan": ["Parkir leader", "Parkir Crew", "Security"],
+        "Koordinator Pelayanan Misi": ["Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
+        "Koordinator Pendoa": ["Team Doa Syafaat"],
+        "Koordinator dekorasi dan event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"],
+        "Fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
+    };
+
+    window.onload = function() { loadMembersRealtime(); };
 
     function loadMembersRealtime() {
         db.collection("users").orderBy("tanggalDaftar", "desc").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
-            
             snapshot.forEach(doc => {
                 const d = doc.data();
                 const statusValue = d.status || 'Pending';
                 const statusClass = statusValue.toLowerCase() === 'aktif' ? 'badge-aktif' : 'badge-pending';
-                const golDarah = d.darah || d.golongan_darah || '-';
-
                 tableBody.innerHTML += `
                 <tr>
-                    <td class="check-col">
-                        <input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()">
-                    </td>
+                    <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${d.nij || '-'}</td>
                     <td><strong>${d.nama || '-'}</strong></td>
-                    <td>
-                        <i class="fab fa-whatsapp" style="color:green;"></i> ${d.whatsapp || '-'}<br>
-                        <small class="text-muted">${d.email || '-'}</small>
-                    </td>
-                    <td>
-                        <small>${d.kota_lahir || '-'}, ${d.tgl_lahir || '-'}</small><br>
-                        <span class="blood-badge">Gol: ${golDarah}</span>
-                    </td>
-                    <td>
-                        <small>KTP: ${d.ktp || '-'}</small><br>
-                        <small>KK: ${d.kk || '-'}</small>
-                    </td>
-                    <td>
-                        ${d.status_pernikahan || '-'}<br>
-                        <small class="text-muted">${d.pekerjaan || '-'}</small>
-                    </td>
-                    <td>
-                        <span style="color:var(--primary); font-weight:bold;">${d.lokasi_berjemaat || '-'}</span><br>
-                        <small>${d.wilayah_komsel || '-'}</small>
-                    </td>
-                    <td>
-                        <strong>${d.jabatan_jemaat || '-'}</strong><br>
-                        <small>${d.sub_jabatan || '-'}</small>
-                    </td>
-                    <td>
-                        <span class="${statusClass}">${statusValue}</span>
-                    </td>
-                    <td>
-                        ${d.url_berkas ? `
-                            <a href="${d.url_berkas}" target="_blank" class="btn-action" style="background:var(--cyan); padding:4px 8px;">
-                                <i class="fas fa-eye"></i> Lihat
-                            </a>` : '-'}
-                    </td>
-                    <td>
-                        <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
+                    <td><i class="fab fa-whatsapp" style="color:green;"></i> ${d.whatsapp || '-'}<br><small>${d.email || '-'}</small></td>
+                    <td><small>${d.kota_lahir || '-'}, ${d.tgl_lahir || '-'}</small><br><span class="blood-badge">Gol: ${d.darah || '-'}</span></td>
+                    <td><small>KTP: ${d.ktp || '-'}</small><br><small>KK: ${d.kk || '-'}</small></td>
+                    <td>${d.status_pernikahan || '-'}<br><small>${d.pekerjaan || '-'}</small></td>
+                    <td><span style="color:var(--primary); font-weight:bold;">${d.lokasi_berjemaat || '-'}</span><br><small>${d.wilayah_komsel || '-'}</small></td>
+                    <td><strong>${d.jabatan_jemaat || '-'}</strong><br><small>${d.sub_jabatan || '-'}</small></td>
+                    <td><span class="${statusClass}">${statusValue}</span></td>
+                    <td>${d.url_berkas ? `<a href="${d.url_berkas}" target="_blank" class="btn-action" style="background:var(--cyan); padding:4px 8px;"><i class="fas fa-eye"></i></a>` : '-'}</td>
+                    <td><button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
             });
             updateActionMenu();
-        }, error => {
-            console.error("Firestore Error:", error);
         });
     }
 
-    // --- FUNGSI MODAL & EDIT ---
+    // UPDATE DROPDOWNS
+    function updateEditKomsel(val) {
+        const lokasi = document.getElementById("edit-lokasi").value;
+        const select = document.getElementById("edit-komsel");
+        select.innerHTML = '<option value="">-- Pilih Komsel --</option>';
+        if (dataKomsel[lokasi]) {
+            dataKomsel[lokasi].forEach(item => {
+                let opt = document.createElement("option"); opt.value = item; opt.text = item;
+                if(item === val) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function updateEditSubJabatan(val) {
+        const jabatan = document.getElementById("edit-jabatan").value;
+        const select = document.getElementById("edit-sub-jabatan");
+        select.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
+        if (dataSubJabatan[jabatan]) {
+            dataSubJabatan[jabatan].forEach(item => {
+                let opt = document.createElement("option"); opt.value = item; opt.text = item;
+                if(item === val) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+    }
+
+    function updateEditFungsi(val) {
+        const sub = document.getElementById("edit-sub-jabatan").value;
+        const select = document.getElementById("edit-fungsi");
+        select.innerHTML = '<option value="">-- Pilih Fungsi Pelayanan --</option>';
+        if (dataFungsi[sub]) {
+            dataFungsi[sub].forEach(item => {
+                let opt = document.createElement("option"); opt.value = item; opt.text = item;
+                if(item === val) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+    }
 
     function bulkEdit() {
-        const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if (selected.length !== 1) return alert("Pilih satu data jemaat.");
         
-        if (selectedIds.length === 0) return;
-        if (selectedIds.length > 1) {
-            alert("Pilih satu data saja untuk diedit sekaligus.");
-            return;
-        }
-
-        const userId = selectedIds[0];
-        db.collection("users").doc(userId).get().then((doc) => {
-            if (doc.exists) {
-                const data = doc.data();
-                document.getElementById('edit-id').value = userId;
-                document.getElementById('edit-nama').value = data.nama || '';
-                document.getElementById('edit-whatsapp').value = data.whatsapp || '';
-                document.getElementById('edit-email').value = data.email || '';
-                document.getElementById('edit-lokasi').value = data.lokasi_berjemaat || '';
-                document.getElementById('edit-status').value = data.status || 'Pending';
-                document.getElementById('edit-jabatan').value = data.jabatan_jemaat || '';
-                
-                document.getElementById('editModal').style.display = 'block';
-            }
+        const userId = selected[0].value;
+        db.collection("users").doc(userId).get().then(doc => {
+            const d = doc.data();
+            document.getElementById('edit-id').value = userId;
+            document.getElementById('edit-nama').value = d.nama || '';
+            document.getElementById('edit-whatsapp').value = d.whatsapp || '';
+            document.getElementById('edit-email').value = d.email || '';
+            document.getElementById('edit-lokasi').value = d.lokasi_berjemaat || '';
+            document.getElementById('edit-status').value = d.status || 'Pending';
+            document.getElementById('edit-jabatan').value = d.jabatan_jemaat || '';
+            
+            // Trigger update dropdowns
+            updateEditKomsel(d.wilayah_komsel);
+            updateEditSubJabatan(d.sub_jabatan);
+            updateEditFungsi(d.fungsi_spesifik);
+            
+            document.getElementById('editModal').style.display = 'block';
         });
     }
 
-    function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
-    }
+    function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
 
-    // Handle Update ke Firebase
     document.getElementById('formEdit').onsubmit = function(e) {
         e.preventDefault();
         const id = document.getElementById('edit-id').value;
-        
-        const updatedData = {
+        const data = {
             nama: document.getElementById('edit-nama').value,
             whatsapp: document.getElementById('edit-whatsapp').value,
             email: document.getElementById('edit-email').value,
             lokasi_berjemaat: document.getElementById('edit-lokasi').value,
-            status: document.getElementById('edit-status').value,
-            jabatan_jemaat: document.getElementById('edit-jabatan').value
+            wilayah_komsel: document.getElementById('edit-komsel').value,
+            jabatan_jemaat: document.getElementById('edit-jabatan').value,
+            sub_jabatan: document.getElementById('edit-sub-jabatan').value,
+            fungsi_spesifik: document.getElementById('edit-fungsi').value,
+            status: document.getElementById('edit-status').value
         };
-
-        db.collection("users").doc(id).update(updatedData)
-        .then(() => {
-            alert("Data berhasil diperbarui!");
+        db.collection("users").doc(id).update(data).then(() => {
+            alert("Berhasil diperbarui!");
             closeEditModal();
-        })
-        .catch(err => alert("Gagal update: " + err));
+        });
     };
 
-    // --- FUNGSI PENDUKUNG LAINNYA ---
-
     function toggleAll(source) {
-        const checkboxes = document.querySelectorAll('.user-checkbox');
-        checkboxes.forEach(cb => cb.checked = source.checked);
+        document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateActionMenu();
     }
 
     function updateActionMenu() {
-        const checkboxes = document.querySelectorAll('.user-checkbox');
-        const checkedOnes = document.querySelectorAll('.user-checkbox:checked');
-        const actionMenu = document.getElementById('actionMenu');
-        const checkAll = document.getElementById('checkAll');
-        const selectedLabel = document.getElementById('selectedCount');
-
-        if (checkboxes.length > 0) {
-            checkAll.checked = (checkedOnes.length === checkboxes.length);
-        }
-
-        if (checkedOnes.length > 0) {
-            actionMenu.style.display = 'flex';
-            selectedLabel.innerText = `${checkedOnes.length} Terpilih`;
-        } else {
-            actionMenu.style.display = 'none';
-        }
+        const count = document.querySelectorAll('.user-checkbox:checked').length;
+        document.getElementById('actionMenu').style.display = count > 0 ? 'flex' : 'none';
+        document.getElementById('selectedCount').innerText = `${count} Terpilih`;
     }
 
     function deleteUser(id) {
-        if (confirm("Hapus anggota ini secara permanen?")) {
-            db.collection("users").doc(id).delete()
-            .catch(err => alert("Gagal hapus: " + err));
-        }
+        if (confirm("Hapus jemaat?")) db.collection("users").doc(id).delete();
     }
 
     function bulkDelete() {
-        const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-        if (confirm(`Hapus ${selectedIds.length} data terpilih?`)) {
+        const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        if (confirm(`Hapus ${ids.length} data?`)) {
             const batch = db.batch();
-            selectedIds.forEach(id => {
-                const ref = db.collection("users").doc(id);
-                batch.delete(ref);
-            });
-            batch.commit().then(() => {
-                alert("Data berhasil dihapus.");
-            }).catch(err => alert("Terjadi kesalahan: " + err));
+            ids.forEach(id => batch.delete(db.collection("users").doc(id)));
+            batch.commit().then(() => alert("Terhapus!"));
         }
     }
 
     function filterTable() {
-        let input = document.getElementById("searchInput").value.toLowerCase();
-        let rows = document.querySelectorAll("#memberData tr");
-        rows.forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+        let val = document.getElementById("searchInput").value.toLowerCase();
+        document.querySelectorAll("#memberData tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
         });
     }
 
-    // Klik di luar modal untuk menutup
-    window.onclick = function(event) {
-        if (event.target == document.getElementById('editModal')) {
-            closeEditModal();
-        }
-    }
+    window.onclick = function(e) { if (e.target == document.getElementById('editModal')) closeEditModal(); }
 </script>
 </body>
 </html>
