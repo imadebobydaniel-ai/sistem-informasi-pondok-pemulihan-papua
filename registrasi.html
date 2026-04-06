@@ -118,17 +118,7 @@
                         <option value="Profesional Muda">Profesional Muda</option>
                         <option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option>
                         <option value="Mahasiswa">Mahasiswa</option>
-                         <option value="Pelajar">Pelajar</option>
-                         <option value="Aktivis">Aktivis</option>
-                         <option value="Pekerja Seni">Pekerja Seni</option>
-                         <option value="Kader Partai">Kader Partai</option>
-                         <option value="Pejabat Publik">Pejabat Publik</option>
-                         <option value="Pejabat executive">Pejabat executive</option>
-                         <option value="Pemerhati Bidang">Pemerhati Bidang</option>
-                         <option value="Diplomat">Diplomat</option>
-                         <option value="Cendikiawan">Cendikiawan</option>
-                         <option value="Petani">Petani</option>
-                         <option value="Freelancer">Freelancer</option>
+                        <option value="Pelajar">Pelajar</option>
                         <option value="Lainnya">Lainnya</option>
                     </select>
                 </div>
@@ -197,7 +187,7 @@
             </div>
         </div>
     </form>
-    <a href="login.html" class="btn-back-login"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login Page</a>
+    <a href="login.html" class="btn-back-login"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login</a>
 </div>
 
 <div id="blocking-message">
@@ -246,8 +236,8 @@
 
     const dataSpesifik = {
         "Gembala Sidang Jemaat": ["Penanggung Jawab Pengembalaan Jemaat"],
-        "Pdt. Pembantu": ["Penanggung Jawab Pengembalaan Jemaat"],
-        "Pdt. Muda": ["Penanggung Jawab Pengembalaan Jemaat"],
+        "Pdt. Pembantu": ["Supporting Pelayanan Pengembalaan Jemaat"],
+        "Pdt. Muda": ["Supporting Pelayanan Pengembalaan Jemaat"],
         "Anggota Jemaat Ordinari": [
             "Praise & Worship (Singers/Musician)", 
             "Multimedia & Creative", 
@@ -268,22 +258,19 @@
         "Fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
     };
 
-    // 3. LOGIKA FORM
+    // 3. LOGIKA FORM & FUNGSI
     function nextStep(n) {
         const steps = document.querySelectorAll('.form-step');
         steps.forEach(step => {
             step.classList.remove('active');
             step.style.display = 'none';
         });
-
         const targetStep = document.getElementById('step-' + n);
         if (targetStep) {
             targetStep.classList.add('active');
             targetStep.style.display = 'block';
         }
-
         if (n === 2) updateNIJPreview();
-
         document.querySelectorAll('.step').forEach((bar, index) => {
             if (index < n) bar.classList.add('active');
             else bar.classList.remove('active');
@@ -295,11 +282,9 @@
         const jab = document.getElementById("jabatan_jemaat").value;
         const sub = document.getElementById("sub_jabatan");
         sub.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
-        
         if (dataSubJabatan[jab]) {
             dataSubJabatan[jab].forEach(i => sub.add(new Option(i, i)));
         }
-        
         updateSpesifikPelayanan(); 
     }
 
@@ -307,8 +292,14 @@
         const sub = document.getElementById("sub_jabatan").value;
         const pel = document.getElementById("pelayanan");
         pel.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
+        
         if (dataSpesifik[sub]) {
             dataSpesifik[sub].forEach(i => pel.add(new Option(i, i)));
+            
+            // Otomatis pilih jika hanya ada 1 opsi
+            if (dataSpesifik[sub].length === 1) {
+                pel.selectedIndex = 1;
+            }
         }
     }
 
@@ -399,6 +390,7 @@
     function toggleAgreeButton() { document.getElementById('btn-agree-submit').disabled = !document.getElementById('check-agree').checked; }
     function closeTermsModal() { document.getElementById('terms-modal').style.display = 'none'; }
 
+    // Init
     loadProvinsi();
     document.getElementById('eyeIcon').addEventListener('click', function() {
         const p = document.getElementById('pass');
