@@ -86,7 +86,7 @@
 <div class="login-card">
     <img src="logo_pondok.png" alt="Logo" class="logo">
 
-     <h2>Sistem Informasi & Integrasi Jemaat</h2>
+    <h2>Sistem Informasi & Integrasi Jemaat</h2>
     <h2>PONDOK PEMULIHAN PAPUA</h2>
     <p style="color: #666; margin-top: 10px; margin-bottom: 25px; font-size: 14px;">Login Anggota Jemaat / Administrator</p>
 
@@ -190,31 +190,32 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
-            // 2. Cek Verifikasi Email
+            // --- BAGIAN PEMBATASAN LOGIN (EMAIL VERIFICATION) ---
             if (!user.emailVerified) {
+                // Paksa logout karena belum verifikasi
                 await auth.signOut();
-                throw new Error("Akun Anda belum aktif. Harap verifikasi melalui link yang dikirim ke email Anda.");
+                throw new Error("Akses Ditolak! Email Anda belum diverifikasi. Silakan klik link verifikasi yang dikirim ke email Anda.");
             }
+            // ----------------------------------------------------
 
-            // 3. Jika Lolos Verifikasi, tentukan arah redirect berdasarkan Koleksi Database
-            let targetURL = "menu.html"; // Default untuk user biasa
+            // 2. Jika Lolos Verifikasi, tentukan arah redirect
+            let targetURL = "menu.html"; 
 
-            // Cek apakah dia Admin di Firestore
+            // Cek apakah Admin (Firestore atau hardcoded)
             const adminSnapshot = await db.collection("admin_users").where("email", "==", email.toLowerCase()).get();
             
             if (!adminSnapshot.empty || (email.toLowerCase() === "admin@gmail.com" && password === "bukadong821")) {
                 targetURL = "admin.html";
             } else {
-                // Ambil data user dari koleksi 'users' untuk disimpan di LocalStorage
                 const userSnapshot = await db.collection("users").where("email", "==", email.toLowerCase()).get();
                 if (!userSnapshot.empty) {
                     const userData = userSnapshot.docs[0].data();
                     localStorage.setItem("userEmail", email);
-                    localStorage.setItem("userName", userData.nama || "Anggota");
+                    localStorage.setItem("userName", userData.Nama || "Anggota");
                 }
             }
 
-            // Sukses!
+            // Berhasil login
             triggerGlow(); 
             setTimeout(() => { window.location.replace(targetURL); }, 1000);
 
