@@ -3,231 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Data Jemaat - Admin Panel</title>
+    <title>Edit Data Jemaat - Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #007bff;
-            --secondary-color: #6c757d;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --dark-bg: #1a1d21;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .admin-edit-container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border-top: 5px solid var(--primary-color);
-        }
-
-        .admin-header {
-            background: var(--dark-bg);
-            color: white;
-            padding: 20px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .admin-header h2 { margin: 0; font-size: 20px; letter-spacing: 1px; }
-        .admin-header span { font-size: 12px; opacity: 0.8; }
-
-        .form-section {
-            padding: 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .section-title {
-            grid-column: 1 / -1;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
-            margin-top: 20px;
-            color: var(--primary-color);
-            font-size: 16px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
+        :root { --primary: #003366; --accent: #007bff; --light: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 20px; }
+        .edit-container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .form-group { margin-bottom: 15px; }
-        .form-group.full { grid-column: 1 / -1; }
-
-        label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #f9f9f9;
-            transition: all 0.3s;
-            box-sizing: border-box;
-        }
-
-        input:focus, select:focus {
-            border-color: var(--primary-color);
-            background: white;
-            box-shadow: 0 0 8px rgba(0,123,255,0.1);
-            outline: none;
-        }
-
-        input[readonly] {
-            background: #e9ecef;
-            cursor: not-allowed;
-            font-weight: bold;
-            color: #495057;
-        }
-
-        .action-bar {
-            background: #f8f9fa;
-            padding: 20px 30px;
-            text-align: right;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            transition: 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-
-        .btn-save { background: var(--success-color); color: white; }
-        .btn-save:hover { background: #218838; transform: translateY(-2px); }
-        .btn-cancel { background: var(--secondary-color); color: white; }
-
-        /* Loading Overlay */
-        #loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 9999;
-        }
-
-        @media (max-width: 600px) {
-            .form-section { grid-template-columns: 1fr; }
-        }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
+        .btn-back { display: inline-block; margin-bottom: 20px; color: var(--primary); text-decoration: none; font-weight: bold; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     </style>
 </head>
 <body>
 
-<div id="loader"><p><i class="fas fa-spinner fa-spin"></i> Memuat Data Jemaat...</p></div>
+<div id="loading" class="loading-overlay"><p><i class="fas fa-spinner fa-spin"></i> Memuat Data...</p></div>
 
-<div class="admin-edit-container">
-    <div class="admin-header">
-        <div>
-            <h2><i class="fas fa-user-edit"></i> EDIT PROFIL JEMAAT</h2>
-            <span>Pondok Pemulihan Papua Administrator</span>
-        </div>
-        <img src="logo_pondok.png" alt="Logo" style="height: 40px;">
-    </div>
-
+<div class="edit-container">
+    <a href="admin.html" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+    <h2 style="color: var(--primary); border-bottom: 2px solid #D4AF37; padding-bottom: 10px;">Edit Profil Jemaat</h2>
+    
     <form id="editForm">
-        <div class="form-section">
-            <div class="section-title"><i class="fas fa-id-card"></i> Identitas Sistem</div>
-            <div class="form-group">
-                <label>Nomor Induk Jemaat (NIJ)</label>
-                <input type="text" id="nij" readonly>
-            </div>
-            <div class="form-group">
-                <label>Status Akun</label>
-                <select id="status_akun">
-                    <option value="Aktif">Aktif</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Non-Aktif">Non-Aktif</option>
-                </select>
-            </div>
-
-            <div class="section-title"><i class="fas fa-user"></i> Data Pribadi</div>
-            <div class="form-group full">
-                <label>Nama Lengkap</label>
-                <input type="text" id="nama_lengkap">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="email">
-            </div>
-            <div class="form-group">
-                <label>WhatsApp</label>
-                <input type="tel" id="whatsapp">
-            </div>
-            <div class="form-group">
-                <label>Pekerjaan</label>
-                <input type="text" id="pekerjaan">
-            </div>
-            <div class="form-group">
-                <label>Golongan Darah</label>
-                <select id="golongan_darah">
-                    <option value="-">-</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="AB">AB</option>
-                     <option value="AB+">AB+</option>
-                    <option value="O">O</option>
-                </select>
-            </div>
-
-            <div class="section-title"><i class="fas fa-church"></i> Penempatan & Pelayanan</div>
-            <div class="form-group">
-                <label>Lokasi Berjemaat</label>
-                <select id="lokasi_berjemaat">
-                    <option value="ABE">Abepura</option>
-                    <option value="STN">Sentani</option>
-                    <option value="DYO">Doyo</option>
-                    <option value="ARS1">Arso1</option>
-                    <option value="ARS2>Arso2</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Komsel</label>
-                <input type="text" id="komsel">
-            </div>
-            <div class="form-group">
-                <label>Jabatan Utama</label>
-                <input type="text" id="jabatan">
-            </div>
-            <div class="form-group">
-                <label>Sub Bidang</label>
-                <input type="text" id="sub_bidang">
-            </div>
+        <div class="form-group">
+            <label>Nama Lengkap</label>
+            <input type="text" id="nama_lengkap" required>
+        </div>
+        <div class="form-group">
+            <label>NIJ (Nomor Induk Jemaat)</label>
+            <input type="text" id="nij" readonly style="background: #eee;">
+        </div>
+        <div class="form-group">
+            <label>WhatsApp</label>
+            <input type="text" id="whatsapp">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="email">
+        </div>
+        <div class="form-group">
+            <label>Alamat</label>
+            <textarea id="alamat" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Status Akun</label>
+            <select id="status_akun">
+                <option value="Pending">Pending</option>
+                <option value="Aktif">Aktif</option>
+            </select>
         </div>
 
-        <div class="action-bar">
-            <a href="admin.html" class="btn btn-cancel">Batal</a>
-            <button type="submit" class="btn btn-save">
-                <i class="fas fa-save"></i> SIMPAN PERUBAHAN
-            </button>
-        </div>
+        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Simpan Perubahan</button>
     </form>
 </div>
 
@@ -235,7 +62,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase (Gunakan config Anda)
+    // Konfigurasi Firebase (Sama dengan admin.html)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -244,79 +71,68 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 1. Ambil ID dari URL (?id=...)
+    // AMBIL ID DARI URL (Mendukung parameter 'edit' dari admin.html)
     const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('id');
+    const userId = urlParams.get('edit'); 
 
     if (!userId) {
         alert("ID Jemaat tidak ditemukan!");
         window.location.href = 'admin.html';
     }
 
-    // 2. Load Data dari Firestore
-    async function loadUserData() {
+    // LOAD DATA SAAT HALAMAN DIBUKA
+    window.onload = async function() {
         try {
-            const doc = await db.collection("users").doc(userId).get();
+            const doc = await db.collection("jemaat").doc(userId).get();
             if (doc.exists) {
                 const data = doc.data();
-                // Isi Form secara otomatis
+                document.getElementById('nama_lengkap').value = data.nama_lengkap || '';
                 document.getElementById('nij').value = data.nij || '';
-                document.getElementById('nama_lengkap').value = data.nama || '';
-                document.getElementById('email').value = data.email || '';
                 document.getElementById('whatsapp').value = data.whatsapp || '';
-                document.getElementById('pekerjaan').value = data.pekerjaan || '';
-                document.getElementById('lokasi_berjemaat').value = data.lokasi_berjemaat || '';
-                document.getElementById('komsel').value = data.komsel || '';
-                document.getElementById('jabatan').value = data.jabatan || '';
-                document.getElementById('sub_bidang').value = data.sub_jabatan || '';
-                document.getElementById('status_akun').value = data.status || 'Pending';
-                document.getElementById('golongan_darah').value = data.golongan_darah || '-';
+                document.getElementById('email').value = data.email || '';
+                document.getElementById('alamat').value = data.alamat || '';
+                document.getElementById('status_akun').value = data.status_akun || 'Pending';
+                
+                document.getElementById('loading').style.display = 'none';
             } else {
-                alert("Data tidak ditemukan di database!");
+                alert("Data jemaat tidak ada di database!");
+                window.location.href = 'admin.html';
             }
         } catch (error) {
-            console.error("Error fetching data:", error);
-        } finally {
-            document.getElementById('loader').style.display = 'none';
+            console.error("Error loading data:", error);
+            alert("Gagal mengambil data.");
         }
-    }
+    };
 
-    // 3. Simpan Perubahan
-    document.getElementById('editForm').addEventListener('submit', async (e) => {
+    // SIMPAN PERUBAHAN KE FIREBASE
+    document.getElementById('editForm').onsubmit = async (e) => {
         e.preventDefault();
-        const btnSave = e.target.querySelector('.btn-save');
-        btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-        btnSave.disabled = true;
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
         try {
-            await db.collection("users").doc(userId).update({
-                nama: document.getElementById('nama_lengkap').value,
-                email: document.getElementById('email').value,
+            await db.collection("jemaat").doc(userId).update({
+                nama_lengkap: document.getElementById('nama_lengkap').value,
                 whatsapp: document.getElementById('whatsapp').value,
-                pekerjaan: document.getElementById('pekerjaan').value,
-                lokasi_berjemaat: document.getElementById('lokasi_berjemaat').value,
-                komsel: document.getElementById('komsel').value,
-                jabatan: document.getElementById('jabatan').value,
-                sub_jabatan: document.getElementById('sub_bidang').value,
-                status: document.getElementById('status_akun').value,
-                golongan_darah: document.getElementById('golongan_darah').value,
-                last_updated: new Date().toLocaleString('id-ID')
+                email: document.getElementById('email').value,
+                alamat: document.getElementById('alamat').value,
+                status_akun: document.getElementById('status_akun').value,
+                last_update_admin: new Date().toISOString()
             });
-            alert("Data Berhasil Diperbarui!");
+
+            alert("Data berhasil diperbarui!");
             window.location.href = 'admin.html';
         } catch (error) {
-            alert("Gagal update: " + error.message);
-            btnSave.disabled = false;
-            btnSave.innerHTML = '<i class="fas fa-save"></i> SIMPAN PERUBAHAN';
+            alert("Gagal menyimpan: " + error.message);
+            btn.disabled = false;
+            btn.innerHTML = 'Simpan Perubahan';
         }
-    });
-
-    // Jalankan load data
-    loadUserData();
+    };
 </script>
-
 </body>
 </html>
