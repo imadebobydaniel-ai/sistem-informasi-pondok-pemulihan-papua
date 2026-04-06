@@ -63,31 +63,6 @@
 
         .file-link { color: var(--accent); text-decoration: none; font-weight: bold; display: block; margin-bottom: 5px; }
         .file-link:hover { text-decoration: underline; }
-
-        /* MODAL EDIT STYLES */
-        #editModal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; 
-            overflow-y: auto; padding: 20px;
-        }
-        .reg-container { 
-            background: white; width: 100%; max-width: 500px; margin: auto; 
-            position: relative; padding: 25px; border-radius: 15px; 
-        }
-        .step-indicator { display: flex; gap: 5px; margin-bottom: 20px; }
-        .step { height: 4px; flex: 1; background: #eee; border-radius: 2px; }
-        .step.active { background: var(--primary); }
-        .form-step { display: none; }
-        .form-step.active { display: block; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #555; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
-        .btn-next, .btn-prev { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .btn-next { background: var(--primary); color: white; }
-        .btn-prev { background: #ccc; }
-        .dynamic-field { display: none; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -143,127 +118,10 @@
     </div>
 </div>
 
-<div id="editModal">
-    <div class="reg-container">
-        <button onclick="closeEditModal()" style="position:absolute; right:15px; top:15px; border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
-        
-        <div class="header-text" style="text-align: center; margin-bottom: 20px;">
-            <h2 style="color: var(--primary); margin:0;"><i class="fa-solid fa-user-pen"></i> Edit Data Jemaat</h2>
-            <p id="edit-nij-title" style="font-weight:bold; color:var(--orange); margin:5px 0;"></p>
-        </div>
-
-        <form id="formEditJemaat">
-            <input type="hidden" id="edit-uid">
-            
-            <div class="step-indicator">
-                <div class="step active" id="estep-1-bar"></div>
-                <div class="step" id="estep-2-bar"></div>
-                <div class="step" id="estep-3-bar"></div>
-            </div>
-
-            <div class="form-step active" id="estep-1">
-                <div class="form-group"><label>Nama Lengkap*</label><input type="text" id="edit-nama"></div>
-                <div class="grid-2">
-                    <div class="form-group"><label>Email*</label><input type="email" id="edit-email"></div>
-                    <div class="form-group"><label>WhatsApp*</label><input type="tel" id="edit-hp"></div>
-                </div>
-                <div class="form-group">
-                    <label>Status Pernikahan*</label>
-                    <select id="edit-status_pernikahan" onchange="handleEditStatusNikah()">
-                        <option value="Menikah">Menikah</option>
-                        <option value="Single">Single</option>
-                        <option value="Duda">Duda</option>
-                        <option value="Janda">Janda</option>
-                    </select>
-                </div>
-
-                <div id="eform_menikah" class="dynamic-field">
-                    <div class="grid-2">
-                        <div class="form-group"><label>Jumlah Anak</label><input type="number" id="edit-jumlah_anak"></div>
-                        <div class="form-group"><label>Nama Pasangan</label><input type="text" id="edit-nama_pasangan"></div>
-                    </div>
-                </div>
-
-                <div id="eform_single" class="dynamic-field">
-                    <div class="grid-2">
-                        <div class="form-group"><label>Nama Ayah</label><input type="text" id="edit-nama_ayah"></div>
-                        <div class="form-group"><label>Nama Ibu</label><input type="text" id="edit-nama_ibu"></div>
-                    </div>
-                </div>
-
-                <div class="btn-group">
-                    <button type="button" class="btn-next" onclick="nextEditStep(2)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-            </div>
-
-            <div class="form-step" id="estep-2">
-                <div class="form-group">
-                    <label>Lokasi Berjemaat*</label>
-                    <select id="edit-lokasi" onchange="updateEditKomsel()">
-                        <option value="">-- Pilih Lokasi --</option>
-                        <option value="Abepura">Abepura</option>
-                        <option value="Sentani">Sentani</option>
-                        <option value="Doyo">Doyo</option>
-                        <option value="Arso 1">Arso 1</option>
-                        <option value="Arso 2">Arso 2</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Komsel*</label>
-                    <select id="edit-komsel"></select>
-                </div>
-                <div class="form-group">
-                    <label>Jabatan Utama*</label>
-                    <select id="edit-jabatan" onchange="updateEditSubJabatan()">
-                        <option value="">-- Pilih Jabatan --</option>
-                        <option value="Kependetaan">Kependetaan</option>
-                        <option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option>
-                        <option value="PKS Komsel">PKS Komsel</option>
-                        <option value="Fulltimer">Fulltimer</option>
-                        <option value="Anggota Jemaat">Anggota Jemaat</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Sub Bidang*</label>
-                    <select id="edit-sub_jabatan" onchange="updateEditSpesifik()"></select>
-                </div>
-                <div class="btn-group">
-                    <button type="button" class="btn-prev" onclick="nextEditStep(1)">Kembali</button>
-                    <button type="button" class="btn-next" onclick="nextEditStep(3)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
-                </div>
-            </div>
-
-            <div class="form-step" id="estep-3">
-                <div class="form-group">
-                    <label>Fungsi Pelayanan</label>
-                    <select id="edit-pelayanan" onchange="updateEditNonStruktural()"></select>
-                </div>
-                <div class="form-group">
-                    <label>Detail Non-Struktural</label>
-                    <select id="edit-pelayanan_non"></select>
-                </div>
-                <div class="form-group">
-                    <label>Status Akun*</label>
-                    <select id="edit-status_akun" style="background: #fff3cd; border: 1px solid #ffc107;">
-                        <option value="Pending">Pending (Verifikasi)</option>
-                        <option value="Aktif">Aktif</option>
-                        <option value="Non-Aktif">Non-Aktif</option>
-                    </select>
-                </div>
-                <div class="btn-group">
-                    <button type="button" class="btn-prev" onclick="nextEditStep(2)">Kembali</button>
-                    <button type="button" id="btnSaveEdit" class="btn-next" style="background:var(--success);" onclick="saveEditJemaat()">SIMPAN PERUBAHAN</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -276,36 +134,8 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Data Master Dropdown
-    const dataKomsel = {
-        "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
-        "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
-        "Doyo": ["Doyo Baru 1", "Doyo Baru 2"],
-        "Arso 1": ["Komsel Arso 1"],
-        "Arso 2": ["Komsel Arso 2"]
-    };
-
-    const dataSubJabatan = {
-        "Pemimpin / Koordinator": ["Koordinator Multimedia", "Koordinator Musik", "Koordinator Usher", "Koordinator Doa", "Koordinator Profesi"],
-        "Anggota Jemaat": ["Anggota Jemaat Ordinari", "Jemaat Baru"],
-        "Fulltimer": ["Staf Kantor", "Operasional Gereja"],
-        "PKS Komsel": ["PKS Senior", "PKS Pratama"]
-    };
-
-    const dataSpesifik = {
-        "Koordinator Multimedia": ["Video Director", "Operator LCD", "Kameramen"],
-        "Koordinator Profesi": ["Kesehatan", "Pendidikan", "Wirausaha"],
-        "Anggota Jemaat Ordinari": ["-"]
-    };
-
-    const dataNonStruktural = {
-        "Video Director": ["Team Leader", "Anggota"],
-        "-": ["-"]
-    };
-
     window.onload = function() { loadMembersRealtime(); };
 
-    // Memuat Data secara Real-time dari Firestore
     function loadMembersRealtime() {
         db.collection("users").orderBy("tanggalDaftar", "desc").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -365,124 +195,17 @@
         });
     }
 
-    // Modal Edit & Step Control
-    function nextEditStep(n) {
-        document.querySelectorAll('#editModal .form-step').forEach(s => s.classList.remove('active'));
-        document.getElementById('estep-' + n).classList.add('active');
-        document.querySelectorAll('#editModal .step').forEach((bar, i) => {
-            if (i < n) bar.classList.add('active');
-            else bar.classList.remove('active');
-        });
+    // FUNGSI UTAMA: REDIRECT KE REGISTER DENGAN PARAMETER UID
+    function openEditModal(uid) {
+        window.location.href = `register.html?edit=${uid}`;
     }
 
-    function handleEditStatusNikah() {
-        const status = document.getElementById("edit-status_pernikahan").value;
-        document.getElementById("eform_menikah").style.display = (status === "Menikah") ? "block" : "none";
-        document.getElementById("eform_single").style.display = (status !== "Menikah") ? "block" : "none";
+    function openEditFromSelection() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if (selected.length !== 1) return alert("Pilih satu data untuk diedit.");
+        openEditModal(selected[0].value);
     }
 
-    async function openEditModal(uid) {
-        const doc = await db.collection("users").doc(uid).get();
-        if (!doc.exists) return;
-        const data = doc.data();
-
-        document.getElementById("edit-uid").value = uid;
-        document.getElementById("edit-nij-title").innerText = "NIJ: " + (data.nij || 'Belum Ada');
-        document.getElementById("edit-nama").value = data.nama || "";
-        document.getElementById("edit-email").value = data.email || "";
-        document.getElementById("edit-hp").value = data.whatsapp || "";
-        document.getElementById("edit-status_pernikahan").value = data.status_pernikahan || "Single";
-        handleEditStatusNikah();
-
-        document.getElementById("edit-jumlah_anak").value = data.jumlah_anak || 0;
-        document.getElementById("edit-nama_pasangan").value = data.nama_pasangan || "";
-        document.getElementById("edit-nama_ayah").value = data.nama_ayah || "";
-        document.getElementById("edit-nama_ibu").value = data.nama_ibu || "";
-
-        document.getElementById("edit-lokasi").value = data.lokasi_berjemaat || "";
-        updateEditKomsel();
-        document.getElementById("edit-komsel").value = data.wilayah_komsel || "";
-        
-        document.getElementById("edit-jabatan").value = data.jabatan_jemaat || "";
-        updateEditSubJabatan();
-        document.getElementById("edit-sub_jabatan").value = data.sub_bidang || "";
-
-        updateEditSpesifik();
-        document.getElementById("edit-pelayanan").value = data.fungsi_pelayanan || "";
-        updateEditNonStruktural();
-        document.getElementById("edit-pelayanan_non").value = data.fungsi_non_struktural || "";
-        document.getElementById("edit-status_akun").value = data.status || "Pending";
-
-        document.getElementById("editModal").style.display = "flex";
-        nextEditStep(1);
-    }
-
-    async function saveEditJemaat() {
-        const uid = document.getElementById("edit-uid").value;
-        const btn = document.getElementById("btnSaveEdit");
-        if(!uid) return alert("ID Jemaat tidak ditemukan.");
-
-        btn.innerText = "Menyimpan...";
-        btn.disabled = true;
-
-        const updatedData = {
-            nama: document.getElementById("edit-nama").value,
-            email: document.getElementById("edit-email").value,
-            whatsapp: document.getElementById("edit-hp").value,
-            status_pernikahan: document.getElementById("edit-status_pernikahan").value,
-            jumlah_anak: document.getElementById("edit-jumlah_anak").value,
-            nama_pasangan: document.getElementById("edit-nama_pasangan").value,
-            nama_ayah: document.getElementById("edit-nama_ayah").value,
-            nama_ibu: document.getElementById("edit-nama_ibu").value,
-            lokasi_berjemaat: document.getElementById("edit-lokasi").value,
-            wilayah_komsel: document.getElementById("edit-komsel").value,
-            jabatan_jemaat: document.getElementById("edit-jabatan").value,
-            sub_bidang: document.getElementById("edit-sub_jabatan").value,
-            fungsi_pelayanan: document.getElementById("edit-pelayanan").value,
-            fungsi_non_struktural: document.getElementById("edit-pelayanan_non").value,
-            status: document.getElementById("edit-status_akun").value,
-            last_updated: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        try {
-            await db.collection("users").doc(uid).update(updatedData);
-            alert("Data jemaat berhasil diperbarui!");
-            closeEditModal();
-        } catch (e) { 
-            console.error(e);
-            alert("Gagal: " + e.message); 
-        } finally { 
-            btn.disabled = false; btn.innerText = "SIMPAN PERUBAHAN"; 
-        }
-    }
-
-    // Helper Dropdown Otomatis
-    function updateEditKomsel() {
-        const lok = document.getElementById("edit-lokasi").value;
-        const sel = document.getElementById("edit-komsel");
-        sel.innerHTML = '<option value="">-- Pilih Komsel --</option>';
-        if(dataKomsel[lok]) dataKomsel[lok].forEach(i => sel.add(new Option(i, i)));
-    }
-    function updateEditSubJabatan() {
-        const jab = document.getElementById("edit-jabatan").value;
-        const sub = document.getElementById("edit-sub_jabatan");
-        sub.innerHTML = '<option value="">-- Pilih Sub --</option>';
-        if(dataSubJabatan[jab]) dataSubJabatan[jab].forEach(i => sub.add(new Option(i, i)));
-    }
-    function updateEditSpesifik() {
-        const sub = document.getElementById("edit-sub_jabatan").value;
-        const pel = document.getElementById("edit-pelayanan");
-        pel.innerHTML = '<option value="">-- Pilih Fungsi --</option>';
-        if(dataSpesifik[sub]) dataSpesifik[sub].forEach(i => pel.add(new Option(i, i)));
-    }
-    function updateEditNonStruktural() {
-        const pelVal = document.getElementById("edit-pelayanan").value;
-        const nonPel = document.getElementById("edit-pelayanan_non");
-        nonPel.innerHTML = '<option value="">-- Pilih Detail --</option>';
-        if(dataNonStruktural[pelVal]) dataNonStruktural[pelVal].forEach(i => nonPel.add(new Option(i, i)));
-    }
-
-    // Fungsi Aksi Tabel
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status: next });
@@ -494,6 +217,13 @@
         }
     }
 
+    function bulkDelete() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if(confirm(`Hapus ${selected.length} data terpilih?`)) {
+            selected.forEach(cb => db.collection("users").doc(cb.value).delete());
+        }
+    }
+
     function filterTable() {
         let val = document.getElementById("searchInput").value.toLowerCase();
         document.querySelectorAll("#memberData tr").forEach(row => {
@@ -501,11 +231,6 @@
         });
     }
 
-    function closeEditModal() { 
-        document.getElementById("editModal").style.display = "none"; 
-        document.getElementById("formEditJemaat").reset();
-    }
-    
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateActionMenu();
@@ -515,19 +240,6 @@
         const count = document.querySelectorAll('.user-checkbox:checked').length;
         document.getElementById('actionMenu').style.display = count > 0 ? 'flex' : 'none';
         document.getElementById('selectedCount').innerText = `${count} Terpilih`;
-    }
-
-    function openEditFromSelection() {
-        const selected = document.querySelectorAll('.user-checkbox:checked');
-        if (selected.length !== 1) return alert("Pilih satu data untuk diedit.");
-        openEditModal(selected[0].value);
-    }
-
-    function bulkDelete() {
-        const selected = document.querySelectorAll('.user-checkbox:checked');
-        if(confirm(`Hapus ${selected.length} data terpilih?`)) {
-            selected.forEach(cb => db.collection("users").doc(cb.value).delete());
-        }
     }
 </script>
 </body>
