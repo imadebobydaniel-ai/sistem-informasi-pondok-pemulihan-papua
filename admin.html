@@ -263,6 +263,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -275,6 +276,7 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
+    // Data Master Dropdown
     const dataKomsel = {
         "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -303,8 +305,8 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
+    // Memuat Data secara Real-time dari Firestore
     function loadMembersRealtime() {
-        // Menggunakan koleksi 'users' sesuai struktur database Anda
         db.collection("users").orderBy("tanggalDaftar", "desc").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
@@ -363,7 +365,7 @@
         });
     }
 
-    // MODAL EDIT LOGIC
+    // Modal Edit & Step Control
     function nextEditStep(n) {
         document.querySelectorAll('#editModal .form-step').forEach(s => s.classList.remove('active'));
         document.getElementById('estep-' + n).classList.add('active');
@@ -384,7 +386,6 @@
         if (!doc.exists) return;
         const data = doc.data();
 
-        // Mengisi data ke dalam form modal
         document.getElementById("edit-uid").value = uid;
         document.getElementById("edit-nij-title").innerText = "NIJ: " + (data.nij || 'Belum Ada');
         document.getElementById("edit-nama").value = data.nama || "";
@@ -419,13 +420,11 @@
     async function saveEditJemaat() {
         const uid = document.getElementById("edit-uid").value;
         const btn = document.getElementById("btnSaveEdit");
-        
         if(!uid) return alert("ID Jemaat tidak ditemukan.");
 
         btn.innerText = "Menyimpan...";
         btn.disabled = true;
 
-        // Menyusun objek data dari input form
         const updatedData = {
             nama: document.getElementById("edit-nama").value,
             email: document.getElementById("edit-email").value,
@@ -446,20 +445,18 @@
         };
 
         try {
-            // Melakukan update ke dokumen spesifik di Firestore
             await db.collection("users").doc(uid).update(updatedData);
             alert("Data jemaat berhasil diperbarui!");
             closeEditModal();
         } catch (e) { 
-            console.error("Update Error:", e);
-            alert("Gagal memperbarui data: " + e.message); 
+            console.error(e);
+            alert("Gagal: " + e.message); 
         } finally { 
-            btn.disabled = false; 
-            btn.innerText = "SIMPAN PERUBAHAN"; 
+            btn.disabled = false; btn.innerText = "SIMPAN PERUBAHAN"; 
         }
     }
 
-    // Fungsi helper untuk dropdown dinamis
+    // Helper Dropdown Otomatis
     function updateEditKomsel() {
         const lok = document.getElementById("edit-lokasi").value;
         const sel = document.getElementById("edit-komsel");
@@ -485,13 +482,14 @@
         if(dataNonStruktural[pelVal]) dataNonStruktural[pelVal].forEach(i => nonPel.add(new Option(i, i)));
     }
 
+    // Fungsi Aksi Tabel
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status: next });
     }
 
     function deleteUser(id) { 
-        if(confirm("Apakah Anda yakin ingin menghapus data jemaat ini secara permanen?")) {
+        if(confirm("Hapus data jemaat ini secara permanen?")) {
             db.collection("users").doc(id).delete(); 
         }
     }
@@ -521,8 +519,15 @@
 
     function openEditFromSelection() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
-        if (selected.length !== 1) return alert("Silakan pilih satu data jemaat untuk diedit.");
+        if (selected.length !== 1) return alert("Pilih satu data untuk diedit.");
         openEditModal(selected[0].value);
+    }
+
+    function bulkDelete() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if(confirm(`Hapus ${selected.length} data terpilih?`)) {
+            selected.forEach(cb => db.collection("users").doc(cb.value).delete());
+        }
     }
 </script>
 </body>
