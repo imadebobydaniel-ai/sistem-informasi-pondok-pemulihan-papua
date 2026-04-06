@@ -38,7 +38,6 @@
         .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .dynamic-field { display: none; }
 
-        /* CSS KHUSUS UNTUK DISPLAY NOTIFIKASI */
         #notification-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 20000; width: 90%; max-width: 400px; }
         .alert-box { padding: 15px 20px; border-radius: 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; color: white; font-size: 14px; font-weight: 500; box-shadow: 0 5px 15px rgba(0,0,0,0.2); animation: slideDown 0.4s ease; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -217,7 +216,7 @@
         <div class="form-step" id="step-3">
             <h3 style="font-size: 15px; color: #28a745;"><i class="fa-solid fa-file-shield"></i> Validasi Dokumen</h3>
             <div class="form-group">
-                <label>Unggah Berkas (KK/KTP)*</label>
+                <label>Unggah Berkas (KK/KTP/Akta Nikah/Surat Baptis)*</label>
                 <input type="file" id="berkas_jemaat" accept=".pdf, .jpg, .jpeg">
             </div>
             <div class="btn-group">
@@ -243,7 +242,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
-    // 1. FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -256,26 +254,21 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // FUNGSI NOTIFIKASI CUSTOM (Block Display)
     function showAlert(message, type = 'info') {
         const container = document.getElementById('notification-container');
         const alertBox = document.createElement('div');
         alertBox.className = `alert-box alert-${type}`;
-        
         let icon = 'fa-circle-info';
         if(type === 'success') icon = 'fa-circle-check';
         if(type === 'error') icon = 'fa-circle-exclamation';
-
         alertBox.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
         container.appendChild(alertBox);
-
         setTimeout(() => {
             alertBox.style.opacity = '0';
             setTimeout(() => alertBox.remove(), 500);
         }, 4000);
     }
 
-    // DATA DINAMIS (Tetap Sama)
     const dataKomsel = {
         "ABE": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "STN": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -309,17 +302,17 @@
     };
 
     const dataNonStruktural = {
-        "Pelayanan Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
-        "Pelayanan Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
-        "Pelayanan Sound & electrical engineering": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
+        "Pelayanan Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
+        "Pelayanan Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worship / Presenter Operator"],
+        "Pelayanan Sound & electrical engineering": ["Sound engineering", "Crew equipment", "Electrical & Peripheral"],
         "Pelayanan User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
         "Pelayanan Parkiran & keamanan": ["Parkir leader", "Parkir Crew", "Security"],
         "Pelayanan Doa & Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
         "Pelayanan Dekorasi & Event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"],
         "Pelayanan fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"],
-        "Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
-        "Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
-        "Sound & Electrical Engineering": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
+        "Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
+        "Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worship / Presenter Operator"],
+        "Sound & Electrical Engineering": ["Sound engineering", "Crew equipment", "Electrical & Peripheral"],
         "User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
         "Parkiran & Keamanan": ["Parkir leader", "Parkir Crew", "Security"],
         "Doa & Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
@@ -339,7 +332,18 @@
         }
     }
 
+    // UPDATE LOGIC: Validasi hanya untuk Jabatan & Sub Jabatan di Step 2
     function nextStep(n) {
+        // Jika dari Step 2 mau ke Step 3, cek Jabatan & Sub Jabatan saja
+        if (n === 3) {
+            const jab = document.getElementById("jabatan_jemaat").value;
+            const sub = document.getElementById("sub_jabatan").value;
+            if (!jab || !sub) {
+                showAlert("Harap isi Jabatan dan Sub Bidang!", "error");
+                return;
+            }
+        }
+
         const steps = document.querySelectorAll('.form-step');
         steps.forEach(step => { step.classList.remove('active'); step.style.display = 'none'; });
         const targetStep = document.getElementById('step-' + n);
@@ -407,6 +411,7 @@
         const email = document.getElementById("email").value.trim().toLowerCase();
         const password = document.getElementById("pass").value;
 
+        // Validasi Dokumen Utama
         if (fileInput.files.length === 0) {
             showAlert("Unggah foto KTP/KK terlebih dahulu!", "error");
             return;
@@ -429,20 +434,21 @@
 
             const userData = {
                 uid: userCredential.user.uid,
-                nama: document.getElementById("nama").value,
+                Nama: document.getElementById("nama").value,
                 email: email,
-                whatsapp: document.getElementById("hp").value,
+                WhatsApp: document.getElementById("hp").value,
                 status_pernikahan: document.getElementById("status_pernikahan").value,
                 jumlah_anak: document.getElementById("jumlah_anak").value || 0,
                 nama_pasangan: document.getElementById("nama_pasangan").value || "",
                 nama_ayah: document.getElementById("nama_ayah").value || "",
                 nama_ibu: document.getElementById("nama_ibu").value || "",
                 lokasi_berjemaat: document.getElementById("lokasi").value,
-                komsel: document.getElementById("komsel").value,
+                Komsel: document.getElementById("komsel").value,
                 jabatan: document.getElementById("jabatan_jemaat").value,
                 sub_jabatan: document.getElementById("sub_jabatan").value,
-                fungsi_pelayanan: document.getElementById("pelayanan").value,
-                fungsi_non_struktural: document.getElementById("pelayanan_spesifik_non").value,
+                // Kolom di bawah ini akan tersimpan kosong jika tidak diisi (opsional)
+                fungsi_pelayanan: document.getElementById("pelayanan").value || "",
+                fungsi_non_struktural: document.getElementById("pelayanan_spesifik_non").value || "",
                 nij: document.getElementById("nij-display").value,
                 url_berkas: cloudData.secure_url,
                 status: "Pending",
