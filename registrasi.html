@@ -141,13 +141,13 @@
                          <option value="Pegawai BUMN">Pegawai BUMN</option>
                          <option value="P3K">P3k</option>
                          <option value="Honorer">Honorer</option>
-                        <option value="Bidang kerohaniaan">Bidang kerohaniaan</option
+                        <option value="Bidang kerohaniaan">Bidang kerohaniaan</option>
                         <option value="Wiraswasta">Wiraswasta</option>
                         <option value="Mahasiswa">Mahasiswa</option>
                         <option value="Pelajar">Pelajar</option>
                         <option value="Pejabat Publik">Pejabat Publik</option>
                         <option value="Pejabat Executive">Pejabat Executive</option>
-                         <option value="Profesional Muda">Profesional Muda</option
+                         <option value="Profesional Muda">Profesional Muda</option>
                          <option value="Pejabat Executive">Diplomat</option>
                         <option value="Kader Partai">Kader Partai</option>
                         <option value="petani">Petani / Peternak / Penggarap Kebun</option>                        
@@ -162,15 +162,15 @@
                 </div>
             </div>
 
-            <div id="field-menikah" style="display:none;">
+            <div id="field-menikah" style="display:none; margin-top: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; border: 1px solid #ddd;">
                 <div class="form-group">
                     <label>Nama Lengkap Istri*</label>
-                    <input type="text" id="nama_istri" placeholder="Nama istri sesuai KTP">
+                    <input type="text" id="nama_istri" placeholder="Masukkan nama istri">
                 </div>
                 <div class="grid-2">
                     <div class="form-group">
                         <label>Jumlah Anak*</label>
-                        <input type="text" id="jumlah_anak" value="Belum ada anak">
+                        <input type="text" id="jumlah_anak">
                     </div>
                     <div class="form-group">
                         <label>Jumlah Orang Serumah*</label>
@@ -179,14 +179,16 @@
                 </div>
             </div>
 
-            <div id="field-orangtua" style="display:none;" class="grid-2">
-                <div class="form-group">
-                    <label>Nama Lengkap Ayah*</label>
-                    <input type="text" id="nama_ayah" placeholder="Sesuai KTP Orang Tua">
-                </div>
-                <div class="form-group">
-                    <label>Nama Lengkap Ibu*</label>
-                    <input type="text" id="nama_ibu" placeholder="Sesuai KTP Orang Tua">
+            <div id="field-orangtua" style="display:none; margin-top: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; border: 1px solid #ddd;">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Nama Ayah Kandung*</label>
+                        <input type="text" id="nama_ayah" placeholder="Sesuai KTP Orang Tua">
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Ibu Kandung*</label>
+                        <input type="text" id="nama_ibu" placeholder="Sesuai KTP Orang Tua">
+                    </div>
                 </div>
             </div>
 
@@ -278,7 +280,7 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // LOGIKA TAMPILAN KONDISIONAL (BARU)
+    // LOGIKA TAMPILAN KONDISIONAL
     function toggleMarriageFields() {
         const status = document.getElementById("status_pernikahan").value;
         const blockMenikah = document.getElementById("field-menikah");
@@ -287,10 +289,13 @@
         if (status === "Menikah") {
             blockMenikah.style.display = "block";
             blockOrtu.style.display = "none";
-            document.getElementById("jumlah_anak").value = "Belum ada anak";
-        } else if (status !== "") {
+            // Otomatis isi jika belum ada anak
+            if(document.getElementById("jumlah_anak").value === "") {
+                document.getElementById("jumlah_anak").value = "Belum ada anak";
+            }
+        } else if (status === "Single" || status === "Duda" || status === "Janda") {
             blockMenikah.style.display = "none";
-            blockOrtu.style.display = "grid";
+            blockOrtu.style.display = "block";
         } else {
             blockMenikah.style.display = "none";
             blockOrtu.style.display = "none";
@@ -382,7 +387,7 @@
         } catch (error) { console.error("Gagal NIJ:", error); }
     }
 
-    // HANDLER REGISTRASI (DENGAN LOGIKA BARU)
+    // HANDLER REGISTRASI
     async function handleRegistrasi() {
         const fileInput = document.getElementById("berkas_jemaat");
         const email = document.getElementById("email").value.trim().toLowerCase();
@@ -423,18 +428,14 @@
                 nij: document.getElementById("nij-display").value,
                 url_berkas: cloudData.secure_url,
                 status: "Pending",
-                tanggalDaftar: new Date().toLocaleString('id-ID')
+                tanggalDaftar: new Date().toLocaleString('id-ID'),
+                // Mapping Field Baru (Silakan sesuaikan jika id field berbeda)
+                nama_istri: document.getElementById("nama_istri") ? document.getElementById("nama_istri").value : "",
+                jumlah_anak: document.getElementById("jumlah_anak") ? document.getElementById("jumlah_anak").value : "",
+                jumlah_serumah: document.getElementById("jumlah_serumah") ? document.getElementById("jumlah_serumah").value : "",
+                nama_ayah: document.getElementById("nama_ayah") ? document.getElementById("nama_ayah").value : "",
+                nama_ibu: document.getElementById("nama_ibu") ? document.getElementById("nama_ibu").value : ""
             };
-
-            // Tambahan Logika Kondisional untuk Database
-            if (status === "Menikah") {
-                userData.nama_istri = document.getElementById("nama_istri").value;
-                userData.jumlah_anak = document.getElementById("jumlah_anak").value;
-                userData.jumlah_serumah = document.getElementById("jumlah_serumah").value;
-            } else {
-                userData.nama_ayah = document.getElementById("nama_ayah").value;
-                userData.nama_ibu = document.getElementById("nama_ibu").value;
-            }
 
             await db.collection("users").doc(userCredential.user.uid).set(userData);
             
