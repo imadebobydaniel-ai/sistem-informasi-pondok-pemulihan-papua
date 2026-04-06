@@ -42,7 +42,6 @@
         .modal-box, .terms-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
         .terms-box { max-width: 400px; }
         
-        /* Spinner */
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #28a745; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
@@ -119,37 +118,75 @@
                 <div class="password-container"><input type="password" id="pass"><i class="fa-solid fa-eye toggle-password" id="eyeIcon"></i></div>
             </div>
             <div class="form-group"><label>Alamat*</label><textarea id="alamat" rows="2"></textarea></div>
+
             <div class="grid-2">
-                <div class="form-group"><label>Status Pernikahan*</label><select id="status_pernikahan"><option value="">-- Pilih --</option><option value="Menikah">Menikah</option><option value="Single">Single</option><option value="Duda">Duda</option><option value="Janda">Janda</option></select></div>
+                <div class="form-group">
+                    <label>Status Pernikahan*</label>
+                    <select id="status_pernikahan" onchange="toggleMarriageFields()">
+                        <option value="">-- Pilih --</option>
+                        <option value="Menikah">Menikah</option>
+                        <option value="Single">Single</option>
+                        <option value="Duda">Duda</option>
+                        <option value="Janda">Janda</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Pekerjaan*</label>
                     <select id="pekerjaan">
                         <option value="">-- Pilih --</option>
-                        <option value="TNI">TNI</option>
-                        <option value="Polri">Polri</option>
+                         <option value="TNI">TNI</option
+                         <option value="Polri">Polri</option
                         <option value="ASN">ASN</option>
-                        <option value="P3K">P3K</option>
-                        <option value="Honorer">Honorer</option>
-                        <option value="Pegawai Swasta">Pegawai Swasta</option>
-                        <option value="Pegawai BUMN">Pegawai BUMN</option>
+                         <option value="P3K">P3k</option
+                        <option value="Bidang kerohaniaan">Bidang kerohaniaan</option
                         <option value="Wiraswasta">Wiraswasta</option>
-                        <option value="Profesional Muda">Profesional Muda</option>
-                        <option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option>
-                        <option value="Petani/Peternak">Petani / Peternak / Pengolah Kebun</option>
                         <option value="Mahasiswa">Mahasiswa</option>
                         <option value="Pelajar">Pelajar</option>
                         <option value="Pejabat Publik">Pejabat Publik</option>
                         <option value="Pejabat Executive">Pejabat Executive</option>
-                        <option value="Diplomat">Diplomat</option>
-                        <option value="Kader Partai">Kader Partai</option>
+                         <option value="Profesional Muda">Profesional Muda</option
+                         <option value="Pejabat Executive">Diplomat</option>
+                        <option value="Kader Partai">Kader Partai</option
+                        <option value="petani">Petani / Peternak / Penggarap Kebun</option                        
                         <option value="Pemerhati Bidang">Pemerhati Bidang</option>
                         <option value="Aktivis">Aktivis</option>
                         <option value="Pekerja Seni">Pekerja Seni</option>
                         <option value="Freelancer">Freelancer</option>
+                        <option value="Budayawan">Budayawan</option>
+                         <option value="Cendikiawan">Cendikiawan</option
                         <option value="Lainnya">Lainnya</option>
                     </select>
                 </div>
             </div>
+
+            <div id="field-menikah" style="display:none;">
+                <div class="form-group">
+                    <label>Nama Lengkap Istri*</label>
+                    <input type="text" id="nama_istri" placeholder="Nama istri sesuai KTP">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Jumlah Anak*</label>
+                        <input type="text" id="jumlah_anak" value="Belum ada anak">
+                    </div>
+                    <div class="form-group">
+                        <label>Jumlah Orang Serumah*</label>
+                        <input type="number" id="jumlah_serumah" placeholder="Contoh: 4">
+                    </div>
+                </div>
+            </div>
+
+            <div id="field-orangtua" style="display:none;" class="grid-2">
+                <div class="form-group">
+                    <label>Nama Lengkap Ayah*</label>
+                    <input type="text" id="nama_ayah" placeholder="Sesuai KTP Orang Tua">
+                </div>
+                <div class="form-group">
+                    <label>Nama Lengkap Ibu*</label>
+                    <input type="text" id="nama_ibu" placeholder="Sesuai KTP Orang Tua">
+                </div>
+            </div>
+
             <div class="btn-group">
                 <a href="login.html" class="btn-prev" style="text-decoration: none; text-align: center; line-height: 1.5;">Kembali</a>
                 <button type="button" class="btn-next" onclick="nextStep(2)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
@@ -226,7 +263,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
-    // 1. FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -239,7 +275,26 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // 2. DATA DINAMIS
+    // LOGIKA TAMPILAN KONDISIONAL (BARU)
+    function toggleMarriageFields() {
+        const status = document.getElementById("status_pernikahan").value;
+        const blockMenikah = document.getElementById("field-menikah");
+        const blockOrtu = document.getElementById("field-orangtua");
+
+        if (status === "Menikah") {
+            blockMenikah.style.display = "block";
+            blockOrtu.style.display = "none";
+            document.getElementById("jumlah_anak").value = "Belum ada anak";
+        } else if (status !== "") {
+            blockMenikah.style.display = "none";
+            blockOrtu.style.display = "grid";
+        } else {
+            blockMenikah.style.display = "none";
+            blockOrtu.style.display = "none";
+        }
+    }
+
+    // DATA DROPDOWN
     const dataKomsel = {
         "ABE": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "STN": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -250,7 +305,7 @@
 
     const dataSubJabatan = {
         "Gembala Sidang": ["Gembala Sidang Jemaat", "Pdt. Pembantu", "Pdt. Muda"],
-        "Pemimpin / Koordinator": ["Sekretaris Gereja", "Bendahara Gereja", "Komite Gereja", "Koordinator Lansia", "Koordinator Bapak", "Koordinator Ibu", "Koordinator Profesi", "Koordinator Mahasiswa", "Koordinator Pelajar", "Koordinator Sekolah minggu", "Koordinator Praise & Worship", "Koordinator Tamborin, flag", "Koordinator Multimedia", "Koordinator Sound Engineering & Elektrical", "Koordinator Pelayanan Misi", "Koordinator Pendoa", "Koordinator User", "Koordinator parkir dan keamanan", "Koordinator dekorasi dan event"],
+        "Pemimpin / Koordinator": ["Sekretaris Gereja", "Bendahara Gereja", "Komite Gereja", "Koordinator Praise & Worship", "Koordinator Multimedia", "Koordinator User", "Koordinator Pelayanan Misi"],
         "PKS Komsel": ["PKS Komsel"],
         "Fulltimer": ["Fulltimer Gereja"],
         "Anggota Jemaat": ["Anggota Jemaat Ordinari"]
@@ -258,39 +313,14 @@
 
     const dataSpesifik = {
         "Gembala Sidang Jemaat": ["Penanggung Jawab Pengembalaan Jemaat"],
-        "Pdt. Pembantu": ["Supporting Pelayanan Pengembalaan Jemaat"],
-        "Pdt. Muda": ["Supporting Pelayanan Pengembalaan Jemaat"],
-        "Anggota Jemaat Ordinari": ["Praise & Worship", "Multimedia", "Sound & Electrical Engineering", "User", "Parkiran & Keamanan", "Doa & Misi", "Dekorasi & Event", "Lainnya"],
-        "Koordinator Praise & Worship": ["Pelayanan Praise & Worship"],
-        "Koordinator Multimedia": ["Pelayanan Multimedia"],
-        "Koordinator Sound Engineering & Elektrical": ["Pelayanan Sound & electrical engineering"],
-        "Koordinator User": ["Pelayanan User"],
-        "Koordinator parkir dan keamanan": ["Pelayanan Parkiran & keamanan"],
-        "Koordinator Pelayanan Misi": ["Pelayanan Doa & Misi"],
-        "Koordinator Pendoa": ["Pelayanan Doa & Misi"],
-        "Koordinator dekorasi dan event": ["Pelayanan Dekorasi & Event"],
-        "Fulltimer Gereja": ["Pelayanan fulltimer Gereja"]
+        "Anggota Jemaat Ordinari": ["Praise & Worship", "Multimedia", "User", "Doa & Misi", "Lainnya"]
     };
 
     const dataNonStruktural = {
-        "Pelayanan Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
-        "Pelayanan Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
-        "Pelayanan Sound & electrical engineering": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
-        "Pelayanan User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
-        "Pelayanan Parkiran & keamanan": ["Parkir leader", "Parkir Crew", "Security"],
-        "Pelayanan Doa & Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
-        "Pelayanan Dekorasi & Event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"],
-        "Pelayanan fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"],
-        "Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
-        "Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
-        "Sound & Electrical Engineering": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
-        "User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
-        "Parkiran & Keamanan": ["Parkir leader", "Parkir Crew", "Security"],
-        "Doa & Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
-        "Dekorasi & Event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"]
+        "Multimedia": ["Director media", "Floor director", "Campers", "Streaming operator"],
+        "Praise & Worship": ["Drum Player", "Keyboard Player", "Worship leader", "Singers"]
     };
 
-    // 3. LOGIKA FORM STEPS
     function nextStep(n) {
         const steps = document.querySelectorAll('.form-step');
         steps.forEach(step => { step.classList.remove('active'); step.style.display = 'none'; });
@@ -304,14 +334,11 @@
         window.scrollTo(0, 0);
     }
 
-    // 4. LOGIKA DROPDOWN DINAMIS (FIXED)
     function updateSubJabatan() {
         const jab = document.getElementById("jabatan_jemaat").value;
         const sub = document.getElementById("sub_jabatan");
         sub.innerHTML = '<option value="">-- Pilih Sub Bidang --</option>';
-        if (dataSubJabatan[jab]) {
-            dataSubJabatan[jab].forEach(i => sub.add(new Option(i, i)));
-        }
+        if (dataSubJabatan[jab]) dataSubJabatan[jab].forEach(i => sub.add(new Option(i, i)));
         updateSpesifikPelayanan(); 
     }
 
@@ -330,11 +357,7 @@
         const pelVal = document.getElementById("pelayanan").value;
         const nonPel = document.getElementById("pelayanan_spesifik_non");
         nonPel.innerHTML = '<option value="">-- Pilih Detail Pelayanan --</option>';
-        
-        // Cek dataNonStruktural berdasarkan input dropdown Pelayanan
-        if (dataNonStruktural[pelVal]) {
-            dataNonStruktural[pelVal].forEach(i => nonPel.add(new Option(i, i)));
-        }
+        if (dataNonStruktural[pelVal]) dataNonStruktural[pelVal].forEach(i => nonPel.add(new Option(i, i)));
     }
 
     function updateKomsel() {
@@ -356,7 +379,7 @@
         } catch (error) { console.error("Gagal NIJ:", error); }
     }
 
-    // 5. HANDLER REGISTRASI
+    // HANDLER REGISTRASI (DENGAN LOGIKA BARU)
     async function handleRegistrasi() {
         const fileInput = document.getElementById("berkas_jemaat");
         const email = document.getElementById("email").value.trim().toLowerCase();
@@ -376,11 +399,17 @@
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
             await userCredential.user.sendEmailVerification();
 
-            const userData = {
+            const status = document.getElementById("status_pernikahan").value;
+
+            let userData = {
                 uid: userCredential.user.uid,
                 nama: document.getElementById("nama").value,
                 email: email,
                 whatsapp: document.getElementById("hp").value,
+                ktp: document.getElementById("ktp").value,
+                kk: document.getElementById("kk").value,
+                alamat: document.getElementById("alamat").value,
+                status_pernikahan: status,
                 pekerjaan: document.getElementById("pekerjaan").value,
                 lokasi_berjemaat: document.getElementById("lokasi").value,
                 komsel: document.getElementById("komsel").value,
@@ -394,7 +423,18 @@
                 tanggalDaftar: new Date().toLocaleString('id-ID')
             };
 
+            // Tambahan Logika Kondisional untuk Database
+            if (status === "Menikah") {
+                userData.nama_istri = document.getElementById("nama_istri").value;
+                userData.jumlah_anak = document.getElementById("jumlah_anak").value;
+                userData.jumlah_serumah = document.getElementById("jumlah_serumah").value;
+            } else {
+                userData.nama_ayah = document.getElementById("nama_ayah").value;
+                userData.nama_ibu = document.getElementById("nama_ibu").value;
+            }
+
             await db.collection("users").doc(userCredential.user.uid).set(userData);
+            
             document.getElementById('blocking-loading').style.display = 'none';
             document.getElementById('blocking-message').style.display = 'flex';
 
@@ -404,7 +444,7 @@
         }
     }
 
-    // 6. UTILITIES
+    // UTILITIES WILAYAH
     async function loadProvinsi() {
         try {
             const resp = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
