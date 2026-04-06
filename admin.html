@@ -139,6 +139,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // 1. Konsolidasi Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -147,83 +148,62 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-// KODE BARU (Benar)
-const goldar = d.darah || '-';
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
     window.onload = function() { loadMembersRealtime(); };
 
-    // --- 1. FUNGSI EDIT DARI SELEKSI (MENU DI ATAS TABEL) ---
-    function openEditFromSelection() {
-        const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
-        if (checkedBoxes.length === 0) {
-            alert("Silakan pilih minimal satu data.");
-            return;
-        }
-        // Mengambil data pertama yang dicentang untuk diedit
-        const uid = checkedBoxes[0].value;
-        window.location.href = `edit-jemaat-administrator.html?edit=${uid}`;
-    }
-
-    // --- 2. FUNGSI HAPUS MASAL (MENU DI ATAS TABEL) ---
-    async function bulkDelete() {
-        const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
-        if (checkedBoxes.length === 0) return;
-
-        if (confirm(`Hapus ${checkedBoxes.length} data yang terpilih secara permanen?`)) {
-            const batch = db.batch();
-            checkedBoxes.forEach(cb => {
-                const docRef = db.collection("users").doc(cb.value);
-                batch.delete(docRef);
-            });
-
-            try {
-                await batch.commit();
-                alert("Data berhasil dihapus.");
-                document.getElementById('checkAll').checked = false;
-                updateActionMenu();
-            } catch (error) {
-                console.error("Error deleting batch: ", error);
-                alert("Terjadi kesalahan saat menghapus data.");
-            }
-        }
-    }
-
-    // --- 3. UPDATE LOAD DATA REALTIME ---
+    // 2. Fungsi Utama Terintegrasi ke Ekosistem Big Data
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
-            tableBody.innerHTML = "";
+            if(!tableBody) return; // Guard clause agar script tidak pecah
             
+            tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                const namaTampil = d.nama_lengkap || d.Nama || '-';
+                // --- MAPPING DATA INTEGRASI ---
+                const namaTampil = d.Nama || d.nama_lengkap || '-';
                 const nij = d.nij || '-';
-                const goldar = d.golongan_darah || '-';
-                const whatsapp = d.whatsapp || d.WhatsApp || '-';
+                
+                // PERBAIKAN: Mengambil field 'darah' (AB+, dsb) sesuai struktur Firestore Anda
+                const goldar = d.darah || d.golongan_darah || '-'; 
+
+                const whatsapp = d.WhatsApp || d.whatsapp || '-';
                 const email = d.email || '-';
-                const alamat = d.wilayah || d.alamat || d.Alamat || 'Alamat tidak diisi';
-                const lokasi = d.lokasi_berjemaat || '-';
-                const komsel = d.komsel || d.Komsel || '-';
+                const alamat = d.wilayah || d.Alamat || d.alamat || 'Alamat tidak diisi';
+                
+                // Sinkronisasi Lokasi Berjemaat (Field Big Data)
+                const lokasi = d.lokasi_berjemaat || d.wilayah_berjemaat || '-';
+                
+                const komsel = d.Komsel || d.komsel || '-';
                 const jabatan = d.jabatan || '-';
                 const fungsi = d.fungsi_pelayanan || d.fungsi_non_struktural || '-';
                 const status = d.status_akun || 'Pending';
                 const pasangan = d.nama_pasangan || '-';
                 const anak = d.jumlah_anak || '0';
 
+                // --- LOGIKA MEDIA PORTAL (Cloudinary/Firebase) ---
                 let fileHtml = "";
-                if (d.url_berkas) fileHtml += `<a href="${d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i> Lihat Berkas</a>`;
-                if (d.url_ktp || d.urlKtp) fileHtml += `<a href="${d.url_ktp || d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
-                if (d.url_kk || d.urlKk) fileHtml += `<a href="${d.url_kk || d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> Lihat KK</a>`;
-                
+                if (d.url_berkas) {
+                    fileHtml += `<a href="${d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i> Lihat Berkas</a>`;
+                } 
+                if (d.url_ktp || d.urlKtp) {
+                    fileHtml += `<a href="${d.url_ktp || d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
+                }
+                if (d.url_kk || d.urlKk) {
+                    fileHtml += `<a href="${d.url_kk || d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> Lihat KK</a>`;
+                }
                 if (!fileHtml) fileHtml = "<small style='color:#dc3545;'>Tidak ada file</small>";
 
+                // --- UI LOGIC ---
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
+                // --- RENDER TABEL (Menjaga Integrasi Tombol Fungsi Anda) ---
                 tableBody.innerHTML += `
                 <tr>
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
@@ -248,15 +228,30 @@ const goldar = d.darah || '-';
                             <i class="fas ${statusIcon}"></i>
                         </button>
                     </td>
+                    <td>
+                        <button onclick="openEditModal('${doc.id}')" class="btn-action" style="background:var(--accent); padding:4px 8px;"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button>
+                    </td>
                 </tr>`;
             });
             updateActionMenu();
         });
     }
 
+    // 3. Fungsi Operasional Portal (Sesuai Struktur Anda)
+    function openEditModal(uid) {
+        window.location.href = `edit-jemaat-administrator.html?edit=${uid}`;
+    }
+
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
+    }
+
+    function deleteUser(id) { 
+        if(confirm("Hapus data ini secara permanen dari sistem?")) {
+            db.collection("users").doc(id).delete(); 
+        }
     }
 
     function filterTable() {
