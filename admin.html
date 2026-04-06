@@ -104,7 +104,7 @@
                     <th>NIJ</th>
                     <th>Nama Lengkap</th>
                     <th>WhatsApp / Email</th>
-                    <th>Detail Data Diri</th>
+                    <th>Detail Keluarga</th>
                     <th>Alamat Lengkap</th>
                     <th>Lokasi & Komsel</th>
                     <th>Jabatan & Pelayanan</th>
@@ -137,25 +137,27 @@
     window.onload = function() { loadMembersRealtime(); };
 
     function loadMembersRealtime() {
-        // Menggunakan collection "jemaat" sesuai database Anda
-        db.collection("jemaat").onSnapshot(snapshot => {
+        // DIUBAH KE "users" karena data Anda ada di collection ini
+        db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                // DISINKRONKAN DENGAN NAMA FIELD DI FIREBASE ANDA
-                const namaTampil = d.nama_lengkap || '-';
-                const status = d.status_akun || 'Pending';
+                // DISINKRONKAN DENGAN NAMA FIELD DI DATABASE (Berdasarkan Gambar 7)
+                const namaTampil = d.Nama || d.nama_lengkap || '-';
                 const nij = d.nij || '-';
-                const whatsapp = d.whatsapp || '-';
+                const whatsapp = d.WhatsApp || d.whatsapp || '-';
                 const email = d.email || '-';
                 const lokasi = d.lokasi_berjemaat || '-';
-                const komsel = d.komsel || '-';
+                const komsel = d.Komsel || d.komsel || '-';
                 const jabatan = d.jabatan || '-';
-                const subBidang = d.sub_bidang || '-';
-                const pekerjaan = d.pekerjaan || '-';
-                const statusNikah = d.status_nikah || '-';
+                const fungsi = d.fungsi_pelayanan || '-';
+                const status = d.status_akun || 'Pending';
+                
+                // Tambahan info keluarga (opsional)
+                const pasangan = d.nama_pasangan || '-';
+                const anak = d.jumlah_anak || '0';
 
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
@@ -177,8 +179,8 @@
                     </td>
                     <td>
                         <small>
-                            Status: ${statusNikah}<br>
-                            Pekerjaan: ${pekerjaan}
+                            Pasangan: ${pasangan}<br>
+                            Anak: ${anak}
                         </small>
                     </td>
                     <td><small>${d.alamat || '-'}</small></td>
@@ -188,7 +190,7 @@
                     </td>
                     <td>
                         <strong>${jabatan}</strong><br>
-                        <small>Sub: ${subBidang}</small>
+                        <small>Fungsi: ${fungsi}</small>
                     </td>
                     <td>${fileHtml}</td>
                     <td>
@@ -208,6 +210,7 @@
     }
 
     function openEditModal(uid) {
+        // Mengarahkan ke file edit dengan parameter ID
         window.location.href = `edit-jemaat-administrator.html?edit=${uid}`;
     }
 
@@ -219,19 +222,19 @@
 
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
-        db.collection("jemaat").doc(id).update({ status_akun: next });
+        db.collection("users").doc(id).update({ status_akun: next });
     }
 
     function deleteUser(id) { 
         if(confirm("Hapus data jemaat ini secara permanen?")) {
-            db.collection("jemaat").doc(id).delete(); 
+            db.collection("users").doc(id).delete(); 
         }
     }
 
     function bulkDelete() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
         if(confirm(`Hapus ${selected.length} data terpilih?`)) {
-            selected.forEach(cb => db.collection("jemaat").doc(cb.value).delete());
+            selected.forEach(cb => db.collection("users").doc(cb.value).delete());
         }
     }
 
