@@ -128,8 +128,7 @@
                     <th>Jabatan & Pelayanan</th>
                     <th>Lampiran File</th>
                     <th>Status Akun</th>
-                    <th>Aksi</th>
-                </tr>
+                    </tr>
             </thead>
             <tbody id="memberData"></tbody>
         </table>
@@ -154,8 +153,44 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
+    // --- 1. FUNGSI EDIT DARI SELEKSI (MENU DI ATAS TABEL) ---
+    function openEditFromSelection() {
+        const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            alert("Silakan pilih minimal satu data.");
+            return;
+        }
+        // Mengambil data pertama yang dicentang untuk diedit
+        const uid = checkedBoxes[0].value;
+        window.location.href = `edit-jemaat-administrator.html?edit=${uid}`;
+    }
+
+    // --- 2. FUNGSI HAPUS MASAL (MENU DI ATAS TABEL) ---
+    async function bulkDelete() {
+        const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+        if (checkedBoxes.length === 0) return;
+
+        if (confirm(`Hapus ${checkedBoxes.length} data yang terpilih secara permanen?`)) {
+            const batch = db.batch();
+            checkedBoxes.forEach(cb => {
+                const docRef = db.collection("users").doc(cb.value);
+                batch.delete(docRef);
+            });
+
+            try {
+                await batch.commit();
+                alert("Data berhasil dihapus.");
+                document.getElementById('checkAll').checked = false;
+                updateActionMenu();
+            } catch (error) {
+                console.error("Error deleting batch: ", error);
+                alert("Terjadi kesalahan saat menghapus data.");
+            }
+        }
+    }
+
+    // --- 3. UPDATE LOAD DATA REALTIME ---
     function loadMembersRealtime() {
-        // Menggunakan onSnapshot untuk koneksi Realtime dengan Firebase
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
@@ -163,7 +198,6 @@
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                // MAPPING DATA (Menangani variasi nama field di Database)
                 const namaTampil = d.nama_lengkap || d.Nama || '-';
                 const nij = d.nij || '-';
                 const goldar = d.golongan_darah || '-';
@@ -178,21 +212,12 @@
                 const pasangan = d.nama_pasangan || '-';
                 const anak = d.jumlah_anak || '0';
 
-                // --- LOGIKA LAMPIRAN FILE (DETEKSI CLOUDINARY & FIREBASE) ---
                 let fileHtml = "";
-                if (d.url_berkas) {
-                    fileHtml += `<a href="${d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i> Lihat Berkas</a>`;
-                } 
-                if (d.url_ktp || d.urlKtp) {
-                    fileHtml += `<a href="${d.url_ktp || d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
-                }
-                if (d.url_kk || d.urlKk) {
-                    fileHtml += `<a href="${d.url_kk || d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> Lihat KK</a>`;
-                }
+                if (d.url_berkas) fileHtml += `<a href="${d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i> Lihat Berkas</a>`;
+                if (d.url_ktp || d.urlKtp) fileHtml += `<a href="${d.url_ktp || d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
+                if (d.url_kk || d.urlKk) fileHtml += `<a href="${d.url_kk || d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> Lihat KK</a>`;
                 
-                if (!fileHtml) {
-                    fileHtml = "<small style='color:#dc3545;'>Tidak ada file</small>";
-                }
+                if (!fileHtml) fileHtml = "<small style='color:#dc3545;'>Tidak ada file</small>";
 
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
@@ -208,21 +233,13 @@
                         <i class="fab fa-whatsapp" style="color:green;"></i> ${whatsapp}<br>
                         <small><i class="fas fa-envelope"></i> ${email}</small>
                     </td>
-                    <td>
-                        <small>
-                            Pasangan: ${pasangan}<br>
-                            Anak: ${anak}
-                        </small>
-                    </td>
+                    <td><small>Pasangan: ${pasangan}<br>Anak: ${anak}</small></td>
                     <td style="max-width: 200px;"><small>${alamat}</small></td>
                     <td>
                         <span style="color:var(--primary); font-weight:bold;">${lokasi}</span><br>
                         <small>Komsel: ${komsel}</small>
                     </td>
-                    <td>
-                        <strong>${jabatan}</strong><br>
-                        <small>Pelayanan: ${fungsi}</small>
-                    </td>
+                    <td><strong>${jabatan}</strong><br><small>Pelayanan: ${fungsi}</small></td>
                     <td>${fileHtml}</td>
                     <td>
                         <span class="${statusBadge}">${status}</span>
@@ -230,29 +247,15 @@
                             <i class="fas ${statusIcon}"></i>
                         </button>
                     </td>
-                    <td>
-                        <button onclick="openEditModal('${doc.id}')" class="btn-action" style="background:var(--accent); padding:4px 8px;"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button>
-                    </td>
                 </tr>`;
             });
             updateActionMenu();
         });
     }
 
-    function openEditModal(uid) {
-        window.location.href = `edit-jemaat-administrator.html?edit=${uid}`;
-    }
-
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
-    }
-
-    function deleteUser(id) { 
-        if(confirm("Hapus data ini secara permanen?")) {
-            db.collection("users").doc(id).delete(); 
-        }
     }
 
     function filterTable() {
