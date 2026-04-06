@@ -30,7 +30,7 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; font-weight: bold; color: #444; margin-bottom: 5px; }
+        .form-group label { display: block; font-size: 11px; font-weight: bold; color: #444; margin-bottom: 5px; text-transform: uppercase; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; outline: none; background: #fafafa; }
         .form-group input:focus { border-color: #28a745; background: #fff; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -117,8 +117,16 @@
                         <option value="Wiraswasta">Wiraswasta</option>
                         <option value="Profesional Muda">Profesional Muda</option>
                         <option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option>
+                        <option value="Petani/Peternak">Petani / Peternak / Pengolah Kebun</option>
                         <option value="Mahasiswa">Mahasiswa</option>
                         <option value="Pelajar">Pelajar</option>
+                        <option value="Pejabat Publik">Pejabat Publik</option>
+                        <option value="Pejabat Executive">Pejabat Executive</option>
+                        <option value="Kader Partai">Kader Partai</option>
+                        <option value="Pemerhati Bidang">Pemerhati Bidang</option>
+                        <option value="Aktivis">Aktivis</option>
+                        <option value="Pekerja Seni">Pekerja Seni</option>
+                        <option value="Freelancer">Freelancer</option>
                         <option value="Lainnya">Lainnya</option>
                     </select>
                 </div>
@@ -163,8 +171,16 @@
             </div>
             <div class="form-group">
                 <label>Fungsi Pelayanan Spesifik</label>
-                <select id="pelayanan"><option value="">-- Pilih Fungsi Spesifik --</option></select>
+                <select id="pelayanan" onchange="updateNonStruktural()"><option value="">-- Pilih Fungsi Spesifik --</option></select>
             </div>
+            
+            <div class="form-group">
+                <label>Pelayanan Jemaat Spesifik Non-Struktural dan Non-Jabatan</label>
+                <select id="pelayanan_spesifik_non">
+                    <option value="">-- Pilih Detail Pelayanan --</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label>NIJ (Otomatis)</label>
                 <input type="text" id="nij-display" readonly placeholder="Akan muncul setelah pilih lokasi">
@@ -238,24 +254,35 @@
         "Gembala Sidang Jemaat": ["Penanggung Jawab Pengembalaan Jemaat"],
         "Pdt. Pembantu": ["Supporting Pelayanan Pengembalaan Jemaat"],
         "Pdt. Muda": ["Supporting Pelayanan Pengembalaan Jemaat"],
-        "Anggota Jemaat Ordinari": [
-            "Praise & Worship (Singers/Musician)", 
-            "Multimedia & Creative", 
-            "Sound & Electrical", 
-            "Usher & Hospitality", 
-            "Pendoa Syafaat", 
-            "Dekorasi & Event",
-            "Lainnya"
-        ],
-        "Koordinator Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
-        "Koordinator Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
-        "Koordinator Sound Engineering & Elektrical": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
-        "Koordinator User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
-        "Koordinator parkir dan keamanan": ["Parkir leader", "Parkir Crew", "Security"],
-        "Koordinator Pelayanan Misi": ["Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
-        "Koordinator Pendoa": ["Team Doa Syafaat"],
-        "Koordinator dekorasi dan event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"],
-        "Fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
+        "Anggota Jemaat Ordinari": ["Praise & Worship", "Multimedia", "Sound & Electrical Engineering", "User", "Parkiran & Keamanan", "Doa & Misi", "Dekorasi & Event", "Lainnya"],
+        "Koordinator Praise & Worship": ["Pelayanan Praise & Worship"],
+        "Koordinator Multimedia": ["Pelayanan Multimedia"],
+        "Koordinator Sound Engineering & Elektrical": ["Pelayanan Sound & electrical engineering"],
+        "Koordinator User": ["Pelayanan User"],
+        "Koordinator parkir dan keamanan": ["Pelayanan Parkiran & keamanan"],
+        "Koordinator Pelayanan Misi": ["Pelayanan Doa & Misi"],
+        "Koordinator Pendoa": ["Pelayanan Doa & Misi"],
+        "Koordinator dekorasi dan event": ["Pelayanan Dekorasi & Event"],
+        "Fulltimer Gereja": ["Pelayanan fulltimer Gereja"]
+    };
+
+    // DATA UNTUK KOLOM BARU (NON-STRUKTURAL)
+    const dataNonStruktural = {
+        "Pelayanan Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
+        "Pelayanan Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
+        "Pelayanan Sound & electrical engineering": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
+        "Pelayanan User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
+        "Pelayanan Parkiran & keamanan": ["Parkir leader", "Parkir Crew", "Security"],
+        "Pelayanan Doa & Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
+        "Pelayanan Dekorasi & Event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"],
+        "Pelayanan fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"],
+        "Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "choirs"],
+        "Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
+        "Sound & Electrical Engineering": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
+        "User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
+        "Parkiran & Keamanan": ["Parkir leader", "Parkir Crew", "Security"],
+        "Doa & Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
+        "Dekorasi & Event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"]
     };
 
     // 3. LOGIKA FORM & FUNGSI
@@ -295,11 +322,20 @@
         
         if (dataSpesifik[sub]) {
             dataSpesifik[sub].forEach(i => pel.add(new Option(i, i)));
-            
-            // Otomatis pilih jika hanya ada 1 opsi
             if (dataSpesifik[sub].length === 1) {
                 pel.selectedIndex = 1;
             }
+        }
+        updateNonStruktural();
+    }
+
+    function updateNonStruktural() {
+        const pelVal = document.getElementById("pelayanan").value;
+        const nonPel = document.getElementById("pelayanan_spesifik_non");
+        nonPel.innerHTML = '<option value="">-- Pilih Detail Pelayanan --</option>';
+        
+        if (dataNonStruktural[pelVal]) {
+            dataNonStruktural[pelVal].forEach(i => nonPel.add(new Option(i, i)));
         }
     }
 
@@ -353,6 +389,7 @@
                 jabatan: document.getElementById("jabatan_jemaat").value,
                 sub_jabatan: document.getElementById("sub_jabatan").value,
                 fungsi_pelayanan: document.getElementById("pelayanan").value,
+                fungsi_non_struktural: document.getElementById("pelayanan_spesifik_non").value,
                 nij: document.getElementById("nij-display").value,
                 url_berkas: cloudData.secure_url,
                 status: "Pending",
