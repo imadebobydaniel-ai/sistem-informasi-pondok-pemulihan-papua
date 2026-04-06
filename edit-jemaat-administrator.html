@@ -6,15 +6,18 @@
     <title>Edit Data Jemaat - Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #003366; --accent: #007bff; --light: #f4f7f6; }
+        :root { --primary: #003366; --accent: #007bff; --light: #f4f7f6; --gold: #D4AF37; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 20px; }
         .edit-container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .btn-save { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: var(--primary); }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        input[readonly] { background: #eee; cursor: not-allowed; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; font-size: 16px; transition: 0.3s; }
+        .btn-save:hover { background: #002244; }
         .btn-back { display: inline-block; margin-bottom: 20px; color: var(--primary); text-decoration: none; font-weight: bold; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .section-title { color: var(--primary); border-bottom: 2px solid var(--gold); padding-bottom: 10px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -23,7 +26,7 @@
 
 <div class="edit-container">
     <a href="admin.html" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
-    <h2 style="color: var(--primary); border-bottom: 2px solid #D4AF37; padding-bottom: 10px;">Edit Profil Jemaat</h2>
+    <h2 class="section-title">Edit Profil Jemaat</h2>
     
     <form id="editForm">
         <div class="form-group">
@@ -32,7 +35,7 @@
         </div>
         <div class="form-group">
             <label>NIJ (Nomor Induk Jemaat)</label>
-            <input type="text" id="nij" readonly style="background: #eee;">
+            <input type="text" id="nij" readonly>
         </div>
         <div class="form-group">
             <label>WhatsApp</label>
@@ -44,8 +47,76 @@
         </div>
         <div class="form-group">
             <label>Alamat</label>
-            <textarea id="alamat" rows="3"></textarea>
+            <textarea id="alamat" rows="2"></textarea>
         </div>
+
+        <div class="form-group">
+            <label>Wilayah Berjemaat</label>
+            <select id="wilayah" onchange="updateKomsel()">
+                <option value="">-- Pilih Wilayah --</option>
+                <option value="Abepura">Abepura</option>
+                <option value="Sentani">Sentani</option>
+                <option value="Doyo">Doyo</option>
+                <option value="Arso 1">Arso 1</option>
+                <option value="Arso 2">Arso 2</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Komsel / Jemaat Cell</label>
+            <select id="komsel">
+                <option value="">-- Pilih Wilayah Terlebih Dahulu --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Jabatan Utama di Jemaat</label>
+            <select id="jabatan">
+                <option value="Anggota Jemaat">Anggota Jemaat</option>
+                <option value="Gembala Sidang">Gembala Sidang</option>
+                <option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option>
+                <option value="PKS Komsel">PKS Komsel</option>
+                <option value="Fulltimer">Fulltimer</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Sub Bidang Jabatan</label>
+            <select id="sub_bidang" onchange="updateFungsiPelayanan()">
+                <option value="Anggota Jemaat Ordinari">Anggota Jemaat Ordinari</option>
+                <option value="Gembala Sidang Jemaat">Gembala Sidang Jemaat</option>
+                <option value="Pdt. Pembantu">Pdt. Pembantu</option>
+                <option value="Pdt. Muda">Pdt. Muda</option>
+                <option value="Sekretaris Gereja">Sekretaris Gereja</option>
+                <option value="Bendahara Gereja">Bendahara Gereja</option>
+                <option value="Komite Gereja">Komite Gereja</option>
+                <option value="Koordinator Lansia">Koordinator Lansia</option>
+                <option value="Koordinator Bapak">Koordinator Bapak</option>
+                <option value="Koordinator Ibu">Koordinator Ibu</option>
+                <option value="Koordinator Profesi">Koordinator Profesi</option>
+                <option value="Koordinator Mahasiswa">Koordinator Mahasiswa</option>
+                <option value="Koordinator Pelajar">Koordinator Pelajar</option>
+                <option value="Koordinator Sekolah minggu">Koordinator Sekolah minggu</option>
+                <option value="Koordinator Praise & Worship">Koordinator Praise & Worship</option>
+                <option value="Koordinator Tamborin, flag">Koordinator Tamborin, flag</option>
+                <option value="Koordinator Multimedia">Koordinator Multimedia</option>
+                <option value="Koordinator Sound Engineering & Elektrical">Koordinator Sound Engineering & Elektrical</option>
+                <option value="Koordinator Pelayanan Misi">Koordinator Pelayanan Misi</option>
+                <option value="Koordinator Pendoa">Koordinator Pendoa</option>
+                <option value="Koordinator User">Koordinator User</option>
+                <option value="Koordinator parkir dan keamanan">Koordinator parkir dan keamanan</option>
+                <option value="Koordinator dekorasi dan event">Koordinator dekorasi dan event</option>
+                <option value="PKS Komsel">PKS Komsel</option>
+                <option value="Fulltimer Gereja">Fulltimer Gereja</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="fungsi_container" style="display:none;">
+            <label>Fungsi Spesifik Pelayanan</label>
+            <select id="fungsi_spesifik">
+                <option value="">-- Pilih Fungsi --</option>
+            </select>
+        </div>
+
         <div class="form-group">
             <label>Status Akun</label>
             <select id="status_akun">
@@ -62,7 +133,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -75,26 +145,71 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 1. AMBIL ID DARI URL
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('edit'); 
 
-    // Validasi Awal: Jika parameter 'edit' tidak ada di URL
     if (!userId) {
-        alert("ID Jemaat tidak ditemukan di URL!");
+        alert("ID Jemaat tidak ditemukan!");
         window.location.href = 'admin.html';
     }
 
-    // 2. LOAD DATA SAAT HALAMAN DIBUKA
+    // DATA DROPDOWN DINAMIS
+    const dataKomsel = {
+        "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
+        "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
+        "Doyo": ["Komsel Bapak doyo", "Komsel Ibu doyo"],
+        "Arso 1": ["Komsel Keluarga Arso 1"],
+        "Arso 2": ["Komsel Keluarga Arso 2"]
+    };
+
+    const dataFungsi = {
+        "Koordinator Praise & Worship": ["Drum Player", "Keyboard Player", "Piano Player", "Bass Player", "Guitar Player", "Violin Player", "Saxsophone Player", "Flute player", "Vocal coach", "Worship leader", "Singers", "Choirs"],
+        "Koordinator Multimedia": ["Director media", "Floor director", "Campers", "Crew equipment", "Streaming operator", "Video switcher operator", "Easy Worshipe / Presenter Operator"],
+        "Koordinator Sound Engineering & Elektrical": ["Sound engineering", "Crew equipment", "Elektrical & Peripheral"],
+        "Koordinator User": ["Front Desk user", "User direct", "Event organizer", "General Affairs"],
+        "Koordinator parkir dan keamanan": ["Parkir leader", "Parkir Crew", "Security"],
+        "Koordinator Pelayanan Misi": ["Team Doa Syafaat", "Team Misi bidang Fundraising", "Team Misi bidang research & Deplovement", "Team Road Map", "Public Relations"],
+        "Koordinator Pendoa": ["Team Doa Syafaat"],
+        "Koordinator dekorasi dan event": ["Decoration leader", "Decoration Crew", "Art And Painting", "Special effect"],
+        "Fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
+    };
+
+    function updateKomsel(selectedValue = "") {
+        const wilayah = document.getElementById('wilayah').value;
+        const komselSelect = document.getElementById('komsel');
+        komselSelect.innerHTML = '<option value="">-- Pilih Komsel --</option>';
+        if(dataKomsel[wilayah]) {
+            dataKomsel[wilayah].forEach(k => {
+                const selected = k === selectedValue ? "selected" : "";
+                komselSelect.innerHTML += `<option value="${k}" ${selected}>${k}</option>`;
+            });
+        }
+    }
+
+    function updateFungsiPelayanan(selectedValue = "") {
+        const sub = document.getElementById('sub_bidang').value;
+        const container = document.getElementById('fungsi_container');
+        const fungsiSelect = document.getElementById('fungsi_spesifik');
+        
+        if(dataFungsi[sub]) {
+            container.style.display = 'block';
+            fungsiSelect.innerHTML = '<option value="">-- Pilih Fungsi --</option>';
+            dataFungsi[sub].forEach(f => {
+                const selected = f === selectedValue ? "selected" : "";
+                fungsiSelect.innerHTML += `<option value="${f}" ${selected}>${f}</option>`;
+            });
+        } else {
+            container.style.display = 'none';
+            fungsiSelect.innerHTML = '<option value="">-- Pilih Fungsi --</option>';
+        }
+    }
+
+    // LOAD DATA
     window.onload = async function() {
         try {
-            console.log("Mencari Dokumen ID:", userId);
             const doc = await db.collection("jemaat").doc(userId).get();
-            
             if (doc.exists) {
                 const data = doc.data();
-                
-                // Isi input form dengan data dari Firebase
                 document.getElementById('nama_lengkap').value = data.nama_lengkap || '';
                 document.getElementById('nij').value = data.nij || '';
                 document.getElementById('whatsapp').value = data.whatsapp || '';
@@ -102,45 +217,52 @@
                 document.getElementById('alamat').value = data.alamat || '';
                 document.getElementById('status_akun').value = data.status_akun || 'Pending';
                 
-                // Hilangkan overlay loading
+                // Set Dropdown Dinamis
+                document.getElementById('wilayah').value = data.wilayah || '';
+                updateKomsel(data.komsel);
+                
+                document.getElementById('jabatan').value = data.jabatan || 'Anggota Jemaat';
+                document.getElementById('sub_bidang').value = data.sub_bidang || 'Anggota Jemaat Ordinari';
+                updateFungsiPelayanan(data.fungsi_spesifik);
+
                 document.getElementById('loading').style.display = 'none';
             } else {
-                alert("Dokumen dengan ID tersebut tidak ditemukan di database!");
+                alert("Data tidak ditemukan!");
                 window.location.href = 'admin.html';
             }
         } catch (error) {
-            console.error("Error loading data:", error);
-            alert("Error koneksi Firebase: " + error.message);
+            console.error(error);
+            alert("Gagal memuat data.");
         }
     };
 
-    // 3. SIMPAN PERUBAHAN KE FIREBASE
+    // SIMPAN DATA
     document.getElementById('editForm').onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button');
-        
-        // Animasi loading pada tombol
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
         try {
-            // Update data ke collection 'jemaat'
             await db.collection("jemaat").doc(userId).update({
                 nama_lengkap: document.getElementById('nama_lengkap').value,
                 whatsapp: document.getElementById('whatsapp').value,
                 email: document.getElementById('email').value,
                 alamat: document.getElementById('alamat').value,
+                wilayah: document.getElementById('wilayah').value,
+                komsel: document.getElementById('komsel').value,
+                jabatan: document.getElementById('jabatan').value,
+                sub_bidang: document.getElementById('sub_bidang').value,
+                fungsi_spesifik: document.getElementById('fungsi_spesifik').value,
                 status_akun: document.getElementById('status_akun').value,
-                last_update_admin: new Date().toISOString()
+                last_update: new Date().toISOString()
             });
-
-            alert("Data berhasil diperbarui!");
-            window.location.href = 'admin.html'; // Kembali ke dashboard
+            alert("Data Berhasil Diperbarui!");
+            window.location.href = 'admin.html';
         } catch (error) {
-            console.error("Error saving data:", error);
-            alert("Gagal menyimpan: " + error.message);
+            alert("Error: " + error.message);
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Simpan Perubahan';
+            btn.innerHTML = 'Simpan Perubahan';
         }
     };
 </script>
