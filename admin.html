@@ -309,15 +309,14 @@
             tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
-                const status = (d.status || 'Pending').toLowerCase();
-                const statusBadge = status === 'aktif' ? 'badge-aktif' : 'badge-pending';
-                const statusIcon = status === 'aktif' ? 'fa-check-square' : 'fa-stop-circle';
-                const statusBtnColor = status === 'aktif' ? '#28a745' : '#dc3545';
+                const status = (d.status || 'Pending');
+                const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
+                const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
+                const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
-                // Logika Lampiran
                 let fileHtml = "";
-                if (d.urlKtp) fileHtml += `<a href="${d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
-                if (d.urlKk) fileHtml += `<a href="${d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> Lihat KK</a>`;
+                if (d.urlKtp) fileHtml += `<a href="${d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> KTP</a>`;
+                if (d.urlKk) fileHtml += `<a href="${d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> KK</a>`;
                 if (!fileHtml) fileHtml = "<small style='color:red;'>Tidak ada file</small>";
 
                 tableBody.innerHTML += `
@@ -348,8 +347,8 @@
                     </td>
                     <td>${fileHtml}</td>
                     <td>
-                        <span class="${statusBadge}">${d.status || 'Pending'}</span>
-                        <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${d.status}')">
+                        <span class="${statusBadge}">${status}</span>
+                        <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${status}')">
                             <i class="fas ${statusIcon}"></i>
                         </button>
                     </td>
@@ -363,11 +362,10 @@
         });
     }
 
-    // FUNGSI MODAL EDIT
+    // MODAL EDIT LOGIC
     function nextEditStep(n) {
         document.querySelectorAll('#editModal .form-step').forEach(s => s.classList.remove('active'));
         document.getElementById('estep-' + n).classList.add('active');
-        
         document.querySelectorAll('#editModal .step').forEach((bar, i) => {
             if (i < n) bar.classList.add('active');
             else bar.classList.remove('active');
@@ -437,22 +435,18 @@
             sub_bidang: document.getElementById("edit-sub_jabatan").value,
             fungsi_pelayanan: document.getElementById("edit-pelayanan").value,
             fungsi_non_struktural: document.getElementById("edit-pelayanan_non").value,
-            status: document.getElementById("edit-status_akun").value,
-            last_updated: firebase.firestore.FieldValue.serverTimestamp()
+            status: document.getElementById("edit-status_akun").value
         };
 
         try {
             await db.collection("users").doc(uid).update(updatedData);
-            alert("Data jemaat berhasil diperbarui!");
+            alert("Data berhasil diperbarui!");
             closeEditModal();
-        } catch (error) {
-            alert("Gagal update: " + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "SIMPAN PERUBAHAN";
-        }
+        } catch (e) { alert("Error: " + e.message); }
+        finally { btn.disabled = false; btn.innerText = "SIMPAN PERUBAHAN"; }
     }
 
+    // Helper functions for dynamic dropdowns
     function updateEditKomsel() {
         const lok = document.getElementById("edit-lokasi").value;
         const sel = document.getElementById("edit-komsel");
@@ -478,19 +472,22 @@
         if(dataNonStruktural[pelVal]) dataNonStruktural[pelVal].forEach(i => nonPel.add(new Option(i, i)));
     }
 
-    function openEditFromSelection() {
-        const selected = document.querySelectorAll('.user-checkbox:checked');
-        if (selected.length !== 1) return alert("Pilih satu data jemaat untuk diedit.");
-        openEditModal(selected[0].value);
+    function toggleUserStatus(id, current) {
+        const next = current === 'Aktif' ? 'Pending' : 'Aktif';
+        db.collection("users").doc(id).update({ status: next });
     }
 
-    function toggleUserStatus(id, currentStatus) {
-        const newStatus = currentStatus === 'Aktif' ? 'Pending' : 'Aktif';
-        db.collection("users").doc(id).update({ status: newStatus });
+    function deleteUser(id) { if(confirm("Hapus jemaat ini?")) db.collection("users").doc(id).delete(); }
+
+    function filterTable() {
+        let val = document.getElementById("searchInput").value.toLowerCase();
+        document.querySelectorAll("#memberData tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
+        });
     }
 
     function closeEditModal() { document.getElementById("editModal").style.display = "none"; }
-
+    
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateActionMenu();
@@ -502,13 +499,10 @@
         document.getElementById('selectedCount').innerText = `${count} Terpilih`;
     }
 
-    function deleteUser(id) { if (confirm("Apakah Anda yakin ingin menghapus data jemaat ini?")) db.collection("users").doc(id).delete(); }
-
-    function filterTable() {
-        let val = document.getElementById("searchInput").value.toLowerCase();
-        document.querySelectorAll("#memberData tr").forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
-        });
+    function openEditFromSelection() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if (selected.length !== 1) return alert("Pilih satu data untuk diedit.");
+        openEditModal(selected[0].value);
     }
 </script>
 </body>
