@@ -52,34 +52,31 @@
         .table-responsive { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; }
         table { width: 100%; border-collapse: collapse; min-width: 1400px; }
         table th { background: var(--primary); color: white; padding: 12px; font-size: 11px; text-align: left; text-transform: uppercase; }
-        table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 11.5px; vertical-align: top; }
+        table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 11.5px; vertical-align: middle; }
         
         .nij-col { color: var(--accent); font-weight: bold; font-family: monospace; font-size: 12px; }
         .check-col { width: 40px; text-align: center; }
-        
-        .badge-pending { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
-        .badge-aktif { background: var(--success); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
-        .btn-status-toggle { border: none; padding: 4px 10px; border-radius: 4px; color: white; font-size: 14px; cursor: pointer; margin-left: 5px; }
+
+        /* Gaya Dropdown Status Baru */
+        .status-dropdown {
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            font-size: 11px;
+            width: 100%;
+        }
+        .status-aktif { border-color: #28a745; color: #28a745; }
+        .status-pending { border-color: #ffc107; color: #856404; }
+        .status-suspend { border-color: #343a40; color: #343a40; background: #f8f9fa; }
 
         .file-link {
-            background: #e9ecef;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            border: 1px solid #ddd;
-            transition: 0.3s;
-            color: var(--accent) !important;
-            text-decoration: none !important;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 5px;
+            background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 10px;
+            border: 1px solid #ddd; transition: 0.3s; color: var(--accent) !important;
+            text-decoration: none !important; font-weight: bold; display: inline-block; margin-bottom: 5px;
         }
-        .file-link:hover {
-            background: var(--accent);
-            color: white !important;
-            transform: scale(1.05);
-        }
-        .file-link i { margin-right: 5px; }
+        .file-link:hover { background: var(--accent); color: white !important; transform: scale(1.05); }
     </style>
 </head>
 <body>
@@ -102,13 +99,13 @@
 
     <div id="actionMenu">
         <span style="font-size: 12px; font-weight: bold; margin-right: 10px;" id="selectedCount">0 Terpilih</span>
-        <button class="btn-action" style="background: var(--accent);" onclick="openEditFromSelection()"><i class="fas fa-edit"></i> Edit</button>
+        <button class="btn-action" style="background: var(--accent);" onclick="bulkEdit()"><i class="fas fa-edit"></i> Edit</button>
         <button class="btn-action" style="background: var(--danger);" onclick="bulkDelete()"><i class="fas fa-trash"></i> Hapus</button>
     </div>
 
     <div class="table-controls">
         <div class="search-box">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari NIJ, nama, komsel, atau jabatan...">
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari NIJ, nama, atau jabatan...">
             <i class="fas fa-search"></i>
         </div>
     </div>
@@ -118,17 +115,16 @@
             <thead>
                 <tr>
                     <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
+                    <th style="text-align:center;">Raport</th>
                     <th>NIJ</th>
                     <th>Nama Lengkap</th>
-                    <th>Gol. Darah</th> 
-                    <th>WhatsApp / Email</th>
-                    <th>Detail Keluarga</th>
-                    <th>Alamat Lengkap</th>
+                    <th>Kontak & Keluarga</th>
                     <th>Lokasi & Komsel</th>
                     <th>Jabatan & Pelayanan</th>
                     <th>Lampiran File</th>
-                    <th>Status Akun</th>
-                    </tr>
+                    <th style="width:150px;">Status Akun</th>
+                    <th>Aksi</th>
+                </tr>
             </thead>
             <tbody id="memberData"></tbody>
         </table>
@@ -139,7 +135,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Konsolidasi Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -154,103 +149,96 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
-    // 2. Fungsi Utama Terintegrasi ke Ekosistem Big Data
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
-            if(!tableBody) return; // Guard clause agar script tidak pecah
+            if(!tableBody) return;
             
             tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
+                const userId = doc.id;
                 
-                // --- MAPPING DATA INTEGRASI ---
-                const namaTampil = d.Nama || d.nama_lengkap || '-';
+                // --- Logika Poin & Warna ---
+                const points = d.total_point || 0;
+                const pointColor = points < 50 ? "#dc3545" : "#28a745"; 
+
+                // --- Mapping Data ---
+                const namaTampil = d.nama_lengkap || d.Nama || '-';
                 const nij = d.nij || '-';
-                
-                // PERBAIKAN: Mengambil field 'darah' (AB+, dsb) sesuai struktur Firestore Anda
-                const goldar = d.darah || d.golongan_darah || '-'; 
-
-                const whatsapp = d.WhatsApp || d.whatsapp || '-';
-                const email = d.email || '-';
-                const alamat = d.wilayah || d.Alamat || d.alamat || 'Alamat tidak diisi';
-                
-                // Sinkronisasi Lokasi Berjemaat (Field Big Data)
-                const lokasi = d.lokasi_berjemaat || d.wilayah_berjemaat || '-';
-                
-                const komsel = d.Komsel || d.komsel || '-';
-                const jabatan = d.jabatan || '-';
-                const fungsi = d.fungsi_pelayanan || d.fungsi_non_struktural || '-';
+                const whatsapp = d.whatsapp || d.WhatsApp || '-';
                 const status = d.status_akun || 'Pending';
-                const pasangan = d.nama_pasangan || '-';
-                const anak = d.jumlah_anak || '0';
-
-                // --- LOGIKA MEDIA PORTAL (Cloudinary/Firebase) ---
+                
+                // --- File Handling ---
                 let fileHtml = "";
-                if (d.url_berkas) {
-                    fileHtml += `<a href="${d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i> Lihat Berkas</a>`;
-                } 
-                if (d.url_ktp || d.urlKtp) {
-                    fileHtml += `<a href="${d.url_ktp || d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
-                }
-                if (d.url_kk || d.urlKk) {
-                    fileHtml += `<a href="${d.url_kk || d.urlKk}" target="_blank" class="file-link"><i class="fas fa-users"></i> Lihat KK</a>`;
-                }
-                if (!fileHtml) fileHtml = "<small style='color:#dc3545;'>Tidak ada file</small>";
+                if (d.url_ktp) fileHtml += `<a href="${d.url_ktp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> KTP</a> `;
+                if (d.url_kk) fileHtml += `<a href="${d.url_kk}" target="_blank" class="file-link"><i class="fas fa-users"></i> KK</a>`;
+                if (!fileHtml) fileHtml = "<small style='color:#aaa;'>No File</small>";
 
-                // --- UI LOGIC ---
-                const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
-                const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
-                const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
-
-                // --- RENDER TABEL (Menjaga Integrasi Tombol Fungsi Anda) ---
                 tableBody.innerHTML += `
                 <tr>
-                    <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
+                    <td class="check-col"><input type="checkbox" class="user-checkbox" value="${userId}" onclick="updateActionMenu()"></td>
+                    
+                    <td style="text-align:center; background: #f9f9f9;">
+                        <span style="font-weight:bold; color:${pointColor}; font-size:16px;">${points}</span>
+                        <br><small>Poin</small>
+                    </td>
+
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
-                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
+                    
                     <td>
-                        <i class="fab fa-whatsapp" style="color:green;"></i> ${whatsapp}<br>
-                        <small><i class="fas fa-envelope"></i> ${email}</small>
+                        <small><i class="fab fa-whatsapp" style="color:green;"></i> ${whatsapp}</small><br>
+                        <small><i class="fas fa-home"></i> P: ${d.nama_pasangan || '-'}</small>
                     </td>
-                    <td><small>Pasangan: ${pasangan}<br>Anak: ${anak}</small></td>
-                    <td style="max-width: 200px;"><small>${alamat}</small></td>
+
                     <td>
-                        <span style="color:var(--primary); font-weight:bold;">${lokasi}</span><br>
-                        <small>Komsel: ${komsel}</small>
+                        <small><strong>${d.wilayah || '-'}</strong></small><br>
+                        <small>${d.komsel || '-'}</small>
                     </td>
-                    <td><strong>${jabatan}</strong><br><small>Pelayanan: ${fungsi}</small></td>
+
+                    <td><small>${d.jabatan || '-'}</small></td>
+                    
                     <td>${fileHtml}</td>
+
                     <td>
-                        <span class="${statusBadge}">${status}</span>
-                        <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${status}')">
-                            <i class="fas ${statusIcon}"></i>
-                        </button>
+                        <select onchange="updateAccountStatus('${userId}', this.value)" 
+                                class="status-dropdown status-${status.toLowerCase()}">
+                            <option value="Aktif" ${status === 'Aktif' ? 'selected' : ''}>Aktif</option>
+                            <option value="Pending" ${status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="Suspend" ${status === 'Suspend' ? 'selected' : ''}>Suspend</option>
+                        </select>
                     </td>
+
                     <td>
-                        <button onclick="openEditModal('${doc.id}')" class="btn-action" style="background:var(--accent); padding:4px 8px;"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button>
+                        <button onclick="openEditModal('${userId}')" class="btn-action" style="background:var(--accent); padding:5px 8px;"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${userId}')" class="btn-action" style="background:var(--danger); padding:5px 8px;"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
-            updateActionMenu();
         });
     }
 
-    // 3. Fungsi Operasional Portal (Sesuai Struktur Anda)
+    // Fungsi Update Status Langsung dari Dropdown
+    async function updateAccountStatus(id, newStatus) {
+        try {
+            await db.collection("users").doc(id).update({
+                status_akun: newStatus,
+                last_update: new Date().toISOString()
+            });
+            // Snapshot otomatis akan merefresh UI
+        } catch (error) {
+            alert("Gagal memperbarui status: " + error.message);
+        }
+    }
+
     function openEditModal(uid) {
         window.location.href = `edit-jemaat-administrator.html?edit=${uid}`;
     }
 
-    function toggleUserStatus(id, current) {
-        const next = current === 'Aktif' ? 'Pending' : 'Aktif';
-        db.collection("users").doc(id).update({ status_akun: next });
-    }
-
-    function deleteUser(id) { 
-        if(confirm("Hapus data ini secara permanen dari sistem?")) {
-            db.collection("users").doc(id).delete(); 
+    function deleteUser(id) {
+        if(confirm("Hapus data user ini?")) {
+            db.collection("users").doc(id).delete();
         }
     }
 
