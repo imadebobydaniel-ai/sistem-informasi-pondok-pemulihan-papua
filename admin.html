@@ -120,7 +120,8 @@
                     <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                     <th>NIJ</th>
                     <th>Nama Lengkap</th>
-                    <th>Gol. Darah</th> <th>WhatsApp / Email</th>
+                    <th>Gol. Darah</th> 
+                    <th>WhatsApp / Email</th>
                     <th>Detail Keluarga</th>
                     <th>Alamat Lengkap</th>
                     <th>Lokasi & Komsel</th>
@@ -154,23 +155,23 @@
     window.onload = function() { loadMembersRealtime(); };
 
     function loadMembersRealtime() {
+        // Menggunakan onSnapshot untuk koneksi Realtime dengan Firebase
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             tableBody.innerHTML = "";
+            
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                const namaTampil = d.Nama || d.nama_lengkap || '-';
+                // MAPPING DATA (Menangani variasi nama field di Database)
+                const namaTampil = d.nama_lengkap || d.Nama || '-';
                 const nij = d.nij || '-';
                 const goldar = d.golongan_darah || '-';
-                const whatsapp = d.WhatsApp || d.whatsapp || '-';
+                const whatsapp = d.whatsapp || d.WhatsApp || '-';
                 const email = d.email || '-';
-                
-                // Perbaikan kolom Alamat (mengambil dari field 'wilayah' di database)
-                const alamat = d.wilayah || d.Alamat || d.alamat || 'Alamat tidak diisi';
-                
+                const alamat = d.wilayah || d.alamat || d.Alamat || 'Alamat tidak diisi';
                 const lokasi = d.lokasi_berjemaat || '-';
-                const komsel = d.Komsel || d.komsel || '-';
+                const komsel = d.komsel || d.Komsel || '-';
                 const jabatan = d.jabatan || '-';
                 const fungsi = d.fungsi_pelayanan || d.fungsi_non_struktural || '-';
                 const status = d.status_akun || 'Pending';
@@ -179,11 +180,9 @@
 
                 // --- LOGIKA LAMPIRAN FILE (DETEKSI CLOUDINARY & FIREBASE) ---
                 let fileHtml = "";
-                // Cek field url_berkas sesuai struktur database terbaru Anda
                 if (d.url_berkas) {
                     fileHtml += `<a href="${d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i> Lihat Berkas</a>`;
                 } 
-                // Cadangan untuk field lama
                 if (d.url_ktp || d.urlKtp) {
                     fileHtml += `<a href="${d.url_ktp || d.urlKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i> Lihat KTP</a>`;
                 }
@@ -204,7 +203,8 @@
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
-                    <td style="text-align:center;"><strong>${goldar}</strong></td> <td>
+                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
+                    <td>
                         <i class="fab fa-whatsapp" style="color:green;"></i> ${whatsapp}<br>
                         <small><i class="fas fa-envelope"></i> ${email}</small>
                     </td>
