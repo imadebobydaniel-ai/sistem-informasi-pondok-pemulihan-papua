@@ -16,7 +16,6 @@
         .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; }
         .card-header { display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--dark); margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; font-size: 14px; }
         
-        /* Gaya untuk teks penjelasan grafik */
         .chart-info { 
             background: #fff9e6; 
             padding: 10px; 
@@ -35,7 +34,7 @@
         .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--primary); }
         .stat-card h3 { margin: 0; font-size: 20px; color: var(--dark); }
         .stat-card p { margin: 5px 0 0; font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; }
-        .chart-box { position: relative; height: 300px; width: 100%; }
+        .chart-box { position: relative; height: 320px; width: 100%; }
         .btn-back { display: block; text-align: center; padding: 16px; background: var(--dark); color: white; text-decoration: none; font-weight: bold; border-radius: 14px; margin-top: 20px; }
     </style>
 </head>
@@ -108,8 +107,8 @@
         </div>
         <div class="chart-info">
             <strong>Cara Membaca Grafik Kehadiran:</strong><br>
-            • Angka di bawah grafik (0, 5, 10, dst) menunjukkan <b>Jumlah Orang</b> yang hadir.<br>
-            • Semakin panjang batang warna ke kanan, semakin banyak total kehadiran pada kategori tersebut dalam periode bulan yang dipilih.
+            • Angka di bawah grafik menunjukkan <b>Jumlah Orang</b> yang hadir.<br>
+            • <b>KD</b> dan <b>Latihan</b> kini ditampilkan terpisah untuk akurasi data fungsi yang berbeda.
         </div>
     </div>
 
@@ -119,11 +118,6 @@
             <canvas id="chartDarah"></canvas>
         </div>
         <div id="summary-darah" class="stat-grid" style="margin-top:20px;"></div>
-        <div class="chart-info">
-            <strong>Cara Membaca Grafik Lingkaran:</strong><br>
-            • Grafik ini menunjukkan <b>Sebaran Tipe Darah</b> jemaat yang terdaftar.<br>
-            • Klik pada label (A, B, O, AB) untuk menyembunyikan atau memunculkan data tertentu. Angka menunjukkan perbandingan populasi tiap golongan darah.
-        </div>
     </div>
 
     <a href="menu.html" class="btn-back">KEMBALI KE PANEL ADMIN</a>
@@ -133,7 +127,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase tetap sama
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -153,11 +146,12 @@
         chartK = new Chart(document.getElementById('chartKehadiran'), {
             type: 'bar',
             data: {
-                labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD/Latihan', 'Baca Alkitab'],
+                // Memisahkan KD dan Latihan di label agar muncul sebagai baris sendiri
+                labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD', 'Latihan', 'Baca Alkitab'],
                 datasets: [{
                     label: 'Jumlah Orang',
-                    data: [0, 0, 0, 0, 0, 0],
-                    backgroundColor: ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#009688'],
+                    data: [0, 0, 0, 0, 0, 0, 0],
+                    backgroundColor: ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#9c27b0', '#009688'],
                     borderRadius: 8
                 }]
             },
@@ -168,7 +162,7 @@
                 scales: {
                     x: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 } // Memaksa angka bulat (1, 2, 3...) agar tidak desimal
+                        ticks: { stepSize: 1 }
                     }
                 }
             }
@@ -187,7 +181,6 @@
         });
     }
 
-    // Fungsi refreshData tetap sama dengan logika sebelumnya
     function refreshData() {
         if (unsub1) unsub1();
         if (unsub2) unsub2();
@@ -204,9 +197,7 @@
             let total = 0;
             snap.forEach(doc => {
                 const d = doc.data();
-                const mWil = (selWilayah === "GLOBAL" || d.wilayah === selWilayah);
-                const mKom = (selKomsel === "ALL" || d.Komsel === selKomsel);
-                if (mWil && mKom) {
+                if ((selWilayah === "GLOBAL" || d.wilayah === selWilayah) && (selKomsel === "ALL" || d.Komsel === selKomsel)) {
                     total++;
                     let g = (d.darah || "LAIN").toUpperCase();
                     if (g.includes("AB")) rekap['AB']++;
@@ -224,7 +215,17 @@
         });
 
         unsub2 = db.collection("kehadiran").onSnapshot(snap => {
-            let rekapH = { 'Komsel Reguler': 0, 'Ibadah Raya': 0, 'Komsel Gabungan': 0, 'Doa': 0, 'KD/Latihan': 0, 'Baca Alkitab': 0 };
+            // Inisialisasi rekapH dengan kunci terpisah untuk KD dan Latihan
+            let rekapH = { 
+                'Komsel Reguler': 0, 
+                'Ibadah Raya': 0, 
+                'Komsel Gabungan': 0, 
+                'Doa': 0, 
+                'KD': 0, 
+                'Latihan': 0, 
+                'Baca Alkitab': 0 
+            };
+
             snap.forEach(doc => {
                 const d = doc.data();
                 const tgl = d.tanggal?.toDate ? d.tanggal.toDate() : new Date(d.tanggal);
@@ -233,7 +234,13 @@
                 const mWaktu = (tgl >= limitDate);
 
                 if (mWil && mKom && mWaktu && d.status === "HADIR") {
-                    if (rekapH.hasOwnProperty(d.tipe)) rekapH[d.tipe]++;
+                    // Cek jika tipe adalah "KD/Latihan" (data lama), kita masukkan ke salah satu atau split
+                    if (d.tipe === "KD/Latihan") {
+                         // Default ke KD jika masih format lama, atau Anda bisa sesuaikan logikanya
+                        rekapH['KD']++; 
+                    } else if (rekapH.hasOwnProperty(d.tipe)) {
+                        rekapH[d.tipe]++;
+                    }
                 }
             });
             chartK.data.datasets[0].data = Object.values(rekapH);
