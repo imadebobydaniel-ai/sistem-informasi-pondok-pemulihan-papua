@@ -52,7 +52,7 @@
             position: absolute;
             width: 6px;
             height: 8px;
-            background-color: #3498db;
+            background-color: #dc3545;
             border-radius: 0 50% 50% 50%;
             transform: rotate(45deg);
             top: 15px; 
@@ -186,22 +186,18 @@
         btn.disabled = true;
 
         try {
-            // 1. Cek Login menggunakan Firebase Auth
+            // 1. Sign In
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
-            // --- BAGIAN PEMBATASAN LOGIN (EMAIL VERIFICATION) ---
+            // 2. Cek Verifikasi Email
             if (!user.emailVerified) {
-                // Paksa logout karena belum verifikasi
                 await auth.signOut();
-                throw new Error("Akses Ditolak! Email Anda belum diverifikasi. Silakan klik link verifikasi yang dikirim ke email Anda.");
+                throw { code: 'auth/not-verified', message: "Akses Ditolak! Email Anda belum diverifikasi. Silakan cek inbox email Anda." };
             }
-            // ----------------------------------------------------
 
-            // 2. Jika Lolos Verifikasi, tentukan arah redirect
+            // 3. Cek Role & Redirect
             let targetURL = "menu.html"; 
-
-            // Cek apakah Admin (Firestore atau hardcoded)
             const adminSnapshot = await db.collection("admin_users").where("email", "==", email.toLowerCase()).get();
             
             if (!adminSnapshot.empty || (email.toLowerCase() === "admin@gmail.com" && password === "bukadong821")) {
@@ -215,14 +211,33 @@
                 }
             }
 
-            // Berhasil login
             triggerGlow(); 
             setTimeout(() => { window.location.replace(targetURL); }, 1000);
 
         } catch (err) {
             triggerTears(); 
             setTimeout(() => {
-                showError(err.message);
+                let pesanFriendly;
+
+                // Logika pemfilteran pesan eror
+                switch (err.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                    case 'auth/invalid-email':
+                    case 'auth/user-disabled':
+                        pesanFriendly = "periksa kembali user dan pasword anda";
+                        break;
+                    case 'auth/too-many-requests':
+                        pesanFriendly = "Terlalu banyak percobaan login. Silakan tunggu sebentar atau reset password Anda.";
+                        break;
+                    case 'auth/not-verified':
+                        pesanFriendly = err.message;
+                        break;
+                    default:
+                        pesanFriendly = "Terjadi kesalahan sistem. Silakan coba lagi nanti.";
+                }
+
+                showError(pesanFriendly);
                 btn.innerText = "MASUK";
                 btn.disabled = false;
             }, 1000);
