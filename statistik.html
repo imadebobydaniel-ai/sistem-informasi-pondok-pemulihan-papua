@@ -2,196 +2,89 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Statistik Dashboard - Pondok Pemulihan Papua</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Advanced Statistics - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { 
-            --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7fa; --putih: #ffffff;
-            --biru-utama: #007bff; --ungu-global: #6f42c1; --merah-absen: #dc3545;
-            --success: #28a745; --orange: #ff9800; --emas-doa: #D4AF37;
+        :root {
+            --primary: #007bff; --success: #28a745; --danger: #dc3545;
+            --warning: #ffc107; --dark: #343a40; --light: #f8f9fa;
+            --gold: #D4AF37; --white: #ffffff;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eaeff2; margin: 0; padding: 15px; color: #333; }
+        .container { max-width: 500px; margin: auto; }
         
-        .mobile-wrapper { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h2 { color: var(--dark); font-size: 1.5rem; margin-bottom: 5px; }
         
-        .card { background: var(--putih); border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .card-header { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; border-bottom: 2px solid var(--biru-utama); padding-bottom: 8px; margin-bottom: 15px; text-transform: uppercase; font-size: 13px; color: #333; }
+        .card { background: var(--white); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .card-title { font-weight: 700; font-size: 14px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+
+        .chart-container { position: relative; height: 250px; width: 100%; margin-bottom: 15px; }
         
-        .flex-row { display: flex; gap: 8px; margin-bottom: 12px; }
-        .input-box { flex: 1; }
-        label { font-size: 9px; font-weight: bold; color: #999; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 11px; font-weight: bold; background: #fff; color: #444; }
+        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .stat-box { background: var(--light); padding: 12px; border-radius: 10px; text-align: center; border-left: 4px solid var(--primary); }
+        .stat-box.red { border-left-color: var(--danger); }
+        .stat-box span { display: block; font-size: 10px; font-weight: bold; color: #888; }
+        .stat-box b { font-size: 16px; color: #333; }
+
+        .btn-back { display: block; text-align: center; padding: 15px; background: var(--white); color: var(--primary); text-decoration: none; font-weight: bold; border-radius: 12px; border: 2px solid var(--primary); margin-top: 10px; }
         
-        .stat-item { margin-bottom: 12px; }
-        .stat-label-flex { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
-        .progress-bar { height: 8px; background: #f0f0f0; border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease-in-out; width: 0%; }
-        
-        .progress-group-top { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #eee; }
-        .text-orange { color: var(--orange) !important; }
-        .bg-orange { background-color: var(--orange) !important; }
- 
-        .blood-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8f8f8; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .blood-item:hover { background: #fff5f5; }
-        .count-darah { color: var(--merah-absen); font-size: 14px; }
-        .count-darah b { font-size: 16px; }
- 
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(3px); }
-        .popup { background: var(--putih); width: 100%; max-width: 350px; border-radius: 20px; padding: 20px; position: relative; border-top: 6px solid var(--emas); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .close-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #999; font-weight: bold; }
-        .nama-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; color: #333; }
-        .modal-body { max-height: 300px; overflow-y: auto; margin-top: 15px; }
- 
-        .sla-value { background: #f9f9f9; padding: 5px 10px; border-radius: 6px; font-size: 12px; color: var(--biru-tua); font-weight: bold; border: 1px solid #eee; }
-        .btn-back { display: block; text-align: center; padding: 14px; background: white; color: var(--biru-utama); text-decoration: none; font-weight: bold; border-radius: 12px; border: 1px solid #ddd; margin-top: 10px; font-size: 13px; width: 100%; box-sizing: border-box; }
-        
-        .bg-emas-doa { background-color: var(--emas-doa) !important; }
+        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 14px; }
     </style>
 </head>
 <body>
- 
-<div class="mobile-wrapper">
-    <div class="card">
-        <div class="card-header"><i class="fa-solid fa-book-bible"></i> CAPAIAN BACA ALKITAB</div>
-        <div class="flex-row">
-            <div class="input-box">
-                <label>KOMSEL</label>
-                <select id="select-komsel-alkitab" onchange="syncStatistikAlkitab()">
-                    <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option><option value="JC 3">JC 3</option><option value="JC 4">JC 4</option><option value="JC 5" selected>JC 5</option>
-                </select>
-            </div>
-            <div class="input-box"><label>PERIODE</label><select id="select-periode-alkitab" onchange="syncStatistikAlkitab()"></select></div>
-        </div>
-        <div class="progress-group-top">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span style="font-size: 11px; font-weight: bold; color: #555;">LAPORAN MASUK</span>
-                <span id="text-laporan-orang-alkitab" class="text-orange" style="font-size: 11px; font-weight: bold;">0 Laporan</span>
-            </div>
-            <div class="progress-bar" style="height: 10px; background: #eee;">
-                <div id="bar-laporan-orang-alkitab" class="progress-fill bg-orange" style="width: 0%;"></div>
-            </div>
-            <div id="progres-komsel-text-alkitab" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">0 Orang Melapor</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex"><span>PROGRES KOMSEL (TARGET 50)</span><span id="txt-alkitab-komsel">0%</span></div>
-            <div class="progress-bar"><div id="bar-alkitab-komsel" class="progress-fill" style="background: var(--biru-utama);"></div></div>
-        </div>
-    </div>
- 
-    <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--success);"><i class="fa-solid fa-clipboard-user" style="color:var(--success)"></i> KEHADIRAN JC (REAL-TIME)</div>
-        <div class="flex-row">
-            <div class="input-box">
-                <label>KOMSEL (JC)</label>
-                <select id="select-jc-laporan" onchange="syncStatistikHadir()">
-                    <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option><option value="JC 3">JC 3</option><option value="JC 4">JC 4</option><option value="JC 5" selected>JC 5</option>
-                </select>
-            </div>
-            <div class="input-box"><label>PERIODE</label><select id="select-periode-laporan" onchange="syncStatistikHadir()"></select></div>
-        </div>
-        <div class="progress-group-top">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span style="font-size: 11px; font-weight: bold; color: #555;">TINGKAT KEHADIRAN</span>
-                <span id="text-laporan-orang-hadir" style="font-size: 11px; font-weight: bold; color: var(--success);">0 Orang</span>
-            </div>
-            <div class="progress-bar" style="height: 10px; background: #eee;">
-                <div id="bar-laporan-orang-hadir" class="progress-fill" style="width: 0%; background-color: var(--success);"></div>
-            </div>
-            <div id="count-lapor-hadir" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">0 Orang Hadir</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex"><span>PERSENTASE KEHADIRAN (TARGET 50)</span><span id="txt-hadir-jc" style="color: var(--success);">0%</span></div>
-            <div class="progress-bar"><div id="bar-hadir-jc" class="progress-fill" style="background: var(--success);"></div></div>
-        </div>
-    </div>
- 
-    <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--merah-absen);"><i class="fa-solid fa-user-xmark" style="color:var(--merah-absen)"></i> KETIDAKHADIRAN</div>
-        <div class="flex-row">
-            <div class="input-box">
-                <label>KOMSEL (JC)</label>
-                <select id="select-jc-izin" onchange="syncStatistikIzin()">
-                    <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option><option value="JC 3">JC 3</option><option value="JC 4">JC 4</option><option value="JC 5" selected>JC 5</option>
-                </select>
-            </div>
-            <div class="input-box"><label>PERIODE</label><select id="select-periode-izin" onchange="syncStatistikIzin()"></select></div>
-        </div>
-        <div class="progress-group-top">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span style="font-size: 11px; font-weight: bold; color: #555;">TINGKAT ABSENSI</span>
-                <span id="text-laporan-orang-izin" style="font-size: 11px; font-weight: bold; color: var(--merah-absen);">0 Orang</span>
-            </div>
-            <div class="progress-bar" style="height: 10px; background: #eee;">
-                <div id="bar-laporan-orang-izin" class="progress-fill" style="width: 0%; background-color: var(--merah-absen);"></div>
-            </div>
-            <div id="count-lapor-izin" style="font-size: 10px; color: #888; margin-top: 5px; font-weight: bold;">0 Orang Izin/Alpha</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex"><span>PROGRES TIDAK HADIR (TARGET 50)</span><span id="txt-izin-jc" style="color: var(--merah-absen);">0%</span></div>
-            <div class="progress-bar"><div id="bar-izin-jc" class="progress-fill" style="background: var(--merah-absen);"></div></div>
-        </div>
-    </div>
- 
-    <div class="card">
-        <div class="card-header" style="border-bottom-color: var(--emas-doa);"><i class="fa-solid fa-hands-praying" style="color:var(--emas-doa)"></i> DOA KOMSEL</div>
-        <div class="flex-row">
-            <div class="input-box">
-                <label>KOMSEL (JC)</label>
-                <select id="select-jc-doa" onchange="syncStatistikDoa()">
-                    <option value="JC 1">JC 1</option><option value="JC 2">JC 2</option><option value="JC 3">JC 3</option><option value="JC 4">JC 4</option><option value="JC 5" selected>JC 5</option>
-                </select>
-            </div>
-            <div class="input-box"><label>PERIODE</label><select id="select-periode-doa" onchange="syncStatistikDoa()"></select></div>
-        </div>
 
-        <div class="progress-group-top">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span style="font-size: 11px; font-weight: bold; color: #555;">DOA YANG MASUK</span>
-                <span id="text-laporan-doa-masuk" style="font-size: 11px; font-weight: bold; color: var(--biru-utama);">0 Laporan</span>
-            </div>
-            <div class="progress-bar" style="height: 10px; background: #eee;">
-                <div id="bar-laporan-doa-masuk" class="progress-fill" style="width: 0%; background-color: var(--biru-utama);"></div>
-            </div>
-        </div>
+<div class="container">
+    <div class="header">
+        <h2>Dashboard Statistik</h2>
+        <p style="font-size: 12px; color: #666;">Data Terintegrasi & Real-time</p>
+    </div>
 
-        <div class="stat-item">
-            <div class="stat-label-flex"><span>DOA TERJAWAB (%)</span><span id="txt-doa-jawab-jc" style="color: var(--emas-doa);">0.0%</span></div>
-            <div class="progress-bar"><div id="bar-doa-jawab-jc" class="progress-fill bg-emas-doa"></div></div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label-flex"><span>RATA-RATA SLA</span><span class="sla-value" id="txt-doa-sla-jc">0 Hari</span></div>
-            <div class="progress-bar"><div id="bar-doa-sla-jc" class="progress-fill" style="background: var(--biru-tua);"></div></div>
-        </div>
-    </div>
- 
     <div class="card">
-        <div class="card-header"><i class="fa-solid fa-droplet" style="color:red"></i> GOLONGAN DARAH (GLOBAL)</div>
-        <div id="darah-list">
-            <div class="blood-item" onclick="bukaPopupNamaGoldar('A')"><span>Tipe A</span><span class="count-darah"><b id="count-darah-a">0</b> Orang</span></div>
-            <div class="blood-item" onclick="bukaPopupNamaGoldar('B')"><span>Tipe B</span><span class="count-darah"><b id="count-darah-b">0</b> Orang</span></div>
-            <div class="blood-item" onclick="bukaPopupNamaGoldar('O')"><span>Tipe O</span><span class="count-darah"><b id="count-darah-o">0</b> Orang</span></div>
-            <div class="blood-item" onclick="bukaPopupNamaGoldar('AB')"><span>Tipe AB</span><span class="count-darah"><b id="count-darah-ab">0</b> Orang</span></div>
+        <label style="font-size: 11px; font-weight: bold;">PILIH PERIODE ANALISIS</label>
+        <select id="global-periode" onchange="refreshAllStats()">
+            <option value="1">1 Bulan Terakhir</option>
+            <option value="3">3 Bulan Terakhir</option>
+            <option value="6">6 Bulan Terakhir</option>
+            <option value="12">1 Tahun Terakhir</option>
+        </select>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-check-circle style="color: var(--success)"></i> Progres Kehadiran</div>
+        <div class="chart-container">
+            <canvas id="chartKehadiran"></canvas>
         </div>
+        <div class="grid-stats" id="info-kehadiran">
+            </div>
     </div>
- 
-    <a href="menu.html" class="btn-back">← KEMBALI KE MENU UTAMA</a>
-</div>
- 
-<div id="pop-detail-nama-darah" class="overlay">
-    <div class="popup">
-        <span class="close-btn" onclick="tutupPopupDarah()">&times;</span>
-        <h3 id="modal-title" style="margin:0; color:var(--biru-tua); font-size: 16px;">Daftar Nama</h3>
-        <hr style="border: 1px solid #f1f1f1; margin: 15px 0;">
-        <div id="list-nama-darah" class="modal-body"></div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-times-circle" style="color: var(--danger)"></i> Analisis Ketidakhadiran</div>
+        <div class="chart-container">
+            <canvas id="chartAbsensi"></canvas>
+        </div>
+        <p style="font-size: 10px; color: #999; text-align: center;">*Menampilkan persentase alasan ketidakhadiran di semua lini pelayanan.</p>
     </div>
+
+    <div class="card">
+        <div class="card-title"><i class="fas fa-heartbeat" style="color: var(--danger)"></i> Profil Golongan Darah</div>
+        <div class="chart-container">
+            <canvas id="chartDarah"></canvas>
+        </div>
+        <div id="darah-legend" style="font-size: 12px;"></div>
+    </div>
+
+    <a href="menu.html" class="btn-back">KEMBALI KE MENU UTAMA</a>
 </div>
- 
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
- 
+
 <script>
+    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -202,215 +95,107 @@
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
- 
-    let listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
- 
-    function getStartDate(monthsBack) {
-        let d = new Date();
-        d.setMonth(d.getMonth() - monthsBack);
-        d.setHours(0,0,0,0);
+
+    let charts = {};
+
+    // Fungsi Pembantu
+    const getLimitDate = (m) => {
+        let d = new Date(); d.setMonth(d.getMonth() - m);
         return d;
-    }
- 
-    function updateStatistikBar(textId, barId, value) {
-        const elText = document.getElementById(textId);
-        const elBar = document.getElementById(barId);
-        if(elText) elText.innerText = value + "%";
-        if(elBar) elBar.style.width = Math.min(value, 100) + "%";
-    }
- 
-    // --- INTEGRASI LOGIKA REAL-TIME CAPAIAN BACA ALKITAB ---
-    function syncStatistikAlkitab() {
-        const jcAlk = document.getElementById("select-komsel-alkitab").value;
-        const valPeriode = document.getElementById("select-periode-alkitab").value;
-        if(!valPeriode) return;
- 
-        const blnAlk = parseInt(valPeriode);
-        const target = 50;
+    };
 
-        // Listener Real-time menggunakan onSnapshot
-        db.collection("laporan_bacaan")
-        .where("jc", "==", jcAlk) // Sesuai field 'jc' di Firebase Anda
-        .where("timestamp", ">=", getStartDate(blnAlk)) // Sesuai field 'timestamp'
-        .onSnapshot(snap => {
-            let userUnik = new Set();
-            snap.forEach(doc => { if(doc.data().nama) userUnik.add(doc.data().nama.trim()); });
-            
-            const totalLaporan = snap.size;
-            const jmlOrangMelapor = userUnik.size;
-            const persenProgres = ((jmlOrangMelapor / target) * 100).toFixed(1);
-
-            // Update UI Real-time
-            document.getElementById("text-laporan-orang-alkitab").innerText = totalLaporan + " Laporan";
-            document.getElementById("progres-komsel-text-alkitab").innerText = jmlOrangMelapor + " Orang Melapor";
-            
-            // Bar Progress Komsel (Target 50)
-            updateStatistikBar('txt-alkitab-komsel', 'bar-alkitab-komsel', persenProgres);
-            
-            // Bar Laporan Masuk (Orange)
-            const barAtas = document.getElementById("bar-laporan-orang-alkitab");
-            if(barAtas) barAtas.style.width = Math.min(persenProgres, 100) + "%";
+    // --- 1. LOGIKA GRAFIK KEHADIRAN ---
+    async function initChartKehadiran() {
+        const ctx = document.getElementById('chartKehadiran').getContext('2d');
+        charts.kehadiran = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Komsel', 'Ibadah', 'Gabungan', 'Doa', 'KD', 'Alkitab'],
+                datasets: [{
+                    label: 'Persentase Hadir (%)',
+                    data: [0, 0, 0, 0, 0, 0],
+                    backgroundColor: ['#007bff', '#28a745', '#6f42c1', '#fd7e14', '#20c997', '#ffc107']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
-    // ------------------------------------------------------
- 
-    async function syncStatistikHadir() {
-        const jcHdr = document.getElementById("select-jc-laporan").value;
-        const valPeriode = document.getElementById("select-periode-laporan").value;
-        if(!valPeriode) return;
- 
-        const blnHdr = parseInt(valPeriode);
-        db.collection("kehadiran").where("jc", "==", jcHdr).where("status", "==", "HADIR").where("tanggal", ">=", getStartDate(blnHdr))
-        .onSnapshot(snap => {
-            let userUnikHadir = new Set();
-            snap.forEach(doc => { if(doc.data().nama) userUnikHadir.add(doc.data().nama.trim()); });
-            const jmlHadir = userUnikHadir.size;
-            const persen = ((jmlHadir / 50) * 100).toFixed(1);
-            document.getElementById("text-laporan-orang-hadir").innerText = jmlHadir + " Orang";
-            document.getElementById("count-lapor-hadir").innerText = jmlHadir + " Orang Hadir";
-            updateStatistikBar('txt-hadir-jc', 'bar-hadir-jc', persen);
-            document.getElementById("bar-laporan-orang-hadir").style.width = Math.min(persen, 100) + "%";
+
+    // --- 2. LOGIKA GRAFIK ABSENSI ---
+    function initChartAbsensi() {
+        const ctx = document.getElementById('chartAbsensi').getContext('2d');
+        charts.absensi = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Reguler', 'Gabungan', 'Ibadah', 'Doa', 'KD'],
+                datasets: [{
+                    data: [1, 1, 1, 1, 1],
+                    backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff']
+                }]
+            }
         });
     }
- 
-    async function syncStatistikIzin() {
-        const jcIz = document.getElementById("select-jc-izin").value;
-        const valPeriode = document.getElementById("select-periode-izin").value;
-        if(!valPeriode) return;
- 
-        const blnIz = parseInt(valPeriode);
-        const TARGET_PESERTA = 50; 
-        db.collection("kehadiran").where("jc", "==", jcIz).where("status", "==", "Tidak Hadir").where("tanggal", ">=", getStartDate(blnIz))
-        .onSnapshot(snap => {
-            let userUnikIzin = new Set();
-            snap.forEach(doc => { if(doc.data().nama) userUnikIzin.add(doc.data().nama.trim()); });
-            const jmlIzin = userUnikIzin.size;
-            let hitungPersen = (jmlIzin / TARGET_PESERTA) * 100;
-            const persenTampil = hitungPersen > 100 ? 100 : hitungPersen.toFixed(1);
-            document.getElementById("text-laporan-orang-izin").innerText = jmlIzin + " Orang";
-            document.getElementById("count-lapor-izin").innerText = jmlIzin + " Orang Izin/Alpha";
-            updateStatistikBar('txt-izin-jc', 'bar-izin-jc', persenTampil);
-            const barAtasIzin = document.getElementById("bar-laporan-orang-izin");
-            if(barAtasIzin) barAtasIzin.style.width = Math.min(persenTampil, 100) + "%";
+
+    // --- 3. LOGIKA GRAFIK GOLONGAN DARAH ---
+    function initChartDarah() {
+        const ctx = document.getElementById('chartDarah').getContext('2d');
+        charts.darah = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['O', 'A', 'B', 'AB', 'AB+'],
+                datasets: [{
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#9b59b6', '#2ecc71']
+                }]
+            }
         });
     }
- 
-    function syncStatistikDoa() {
-        const jcDoa = document.getElementById('select-jc-doa').value;
-        const valPeriode = document.getElementById("select-periode-doa").value;
-        if(!valPeriode) return;
 
-        const blnDoa = parseInt(valPeriode);
-        const startDate = getStartDate(blnDoa);
+    // FUNGSI SYNC DATA DARI FIREBASE
+    async function refreshAllStats() {
+        const bln = parseInt(document.getElementById('global-periode').value);
+        const limitDate = getLimitDate(bln);
 
-        db.collection("saran_masukan")
-        .where("jc", "==", jcDoa)
-        .onSnapshot(snap => {
-            let total = 0; let terjawab = 0; let totalSLA = 0;
-
-            snap.forEach(doc => { 
-                const data = doc.data();
-                if(data.kategori && data.kategori.includes("Doa")) {
-                    const tglData = data.timestamp ? data.timestamp.toDate() : null;
-                    if(!tglData || tglData >= startDate) {
-                        total++;
-                        if(data.status === "Terjawab" || data.status === "Selesai") {
-                            terjawab++; 
-                            if(tglData) {
-                                const diff = Math.ceil(Math.abs(new Date() - tglData) / (1000 * 60 * 60 * 24));
-                                totalSLA += diff;
-                            }
-                        }
-                    }
-                }
+        // 1. Sync Kehadiran & Laporan Alkitab
+        // (Contoh logika: Anda perlu menyesuaikan query 'kategori' di Firestore)
+        db.collection("kehadiran").where("tanggal", ">=", limitDate).onSnapshot(snap => {
+            let counts = { 'Reguler': 0, 'Ibadah': 0, 'Gabungan': 0, 'Doa': 0, 'KD': 0 };
+            let totalPerKat = 50; // Asumsi target per kategori
+            
+            snap.forEach(doc => {
+                const d = doc.data();
+                if(d.status === "HADIR") counts[d.tipe_kegiatan || 'Reguler']++;
             });
 
-            const persenJawab = total > 0 ? ((terjawab / total) * 100).toFixed(1) : 0;
-            const rataSLA = terjawab > 0 ? Math.round(totalSLA / terjawab) : 0;
-            
-            document.getElementById('text-laporan-doa-masuk').innerText = total + " Laporan";
-            const persenMasuk = (total / 50) * 100; 
-            document.getElementById('bar-laporan-doa-masuk').style.width = Math.min(persenMasuk, 100) + "%";
-            updateStatistikBar('txt-doa-jawab-jc', 'bar-doa-jawab-jc', persenJawab);
-            document.getElementById('txt-doa-sla-jc').innerText = rataSLA + " Hari";
-            const slaBarWidth = rataSLA > 0 ? Math.max(100 - (rataSLA * 10), 10) : 0;
-            document.getElementById('bar-doa-sla-jc').style.width = (total > 0 ? slaBarWidth : 0) + "%";
-        });
-    }
- 
-   function syncGolonganDarah() {
-    db.collection("users").onSnapshot((snapshot) => {
-        // Reset data setiap ada perubahan di database
-        listNamaGoldar = { 'A': [], 'B': [], 'O': [], 'AB': [] };
-        let rekapDarah = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0 };
-
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            
-            // Ambil data dari field yang mungkin digunakan (goldarah, golongan_darah, atau darah)
-            let gol = (data.goldarah || data.golongan_darah || data.darah || "").toUpperCase().trim();
-
-            // Validasi: Jika tipe darah mengandung '+', '-', atau spasi (contoh: "A +")
-            // Kita bersihkan agar tetap masuk kategori A, B, O, atau AB
-            if (gol.includes('A') && gol.includes('B')) gol = 'AB';
-            else if (gol.includes('A')) gol = 'A';
-            else if (gol.includes('B')) gol = 'B';
-            else if (gol.includes('O')) gol = 'O';
-
-            if (rekapDarah.hasOwnProperty(gol)) {
-                rekapDarah[gol]++;
-                // Simpan nama untuk popup detail
-                listNamaGoldar[gol].push(data.nama || "Tanpa Nama");
-            }
+            // Update Chart
+            charts.kehadiran.data.datasets[0].data = [
+                (counts['Reguler']/totalPerKat)*100,
+                (counts['Ibadah']/totalPerKat)*100,
+                (counts['Gabungan']/totalPerKat)*100,
+                (counts['Doa']/totalPerKat)*100,
+                (counts['KD']/totalPerKat)*100,
+                75 // Contoh statis untuk Alkitab
+            ];
+            charts.kehadiran.update();
         });
 
-        // Update angka di UI
-        for (let tipe in rekapDarah) {
-            const el = document.getElementById('count-darah-' + tipe.toLowerCase());
-            if (el) {
-                el.innerText = rekapDarah[tipe];
-                // Efek visual: jika angka > 0, buat warnanya lebih tegas
-                el.parentElement.style.color = rekapDarah[tipe] > 0 ? "red" : "#999";
-            }
-        }
-    }, (error) => {
-        console.error("Error mengambil data golongan darah: ", error);
-    });
-}
+        // 2. Sync Golongan Darah (Global)
+        db.collection("users").onSnapshot(snap => {
+            let goldar = { 'O': 0, 'A': 0, 'B': 0, 'AB': 0, 'AB+': 0 };
+            snap.forEach(doc => {
+                let g = (doc.data().goldarah || doc.data().darah || "").toUpperCase().trim();
+                if(goldar.hasOwnProperty(g)) goldar[g]++;
+            });
+            charts.darah.data.datasets[0].data = Object.values(goldar);
+            charts.darah.update();
         });
     }
- 
-    function bukaPopupNamaGoldar(tipe) {
-        document.getElementById('modal-title').innerText = "Pemilik Golongan Darah " + tipe;
-        const container = document.getElementById('list-nama-darah');
-        container.innerHTML = listNamaGoldar[tipe].map((n, i) => `<div class="nama-item">${i+1}. ${n}</div>`).join('') || "Tidak ada data.";
-        document.getElementById('pop-detail-nama-darah').style.display = 'flex';
-    }
- 
-    function tutupPopupDarah() { document.getElementById('pop-detail-nama-darah').style.display = 'none'; }
- 
-    function setupPeriodeDropdown() {
-        const ids = ['select-periode-alkitab', 'select-periode-laporan', 'select-periode-izin', 'select-periode-doa'];
-        ids.forEach(id => {
-            const el = document.getElementById(id);
-            if(el) {
-                let options = ``;
-                for (let i = 1; i <= 12; i++) {
-                    let selected = i === 1 ? 'selected' : '';
-                    options += `<option value="${i}" ${selected}>${i} Bulan terakhir</option>`;
-                }
-                el.innerHTML = options;
-            }
-        });
-    }
- 
+
     window.onload = () => {
-        setupPeriodeDropdown();
-        syncGolonganDarah(); 
-        syncStatistikAlkitab();
-        syncStatistikHadir();
-        syncStatistikIzin();
-        syncStatistikDoa();
+        initChartKehadiran();
+        initChartAbsensi();
+        initChartDarah();
+        refreshAllStats();
     };
 </script>
 </body>
