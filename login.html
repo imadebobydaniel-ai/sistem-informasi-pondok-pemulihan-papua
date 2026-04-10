@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Administrator - PPP</title>
+    <title>Login Jemaat - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { 
@@ -45,10 +45,9 @@
             align-items: center;
         }
 
-        /* Container khusus agar loader melingkari logo */
         .logo-wrapper {
             position: relative;
-            width: 180px; /* Ukuran container sedikit lebih besar dari logo */
+            width: 180px; 
             height: 180px;
             display: flex;
             justify-content: center;
@@ -57,7 +56,7 @@
         }
 
         .splash-logo {
-            width: 120px; /* Logo di tengah */
+            width: 120px; 
             height: auto;
             z-index: 2;
             filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
@@ -66,7 +65,7 @@
 
         .gold-loader {
             position: absolute;
-            width: 160px; /* Lingkaran melingkar di luar logo */
+            width: 160px; 
             height: 160px;
             border: 5px solid rgba(212, 175, 55, 0.1);
             border-top: 5px solid var(--emas-lux);
@@ -80,25 +79,55 @@
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .splash-hidden { opacity: 0 !important; visibility: hidden !important; }
 
-        /* --- UI LOGIN CARD --- */
+        /* --- UI LOGIN CARD (STYLE JEMAAT) --- */
         .login-card {
             background: #ffffff; padding: 40px; border-radius: 15px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; 
             max-width: 400px; box-sizing: border-box; 
-            border-top: 5px solid #ff0000; position: relative; z-index: 1;
+            border-top: 5px solid #007bff; /* Biru untuk Jemaat */
+            position: relative; z-index: 1;
         }
         .header { text-align: center; margin-bottom: 30px; }
-        .header i { font-size: 50px; color: #ff0000; margin-bottom: 10px; }
-        .header h2 { margin: 0; color: #333; font-size: 22px; }
-        .header p { color: #666; font-size: 14px; margin-top: 5px; }
-        .form-group { margin-bottom: 20px; }
+        .header img { width: 80px; margin-bottom: 10px; }
+        .header h2 { margin: 0; color: #333; font-size: 20px; text-transform: uppercase; }
+        .header span { 
+            color: #ffcc00; font-size: 14px; background: #2c3e50; 
+            padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 10px;
+        }
+
+        /* Notifikasi Block Display */
+        #login-msg {
+            display: none;
+            padding: 12px; margin-bottom: 15px; border-radius: 8px;
+            font-size: 13px; font-weight: bold; text-align: center;
+        }
+        .msg-error { display: block !important; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .msg-success { display: block !important; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+
+        .form-group { margin-bottom: 20px; position: relative; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #444; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
-        .form-group input:focus { border-color: #ff0000; }
-        .btn-login { width: 100%; padding: 14px; background-color: #ff0000; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-login:hover { background-color: #cc0000; }
-        .footer-link { text-align: center; margin-top: 20px; }
-        .footer-link a { color: #666; text-decoration: none; font-size: 13px; }
+        .form-group input { 
+            width: 100%; padding: 12px; border: 1px solid #ddd; 
+            border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; 
+        }
+        .form-group input:focus { border-color: #007bff; }
+
+        /* Fitur Mata */
+        .toggle-password { 
+            position: absolute; right: 15px; top: 38px; 
+            cursor: pointer; color: #888; transition: 0.3s; 
+        }
+        .eye-active { color: #007bff !important; text-shadow: 0 0 8px rgba(0,123,255,0.5); }
+
+        .btn-login { 
+            width: 100%; padding: 14px; background-color: #007bff; 
+            color: white; border: none; border-radius: 8px; 
+            font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; 
+        }
+        .btn-login:hover { background-color: #0056b3; }
+        
+        .footer-links { text-align: center; margin-top: 20px; font-size: 13px; color: #666; }
+        .footer-links a { color: #007bff; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -117,25 +146,30 @@
 
     <div class="login-card">
         <div class="header">
-            <i class="fa-solid fa-user-shield"></i>
-            <h2>ADMIN PANEL</h2>
-            <p>Pondok Pemulihan Papua</p>
+            <img src="logo_pondok.png" alt="Logo">
+            <h2>Pondok Pemulihan Papua</h2>
+            <span>SISTEM INFORMASI JEMAAT</span>
         </div>
 
-        <form id="adminLoginForm" onsubmit="loginAdmin(event)">
+        <div id="login-msg"></div>
+
+        <form id="userLoginForm">
             <div class="form-group">
-                <label>Username Admin</label>
-                <input type="text" id="admin_user" required placeholder="Masukkan username">
+                <label>Email Anggota</label>
+                <input type="email" id="user_email" required placeholder="Masukkan email">
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" id="admin_pass" required placeholder="Masukkan password">
+                <input type="password" id="user_pass" required placeholder="Masukkan password">
+                <i class="fa-solid fa-eye toggle-password" id="eyeIcon"></i>
             </div>
-            <button type="submit" id="btnLogin" class="btn-login">MASUK SISTEM</button>
+            <button type="submit" id="btnMasuk" class="btn-login">MASUK</button>
         </form>
 
-        <div class="footer-link">
-            <a href="index.html"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login User</a>
+        <div class="footer-links">
+            Belum punya akun? <a href="registrasi.html">Daftar Sekarang</a>
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+            <a href="login_cyber.html" style="font-weight: normal; color: #888; font-size: 11px;">Masuk sebagai Admin</a>
         </div>
     </div>
 
@@ -143,9 +177,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
+        // 1. Logic Startup
         document.addEventListener("DOMContentLoaded", function() {
-            const splash = document.getElementById('splash-screen');
             setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
                 if (splash) {
                     splash.classList.add('splash-hidden');
                     document.body.style.overflow = "auto";
@@ -153,6 +188,7 @@
             }, 3000);
         });
 
+        // 2. Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
@@ -161,39 +197,55 @@
             messagingSenderId: "125984859692",
             appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
-        
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
-        async function loginAdmin(e) {
+        // 3. Fitur Mata (Efek Cahaya)
+        const eyeIcon = document.getElementById('eyeIcon');
+        const passInput = document.getElementById('user_pass');
+
+        eyeIcon.addEventListener('click', function() {
+            const isPassword = passInput.type === 'password';
+            passInput.type = isPassword ? 'text' : 'password';
+            this.classList.toggle('fa-eye-slash');
+            this.classList.toggle('eye-active'); // Efek cahaya
+        });
+
+        // 4. Logic Login & Notif Block
+        document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const user = document.getElementById('admin_user').value;
-            const pass = document.getElementById('admin_pass').value;
-            const btn = document.getElementById('btnLogin');
-            btn.innerText = "Verifikasi...";
+            const email = document.getElementById('user_email').value;
+            const pass = document.getElementById('user_pass').value;
+            const msgBox = document.getElementById('login-msg');
+            const btn = document.getElementById('btnMasuk');
+
+            btn.innerText = "Memverifikasi...";
             btn.disabled = true;
 
             try {
-                const snap = await db.collection("admins")
-                    .where("username", "==", user)
+                // Sesuaikan nama collection dengan database jemaatmu, misal "users" atau "jemaat"
+                const snap = await db.collection("jemaat")
+                    .where("email", "==", email)
                     .where("password", "==", pass)
                     .get();
 
                 if (!snap.empty) {
-                    alert("Login Admin Berhasil!");
-                    localStorage.setItem("adminStatus", "loggedIn");
-                    window.location.href = "admin.html";
+                    msgBox.innerText = "Login Berhasil! Selamat Datang.";
+                    msgBox.className = "msg-success"; // Munculkan Block Hijau
+                    setTimeout(() => { window.location.href = "menu.html"; }, 1500);
                 } else {
-                    alert("Username atau Password Admin Salah!");
-                    btn.innerText = "MASUK SISTEM";
+                    msgBox.innerText = "Email atau Password Salah!";
+                    msgBox.className = "msg-error"; // Munculkan Block Merah
+                    btn.innerText = "MASUK";
                     btn.disabled = false;
                 }
             } catch (err) {
-                alert("Error: " + err.message);
-                btn.innerText = "MASUK SISTEM";
+                msgBox.innerText = "Terjadi Kesalahan: " + err.message;
+                msgBox.className = "msg-error";
+                btn.innerText = "MASUK";
                 btn.disabled = false;
             }
-        }
+        });
     </script>
 </body>
 </html>
