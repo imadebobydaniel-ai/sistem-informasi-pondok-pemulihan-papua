@@ -36,7 +36,7 @@
         .eye-active { color: #007bff !important; text-shadow: 0 0 8px rgba(0,123,255,0.5); }
 
         .btn-login { width: 100%; padding: 14px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-login:hover { background-color: #0056b3; }
+        .btn-login:disabled { background-color: #ccc; cursor: not-allowed; }
         .footer-links { text-align: center; margin-top: 20px; font-size: 13px; color: #666; }
         .footer-links a { color: #007bff; text-decoration: none; font-weight: bold; }
     </style>
@@ -62,7 +62,7 @@
 
         <div id="login-msg"></div>
 
-        <form id="userLoginForm">
+        <form id="userLoginForm" onsubmit="event.preventDefault(); handleLogin();">
             <div class="form-group">
                 <label>Email Anggota</label>
                 <input type="email" id="user_email" required placeholder="Masukkan email">
@@ -72,7 +72,7 @@
                 <input type="password" id="user_pass" required placeholder="Masukkan password">
                 <i class="fa-solid fa-eye toggle-password" id="eyeIcon"></i>
             </div>
-            <button type="submit" id="btnMasuk" class="btn-login">MASUK</button>
+            <button type="button" id="btnMasuk" class="btn-login" onclick="handleLogin()">MASUK</button>
         </form>
 
         <div class="footer-links">
@@ -117,45 +117,60 @@
             eyeIcon.classList.toggle('eye-active');
         });
 
-        // 4. Logic Login (Anti-Dobel)
-        let isLoggingIn = false; // Kunci biar gak dobel klik
+        // 4. Logic Login (VERSI AGRESIF & ANTI-DOBEL)
+        let isLoggingIn = false;
 
-        document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (isLoggingIn) return; // Stop jika lagi proses
+        async function handleLogin() {
+            // Blokir jika sedang proses
+            if (isLoggingIn) return;
 
             const email = document.getElementById('user_email').value.trim().toLowerCase();
             const pass = document.getElementById('user_pass').value;
             const msgBox = document.getElementById('login-msg');
             const btn = document.getElementById('btnMasuk');
 
+            if (!email || !pass) {
+                msgBox.innerText = "Email dan Password harus diisi!";
+                msgBox.className = "msg-error";
+                return;
+            }
+
+            // Kunci proses
             isLoggingIn = true;
             btn.innerText = "Memverifikasi...";
             btn.disabled = true;
             msgBox.style.display = "none";
 
             try {
-                // Sesuai screenshot Anda, gunakan koleksi "users"
                 const snap = await db.collection("users")
                     .where("email", "==", email)
                     .where("password", "==", pass)
                     .get();
 
                 if (!snap.empty) {
-                    msgBox.innerText = "Login Berhasil!";
+                    msgBox.innerText = "Login Berhasil! Mengalihkan...";
                     msgBox.className = "msg-success";
-                    setTimeout(() => { window.location.replace("menu.html"); }, 1000);
+                    
+                    // STOP semua proses background agar tidak terjadi request ganda
+                    window.stop(); 
+                    
+                    // Redirect menggunakan replace agar history bersih
+                    setTimeout(() => {
+                        window.location.replace("menu.html");
+                    }, 800);
                 } else {
                     throw new Error("Email atau Password salah!");
                 }
             } catch (err) {
                 msgBox.innerText = err.message;
                 msgBox.className = "msg-error";
+                
+                // Reset state hanya jika gagal
+                isLoggingIn = false;
                 btn.innerText = "MASUK";
                 btn.disabled = false;
-                isLoggingIn = false; // Buka kunci kembali
             }
-        });
+        }
     </script>
 </body>
 </html>
