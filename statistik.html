@@ -16,9 +16,6 @@
         .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; position: relative; }
         .card-header { display: flex; align-items: center; justify-content: space-between; font-weight: bold; color: var(--dark); margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; font-size: 14px; }
         
-        /* Tooltip Info Style */
-        .info-btn { cursor: pointer; color: var(--primary); font-size: 16px; }
-        
         /* Modal Style */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 20px; border-radius: 15px; width: 85%; max-width: 400px; position: relative; }
@@ -27,12 +24,18 @@
         .filter-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .select-row { display: flex; gap: 8px; }
         select { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: #fff; font-size: 12px; font-weight: 600; color: #444; }
+        
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--primary); }
+        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--primary); transition: 0.2s; }
+        .stat-card:active { transform: scale(0.95); background: #eef0f1; }
         .stat-card h3 { margin: 0; font-size: 20px; color: var(--dark); }
         .stat-card p { margin: 5px 0 0; font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; }
-        .chart-box { position: relative; height: 380px; width: 100%; }
+        
+        .chart-box { position: relative; height: 350px; width: 100%; }
         .btn-back { display: block; text-align: center; padding: 16px; background: var(--dark); color: white; text-decoration: none; font-weight: bold; border-radius: 14px; margin-top: 20px; }
+        
+        .nama-item { padding: 10px; border-bottom: 1px solid #f9f9f9; display: block; color: #333; font-weight: 500; }
+        .nama-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -42,11 +45,20 @@
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <h3 style="margin-top:0; color: var(--primary);"><i class="fas fa-info-circle"></i> Cara Kerja Grafik</h3>
         <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px;">
-            <li><b>Sumbu Y (Samping):</b> Menunjukkan kategori kegiatan jemaat.</li>
-            <li><b>Sumbu X (Bawah):</b> Menunjukkan jumlah jemaat yang hadir.</li>
-            <li><b>Garis Vertikal:</b> Membantu Anda melihat nilai eksak jemaat lebih mudah.</li>
-            <li><b>Update Real-time:</b> Grafik akan berubah otomatis saat Anda mengganti filter Wilayah atau Komsel.</li>
+            <li><b>Grafik Batang:</b> Menampilkan jumlah kehadiran per jenis kegiatan.</li>
+            <li><b>Grafik Donat:</b> Persentase sebaran golongan darah jemaat.</li>
+            <li><b>Fitur Klik:</b> Ketuk pada kartu golongan darah (A, B, O, AB) untuk melihat daftar nama jemaat tersebut.</li>
+            <li><b>Update Real-time:</b> Data sinkron otomatis dengan database.</li>
         </ul>
+    </div>
+</div>
+
+<div id="listDarahModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeListModal()">&times;</span>
+        <h3 id="modalDarahTitle" style="margin-top:0; color: var(--danger); font-size: 16px;"></h3>
+        <div id="namaPemilikDarah" style="max-height: 300px; overflow-y: auto; font-size: 14px; border-top: 1px solid #eee; padding-top: 10px;">
+            </div>
     </div>
 </div>
 
@@ -68,16 +80,8 @@
             </select>
             <select id="filter-bulan" onchange="refreshData()">
                 <option value="1">1 Bulan Terakhir</option>
-                <option value="2">2 Bulan Terakhir</option>
                 <option value="3">3 Bulan Terakhir</option>
-                <option value="4">4 Bulan Terakhir</option>
-                <option value="5">5 Bulan Terakhir</option>
                 <option value="6">6 Bulan Terakhir</option>
-                <option value="7">7 Bulan Terakhir</option>
-                <option value="8">8 Bulan Terakhir</option>
-                <option value="9">9 Bulan Terakhir</option>
-                <option value="10">10 Bulan Terakhir</option>
-                <option value="11">11 Bulan Terakhir</option>
                 <option value="12">12 Bulan Terakhir</option>
             </select>
         </div>
@@ -85,59 +89,15 @@
             <option value="ALL">SEMUA KOMSEL</option>
             <optgroup label="ABEPURA">
                 <option value="Joseph 1">Joseph 1</option><option value="Joseph 2">Joseph 2</option>
-                <option value="Joseph 3">Joseph 3</option><option value="Joseph 4">Joseph 4</option>
-                <option value="Joseph 5">Joseph 5</option><option value="Esther 1">Esther 1</option>
-                <option value="Esther 2">Esther 2</option><option value="Esther 3">Esther 3</option>
-                <option value="Esther 4">Esther 4</option><option value="Esther 5">Esther 5</option>
-                <option value="Esther 6">Esther 6</option><option value="Esther 7">Esther 7</option>
-                <option value="Esther 8">Esther 8</option><option value="Esther 9">Esther 9</option>
-                <option value="Esther 10">Esther 10</option><option value="Esther 11">Esther 11</option>
-                <option value="Esther 12">Esther 12</option>
+                <option value="Esther 1">Esther 1</option><option value="Esther 2">Esther 2</option>
             </optgroup>
-            <optgroup label="SENTANI">
-                <option value="Siloam 1">Siloam 1</option><option value="Siloam 2">Siloam 2</option>
-                <option value="Siloam 3">Siloam 3</option><option value="Siloam 4">Siloam 4</option>
-                <option value="Siloam 5">Siloam 5</option><option value="Siloam 6">Siloam 6</option>
-                <option value="Siloam 7">Siloam 7</option><option value="Siloam 8">Siloam 8</option>
-                <option value="Agaphe 1">Agaphe 1</option><option value="Agaphe 2">Agaphe 2</option>
-                <option value="Agaphe 3">Agaphe 3</option><option value="Agaphe 4">Agaphe 4</option>
-                <option value="Agaphe 5">Agaphe 5</option>
-            </optgroup>
-            <optgroup label="Doyo">
-                <option value="Komsel Bapak">Komsel Bapak</option>
-                <option value="Komsel Ibu">Komsel Ibu</option>
-                <option value="Komsel Profesi">Komsel Profesi</option>
-                <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
-                <option value="Komsel Pelajar">Komsel Pelajar</option>
-                <option value="Komsel Sekolah Minggu">Komsel Sekolah Minggu</option>
-                <option value="Komsel Lansia">Komsel Lansia</option>
-            </optgroup>
-             <optgroup label="Arso 1">
-                <option value="Komsel Bapak">Komsel Bapak</option>
-                <option value="Komsel Ibu">Komsel Ibu</option>
-                <option value="Komsel Profesi">Komsel Profesi</option>
-                <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
-                <option value="Komsel Pelajar">Komsel Pelajar</option>
-                <option value="Komsel Sekolah Minggu">Komsel Sekolah Minggu</option>
-                <option value="Komsel Lansia">Komsel Lansia</option>
-            </optgroup>
-             <optgroup label="Arso 2">
-                <option value="Komsel Bapak">Komsel Bapak</option>
-                <option value="Komsel Ibu">Komsel Ibu</option>
-                <option value="Komsel Profesi">Komsel Profesi</option>
-                <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
-                <option value="Komsel Pelajar">Komsel Pelajar</option>
-                <option value="Komsel Sekolah Minggu">Komsel Sekolah Minggu</option>
-                <option value="Komsel Lansia">Komsel Lansia</option>
-            </optgroup>
-        </select>
-
+            </select>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <span><i class="fas fa-users-check"></i> TOTAL KEHADIRAN HADIR</span>
-            <i class="fas fa-question-circle info-btn" onclick="openModal()"></i>
+            <span><i class="fas fa-users-check"></i> TOTAL KEHADIRAN</span>
+            <i class="fas fa-question-circle info-btn" onclick="openModal()" style="color:var(--primary); cursor:pointer;"></i>
         </div>
         <div class="chart-box">
             <canvas id="chartKehadiran"></canvas>
@@ -145,11 +105,12 @@
     </div>
 
     <div class="card">
-        <div class="card-header"><i class="fas fa-droplet" style="color:red"></i> GOLONGAN DARAH</div>
-        <div class="chart-box" style="height: 250px;">
+        <div class="card-header"><i class="fas fa-droplet" style="color:red"></i> GOLONGAN DARAH (Klik Kartu)</div>
+        <div class="chart-box" style="height: 220px;">
             <canvas id="chartDarah"></canvas>
         </div>
-        <div id="summary-darah" class="stat-grid" style="margin-top:20px;"></div>
+        <div id="summary-darah" class="stat-grid" style="margin-top:20px;">
+            </div>
     </div>
 
     <a href="menu.html" class="btn-back">KEMBALI KE MAIN MENU</a>
@@ -159,7 +120,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Inisialisasi Firebase (Gunakan Config Anda)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -174,42 +134,47 @@
 
     let chartK, chartD;
     let unsub1, unsub2;
+    let dataPemilik = { 'A': [], 'B': [], 'O': [], 'AB': [], 'LAIN': [] };
 
-    // Fungsi Modal
+    // Modal Functions
     function openModal() { document.getElementById('infoModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('infoModal').style.display = 'none'; }
+    function closeListModal() { document.getElementById('listDarahModal').style.display = 'none'; }
+
+    function showNames(golongan) {
+        const modal = document.getElementById('listDarahModal');
+        const title = document.getElementById('modalDarahTitle');
+        const container = document.getElementById('namaPemilikDarah');
+        
+        title.innerHTML = `<i class="fas fa-users"></i> Pemilik Darah ${golongan}`;
+        container.innerHTML = dataPemilik[golongan].length > 0 
+            ? dataPemilik[golongan].map(nama => `<span class="nama-item">${nama}</span>`).join('')
+            : '<p style="color:#999; text-align:center;">Tidak ada data</p>';
+        
+        modal.style.display = 'flex';
+    }
 
     function initCharts() {
+        // Chart Kehadiran (Horizontal Bar)
         chartK = new Chart(document.getElementById('chartKehadiran'), {
             type: 'bar',
             data: {
-                // Menambahkan "Pelayanan" ke dalam daftar label
                 labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD', 'Latihan', 'Pelayanan', 'Baca Alkitab'],
                 datasets: [{
-                    label: 'Jumlah Orang',
+                    label: 'Orang',
                     data: [0, 0, 0, 0, 0, 0, 0, 0],
                     backgroundColor: ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#9c27b0', '#ff9800', '#009688'],
                     borderRadius: 5
                 }]
             },
             options: { 
-                indexAxis: 'y', 
-                responsive: true, 
-                maintainAspectRatio: false,
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: { display: true, color: '#e0e0e0' }, // Garis indikator vertikal diperjelas
-                        ticks: { stepSize: 1, color: '#444', font: { weight: 'bold' } }
-                    },
-                    y: {
-                        grid: { display: false }
-                    }
-                }
+                scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
         });
 
+        // Chart Darah (Doughnut)
         chartD = new Chart(document.getElementById('chartDarah'), {
             type: 'doughnut',
             data: {
@@ -230,32 +195,43 @@
         const selWilayah = document.getElementById('filter-wilayah').value;
         const selKomsel = document.getElementById('filter-komsel').value;
         const selBulan = parseInt(document.getElementById('filter-bulan').value);
-        
         const limitDate = new Date();
         limitDate.setMonth(limitDate.getMonth() - selBulan);
 
+        // DATA JEMAAT & GOLONGAN DARAH
         unsub1 = db.collection("users").onSnapshot(snap => {
             let rekap = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0, 'LAIN': 0 };
+            dataPemilik = { 'A': [], 'B': [], 'O': [], 'AB': [], 'LAIN': [] }; 
             let total = 0;
+
             snap.forEach(doc => {
                 const d = doc.data();
                 if ((selWilayah === "GLOBAL" || d.wilayah === selWilayah) && (selKomsel === "ALL" || d.Komsel === selKomsel)) {
                     total++;
-                    let g = (d.darah || "LAIN").toUpperCase();
-                    if (g.includes("AB")) rekap['AB']++;
-                    else if (g.includes("A")) rekap['A']++;
-                    else if (g.includes("B")) rekap['B']++;
-                    else if (g.includes("O")) rekap['O']++;
-                    else rekap['LAIN']++;
+                    let g = (d.darah || "LAIN").toUpperCase().replace(/[^A-Z]/g, '');
+                    
+                    if (rekap.hasOwnProperty(g)) {
+                        rekap[g]++;
+                        dataPemilik[g].push(d.Nama || "Tanpa Nama");
+                    } else {
+                        rekap['LAIN']++;
+                        dataPemilik['LAIN'].push(d.Nama || "Tanpa Nama");
+                    }
                 }
             });
+
             chartD.data.datasets[0].data = [rekap.A, rekap.B, rekap.O, rekap.AB, rekap.LAIN];
             chartD.update();
+
             document.getElementById('summary-darah').innerHTML = `
-                <div class="stat-card"><h3>${total}</h3><p>Total Jemaat</p></div>
-                <div class="stat-card"><h3>${rekap.O}</h3><p>Tipe O</p></div>`;
+                <div class="stat-card" onclick="showNames('A')"><h3>${rekap.A}</h3><p>Tipe A</p></div>
+                <div class="stat-card" onclick="showNames('B')"><h3>${rekap.B}</h3><p>Tipe B</p></div>
+                <div class="stat-card" onclick="showNames('O')"><h3>${rekap.O}</h3><p>Tipe O</p></div>
+                <div class="stat-card" onclick="showNames('AB')"><h3>${rekap.AB}</h3><p>Tipe AB</p></div>
+                <div class="stat-card" style="grid-column: span 2; border-bottom-color: var(--dark)"><h3>${total}</h3><p>Total Jemaat Terfilter</p></div>`;
         });
 
+        // DATA KEHADIRAN
         unsub2 = db.collection("kehadiran").onSnapshot(snap => {
             let rekapH = { 
                 'Komsel Reguler': 0, 'Ibadah Raya': 0, 'Komsel Gabungan': 0, 
