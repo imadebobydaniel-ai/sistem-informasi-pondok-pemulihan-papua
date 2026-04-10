@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Kelola Agenda Tahunan</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #006666; --accent: #d4af37; --bg: #f4f7f6; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        h2 { color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .full-width { grid-column: span 2; }
+
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        select, input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        
+        .btn-save { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.3s; }
+        .btn-save:hover { background: #004d4d; }
+
+        .table-container { margin-top: 40px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #eef2f1; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .bg-wilayah { background: #e0f2f1; color: #006666; }
+        .bg-kategori { background: #fff8e1; color: #f57f17; }
+        
+        .btn-delete { color: #dc3545; cursor: pointer; border: none; background: none; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="admin.html" style="text-decoration: none; color: #666; font-size: 14px;"><i class="fa-solid fa-arrow-left"></i> Kembali ke Dashboard</a>
+    
+    <h2><i class="fa-solid fa-calendar-plus"></i> Input Agenda Tahunan</h2>
+    
+    <div class="form-grid">
+        <div>
+            <label>Pilih Wilayah (Cluster)</label>
+            <select id="wilayah">
+                <option value="Abepura">Abepura</option>
+                <option value="Sentani">Sentani</option>
+                <option value="Doyo">Doyo</option>
+                <option value="Arso1">Arso 1</option>
+                <option value="Arso2">Arso 2</option>
+            </select>
+        </div>
+        <div>
+            <label>Pilih Kategori (Sub-Tab)</label>
+            <select id="kategori">
+                <option value="Umum Gereja">Umum Gereja</option>
+                <option value="Komsel Bapak">Komsel Bapak</option>
+                <option value="Komsel Ibu">Komsel Ibu</option>
+                <option value="Komsel Profesi">Komsel Profesi</option>
+                <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
+                <option value="Komsel Pelajar">Komsel Pelajar</option>
+                <option value="Komsel Sekolah Minggu">Komsel Sekolah Minggu</option>
+                <option value="Agenda Tambahan (Ext)">Agenda Tambahan (Ext)</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Bulan (Untuk Muncul di Pencarian)</label>
+            <select id="bulan">
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+        </div>
+        <div>
+            <label>Tahun</label>
+            <input type="number" id="tahun" value="2026">
+        </div>
+
+        <div class="full-width">
+            <label>Nama Kegiatan / Agenda</label>
+            <input type="text" id="nama_kegiatan" placeholder="Contoh: Ibadah Padang Gabungan">
+        </div>
+        <div>
+            <label>Tanggal Pelaksanaan</label>
+            <input type="text" id="tanggal" placeholder="Contoh: Senin, 12 April 2026">
+        </div>
+        <div>
+            <label>Waktu / Jam</label>
+            <input type="text" id="jam" placeholder="Contoh: 18:00 WIT - Selesai">
+        </div>
+        <div class="full-width">
+            <label>Lokasi / Keterangan Tambahan</label>
+            <textarea id="lokasi" rows="2" placeholder="Contoh: Gedung Gereja Pusat atau Link Zoom"></textarea>
+        </div>
+    </div>
+
+    <button class="btn-save" onclick="simpanAgenda()" id="btnSimpan">SIMPAN AGENDA</button>
+
+    <div class="table-container">
+        <h3>Daftar Agenda Terinput</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Wilayah & Kategori</th>
+                    <th>Kegiatan</th>
+                    <th>Waktu (Bln/Thn)</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="tabelAgenda">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+    // Konfigurasi Firebase Anda
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.firestore();
+
+    // FUNGSI SIMPAN DATA
+    async function simpanAgenda() {
+        const btn = document.getElementById('btnSimpan');
+        const data = {
+            wilayah: document.getElementById('wilayah').value,
+            kategori: document.getElementById('kategori').value,
+            bulan: document.getElementById('bulan').value,
+            tahun: document.getElementById('tahun').value,
+            nama: document.getElementById('nama_kegiatan').value,
+            tanggal: document.getElementById('tanggal').value,
+            jam: document.getElementById('jam').value,
+            lokasi: document.getElementById('lokasi').value,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if(!data.nama || !data.tanggal) {
+            alert("Mohon isi Nama Kegiatan dan Tanggal!");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "MENYIMPAN...";
+
+        try {
+            await db.collection("agenda_tahunan").add(data);
+            alert("Agenda Berhasil Disimpan!");
+            location.reload(); // Refresh untuk melihat data baru
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Gagal menyimpan data.");
+            btn.disabled = false;
+            btn.innerText = "SIMPAN AGENDA";
+        }
+    }
+
+    // FUNGSI TAMPIL DATA (MONITORING)
+    function loadAgenda() {
+        db.collection("agenda_tahunan").orderBy("createdAt", "desc").limit(10).onSnapshot((snapshot) => {
+            const tbody = document.getElementById('tabelAgenda');
+            tbody.innerHTML = "";
+            snapshot.forEach((doc) => {
+                const item = doc.data();
+                tbody.innerHTML += `
+                    <tr>
+                        <td>
+                            <span class="badge bg-wilayah">${item.wilayah}</span><br>
+                            <span class="badge bg-kategori">${item.kategori}</span>
+                        </td>
+                        <td><b>${item.nama}</b><br><small>${item.tanggal}</small></td>
+                        <td>${item.bulan} / ${item.tahun}</td>
+                        <td>
+                            <button class="btn-delete" onclick="hapusAgenda('${doc.id}')"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+    }
+
+    // FUNGSI HAPUS DATA
+    async function hapusAgenda(id) {
+        if(confirm("Hapus agenda ini?")) {
+            await db.collection("agenda_tahunan").doc(id).delete();
+        }
+    }
+
+    // Jalankan load data saat halaman dibuka
+    loadAgenda();
+</script>
+
+</body>
+</html>
