@@ -9,6 +9,7 @@
     <script>
         const isMember = localStorage.getItem("userEmail");
         const isAdmin = localStorage.getItem("adminLoggedIn");
+        // Jika tidak login, diarahkan ke login.html
         if (!isMember && isAdmin !== "true") {
             window.location.href = "login.html"; 
         }
@@ -43,14 +44,12 @@
         
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; opacity: 0.8; }
 
-        /* --- CSS EFEK ULANG TAHUN --- */
         .ultah-active { position: relative; animation: gold-glow 2s infinite alternate; border: 4px solid var(--emas-lux) !important; }
         .ultah-active::after { content: "SELAMAT ULANG TAHUN"; position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 900; color: #D4AF37; white-space: nowrap; text-shadow: 0 0 5px rgba(212, 175, 55, 0.8); animation: bounce 1s infinite; z-index: 10; }
         @keyframes gold-glow { from { box-shadow: 0 0 5px #D4AF37; } to { box-shadow: 0 0 20px #FFD700, inset 0 0 10px #D4AF37; } }
         @keyframes bounce { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -5px); } }
         #birthday-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
 
-        /* --- MENU GRID & ANIMATION --- */
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; perspective: 1000px; }
         
         .menu-box { 
@@ -69,14 +68,12 @@
             border: 1px solid transparent;
         }
 
-        /* Efek Hover Baru */
         .menu-box:hover { 
             transform: translateY(-5px) scale(1.03); 
             box-shadow: 0 15px 30px rgba(0,0,0,0.1);
             border-color: var(--biru-muda);
         }
 
-        /* Efek Klik Baru */
         .menu-box:active { 
             transform: scale(0.92); 
             background-color: #f0faff;
@@ -93,7 +90,6 @@
         
         .menu-box:hover i { transform: rotate(10deg) scale(1.2); }
 
-        /* Rest of existing styles... */
         #media-display-area { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
         #other-media { width: 100%; height: 100%; display: none; align-items: center; justify-content: center; color: white; text-align: center; }
         .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; }
@@ -215,7 +211,7 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // Logika Firebase Anda tetap dipertahankan sepenuhnya
+        // Firebase Config
         const firebaseConfig = { 
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
             authDomain: "boby-apps-project.firebaseapp.com", 
@@ -230,6 +226,22 @@
         let ytPlayer; 
         const userEmail = localStorage.getItem("userEmail");
 
+        // --- FUNGSI LOGOUT (PERBAIKAN DI SINI) ---
+        function confirmLogout() { 
+            document.getElementById('modal-logout').style.display = 'flex'; 
+        }
+
+        function closeLogoutModal() { 
+            document.getElementById('modal-logout').style.display = 'none'; 
+        }
+
+        function executeLogout() { 
+            localStorage.clear(); 
+            // Mengarahkan ke index.html setelah data dibersihkan
+            window.location.replace("index.html"); 
+        }
+
+        // --- Fungsi-fungsi lainnya (Running Text, Media, Inbox, dll) ---
         function syncRunningText() {
             db.collection("config").doc("running_text").onSnapshot((doc) => {
                 if (doc.exists) {
@@ -298,7 +310,7 @@
                 let unreadCount = 0;
                 const listDiv = document.getElementById('list-pesan');
                 if(!listDiv) return;
-                listDiv.innerHTML = `<div class="inbox-controls"><label><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"> Pilih Semua</label><span id="btnHapusMassal" class="btn-delete-selected" onclick="hapusPesanTerpilih()"><i class="fas fa-trash"></i> Hapus</span></div>`;
+                listDiv.innerHTML = "";
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const target = data.target_jc || data.target;
@@ -307,7 +319,7 @@
                         const sudahDibaca = data.sudahDibaca || [];
                         const isUnread = !sudahDibaca.includes(emailUser);
                         if (isUnread) unreadCount++;
-                        listDiv.innerHTML += `<div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}"><input type="checkbox" class="msg-check" value="${doc.id}" onclick="updateDeleteBtn()"><div style="flex:1; margin-left:10px;" onclick="bukaDetailPesan('${doc.id}')"><b>${data.judul || 'Pesan'}</b><br><small>${data.kategori || 'Info'} - ${tgl}</small> ${isUnread ? '<span class="badge-baru">Baru</span>' : ''}</div></div>`;
+                        listDiv.innerHTML += `<div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}"><div style="flex:1;" onclick="bukaDetailPesan('${doc.id}')"><b>${data.judul || 'Pesan'}</b><br><small>${data.kategori || 'Info'} - ${tgl}</small></div></div>`;
                     }
                 });
                 const badge = document.getElementById('email-badge');
@@ -394,21 +406,9 @@
             document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
         }
 
-        function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
-        function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-        function executeLogout() { localStorage.clear(); window.location.href = "login.html"; }
         function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
         function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
         function tutupDetail() { document.getElementById('modal-pesan').style.display = 'none'; }
-        
-        function toggleSelectAll(source) {
-            document.querySelectorAll('.msg-check').forEach(cb => cb.checked = source.checked);
-            updateDeleteBtn();
-        }
-        function updateDeleteBtn() {
-            const checkedCount = document.querySelectorAll('.msg-check:checked').length;
-            document.getElementById('btnHapusMassal').style.display = checkedCount > 0 ? 'block' : 'none';
-        }
 
         window.onload = () => { 
             updateTime(); setInterval(updateTime, 1000); 
