@@ -226,51 +226,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
-    
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.firestore();
-
-    async function simpanAgenda() {
-        const btn = document.getElementById('btnSimpan');
-        const payload = {
-            wilayah: document.getElementById('wilayah').value,
-            kategori: document.getElementById('kategori').value,
-            bulan: document.getElementById('bulan').value,
-            tahun: document.getElementById('tahun').value,
-            nama: document.getElementById('nama_kegiatan').value,
-            tanggal: document.getElementById('tanggal').value,
-            jam: document.getElementById('jam').value,
-            lokasi: document.getElementById('lokasi').value,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        if(!payload.nama || !payload.tanggal) {
-            alert("Harap lengkapi Nama Kegiatan dan Tanggal!");
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerText = "SEDANG MEMPROSES...";
-
-        try {
-            await db.collection("agenda_tahunan").add(payload);
-            alert("Agenda berhasil dipublikasikan ke portal jemaat!");
-            location.reload();
-        } catch (e) {
-            alert("Kesalahan: " + e.message);
-            btn.disabled = false;
-            btn.innerText = "POSTING KE AGENDA TAHUNAN";
-        }
-    }
-
+   // Fungsi untuk memuat data ke tabel monitoring
     function loadMonitoring() {
         db.collection("agenda_tahunan").orderBy("timestamp", "desc").limit(8).onSnapshot(snap => {
             const tbody = document.getElementById('tabelAgenda');
@@ -284,4 +240,35 @@
                             <span class="badge bg-kategori">${d.kategori}</span>
                         </td>
                         <td>
-                            <div style="
+                            <div style="font-weight: 600; color: #333;">${d.nama}</div>
+                            <div style="font-size: 11px; color: #666;">${d.tanggal} | ${d.jam}</div>
+                        </td>
+                        <td>
+                            Bulan ${d.bulan}<br>${d.tahun}
+                        </td>
+                        <td>
+                            <button class="btn-delete" onclick="hapusAgenda('${doc.id}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+    }
+
+    // Fungsi untuk menghapus data
+    async function hapusAgenda(id) {
+        if(confirm("Apakah Anda yakin ingin menghapus agenda ini?")) {
+            try {
+                await db.collection("agenda_tahunan").doc(id).delete();
+                alert("Agenda berhasil dihapus!");
+            } catch (e) {
+                alert("Gagal menghapus: " + e.message);
+            }
+        }
+    }
+
+    // Jalankan fungsi load saat halaman dibuka
+    window.onload = loadMonitoring;
+</script>
