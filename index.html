@@ -20,11 +20,24 @@
         .header img { width: 80px; }
         .header h2 { margin: 10px 0 0; color: #333; font-size: 18px; text-transform: uppercase; }
 
-        /* NOTIFIKASI BLOCK DISPLAY */
-        #login-msg { display: none; padding: 12px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; font-weight: bold; }
-        .msg-error { display: block !important; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
-        .msg-success { display: block !important; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
-        .msg-process { display: block !important; background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+        /* --- SISTEM NOTIFIKASI BLOCK DISPLAY --- */
+        #login-msg { 
+            display: none; /* Sembunyi secara default */
+            padding: 12px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            text-align: center;
+        }
+        
+        /* Class pemicu untuk menampilkan block */
+        .show-block { display: block !important; }
+        
+        .msg-error { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .msg-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .msg-process { background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+        /* ---------------------------------------- */
 
         .form-group { margin-bottom: 20px; position: relative; text-align: left; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #444; }
@@ -89,6 +102,7 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
+        // Cek Session
         document.addEventListener("DOMContentLoaded", function() {
             if (sessionStorage.getItem("userLoggedIn") === "true") {
                 window.location.replace("menu.html");
@@ -99,6 +113,7 @@
             }, 2000);
         });
 
+        // Toggle Password
         const eyeIcon = document.getElementById('eyeIcon');
         const passInput = document.getElementById('user_pass');
         eyeIcon.addEventListener('click', () => {
@@ -108,17 +123,19 @@
             eyeIcon.classList.toggle('eye-active');
         });
 
+        // Proses Login
         const loginForm = document.getElementById('userLoginForm');
         const msgBox = document.getElementById('login-msg');
         const btn = document.getElementById('btnMasuk');
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('user_email').value;
+            const email = document.getElementById('user_email').value.trim();
             const pass = document.getElementById('user_pass').value;
 
+            // 1. Tampilkan NOTIF PROSES (Block Display)
             msgBox.innerText = "Memverifikasi...";
-            msgBox.className = "msg-process";
+            msgBox.className = "msg-process show-block"; 
             btn.disabled = true;
 
             try {
@@ -128,18 +145,26 @@
                     .get();
 
                 if (!snap.empty) {
+                    // 2. Tampilkan NOTIF BERHASIL (Block Display)
                     msgBox.innerText = "Login Berhasil!";
-                    msgBox.className = "msg-success";
+                    msgBox.className = "msg-success show-block";
                     sessionStorage.setItem("userLoggedIn", "true");
+                    
+                    const userData = snap.docs[0].data();
+                    sessionStorage.setItem("userName", userData.nama || "User");
+
                     setTimeout(() => { window.location.replace("menu.html"); }, 1200);
                 } else {
+                    // 3. Tampilkan NOTIF ERROR (Block Display)
                     msgBox.innerText = "Email atau Password Salah!";
-                    msgBox.className = "msg-error";
+                    msgBox.className = "msg-error show-block";
                     btn.disabled = false;
                 }
             } catch (err) {
+                console.error("Error Detail:", err);
+                // 4. Tampilkan NOTIF KONEKSI (Block Display)
                 msgBox.innerText = "Koneksi Bermasalah!";
-                msgBox.className = "msg-error";
+                msgBox.className = "msg-error show-block";
                 btn.disabled = false;
             }
         });
