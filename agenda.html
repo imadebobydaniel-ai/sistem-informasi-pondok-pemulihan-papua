@@ -4,22 +4,230 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Tahunan - Pondok Pemulihan Papua</title>
-    <link rel="stylesheet" href="style-agenda.css">
     <style>
-        /* Tambahan CSS inline agar langsung terlihat hasilnya */
+        /* Import Google Font */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+        :root {
+            --primary-color: #006666; /* Teal */
+            --secondary-color: #d4af37; /* Gold */
+            --bg-light: #f4f7f6;
+            --text-dark: #2c3e50;
+            --white: #ffffff;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            background: var(--white);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            border-top: 5px solid var(--primary-color);
+        }
+
+        /* Tombol Kembali Premium */
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 30px;
+            transition: transform 0.3s ease;
+        }
+
+        .btn-back:hover {
+            transform: translateX(-5px);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        /* Filter Section */
+        .filter-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            background: #eef2f1;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+        }
+
+        select {
+            padding: 12px 20px;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            background: var(--white);
+            font-family: inherit;
+            font-weight: 600;
+            color: var(--primary-color);
+            outline: none;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--primary-color);
+        }
+
+        .btn-cari {
+            padding: 12px 25px;
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 102, 102, 0.3);
+        }
+
+        .btn-cari:hover {
+            background: #004d4d;
+            transform: translateY(-2px);
+        }
+
+        /* Tabs Cluster (Lokasi) */
+        .tabs-cluster {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-link {
+            padding: 12px 25px;
+            border: 2px solid var(--primary-color);
+            background: transparent;
+            color: var(--primary-color);
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .tab-link.active, .tab-link:hover {
+            background: var(--primary-color);
+            color: var(--white);
+            box-shadow: 0 5px 15px rgba(0, 102, 102, 0.2);
+        }
+
+        /* Sub-Tab Wrapper (Komsel) */
+        .sub-tab-wrapper {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 15px;
+        }
+
+        .sub-link {
+            padding: 8px 18px;
+            border: 1px solid #ddd;
+            background: var(--white);
+            color: #666;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .sub-link:hover {
+            background: #f0f0f0;
+        }
+
+        .sub-link.active {
+            background: var(--primary-color) !important;
+            color: var(--white) !important;
+            border-color: var(--primary-color);
+        }
+
+        .sub-link.ext {
+            border-color: var(--secondary-color);
+            color: var(--secondary-color);
+        }
+
+        .sub-link.ext.active {
+            background: var(--secondary-color) !important;
+            border-color: var(--secondary-color);
+        }
+
+        /* Agenda List Area */
+        .agenda-list {
+            min-height: 200px;
+            padding: 30px;
+            background: #ffffff;
+            border: 2px dashed #e0e0e0;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agenda-list::before {
+            content: '🕊️';
+            position: absolute;
+            font-size: 100px;
+            opacity: 0.03;
+            right: -20px;
+            bottom: -20px;
+        }
+
         .cluster-content { display: none; }
-        .active { display: block; }
-        .sub-link.active { background: #006666 !important; color: white !important; }
+        .cluster-content.active { display: block; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .filter-section {
+                flex-direction: column;
+                width: 100%;
+            }
+            select, .btn-cari {
+                width: 100%;
+            }
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div style="margin-bottom: 20px;">
-        <a href="menu.html" style="text-decoration: none; color: #006666; font-weight: bold;">
-            ← Kembali ke Menu Utama
-        </a>
-    </div>
+    <a href="menu.html" class="btn-back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Kembali ke Menu Utama
+    </a>
 
     <h2>AGENDA TAHUNAN JEMAAT</h2>
 
@@ -83,13 +291,13 @@
     </div>
 
     <div id="Doyo" class="cluster-content">
-        <div class="agenda-list"><p style="text-align:center;">Agenda Doyo belum tersedia.</p></div>
+        <div class="agenda-list"><p style="text-align:center; color:#888;">Agenda Doyo belum tersedia.</p></div>
     </div>
     <div id="Arso1" class="cluster-content">
-        <div class="agenda-list"><p style="text-align:center;">Agenda Arso 1 belum tersedia.</p></div>
+        <div class="agenda-list"><p style="text-align:center; color:#888;">Agenda Arso 1 belum tersedia.</p></div>
     </div>
     <div id="Arso2" class="cluster-content">
-        <div class="agenda-list"><p style="text-align:center;">Agenda Arso 2 belum tersedia.</p></div>
+        <div class="agenda-list"><p style="text-align:center; color:#888;">Agenda Arso 2 belum tersedia.</p></div>
     </div>
 
 </div>
@@ -119,8 +327,9 @@
         for (i = 0; i < tablinks.length; i++) {
             tablinks[i].classList.remove("active");
         }
-        document.getElementById(clusterName).style.display = "block";
-        document.getElementById(clusterName).classList.add("active");
+        const activeContent = document.getElementById(clusterName);
+        activeContent.style.display = "block";
+        activeContent.classList.add("active");
         evt.currentTarget.classList.add("active");
     }
 
@@ -133,7 +342,6 @@
         }
         element.classList.add("active");
         
-        // Contoh feedback visual saat kategori dipilih
         let listArea = parent.nextElementSibling;
         listArea.innerHTML = `<p style="text-align:center; color:#006666;">Menampilkan Agenda untuk <b>${element.innerText}</b>...</p>`;
     }
@@ -141,6 +349,10 @@
     function cariAgenda() {
         const bln = document.getElementById('selectBulan').value;
         const thn = document.getElementById('selectTahun').value;
+        if(!bln) {
+            alert("Silahkan pilih bulan terlebih dahulu.");
+            return;
+        }
         alert("Mencari agenda untuk Bulan " + bln + " Tahun " + thn);
     }
 </script>
