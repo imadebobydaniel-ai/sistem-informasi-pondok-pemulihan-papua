@@ -84,7 +84,7 @@
             background: #ffffff; padding: 40px; border-radius: 15px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; 
             max-width: 400px; box-sizing: border-box; 
-            border-top: 5px solid #007bff; /* Biru untuk Jemaat */
+            border-top: 5px solid #007bff; 
             position: relative; z-index: 1;
         }
         .header { text-align: center; margin-bottom: 30px; }
@@ -95,7 +95,6 @@
             padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 10px;
         }
 
-        /* Notifikasi Block Display */
         #login-msg {
             display: none;
             padding: 12px; margin-bottom: 15px; border-radius: 8px;
@@ -112,7 +111,6 @@
         }
         .form-group input:focus { border-color: #007bff; }
 
-        /* Fitur Mata */
         .toggle-password { 
             position: absolute; right: 15px; top: 38px; 
             cursor: pointer; color: #888; transition: 0.3s; 
@@ -177,7 +175,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-        // 1. Logic Startup
+        // 1. Logic Startup (Splash Screen)
         document.addEventListener("DOMContentLoaded", function() {
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
@@ -200,22 +198,24 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
-        // 3. Fitur Mata (Efek Cahaya)
+        // 3. Fitur Mata Password
         const eyeIcon = document.getElementById('eyeIcon');
-        const passInput = document.getElementById('user_pass');
+        const passInputField = document.getElementById('user_pass');
 
         eyeIcon.addEventListener('click', function() {
-            const isPassword = passInput.type === 'password';
-            passInput.type = isPassword ? 'text' : 'password';
+            const isPassword = passInputField.type === 'password';
+            passInputField.type = isPassword ? 'text' : 'password';
             this.classList.toggle('fa-eye-slash');
-            this.classList.toggle('eye-active'); // Efek cahaya
+            this.classList.toggle('eye-active');
         });
 
-        // 4. Logic Login & Notif Block
+        // 4. Logic Login yang Diperbaiki
         document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const email = document.getElementById('user_email').value;
-            const pass = document.getElementById('user_pass').value;
+            
+            // Mengambil input dan membersihkan spasi serta memaksa huruf kecil
+            const emailInput = document.getElementById('user_email').value.trim().toLowerCase();
+            const passInput = document.getElementById('user_pass').value;
             const msgBox = document.getElementById('login-msg');
             const btn = document.getElementById('btnMasuk');
 
@@ -223,26 +223,24 @@
             btn.disabled = true;
 
             try {
-                // Mencari data di collection "jemaat"
-                const snap = await db.collection("jemaat")
-                    .where("email", "==", email)
-                    .where("password", "==", pass)
+                // Menggunakan collection "users" sesuai gambar Firestore Anda
+                const snap = await db.collection("users") 
+                    .where("email", "==", emailInput)
+                    .where("password", "==", passInput)
                     .get();
 
                 if (!snap.empty) {
                     msgBox.innerText = "Login Berhasil! Selamat Datang.";
-                    msgBox.className = "msg-success"; // Munculkan Block Hijau
+                    msgBox.className = "msg-success";
                     setTimeout(() => { window.location.href = "menu.html"; }, 1500);
                 } else {
-                    // Tampilkan pesan kesalahan
                     msgBox.innerText = "Email atau Password Salah!";
                     msgBox.className = "msg-error"; 
-
-                    // Hilangkan pesan secara otomatis setelah 3 detik
+                    
                     setTimeout(() => {
                         msgBox.className = ""; 
                         msgBox.innerText = "";
-                        msgBox.style.display = "none"; // Memastikan elemen kembali tersembunyi
+                        msgBox.style.display = "none";
                     }, 3000);
 
                     btn.innerText = "MASUK";
@@ -251,14 +249,6 @@
             } catch (err) {
                 msgBox.innerText = "Terjadi Kesalahan: " + err.message;
                 msgBox.className = "msg-error";
-
-                // Hilangkan juga jika terjadi error sistem
-                setTimeout(() => {
-                    msgBox.className = "";
-                    msgBox.innerText = "";
-                    msgBox.style.display = "none";
-                }, 3000);
-
                 btn.innerText = "MASUK";
                 btn.disabled = false;
             }
