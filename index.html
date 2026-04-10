@@ -15,16 +15,16 @@
         /* RESET & BASE */
         body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         
-        /* --- CSS SPLASH SCREEN (PERBAIKAN) --- */
+        /* --- CSS SPLASH SCREEN --- */
         #splash-screen {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background-color: #003366; /* Warna solid agar tidak putih saat loading */
+            background-color: #003366;
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 999999; /* Sangat tinggi agar di atas segalanya */
+            z-index: 999999;
             opacity: 1;
             visibility: visible;
             transition: opacity 0.8s ease, visibility 0.8s;
@@ -46,7 +46,6 @@
             animation: pulse 2s infinite ease-in-out;
         }
 
-        /* LINGKARAN EMAS BERCAHAYA */
         .gold-loader {
             width: 50px;
             height: 50px;
@@ -72,6 +71,7 @@
         input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; transition: 0.3s; }
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; }
         .btn-login { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn-login:disabled { background-color: #cccccc; cursor: not-allowed; }
         
         /* MODAL */
         .modal-overlay { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; }
@@ -131,16 +131,12 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-        // --- PERBAIKAN LOGIKA SPLASH SCREEN ---
-        // Kita gunakan DOMContentLoaded agar script jalan segera setelah HTML terbaca
+        // --- SPLASH SCREEN LOGIC ---
         document.addEventListener("DOMContentLoaded", function() {
             const splash = document.getElementById('splash-screen');
-            
-            // Berikan jeda 3 detik agar user bisa melihat logo dan lingkaran emas
             setTimeout(() => {
                 if (splash) {
                     splash.classList.add('splash-hidden');
-                    // Tunggu transisi CSS selesai baru aktifkan scroll
                     setTimeout(() => {
                         document.body.style.overflow = "auto";
                     }, 800); 
@@ -148,7 +144,7 @@
             }, 3000); 
         });
 
-        // Firebase Config
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
@@ -161,7 +157,7 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
-        // UI Logic
+        // --- UI UTILITY ---
         const alertModal = document.getElementById('loginAlertModal');
         const alertText = document.getElementById('alertMessage');
         const closeBtn = document.getElementById('closeAlert');
@@ -184,11 +180,17 @@
             }
         }
 
-        // Login Logic
+        // --- LOGIN LOGIC (IMPROVED) ---
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const btn = e.target.querySelector('button');
             const email = document.getElementById('email').value.trim().toLowerCase();
             const password = document.getElementById('pass').value;
+
+            // Efek loading
+            btn.innerText = "Memverifikasi...";
+            btn.disabled = true;
 
             try {
                 const snapshot = await db.collection("users")
@@ -198,18 +200,28 @@
 
                 if (!snapshot.empty) {
                     const userData = snapshot.docs[0].data();
+                    
+                    // Simpan Sesi
                     localStorage.setItem("userEmail", email);
                     localStorage.setItem("userName", userData.nama || "Anggota");
+                    localStorage.setItem("isLoggedIn", "true");
+
+                    // Redirect hanya jika login sukses
                     window.location.replace("menu.html"); 
                 } else {
                     tampilkanPesan("Email atau Password Salah!");
+                    btn.innerText = "MASUK";
+                    btn.disabled = false;
                 }
             } catch (err) {
+                console.error(err);
                 tampilkanPesan("Gagal terhubung ke database.");
+                btn.innerText = "MASUK";
+                btn.disabled = false;
             }
         });
 
-        // Pencegah Back
+        // Pencegah Back ke halaman login setelah masuk
         (function () {
             history.pushState(null, null, location.href);
             window.onpopstate = function () {
