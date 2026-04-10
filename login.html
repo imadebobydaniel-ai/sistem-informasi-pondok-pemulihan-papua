@@ -99,7 +99,8 @@
         // 1. SPLASH SCREEN LOGIC
         window.addEventListener("load", () => {
             setTimeout(() => {
-                document.getElementById('splash-screen').classList.add('splash-hidden');
+                const splash = document.getElementById('splash-screen');
+                if (splash) splash.classList.add('splash-hidden');
                 document.body.style.overflow = "auto";
             }, 2000);
         });
@@ -112,23 +113,29 @@
             this.classList.toggle('fa-eye-slash');
         });
 
-        // 3. LOGIN LOGIC (SINGLE PROCESS)
+        // 3. LOGIN LOGIC (OPTIMIZED & SECURED)
+        let isProcessing = false; // Kunci utama anti-dobel klik
+
         document.getElementById('userLoginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Jika sedang memproses, hentikan eksekusi tambahan
+            if (isProcessing) return; 
+
             const email = document.getElementById('user_email').value.trim().toLowerCase();
             const pass = document.getElementById('user_pass').value;
             const msgBox = document.getElementById('login-msg');
             const btn = document.getElementById('btnMasuk');
 
-            // Reset UI
+            // Kunci proses & Update UI
+            isProcessing = true;
             btn.innerText = "Memverifikasi...";
             btn.disabled = true;
             msgBox.className = "";
             msgBox.style.display = "none";
 
             try {
-                // Mencari di koleksi "users"
+                // Mencari di koleksi "users" sesuai database Anda
                 const snap = await db.collection("users")
                     .where("email", "==", email)
                     .where("password", "==", pass)
@@ -137,15 +144,22 @@
                 if (!snap.empty) {
                     msgBox.innerText = "Login Berhasil!";
                     msgBox.className = "msg-success";
-                    setTimeout(() => { window.location.href = "menu.html"; }, 1000);
+                    
+                    // Gunakan REPLACE agar history login hilang (mencegah klik back kembali login)
+                    setTimeout(() => { 
+                        window.location.replace("menu.html"); 
+                    }, 1000);
                 } else {
                     throw new Error("Email atau Password salah!");
                 }
             } catch (err) {
                 msgBox.innerText = err.message;
                 msgBox.className = "msg-error";
+                
+                // Reset UI & Buka kunci kembali jika gagal
                 btn.innerText = "MASUK";
                 btn.disabled = false;
+                isProcessing = false; 
             }
         });
     </script>
