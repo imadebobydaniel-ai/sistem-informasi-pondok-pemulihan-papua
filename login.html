@@ -3,35 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Pondok Pemulihan Papua</title>
+    <title>Login Administrator - PPP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { 
-            --biru-tua: #003366; 
             --emas-lux: #D4AF37; 
+            --grey-bg: #2c2c2c; 
         }
 
-        body { 
-            font-family: 'Segoe UI', Roboto, sans-serif; 
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background-color: #1a1a1a; 
             margin: 0; 
-            background-color: #f0f2f5; 
+            padding: 20px; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
-            height: 100vh; 
+            min-height: 100vh; 
             overflow: hidden; 
         }
 
-        /* --- SPLASH SCREEN --- */
+        /* --- CSS STARTUP LOGO (SPLASH SCREEN) --- */
         #splash-screen {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background-color: #003366;
+            background-color: var(--grey-bg);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 999999;
+            opacity: 1;
+            visibility: visible;
             transition: opacity 0.8s ease, visibility 0.8s;
         }
 
@@ -42,111 +45,155 @@
             align-items: center;
         }
 
-        /* Animasi Logo */
-        .splash-logo {
-            width: 150px; 
-            height: auto;
+        /* Container khusus agar loader melingkari logo */
+        .logo-wrapper {
+            position: relative;
+            width: 180px; /* Ukuran container sedikit lebih besar dari logo */
+            height: 180px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             margin-bottom: 20px;
-            filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.4));
-            animation: pulse 2s infinite ease-in-out;
-            display: block;
         }
 
-        /* Lingkaran Emas Bercahaya */
+        .splash-logo {
+            width: 120px; /* Logo di tengah */
+            height: auto;
+            z-index: 2;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
+            animation: pulse 2s infinite ease-in-out;
+        }
+
         .gold-loader {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(212, 175, 55, 0.1);
-            border-top: 4px solid var(--emas-lux);
+            position: absolute;
+            width: 160px; /* Lingkaran melingkar di luar logo */
+            height: 160px;
+            border: 5px solid rgba(212, 175, 55, 0.1);
+            border-top: 5px solid var(--emas-lux);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            animation: spin 1.5s linear infinite;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.3);
+            z-index: 1;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .splash-hidden { opacity: 0 !important; visibility: hidden !important; }
 
-        .splash-hidden { opacity: 0; visibility: hidden; }
-
-        /* LOGIN CARD */
-        .login-card { 
-            background: white; 
-            padding: 30px; 
-            border-radius: 20px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
-            width: 85%; 
-            max-width: 380px; 
-            text-align: center; 
+        /* --- UI LOGIN CARD --- */
+        .login-card {
+            background: #ffffff; padding: 40px; border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; 
+            max-width: 400px; box-sizing: border-box; 
+            border-top: 5px solid #ff0000; position: relative; z-index: 1;
         }
-        .logo-login { width: 80px; margin-bottom: 10px; }
-        .btn-login { 
-            width: 100%; padding: 12px; 
-            background-color: #007bff; color: white; 
-            border: none; border-radius: 10px; 
-            font-weight: bold; cursor: pointer; 
-            margin-top: 15px; 
-        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header i { font-size: 50px; color: #ff0000; margin-bottom: 10px; }
+        .header h2 { margin: 0; color: #333; font-size: 22px; }
+        .header p { color: #666; font-size: 14px; margin-top: 5px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #444; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; outline: none; }
+        .form-group input:focus { border-color: #ff0000; }
+        .btn-login { width: 100%; padding: 14px; background-color: #ff0000; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-login:hover { background-color: #cc0000; }
+        .footer-link { text-align: center; margin-top: 20px; }
+        .footer-link a { color: #666; text-decoration: none; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <div id="splash-screen">
         <div class="splash-content">
-            <img src="logo_pondok.png" alt="PONDOK PEMULIHAN" class="splash-logo" onerror="this.style.display='none'">
-            
-            <div class="gold-loader"></div>
-            
-            <p style="color: var(--emas-lux); font-weight: bold; font-size: 14px; letter-spacing: 2px; margin-top: 20px; text-transform: uppercase;">
+            <div class="logo-wrapper">
+                <img src="logo_pondok.png" alt="Logo" class="splash-logo">
+                <div class="gold-loader"></div>
+            </div>
+            <p style="color: var(--emas-lux); font-weight: bold; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;">
                 Pondok Pemulihan Papua
             </p>
         </div>
     </div>
 
     <div class="login-card">
-        <img src="logo_pondok.png" alt="Logo" class="logo-login">
-        <h2 style="font-size: 18px; margin-bottom: 5px;">PONDOK PEMULIHAN PAPUA</h2>
-        <h3 style="font-size: 14px; color: #D4AF37; background: #2c3e50; padding: 5px 15px; border-radius: 20px; display: inline-block;">Sistem Informasi Komsel JC</h3>
+        <div class="header">
+            <i class="fa-solid fa-user-shield"></i>
+            <h2>ADMIN PANEL</h2>
+            <p>Pondok Pemulihan Papua</p>
+        </div>
 
-        <form id="loginForm" style="margin-top: 20px;">
-            <input type="email" id="email" placeholder="Email Anggota" required style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
-            <input type="password" id="pass" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
-            <button type="submit" class="btn-login">MASUK</button>
+        <form id="adminLoginForm" onsubmit="loginAdmin(event)">
+            <div class="form-group">
+                <label>Username Admin</label>
+                <input type="text" id="admin_user" required placeholder="Masukkan username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="admin_pass" required placeholder="Masukkan password">
+            </div>
+            <button type="submit" id="btnLogin" class="btn-login">MASUK SISTEM</button>
         </form>
+
+        <div class="footer-link">
+            <a href="index.html"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login User</a>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-        // Paksa Splash Screen Hilang setelah 3 detik
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                const splash = document.getElementById('splash-screen');
+        document.addEventListener("DOMContentLoaded", function() {
+            const splash = document.getElementById('splash-screen');
+            setTimeout(() => {
                 if (splash) {
                     splash.classList.add('splash-hidden');
                     document.body.style.overflow = "auto";
                 }
-            }, 3000); 
+            }, 3000);
         });
 
-        // Firebase & Login (Pastikan Config ini benar)
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
             projectId: "boby-apps-project",
-            storageBucket: "boby-apps-project.firebasestorage.app",
+            storageBucket: "boby-apps-project.appspot.com",
             messagingSenderId: "125984859692",
             appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
+        
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
 
-        // Login Logic singkat
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        async function loginAdmin(e) {
             e.preventDefault();
-            // ... (logika login kamu) ...
-            alert("Mencoba Login...");
-        });
+            const user = document.getElementById('admin_user').value;
+            const pass = document.getElementById('admin_pass').value;
+            const btn = document.getElementById('btnLogin');
+            btn.innerText = "Verifikasi...";
+            btn.disabled = true;
+
+            try {
+                const snap = await db.collection("admins")
+                    .where("username", "==", user)
+                    .where("password", "==", pass)
+                    .get();
+
+                if (!snap.empty) {
+                    alert("Login Admin Berhasil!");
+                    localStorage.setItem("adminStatus", "loggedIn");
+                    window.location.href = "admin.html";
+                } else {
+                    alert("Username atau Password Admin Salah!");
+                    btn.innerText = "MASUK SISTEM";
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert("Error: " + err.message);
+                btn.innerText = "MASUK SISTEM";
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
