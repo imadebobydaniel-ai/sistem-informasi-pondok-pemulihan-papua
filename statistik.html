@@ -77,7 +77,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -87,15 +86,12 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    // Inisialisasi Firebase dengan pengecekan ketat agar tidak error global scope
     let db;
     try {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
-    } catch (e) {
-        console.error("Firebase Init Error:", e);
+    } catch (e) { 
+        console.error("Firebase Error:", e); 
     }
 
     const dataKomsel = {
@@ -109,11 +105,13 @@
     let chartK, chartD;
 
     function initCharts() {
+        const ctxK = document.getElementById('chartKehadiran');
+        const ctxD = document.getElementById('chartDarah');
+
         if (chartK) chartK.destroy();
         if (chartD) chartD.destroy();
 
-        // Chart Kehadiran
-        chartK = new Chart(document.getElementById('chartKehadiran'), {
+        chartK = new Chart(ctxK, {
             type: 'bar',
             data: {
                 labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD/Latihan', 'Baca Alkitab'],
@@ -124,16 +122,10 @@
                     borderRadius: 8
                 }]
             },
-            options: { 
-                indexAxis: 'y', 
-                responsive: true, 
-                maintainAspectRatio: false,
-                animation: { duration: 500 }
-            }
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
         });
 
-        // Chart Golongan Darah
-        chartD = new Chart(document.getElementById('chartDarah'), {
+        chartD = new Chart(ctxD, {
             type: 'doughnut',
             data: {
                 labels: ['A', 'B', 'O', 'AB', 'Lainnya'],
@@ -142,11 +134,7 @@
                     backgroundColor: ['#ff5252', '#448aff', '#ffc107', '#9c27b0', '#4caf50']
                 }]
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { position: 'bottom' } } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
     }
 
@@ -154,32 +142,32 @@
         const wilayah = document.getElementById('filter-wilayah').value;
         const komselSelect = document.getElementById('filter-komsel');
         komselSelect.innerHTML = '<option value="ALL">SEMUA KOMSEL</option>';
-        
         if (wilayah !== "GLOBAL" && dataKomsel[wilayah]) {
             dataKomsel[wilayah].forEach(k => {
-                const option = document.createElement('option');
-                option.value = k; option.textContent = k;
-                komselSelect.appendChild(option);
+                let opt = document.createElement('option');
+                opt.value = k; opt.textContent = k;
+                komselSelect.appendChild(opt);
             });
         }
         refreshData();
     }
 
-    async function refreshData() {
+    function refreshData() {
         if (!db) return;
-
         const selWilayah = document.getElementById('filter-wilayah').value;
         const selKomsel = document.getElementById('filter-komsel').value;
         const selBulan = parseInt(document.getElementById('filter-bulan').value);
-        
         const limitDate = new Date();
         limitDate.setMonth(limitDate.getMonth() - selBulan);
 
-        // --- AMBIL DATA JEMAAT ---
+        // Reset grafik ke nol saat loading untuk mencegah data menumpuk
+        chartK.data.datasets[0].data = [0,0,0,0,0,0]; chartK.update();
+        chartD.data.datasets[0].data = [0,0,0,0,0]; chartD.update();
+
+        // 1. Ambil Data Jemaat (Golongan Darah)
         db.collection("users").onSnapshot(snap => {
             let rekapDarah = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0, 'LAIN': 0 };
             let total = 0;
-
             snap.forEach(doc => {
                 const d = doc.data();
                 const mWilayah = (selWilayah === "GLOBAL" || d.wilayah === selWilayah);
@@ -188,28 +176,23 @@
                 if (mWilayah && mKomsel) {
                     total++;
                     let g = (d.goldarah || d.darah || "LAIN").toUpperCase().trim();
-                    if (rekapDarah.hasOwnProperty(g)) rekapDarah[g]++;
-                    else rekapDarah['LAIN']++;
+                    if (rekapDarah.hasOwnProperty(g)) rekapDarah[g]++; else rekapDarah['LAIN']++;
                 }
             });
-
             chartD.data.datasets[0].data = [rekapDarah.A, rekapDarah.B, rekapDarah.O, rekapDarah.AB, rekapDarah.LAIN];
             chartD.update();
             document.getElementById('summary-darah').innerHTML = `
                 <div class="stat-card"><h3>${total}</h3><p>Total Jemaat</p></div>
-                <div class="stat-card"><h3>${rekapDarah.O}</h3><p>Tipe O</p></div>
-            `;
+                <div class="stat-card"><h3>${rekapDarah.O}</h3><p>Tipe O</p></div>`;
         });
 
-        // --- AMBIL DATA KEHADIRAN ---
+        // 2. Ambil Data Kehadiran
         db.collection("kehadiran").onSnapshot(snap => {
             let rekapHadir = { 'Reguler': 0, 'Ibadah': 0, 'Gabungan': 0, 'Doa': 0, 'KD': 0, 'Alkitab': 0 };
-
             snap.forEach(doc => {
                 const d = doc.data();
-                // Konversi tanggal fleksibel (Timestamp vs String)
                 const tglDoc = d.tanggal?.toDate ? d.tanggal.toDate() : new Date(d.tanggal);
-
+                
                 const mWilayah = (selWilayah === "GLOBAL" || d.wilayah === selWilayah);
                 const mKomsel = (selKomsel === "ALL" || d.komsel === selKomsel);
                 const mWaktu = (tglDoc >= limitDate);
@@ -219,13 +202,12 @@
                     if (rekapHadir.hasOwnProperty(tipe)) rekapHadir[tipe]++;
                 }
             });
-
             chartK.data.datasets[0].data = Object.values(rekapHadir);
             chartK.update();
         });
     }
 
-    // Pastikan fungsi dipanggil saat window siap
+    // Inisialisasi saat halaman dimuat
     window.addEventListener('load', () => {
         initCharts();
         updateDropdownKomsel();
