@@ -13,19 +13,16 @@
         }
         body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .container { max-width: 600px; margin: auto; }
-        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; }
-        .card-header { display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--dark); margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; font-size: 14px; }
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; position: relative; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; font-weight: bold; color: var(--dark); margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; font-size: 14px; }
         
-        .chart-info { 
-            background: #fff9e6; 
-            padding: 10px; 
-            border-radius: 10px; 
-            font-size: 11px; 
-            color: #665; 
-            line-height: 1.4; 
-            margin-top: 15px;
-            border-left: 4px solid var(--warning);
-        }
+        /* Tooltip Info Style */
+        .info-btn { cursor: pointer; color: var(--primary); font-size: 16px; }
+        
+        /* Modal Style */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 15px; width: 85%; max-width: 400px; position: relative; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 20px; cursor: pointer; }
 
         .filter-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .select-row { display: flex; gap: 8px; }
@@ -34,11 +31,24 @@
         .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; border-bottom: 3px solid var(--primary); }
         .stat-card h3 { margin: 0; font-size: 20px; color: var(--dark); }
         .stat-card p { margin: 5px 0 0; font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; }
-        .chart-box { position: relative; height: 320px; width: 100%; }
+        .chart-box { position: relative; height: 380px; width: 100%; }
         .btn-back { display: block; text-align: center; padding: 16px; background: var(--dark); color: white; text-decoration: none; font-weight: bold; border-radius: 14px; margin-top: 20px; }
     </style>
 </head>
 <body>
+
+<div id="infoModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <h3 style="margin-top:0; color: var(--primary);"><i class="fas fa-info-circle"></i> Cara Kerja Grafik</h3>
+        <ul style="font-size: 13px; line-height: 1.6; padding-left: 20px;">
+            <li><b>Sumbu Y (Samping):</b> Menunjukkan kategori kegiatan jemaat.</li>
+            <li><b>Sumbu X (Bawah):</b> Menunjukkan jumlah jemaat yang hadir.</li>
+            <li><b>Garis Vertikal:</b> Membantu Anda melihat nilai eksak jemaat lebih mudah.</li>
+            <li><b>Update Real-time:</b> Grafik akan berubah otomatis saat Anda mengganti filter Wilayah atau Komsel.</li>
+        </ul>
+    </div>
+</div>
 
 <div class="container">
     <div class="card" style="background: linear-gradient(135deg, #1a73e8, #0d47a1); color: white;">
@@ -56,7 +66,6 @@
                 <option value="Arso 1">Arso 1</option>
                 <option value="Arso 2">Arso 2</option>
             </select>
-            
             <select id="filter-bulan" onchange="refreshData()">
                 <option value="1">1 Bulan Terakhir</option>
                 <option value="2">2 Bulan Terakhir</option>
@@ -65,56 +74,24 @@
                 <option value="12">12 Bulan Terakhir</option>
             </select>
         </div>
-
         <select id="filter-komsel" onchange="refreshData()">
             <option value="ALL">SEMUA KOMSEL</option>
-            <optgroup label="ABEPURA">
-                <option value="Joseph 1">Joseph 1</option><option value="Joseph 2">Joseph 2</option>
-                <option value="Joseph 3">Joseph 3</option><option value="Joseph 4">Joseph 4</option>
-                <option value="Joseph 5">Joseph 5</option><option value="Esther 1">Esther 1</option>
-                <option value="Esther 2">Esther 2</option><option value="Esther 3">Esther 3</option>
-                <option value="Esther 4">Esther 4</option><option value="Esther 5">Esther 5</option>
-                <option value="Esther 6">Esther 6</option><option value="Esther 7">Esther 7</option>
-                <option value="Esther 8">Esther 8</option><option value="Esther 9">Esther 9</option>
-                <option value="Esther 10">Esther 10</option><option value="Esther 11">Esther 11</option>
-                <option value="Esther 12">Esther 12</option>
-            </optgroup>
-            <optgroup label="SENTANI">
-                <option value="Siloam 1">Siloam 1</option><option value="Siloam 2">Siloam 2</option>
-                <option value="Siloam 3">Siloam 3</option><option value="Siloam 4">Siloam 4</option>
-                <option value="Siloam 5">Siloam 5</option><option value="Siloam 6">Siloam 6</option>
-                <option value="Siloam 7">Siloam 7</option><option value="Siloam 8">Siloam 8</option>
-                <option value="Agaphe 1">Agaphe 1</option><option value="Agaphe 2">Agaphe 2</option>
-                <option value="Agaphe 3">Agaphe 3</option><option value="Agaphe 4">Agaphe 4</option>
-                <option value="Agaphe 5">Agaphe 5</option>
-            </optgroup>
-            <optgroup label="Doyo">
-                <option value="Komsel Bapak">Komsel Bapak</option>
-                <option value="Komsel Ibu">Komsel Ibu</option>
-                <option value="Komsel Profesi">Komsel Profesi</option>
-                <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
-                <option value="Komsel Pelajar">Komsel Pelajar</option>
-                <option value="Komsel Sekolah Minggu">Komsel Sekolah Minggu</option>
-                <option value="Komsel Lansia">Komsel Lansia</option>
-            </optgroup>
             </select>
     </div>
 
     <div class="card">
-        <div class="card-header"><i class="fas fa-users-check"></i> TOTAL KEHADIRAN HADIR</div>
+        <div class="card-header">
+            <span><i class="fas fa-users-check"></i> TOTAL KEHADIRAN HADIR</span>
+            <i class="fas fa-question-circle info-btn" onclick="openModal()"></i>
+        </div>
         <div class="chart-box">
             <canvas id="chartKehadiran"></canvas>
-        </div>
-        <div class="chart-info">
-            <strong>Cara Membaca Grafik Kehadiran:</strong><br>
-            • Angka di bawah grafik menunjukkan <b>Jumlah Orang</b> yang hadir.<br>
-            • <b>KD</b> dan <b>Latihan</b> kini ditampilkan terpisah untuk akurasi data fungsi yang berbeda.
         </div>
     </div>
 
     <div class="card">
         <div class="card-header"><i class="fas fa-droplet" style="color:red"></i> GOLONGAN DARAH</div>
-        <div class="chart-box">
+        <div class="chart-box" style="height: 250px;">
             <canvas id="chartDarah"></canvas>
         </div>
         <div id="summary-darah" class="stat-grid" style="margin-top:20px;"></div>
@@ -127,6 +104,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Inisialisasi Firebase (Gunakan Config Anda)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -142,27 +120,36 @@
     let chartK, chartD;
     let unsub1, unsub2;
 
+    // Fungsi Modal
+    function openModal() { document.getElementById('infoModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('infoModal').style.display = 'none'; }
+
     function initCharts() {
         chartK = new Chart(document.getElementById('chartKehadiran'), {
             type: 'bar',
             data: {
-                // Memisahkan KD dan Latihan di label agar muncul sebagai baris sendiri
-                labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD', 'Latihan', 'Baca Alkitab'],
+                // Menambahkan "Pelayanan" ke dalam daftar label
+                labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD', 'Latihan', 'Pelayanan', 'Baca Alkitab'],
                 datasets: [{
                     label: 'Jumlah Orang',
-                    data: [0, 0, 0, 0, 0, 0, 0],
-                    backgroundColor: ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#9c27b0', '#009688'],
-                    borderRadius: 8
+                    data: [0, 0, 0, 0, 0, 0, 0, 0],
+                    backgroundColor: ['#4285f4', '#34a853', '#fbbc05', '#ea4335', '#673ab7', '#9c27b0', '#ff9800', '#009688'],
+                    borderRadius: 5
                 }]
             },
             options: { 
                 indexAxis: 'y', 
                 responsive: true, 
                 maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
                 scales: {
                     x: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                        grid: { display: true, color: '#e0e0e0' }, // Garis indikator vertikal diperjelas
+                        ticks: { stepSize: 1, color: '#444', font: { weight: 'bold' } }
+                    },
+                    y: {
+                        grid: { display: false }
                     }
                 }
             }
@@ -215,30 +202,19 @@
         });
 
         unsub2 = db.collection("kehadiran").onSnapshot(snap => {
-            // Inisialisasi rekapH dengan kunci terpisah untuk KD dan Latihan
             let rekapH = { 
-                'Komsel Reguler': 0, 
-                'Ibadah Raya': 0, 
-                'Komsel Gabungan': 0, 
-                'Doa': 0, 
-                'KD': 0, 
-                'Latihan': 0, 
-                'Baca Alkitab': 0 
+                'Komsel Reguler': 0, 'Ibadah Raya': 0, 'Komsel Gabungan': 0, 
+                'Doa': 0, 'KD': 0, 'Latihan': 0, 'Pelayanan': 0, 'Baca Alkitab': 0 
             };
 
             snap.forEach(doc => {
                 const d = doc.data();
                 const tgl = d.tanggal?.toDate ? d.tanggal.toDate() : new Date(d.tanggal);
-                const mWil = (selWilayah === "GLOBAL" || d.wilayah === selWilayah);
-                const mKom = (selKomsel === "ALL" || d.Komsel === selKomsel);
-                const mWaktu = (tgl >= limitDate);
-
-                if (mWil && mKom && mWaktu && d.status === "HADIR") {
-                    // Cek jika tipe adalah "KD/Latihan" (data lama), kita masukkan ke salah satu atau split
-                    if (d.tipe === "KD/Latihan") {
-                         // Default ke KD jika masih format lama, atau Anda bisa sesuaikan logikanya
-                        rekapH['KD']++; 
-                    } else if (rekapH.hasOwnProperty(d.tipe)) {
+                if ((selWilayah === "GLOBAL" || d.wilayah === selWilayah) && 
+                    (selKomsel === "ALL" || d.Komsel === selKomsel) && 
+                    (tgl >= limitDate) && d.status === "HADIR") {
+                    
+                    if (rekapH.hasOwnProperty(d.tipe)) {
                         rekapH[d.tipe]++;
                     }
                 }
