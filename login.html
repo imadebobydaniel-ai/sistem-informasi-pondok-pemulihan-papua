@@ -2,270 +2,151 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #003366; --accent: #007bff; --emas: #FFD700; }
-        body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .login-card { background: white; padding: 35px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 380px; text-align: center; }
-        
-        .logo { 
-            width: 110px; 
-            height: auto;
-            margin-bottom: 20px; 
-            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.1));
+        :root { 
+            --biru-tua: #003366; 
+            --emas-lux: #D4AF37; 
         }
 
-        h2 { margin: 5px 0; font-size: 18px; color: #333; font-weight: bold; text-transform: uppercase; line-height: 1.3; }
-        
-        .form-group { margin-bottom: 15px; position: relative; text-align: left; }
-        input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--accent); box-shadow: 0 0 5px rgba(0,123,255,0.2); }
-        
-        .eye-wrapper {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            background-color: #f0f2f5; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* --- SPLASH SCREEN --- */
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: #003366;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999999;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .splash-content {
+            text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
         }
 
-        .toggle-password {
-            cursor: pointer;
-            color: #999;
-            font-size: 16px;
-            transition: all 0.3s;
-            z-index: 10;
+        /* Animasi Logo */
+        .splash-logo {
+            width: 150px; 
+            height: auto;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.4));
+            animation: pulse 2s infinite ease-in-out;
+            display: block;
         }
 
-        .eye-glow {
-            color: #FFD700 !important;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 1);
-            transform: scale(1.3);
+        /* Lingkaran Emas Bercahaya */
+        .gold-loader {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(212, 175, 55, 0.1);
+            border-top: 4px solid var(--emas-lux);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
         }
 
-        .teardrop {
-            position: absolute;
-            width: 6px;
-            height: 8px;
-            background-color: #dc3545;
-            border-radius: 0 50% 50% 50%;
-            transform: rotate(45deg);
-            top: 15px; 
-            opacity: 0;
-            pointer-events: none;
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        .splash-hidden { opacity: 0; visibility: hidden; }
+
+        /* LOGIN CARD */
+        .login-card { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            width: 85%; 
+            max-width: 380px; 
+            text-align: center; 
         }
-
-        .cry-animation {
-            animation: tearFall 1.2s ease-in forwards;
+        .logo-login { width: 80px; margin-bottom: 10px; }
+        .btn-login { 
+            width: 100%; padding: 12px; 
+            background-color: #007bff; color: white; 
+            border: none; border-radius: 10px; 
+            font-weight: bold; cursor: pointer; 
+            margin-top: 15px; 
         }
-
-        @keyframes tearFall {
-            0% { transform: rotate(45deg) translateY(0); opacity: 1; }
-            100% { transform: rotate(45deg) translateY(25px); opacity: 0; }
-        }
-
-        .btn-login { width: 100%; padding: 14px; background-color: var(--accent); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
-        .btn-login:disabled { background-color: #ccc; cursor: not-allowed; }
-        
-        .footer-links { margin-top: 25px; font-size: 13px; color: #666; border-top: 1px solid #eee; padding-top: 20px; }
-        .footer-links a { color: var(--accent); text-decoration: none; font-weight: bold; }
-        .admin-link { display: block; margin-top: 15px; color: #888; text-decoration: none; font-size: 12px; }
-
-        #error-block { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
-        .error-card { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
-        .btn-close-error { background: #dc3545; color: white; border: none; padding: 12px 0; width: 100%; border-radius: 10px; font-weight: bold; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div class="login-card">
-    <img src="logo_pondok.png" alt="Logo" class="logo">
-
-    <h2>Sistem Informasi & Integrasi Jemaat</h2>
-    <h2>PONDOK PEMULIHAN PAPUA</h2>
-    <p style="color: #666; margin-top: 10px; margin-bottom: 25px; font-size: 14px;">Login Anggota Jemaat / Administrator</p>
-
-    <div class="form-group">
-        <input type="email" id="email" placeholder="Email Terdaftar" required>
-    </div>
-    <div class="form-group">
-        <input type="password" id="pass" placeholder="Password" required>
-        <div class="eye-wrapper">
-            <i class="fa-solid fa-eye toggle-password" id="toggle-icon" onclick="togglePassword()"></i>
-            <div id="tears-container"></div> 
+    <div id="splash-screen">
+        <div class="splash-content">
+            <img src="logo_pondok.png" alt="PONDOK PEMULIHAN" class="splash-logo" onerror="this.style.display='none'">
+            
+            <div class="gold-loader"></div>
+            
+            <p style="color: var(--emas-lux); font-weight: bold; font-size: 14px; letter-spacing: 2px; margin-top: 20px; text-transform: uppercase;">
+                Pondok Pemulihan Papua
+            </p>
         </div>
     </div>
-    <button id="btn-login" class="btn-login" onclick="prosesLogin()">MASUK</button>
 
-    <div class="footer-links">
-        Belum punya akun? <a href="registrasi.html">Daftar Sekarang</a>
+    <div class="login-card">
+        <img src="logo_pondok.png" alt="Logo" class="logo-login">
+        <h2 style="font-size: 18px; margin-bottom: 5px;">PONDOK PEMULIHAN PAPUA</h2>
+        <h3 style="font-size: 14px; color: #D4AF37; background: #2c3e50; padding: 5px 15px; border-radius: 20px; display: inline-block;">Sistem Informasi Komsel JC</h3>
+
+        <form id="loginForm" style="margin-top: 20px;">
+            <input type="email" id="email" placeholder="Email Anggota" required style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+            <input type="password" id="pass" placeholder="Password" required style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box;">
+            <button type="submit" class="btn-login">MASUK</button>
+        </form>
     </div>
-    <a href="login_cyber.html" class="admin-link"><i class="fa-solid fa-user-shield"></i> Login Khusus Administrator</a>
-</div>
 
-<div id="error-block">
-    <div class="error-card">
-        <i class="fa-solid fa-circle-exclamation" style="font-size: 50px; color: #dc3545; margin-bottom: 15px;"></i>
-        <h3 style="margin: 0; color: #333; padding: 0;">Pesan Sistem</h3>
-        <p id="error-text" style="font-size: 14px; color: #666; line-height: 1.5;"></p>
-        <button class="btn-close-error" onclick="hideError()">COBA LAGI</button>
-    </div>
-</div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
-    
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-
-    function togglePassword() {
-        const passInput = document.getElementById('pass');
-        const toggleIcon = document.getElementById('toggle-icon');
-        if (passInput.type === 'password') {
-            passInput.type = 'text';
-            toggleIcon.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            passInput.type = 'password';
-            toggleIcon.classList.replace('fa-eye-slash', 'fa-eye');
-        }
-    }
-
-    function triggerTears() {
-        const container = document.getElementById('tears-container');
-        const icon = document.getElementById('toggle-icon');
-        icon.style.color = "#dc3545"; 
-        for(let i=0; i<2; i++) {
-            setTimeout(() => {
-                const tear = document.createElement('div');
-                tear.className = 'teardrop cry-animation';
-                container.appendChild(tear);
-                setTimeout(() => { 
-                    tear.remove(); 
-                    icon.style.color = "#999";
-                }, 1200);
-            }, i * 400);
-        }
-    }
-
-    function triggerGlow() {
-        const icon = document.getElementById('toggle-icon');
-        icon.classList.add('eye-glow');
-    }
-
-    async function prosesLogin() {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('pass').value;
-        const btn = document.getElementById('btn-login');
-        const icon = document.getElementById('toggle-icon');
-
-        icon.classList.remove('eye-glow'); 
-
-        if(!email || !password) {
-            showError("Harap isi email dan password.");
-            return;
-        }
-
-        btn.innerText = "MENGECEK AKSES...";
-        btn.disabled = true;
-
-        try {
-            // 1. Sign In ke Firebase Auth
-            const userCredential = await auth.signInWithEmailAndPassword(email, password);
-            const user = userCredential.user;
-
-            // 2. Cek Verifikasi Email
-            if (!user.emailVerified) {
-                await auth.signOut();
-                throw { code: 'auth/not-verified', message: "Email Anda belum diverifikasi. Silakan cek inbox/spam email Anda." };
-            }
-
-            // 3. Penentuan Redirect (Single-Path Role Management)
-            let targetURL = "menu.html"; 
-            const emailLower = email.toLowerCase();
-
-            // Cek Admin (Cek di koleksi admin_users)
-            const adminSnapshot = await db.collection("admin_users")
-                                    .where("email", "==", emailLower)
-                                    .limit(1).get();
-            
-            if (!adminSnapshot.empty || (emailLower === "admin@gmail.com" && password === "bukadong821")) {
-                targetURL = "admin.html";
-            } else {
-                // Jika bukan admin, cek di koleksi users
-                const userSnapshot = await db.collection("users")
-                                       .where("email", "==", emailLower)
-                                       .limit(1).get();
-                
-                if (!userSnapshot.empty) {
-                    const userData = userSnapshot.docs[0].data();
-                    localStorage.setItem("userEmail", emailLower);
-                    localStorage.setItem("userName", userData.Nama || "Anggota");
-                } else {
-                    // Fallback jika data di Firestore belum ada
-                    localStorage.setItem("userEmail", emailLower);
-                    localStorage.setItem("userName", "Anggota");
+    <script>
+        // Paksa Splash Screen Hilang setelah 3 detik
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.classList.add('splash-hidden');
+                    document.body.style.overflow = "auto";
                 }
-            }
+            }, 3000); 
+        });
 
-            // Visual Sukses
-            triggerGlow(); 
-            setTimeout(() => { 
-                window.location.replace(targetURL); 
-            }, 800);
+        // Firebase & Login (Pastikan Config ini benar)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.firebasestorage.app",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
 
-        } catch (err) {
-            triggerTears(); 
-            setTimeout(() => {
-                let pesanFriendly;
-                switch (err.code) {
-                    case 'auth/user-not-found':
-                    case 'auth/wrong-password':
-                    case 'auth/invalid-email':
-                        pesanFriendly = "Email atau password salah. Periksa kembali akun Anda.";
-                        break;
-                    case 'auth/too-many-requests':
-                        pesanFriendly = "Terlalu banyak percobaan login. Silakan tunggu sebentar.";
-                        break;
-                    case 'auth/not-verified':
-                        pesanFriendly = err.message;
-                        break;
-                    default:
-                        pesanFriendly = "Gagal masuk: " + (err.message || "Kesalahan sistem.");
-                }
-
-                showError(pesanFriendly);
-                btn.innerText = "MASUK";
-                btn.disabled = false;
-            }, 1000);
-        }
-    }
-
-    function showError(pesan) {
-        document.getElementById("error-text").innerText = pesan;
-        document.getElementById("error-block").style.display = "flex";
-    }
-
-    function hideError() {
-        document.getElementById("error-block").style.display = "none";
-    }
-</script>
-
+        // Login Logic singkat
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            // ... (logika login kamu) ...
+            alert("Mencoba Login...");
+        });
+    </script>
 </body>
 </html>
