@@ -3,88 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Advanced Statistics - Pondok Pemulihan Papua</title>
+    <title>Management Dashboard - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary: #007bff; --success: #28a745; --danger: #dc3545;
-            --warning: #ffc107; --dark: #343a40; --light: #f8f9fa;
-            --gold: #D4AF37; --white: #ffffff;
+            --primary: #1a73e8; --success: #34a853; --danger: #ea4335;
+            --warning: #fbbc05; --dark: #202124; --bg: #f1f3f4;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eaeff2; margin: 0; padding: 15px; color: #333; }
-        .container { max-width: 500px; margin: auto; }
+        body { font-family: 'Google Sans', Roboto, Arial; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 600px; margin: auto; }
         
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h2 { color: var(--dark); font-size: 1.5rem; margin-bottom: 5px; }
+        /* Dashboard Styling */
+        .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: none; }
+        .card-header { display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--dark); margin-bottom: 20px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; font-size: 14px; }
         
-        .card { background: var(--white); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .card-title { font-weight: 700; font-size: 14px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; color: var(--dark); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .filter-group { display: flex; gap: 8px; margin-bottom: 20px; }
+        select { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; background: #fff; font-size: 12px; font-weight: 600; }
 
-        .chart-container { position: relative; height: 250px; width: 100%; margin-bottom: 15px; }
-        
-        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .stat-box { background: var(--light); padding: 12px; border-radius: 10px; text-align: center; border-left: 4px solid var(--primary); }
-        .stat-box.red { border-left-color: var(--danger); }
-        .stat-box span { display: block; font-size: 10px; font-weight: bold; color: #888; }
-        .stat-box b { font-size: 16px; color: #333; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; text-align: center; }
+        .stat-card h3 { margin: 0; font-size: 20px; color: var(--primary); }
+        .stat-card p { margin: 5px 0 0; font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; }
 
-        .btn-back { display: block; text-align: center; padding: 15px; background: var(--white); color: var(--primary); text-decoration: none; font-weight: bold; border-radius: 12px; border: 2px solid var(--primary); margin-top: 10px; }
+        .chart-box { position: relative; height: 300px; width: 100%; }
+        .btn-back { display: block; text-align: center; padding: 16px; background: var(--dark); color: white; text-decoration: none; font-weight: bold; border-radius: 14px; margin-top: 20px; }
         
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 14px; }
+        .badge-red { background: #ffebee; color: #c62828; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>Dashboard Statistik</h2>
-        <p style="font-size: 12px; color: #666;">Data Terintegrasi & Real-time</p>
+    <div class="card" style="background: linear-gradient(135deg, #1a73e8, #0d47a1); color: white;">
+        <h2 style="margin:0; font-size: 18px;">Pondok Pemulihan Papua</h2>
+        <p style="margin:5px 0 0; font-size: 12px; opacity: 0.9;">Sistem Manajemen Jemaat Terpadu</p>
     </div>
 
-    <div class="card">
-        <label style="font-size: 11px; font-weight: bold;">PILIH PERIODE ANALISIS</label>
-        <select id="global-periode" onchange="refreshAllStats()">
-            <option value="1">1 Bulan Terakhir</option>
-            <option value="3">3 Bulan Terakhir</option>
-            <option value="6">6 Bulan Terakhir</option>
-            <option value="12">1 Tahun Terakhir</option>
+    <div class="filter-group">
+        <select id="filter-wilayah" onchange="refreshData()">
+            <option value="GLOBAL">SEMUA WILAYAH</option>
+            <option value="Abepura">Abepura</option>
+            <option value="Sentani">Sentani</option>
+            <option value="Doyo">Doyo</option>
+            <option value="Arso 1">Arso 1</option>
+            <option value="Arso 2">Arso 2</option>
+        </select>
+        <select id="filter-bulan" onchange="refreshData()">
+            <option value="1">1 Bulan</option>
+            <option value="3">3 Bulan</option>
         </select>
     </div>
 
     <div class="card">
-        <div class="card-title"><i class="fas fa-check-circle style="color: var(--success)"></i> Progres Kehadiran</div>
-        <div class="chart-container">
+        <div class="card-header"><i class="fas fa-chart-line"></i> PROGRES KEHADIRAN POSITIF</div>
+        <div class="chart-box">
             <canvas id="chartKehadiran"></canvas>
         </div>
-        <div class="grid-stats" id="info-kehadiran">
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="fas fa-exclamation-triangle"></i> KETIDAKHADIRAN (ALASAN & FREKUENSI)</div>
+        <div class="chart-box">
+            <canvas id="chartAbsensi"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="fas fa-tint" style="color:red"></i> BANK DATA GOLONGAN DARAH</div>
+        <div class="chart-box">
+            <canvas id="chartDarah"></canvas>
+        </div>
+        <div id="summary-darah" class="stat-grid" style="margin-top:20px;">
             </div>
     </div>
 
-    <div class="card">
-        <div class="card-title"><i class="fas fa-times-circle" style="color: var(--danger)"></i> Analisis Ketidakhadiran</div>
-        <div class="chart-container">
-            <canvas id="chartAbsensi"></canvas>
-        </div>
-        <p style="font-size: 10px; color: #999; text-align: center;">*Menampilkan persentase alasan ketidakhadiran di semua lini pelayanan.</p>
-    </div>
-
-    <div class="card">
-        <div class="card-title"><i class="fas fa-heartbeat" style="color: var(--danger)"></i> Profil Golongan Darah</div>
-        <div class="chart-container">
-            <canvas id="chartDarah"></canvas>
-        </div>
-        <div id="darah-legend" style="font-size: 12px;"></div>
-    </div>
-
-    <a href="menu.html" class="btn-back">KEMBALI KE MENU UTAMA</a>
+    <a href="menu.html" class="btn-back">KEMBALI KE PANEL ADMIN</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Anda
+    // Inisialisasi Firebase (Gunakan config Anda)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -96,106 +97,99 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let charts = {};
+    let chartK, chartA, chartD;
 
-    // Fungsi Pembantu
-    const getLimitDate = (m) => {
-        let d = new Date(); d.setMonth(d.getMonth() - m);
-        return d;
-    };
-
-    // --- 1. LOGIKA GRAFIK KEHADIRAN ---
-    async function initChartKehadiran() {
-        const ctx = document.getElementById('chartKehadiran').getContext('2d');
-        charts.kehadiran = new Chart(ctx, {
+    function initCharts() {
+        // Chart Kehadiran (Horizontal Bar agar teks terbaca jelas)
+        chartK = new Chart(document.getElementById('chartKehadiran'), {
             type: 'bar',
             data: {
-                labels: ['Komsel', 'Ibadah', 'Gabungan', 'Doa', 'KD', 'Alkitab'],
+                labels: ['Komsel Reguler', 'Ibadah Raya', 'Komsel Gabungan', 'Doa', 'KD/Latihan', 'Baca Alkitab'],
                 datasets: [{
-                    label: 'Persentase Hadir (%)',
-                    data: [0, 0, 0, 0, 0, 0],
-                    backgroundColor: ['#007bff', '#28a745', '#6f42c1', '#fd7e14', '#20c997', '#ffc107']
+                    label: 'Persentase (%)',
+                    data: [0,0,0,0,0,0],
+                    backgroundColor: '#1a73e8',
+                    borderRadius: 5
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
         });
-    }
 
-    // --- 2. LOGIKA GRAFIK ABSENSI ---
-    function initChartAbsensi() {
-        const ctx = document.getElementById('chartAbsensi').getContext('2d');
-        charts.absensi = new Chart(ctx, {
+        // Chart Absensi (Pie Chart)
+        chartA = new Chart(document.getElementById('chartAbsensi'), {
             type: 'doughnut',
             data: {
-                labels: ['Reguler', 'Gabungan', 'Ibadah', 'Doa', 'KD'],
+                labels: ['Izin Kerja', 'Sakit', 'Luar Kota', 'Tanpa Keterangan'],
                 datasets: [{
-                    data: [1, 1, 1, 1, 1],
-                    backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff']
+                    data: [1, 1, 1, 1],
+                    backgroundColor: ['#fbbc05', '#4285f4', '#34a853', '#ea4335']
                 }]
-            }
+            },
+            options: { responsive: true, maintainAspectRatio: false }
         });
-    }
 
-    // --- 3. LOGIKA GRAFIK GOLONGAN DARAH ---
-    function initChartDarah() {
-        const ctx = document.getElementById('chartDarah').getContext('2d');
-        charts.darah = new Chart(ctx, {
-            type: 'pie',
+        // Chart Darah (Polar Area)
+        chartD = new Chart(document.getElementById('chartDarah'), {
+            type: 'polarArea',
             data: {
-                labels: ['O', 'A', 'B', 'AB', 'AB+'],
+                labels: ['A', 'B', 'O', 'AB', 'AB+'],
                 datasets: [{
                     data: [0, 0, 0, 0, 0],
-                    backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#9b59b6', '#2ecc71']
+                    backgroundColor: ['#ffcdd2', '#bbdefb', '#f8bbd0', '#e1bee7', '#c8e6c9']
                 }]
-            }
+            },
+            options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-    // FUNGSI SYNC DATA DARI FIREBASE
-    async function refreshAllStats() {
-        const bln = parseInt(document.getElementById('global-periode').value);
-        const limitDate = getLimitDate(bln);
+    async function refreshData() {
+        const wilayah = document.getElementById('filter-wilayah').value;
+        const bulan = parseInt(document.getElementById('filter-bulan').value);
+        const limitDate = new Date(); limitDate.setMonth(limitDate.getMonth() - bulan);
 
-        // 1. Sync Kehadiran & Laporan Alkitab
-        // (Contoh logika: Anda perlu menyesuaikan query 'kategori' di Firestore)
-        db.collection("kehadiran").where("tanggal", ">=", limitDate).onSnapshot(snap => {
-            let counts = { 'Reguler': 0, 'Ibadah': 0, 'Gabungan': 0, 'Doa': 0, 'KD': 0 };
-            let totalPerKat = 50; // Asumsi target per kategori
-            
-            snap.forEach(doc => {
-                const d = doc.data();
-                if(d.status === "HADIR") counts[d.tipe_kegiatan || 'Reguler']++;
-            });
-
-            // Update Chart
-            charts.kehadiran.data.datasets[0].data = [
-                (counts['Reguler']/totalPerKat)*100,
-                (counts['Ibadah']/totalPerKat)*100,
-                (counts['Gabungan']/totalPerKat)*100,
-                (counts['Doa']/totalPerKat)*100,
-                (counts['KD']/totalPerKat)*100,
-                75 // Contoh statis untuk Alkitab
-            ];
-            charts.kehadiran.update();
-        });
-
-        // 2. Sync Golongan Darah (Global)
-        db.collection("users").onSnapshot(snap => {
-            let goldar = { 'O': 0, 'A': 0, 'B': 0, 'AB': 0, 'AB+': 0 };
+        // 1. Logic Statistik Golongan Darah (Scope Global/Wilayah)
+        let queryUsers = db.collection("users");
+        if(wilayah !== "GLOBAL") queryUsers = queryUsers.where("wilayah", "==", wilayah);
+        
+        queryUsers.onSnapshot(snap => {
+            let rekap = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0, 'AB+': 0 };
             snap.forEach(doc => {
                 let g = (doc.data().goldarah || doc.data().darah || "").toUpperCase().trim();
-                if(goldar.hasOwnProperty(g)) goldar[g]++;
+                if(rekap.hasOwnProperty(g)) rekap[g]++;
             });
-            charts.darah.data.datasets[0].data = Object.values(goldar);
-            charts.darah.update();
+            chartD.data.datasets[0].data = Object.values(rekap);
+            chartD.update();
+            
+            // Tampilkan angka total
+            document.getElementById('summary-darah').innerHTML = `
+                <div class="stat-card"><h3>${snap.size}</h3><p>Total Jemaat</p></div>
+                <div class="stat-card"><h3>${rekap['O']}</h3><p>Total Stok O</p></div>
+            `;
+        });
+
+        // 2. Logic Kehadiran (Multi-Kategori)
+        let queryHadir = db.collection("kehadiran").where("tanggal", ">=", limitDate);
+        if(wilayah !== "GLOBAL") queryHadir = queryHadir.where("wilayah", "==", wilayah);
+
+        queryHadir.onSnapshot(snap => {
+            let k = { 'Reguler': 0, 'Ibadah': 0, 'Gabungan': 0, 'Doa': 0, 'KD': 0, 'Alkitab': 0 };
+            snap.forEach(doc => {
+                const d = doc.data();
+                if(d.status === "HADIR") k[d.tipe || 'Reguler']++;
+            });
+            // Hitung rata-rata sederhana (Asumsi target 100 jemaat per wilayah)
+            const base = wilayah === "GLOBAL" ? 500 : 100;
+            chartK.data.datasets[0].data = [
+                (k.Reguler/base)*100, (k.Ibadah/base)*100, (k.Gabungan/base)*100, 
+                (k.Doa/base)*100, (k.KD/base)*100, 80 
+            ];
+            chartK.update();
         });
     }
 
     window.onload = () => {
-        initChartKehadiran();
-        initChartAbsensi();
-        initChartDarah();
-        refreshAllStats();
+        initCharts();
+        refreshData();
     };
 </script>
 </body>
