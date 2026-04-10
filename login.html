@@ -186,55 +186,68 @@
         btn.disabled = true;
 
         try {
-            // 1. Sign In
+            // 1. Sign In ke Firebase Auth
             const userCredential = await auth.signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
             // 2. Cek Verifikasi Email
             if (!user.emailVerified) {
                 await auth.signOut();
-                throw { code: 'auth/not-verified', message: "Akses Ditolak! Email Anda belum diverifikasi. Silakan cek inbox email Anda." };
+                throw { code: 'auth/not-verified', message: "Email Anda belum diverifikasi. Silakan cek inbox/spam email Anda." };
             }
 
-            // 3. Cek Role & Redirect
+            // 3. Penentuan Redirect (Single-Path Role Management)
             let targetURL = "menu.html"; 
-            const adminSnapshot = await db.collection("admin_users").where("email", "==", email.toLowerCase()).get();
+            const emailLower = email.toLowerCase();
+
+            // Cek Admin (Cek di koleksi admin_users)
+            const adminSnapshot = await db.collection("admin_users")
+                                    .where("email", "==", emailLower)
+                                    .limit(1).get();
             
-            if (!adminSnapshot.empty || (email.toLowerCase() === "admin@gmail.com" && password === "bukadong821")) {
+            if (!adminSnapshot.empty || (emailLower === "admin@gmail.com" && password === "bukadong821")) {
                 targetURL = "admin.html";
             } else {
-                const userSnapshot = await db.collection("users").where("email", "==", email.toLowerCase()).get();
+                // Jika bukan admin, cek di koleksi users
+                const userSnapshot = await db.collection("users")
+                                       .where("email", "==", emailLower)
+                                       .limit(1).get();
+                
                 if (!userSnapshot.empty) {
                     const userData = userSnapshot.docs[0].data();
-                    localStorage.setItem("userEmail", email);
+                    localStorage.setItem("userEmail", emailLower);
                     localStorage.setItem("userName", userData.Nama || "Anggota");
+                } else {
+                    // Fallback jika data di Firestore belum ada
+                    localStorage.setItem("userEmail", emailLower);
+                    localStorage.setItem("userName", "Anggota");
                 }
             }
 
+            // Visual Sukses
             triggerGlow(); 
-            setTimeout(() => { window.location.replace(targetURL); }, 1000);
+            setTimeout(() => { 
+                window.location.replace(targetURL); 
+            }, 800);
 
         } catch (err) {
             triggerTears(); 
             setTimeout(() => {
                 let pesanFriendly;
-
-                // Logika pemfilteran pesan eror
                 switch (err.code) {
                     case 'auth/user-not-found':
                     case 'auth/wrong-password':
                     case 'auth/invalid-email':
-                    case 'auth/user-disabled':
-                        pesanFriendly = "periksa kembali user dan pasword anda";
+                        pesanFriendly = "Email atau password salah. Periksa kembali akun Anda.";
                         break;
                     case 'auth/too-many-requests':
-                        pesanFriendly = "Terlalu banyak percobaan login. Silakan tunggu sebentar atau reset password Anda.";
+                        pesanFriendly = "Terlalu banyak percobaan login. Silakan tunggu sebentar.";
                         break;
                     case 'auth/not-verified':
                         pesanFriendly = err.message;
                         break;
                     default:
-                        pesanFriendly = "Terjadi kesalahan sistem. Silakan coba lagi nanti.";
+                        pesanFriendly = "Gagal masuk: " + (err.message || "Kesalahan sistem.");
                 }
 
                 showError(pesanFriendly);
