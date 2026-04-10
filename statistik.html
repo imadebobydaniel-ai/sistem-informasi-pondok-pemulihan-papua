@@ -91,12 +91,31 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // Rincian Komsel Lengkap
     const dataKomsel = {
-        "Abepura": ["Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Komsel Profesi", "Komsel Mahasiswa", "Komsel Pelajar", "Sekolah Minggu", "Lansia"],
-        "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Siloam 5", "Siloam 6", "Siloam 7", "Siloam 8", "Agaphe 1", "Agaphe 2", "Agaphe 3", "Agaphe 4", "Agaphe 5", "Komsel Profesi", "Komsel Mahasiswa", "Komsel Pelajar", "Sekolah Minggu", "Lansia"],
-        "Doyo": ["Komsel Bapak Doyo", "Komsel Ibu Doyo", "Komsel Profesi Doyo", "Komsel Mahasiswa Doyo", "Komsel Pelajar Doyo", "Komsel Sekolah Minggu Doyo"],
-        "Arso 1": ["Komsel Bapak Arso 1", "Komsel Ibu Arso 1"],
-        "Arso 2": ["Komsel Bapak Arso 2", "Komsel Pemuda dan Pelajar Arso 2", "Komsel Sekolah Minggu Arso 2"]
+        "Abepura": [
+            "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5",
+            "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5",
+            "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10",
+            "Esther 11", "Esther 12", "Komsel Profesi", "Komsel Mahasiswa",
+            "Komsel Pelajar", "Komsel Sekolah Minggu", "Komsel Lansia"
+        ],
+        "Sentani": [
+            "Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Siloam 5",
+            "Siloam 6", "Siloam 7", "Siloam 8", "Agaphe 1", "Agaphe 2",
+            "Agaphe 3", "Agaphe 4", "Agaphe 5", "Komsel Profesi",
+            "Komsel Mahasiswa", "Komsel Pelajar", "Komsel Sekolah Minggu", "Komsel Lansia"
+        ],
+        "Doyo": [
+            "Komsel Bapak Doyo", "Komsel Ibu Doyo", "Komsel Profesi Doyo",
+            "Komsel Mahasiswa Doyo", "Komsel Pelajar Doyo", "Komsel Sekolah Minggu Doyo"
+        ],
+        "Arso 1": [
+            "Komsel Bapak Arso 1", "Komsel Ibu Arso 2"
+        ],
+        "Arso 2": [
+            "Komsel Bapak Arso 2", "Komsel Pemuda dan Pelajar Arso 2", "Komsel Sekolah Minggu Arso 2"
+        ]
     };
 
     let chartK, chartD;
@@ -104,11 +123,15 @@
     function updateDropdownKomsel() {
         const wilayah = document.getElementById('filter-wilayah').value;
         const komselSelect = document.getElementById('filter-komsel');
+        
         komselSelect.innerHTML = '<option value="ALL">SEMUA KOMSEL</option>';
         
         if (dataKomsel[wilayah]) {
             dataKomsel[wilayah].forEach(k => {
-                komselSelect.innerHTML += `<option value="${k}">${k}</option>`;
+                const option = document.createElement('option');
+                option.value = k;
+                option.textContent = k;
+                komselSelect.appendChild(option);
             });
         }
         refreshData();
@@ -148,7 +171,7 @@
         const bulan = parseInt(document.getElementById('filter-bulan').value);
         const limitDate = new Date(); limitDate.setMonth(limitDate.getMonth() - bulan);
 
-        // Logic Golongan Darah & Total Jemaat
+        // Filter Firestore untuk Golongan Darah
         let uQuery = db.collection("users");
         if(wilayah !== "GLOBAL") uQuery = uQuery.where("wilayah", "==", wilayah);
         if(komsel !== "ALL") uQuery = uQuery.where("komsel", "==", komsel);
@@ -168,7 +191,7 @@
             `;
         });
 
-        // Logic Kehadiran
+        // Filter Firestore untuk Kehadiran
         let hQuery = db.collection("kehadiran").where("tanggal", ">=", limitDate);
         if(wilayah !== "GLOBAL") hQuery = hQuery.where("wilayah", "==", wilayah);
         if(komsel !== "ALL") hQuery = hQuery.where("komsel", "==", komsel);
@@ -179,7 +202,7 @@
                 const d = doc.data();
                 if(d.status === "HADIR") k[d.tipe || 'Reguler']++;
             });
-            // Simulasi persentase (Target dinamis bisa disesuaikan)
+            
             const base = 50; 
             chartK.data.datasets[0].data = [
                 (k.Reguler/base)*100, (k.Ibadah/base)*100, (k.Gabungan/base)*100, 
