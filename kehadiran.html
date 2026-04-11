@@ -25,7 +25,7 @@
         }
         #lock-display i { font-size: 80px; margin-bottom: 20px; }
         
-        #extention-container, #gabungan-container, #reason-container { display: none; background: #fdfdfd; padding: 15px; border-radius: 15px; border: 1px dashed #ccc; margin-top: 10px; }
+        #extention-container, #reason-container { display: none; background: #fdfdfd; padding: 15px; border-radius: 15px; border: 1px dashed #ccc; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -40,7 +40,7 @@
 <div class="card">
     <div class="icon-header"><i class="fa-solid fa-location-dot"></i></div>
     <h2>LAPORAN KEHADIRAN</h2>
-    <p class="subtitle">Shalom! Silakan pilih jenis kegiatan.</p>
+    <p class="subtitle">Shalom! Silakan pilih jenis kegiatan jemaat.</p>
 
     <div class="menu-selector">
         <label><i class="fa-solid fa-list-check"></i> Pilih Jenis Kegiatan:</label>
@@ -48,17 +48,10 @@
             <option value="Absen Ibadah Raya">Ibadah Raya</option>
             <option value="Absen Doa">Absen Doa</option>
             <option value="Absen KD">Absen KD</option>
-            <option value="Absen Komsel Reguler">Komsel Reguler</option>
-            <option value="Absen Komsel Gabungan">Komsel Gabungan</option>
             <option value="Absen Latihan">Latihan (Musik/Multimedia/Sound/Dll)</option>
             <option value="Absen Pelayanan">Pelayanan (Worship/Choirs/Dll)</option>
             <option value="Absen Extention">KEGIATAN EXTENTION (Lainnya)</option>
         </select>
-    </div>
-
-    <div id="gabungan-container">
-        <label>Gabungan Bersama :</label>
-        <input type="text" id="gabungan-info" placeholder="Lokasi / JC Gabungan">
     </div>
 
     <div id="extention-container">
@@ -70,13 +63,6 @@
 
         <label>Tanggal Kegiatan :</label>
         <input type="date" id="ext-tanggal">
-
-        <label>Unit JC Terkait :</label>
-        <select id="ext-jc">
-            <option value="JC 01">JC 01</option><option value="JC 02">JC 02</option>
-            <option value="JC 03">JC 03</option><option value="JC 04">JC 04</option>
-            <option value="JC 05">JC 05</option>
-        </select>
     </div>
 
     <div id="main-buttons" style="margin-top: 20px;">
@@ -108,8 +94,7 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const leaderName = localStorage.getItem("userName") || "User";
-    const leaderJC = localStorage.getItem("userJC") || "JC";
+    const userName = localStorage.getItem("userName") || "Jemaat";
 
     function showLockDisplay(type, title, msg) {
         const lock = document.getElementById('lock-display');
@@ -129,7 +114,6 @@
     function cekJenisMenu() {
         const menu = document.getElementById("jenis-kegiatan").value;
         document.getElementById("extention-container").style.display = (menu === "Absen Extention") ? "block" : "none";
-        document.getElementById("gabungan-container").style.display = (menu === "Absen Komsel Gabungan") ? "block" : "none";
     }
 
     function tampilkanInputAlasan() { 
@@ -146,23 +130,18 @@
         const menu = document.getElementById("jenis-kegiatan").value;
         const today = new Date().toISOString().split('T')[0];
 
-        // Validasi khusus Extension
         if(menu === "Absen Extention") {
             if(!document.getElementById("ext-nama-kegiatan").value || !document.getElementById("ext-tanggal").value) {
-                alert("Mohon isi Nama dan Tanggal Kegiatan Extension!");
+                alert("Mohon isi Nama dan Tanggal Kegiatan!");
                 return;
             }
         }
 
-        let targetColl = "kehadiran";
-        if (menu === "Absen Doa") targetColl = "laporan_doa";
-        else if (menu === "Absen KD") targetColl = "kehadiran_kd";
-        else if (menu === "Absen Komsel Reguler") targetColl = "laporan_komsel";
-        else if (menu === "Absen Pelayanan") targetColl = "laporan_pelayanan";
-        else if (menu === "Absen Latihan") targetColl = "laporan_latihan";
+        let targetColl = "kehadiran_jemaat";
+        if (menu === "Absen Doa") targetColl = "laporan_doa_umum";
+        else if (menu === "Absen Pelayanan") targetColl = "laporan_pelayanan_umum";
 
-        // Cek Double Submit
-        const check = await db.collection(targetColl).where("nama", "==", leaderName).where("tanggal", "==", today).where("kegiatan", "==", menu).get();
+        const check = await db.collection(targetColl).where("nama", "==", userName).where("tanggal", "==", today).where("kegiatan", "==", menu).get();
         if (!check.empty) {
             showLockDisplay('error', 'Ditolak', 'Laporan sudah dikirim hari ini.');
             return;
@@ -185,8 +164,7 @@
         
         let payload = {
             status: tipe,
-            nama: leaderName,
-            jc: (menu === "Absen Extention" ? document.getElementById("ext-jc").value : leaderJC),
+            nama: userName,
             tanggal: now.toISOString().split('T')[0],
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             kegiatan: menu,
@@ -194,19 +172,16 @@
             keterangan: (tipe === 'TIDAK HADIR') ? document.getElementById("alasan").value : "Hadir di Lokasi"
         };
 
-        // Data Tambahan untuk Extension
         if (menu === "Absen Extention") {
             payload.extension_nama_kegiatan = document.getElementById("ext-nama-kegiatan").value;
             payload.extension_lokasi = document.getElementById("ext-lokasi").value;
             payload.extension_tanggal_pelaksanaan = document.getElementById("ext-tanggal").value;
         }
-        
-        if (menu === "Absen Komsel Gabungan") payload.lokasi_gabungan = document.getElementById("gabungan-info").value;
 
         try {
             await db.collection(collection).add(payload);
-            await db.collection("statistik_pusat").add({...payload, type: "BigData_Entry"});
-            showLockDisplay('success', 'Terimakasih', 'Laporan berhasil masuk ke Big Data Statistik.');
+            await db.collection("statistik_jemaat_pusat").add({...payload, type: "Umum_Entry"});
+            showLockDisplay('success', 'Terimakasih', 'Laporan kehadiran jemaat berhasil terkirim.');
         } catch (err) {
             showLockDisplay('error', 'Gagal', err.message);
         }
