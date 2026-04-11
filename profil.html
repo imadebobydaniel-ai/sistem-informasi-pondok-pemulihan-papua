@@ -71,37 +71,38 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
-    const userEmail = localStorage.getItem("userEmail");
+    
+    // Gunakan .toLowerCase() untuk memastikan pencarian email tidak terganggu huruf kapital
+    const rawEmail = localStorage.getItem("userEmail");
+    const userEmail = rawEmail ? rawEmail.toLowerCase().trim() : null;
+    
     const debug = document.getElementById("debug-msg");
-
-    // NAMA KOLEKSI DISESUAIKAN DENGAN FIRESTORE RULES ANDA
     const COLLECTION_NAME = "jemaat"; 
 
     if (!userEmail) {
         debug.innerHTML = "<span style='color:red'>⚠️ Sesi Habis. Silakan Login Kembali.</span>";
     } else {
-        debug.innerText = "⌛ Menghubungkan ke database...";
+        debug.innerText = "⌛ Menyelaraskan data...";
 
-        // FUNGSI UTAMA: Realtime Listener menggunakan koleksi 'jemaat'
+        // Snapshot listener untuk update otomatis
         db.collection(COLLECTION_NAME).where("email", "==", userEmail)
         .onSnapshot((querySnapshot) => {
             if (!querySnapshot.empty) {
                 const d = querySnapshot.docs[0].data();
-                console.log("Data ditemukan di koleksi " + COLLECTION_NAME + ":", d);
-
-                // 1. Sinkronisasi Foto
+                
+                // Sinkronisasi Foto
                 const imgSource = d.foto_profil || d.fotoUrl || "https://via.placeholder.com/150";
                 document.getElementById('view-foto').src = imgSource;
 
-                // 2. Mapping Data Utama
+                // Mapping Data (disesuaikan dengan field yang umum digunakan di Firestore Anda)
                 const mapData = {
-                    "no_komsel": d.nij || d.nomor_induk || d.nomor_komsel || d.nk || "-",
-                    "nama_lengkap": d.nama || d.nama_lengkap || "Tanpa Nama",
+                    "no_komsel": d.nij || d.NIJ || d.nomor_induk || "-",
+                    "nama_lengkap": d.nama_lengkap || d.nama || "Tanpa Nama",
                     "jabatan": d.jabatan || d.peran || "-",
                     "email_aktif": d.email || "-",
-                    "no_hp": d.whatsapp || d.nomor_hp || "-",
-                    "lokasi_berjemaat": d.lokasi_berjemaat || d.cabang || "-",
-                    "gol_darah": d.golDarah || d.golongan_darah || d.goldarah || "-",
+                    "no_hp": d.no_hp || d.whatsapp || d.nomor_hp || "-",
+                    "lokasi_berjemaat": d.lokasi_berjemaat || "-",
+                    "gol_darah": d.gol_darah || d.golDarah || "-",
                     "alamat": d.alamat || "-"
                 };
 
@@ -110,28 +111,27 @@
                     if (el) el.innerText = value;
                 }
 
-                // 3. Format Khusus Lokasi Komsel
-                const lokKomsel = d.komsel || d.lokasi_komsel || "";
+                // Logika Lokasi Komsel
+                const lokKomsel = d.lokasi_komsel || d.komsel || "";
                 const elKomsel = document.getElementById("lokasi_komsel");
                 if (elKomsel) {
-                    elKomsel.innerText = lokKomsel.includes("JC") ? lokKomsel : (lokKomsel ? "JC " + lokKomsel : "-");
+                    elKomsel.innerText = lokKomsel.startsWith("JC") ? lokKomsel : (lokKomsel ? "JC " + lokKomsel : "-");
                 }
                 
                 debug.innerText = ""; 
             } else {
-                debug.innerHTML = "<span style='color:orange'>ℹ️ Profil (" + userEmail + ") tidak ditemukan di koleksi '" + COLLECTION_NAME + "'.</span>";
+                debug.innerHTML = `<span style='color:orange'>ℹ️ Email ${userEmail} tidak ditemukan di database.</span>`;
             }
         }, (error) => {
-            console.error("Firebase Error:", error);
-            debug.innerHTML = `<span style='color:red'>❌ Gagal Koneksi: ${error.message}</span>`;
+            debug.innerHTML = `<span style='color:red'>❌ Error: ${error.message}</span>`;
         });
     }
 
+    // Fungsi Upload Foto yang lebih stabil
     async function uploadFoto(input) {
         const file = input.files[0];
         if (!file || !userEmail) return;
         
-        debug.style.color = "var(--biru-safir)";
         debug.innerText = "⌛ Memproses foto...";
 
         const reader = new FileReader();
@@ -140,29 +140,23 @@
             img.onload = async function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width, height = img.height, max_size = 400;
-                
                 if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
                 else { if (height > max_size) { width *= max_size / height; height = max_size; } }
-                
                 canvas.width = width; canvas.height = height;
                 canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                const base64 = canvas.toDataURL('image/jpeg', 0.7);
+                const base64 = canvas.toDataURL('image/jpeg', 0.8);
 
                 try {
-                    // Update juga menggunakan koleksi 'jemaat'
                     const snap = await db.collection(COLLECTION_NAME).where("email", "==", userEmail).get();
                     if (!snap.empty) {
                         await db.collection(COLLECTION_NAME).doc(snap.docs[0].id).update({ 
-                            foto_profil: base64,
-                            fotoUrl: base64 
+                            foto_profil: base64
                         });
-                        debug.style.color = "var(--hijau-zamrud)";
-                        debug.innerText = "✅ Foto diperbarui!";
+                        debug.innerHTML = "<span style='color:green'>✅ Berhasil!</span>";
                         setTimeout(() => { debug.innerText = ""; }, 2000);
                     }
                 } catch (err) {
-                    debug.style.color = "red";
-                    debug.innerText = "Gagal simpan: " + err.message;
+                    debug.innerText = "Gagal: " + err.message;
                 }
             };
             img.src = e.target.result;
