@@ -52,7 +52,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 10px; /* Dikurangi agar teks di bawahnya naik */
         }
 
         .splash-logo {
@@ -75,11 +75,40 @@
             z-index: 1;
         }
 
+        /* --- STYLE BARU UNTUK TEKS STARTUP --- */
+        .sipapua-text {
+            color: var(--emas-lux);
+            font-weight: bold;
+            font-size: 42px; /* Diperbesar */
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin: 0;
+            /* Efek Cahaya di Belakang */
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.8), 
+                         0 0 40px rgba(212, 175, 55, 0.4);
+            animation: glow 2s infinite alternate;
+        }
+
+        .subtitle-text {
+            color: #ffffff; /* Warna Putih */
+            font-size: 13px; /* Diperkecil */
+            font-weight: 300;
+            margin-top: -5px; /* Posisi naik ke atas */
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px rgba(212, 175, 55, 0.6); }
+            to { text-shadow: 0 0 25px rgba(212, 175, 55, 1), 0 0 10px #ffffff; }
+        }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
         .splash-hidden { opacity: 0 !important; visibility: hidden !important; }
 
-        /* --- UI LOGIN CARD (STYLE JEMAAT) --- */
+        /* --- UI LOGIN CARD --- */
         .login-card {
             background: #ffffff; padding: 40px; border-radius: 15px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; 
@@ -136,10 +165,8 @@
                 <img src="logo_pondok.png" alt="Logo" class="splash-logo">
                 <div class="gold-loader"></div>
             </div>
-            <p style="color: var(--emas-lux); font-weight: bold; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;">
-                SIPAPUA
-            </p>
-            <h2>Sistem Informasi Pondok Pemulihan Papua</h2>
+            <p class="sipapua-text">SIPAPUA</p>
+            <p class="subtitle-text">Sistem Informasi Pondok Pemulihan Papua</p>
         </div>
     </div>
 
@@ -211,7 +238,7 @@
             this.classList.toggle('eye-active'); 
         });
 
-        // 4. Logic Login dengan Debugging
+        // 4. Logic Login
         document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('user_email').value.trim();
@@ -221,20 +248,6 @@
 
             btn.innerText = "Memverifikasi...";
             btn.disabled = true;
-
-            // --- BAGIAN DEBUGGING START ---
-            console.log("Mencoba login dengan:", email, pass);
-            try {
-                const debugSnap = await db.collection("users").get();
-                console.log("Total dokumen di koleksi users:", debugSnap.size);
-
-                debugSnap.forEach(doc => {
-                    console.log("Data di DB:", doc.data().email, "|", doc.data().password);
-                });
-            } catch (err) {
-                console.error("Gagal mengambil data koleksi untuk debug:", err);
-            }
-            // --- BAGIAN DEBUGGING END ---
 
             try {
                 const snap = await db.collection("users")
