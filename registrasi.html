@@ -17,7 +17,7 @@
         .step { flex: 1; height: 6px; background: #eee; border-radius: 10px; transition: 0.4s; }
         .step.active { background: #28a745; box-shadow: 0 0 8px rgba(40, 167, 69, 0.4); }
 
-        /* Perbaikan agar elemen tidak makan space saat hidden */
+        /* Solusi Space Kosong di bawah Form */
         .form-step { 
             display: none; 
             opacity: 0; 
@@ -48,8 +48,34 @@
         .password-container { position: relative; }
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
         #nij-display { background: #fff3cd !important; border: 2px solid #ffc107 !important; color: #856404; font-weight: bold; }
-        #terms-modal { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
-        .terms-box { background: white; padding: 25px; border-radius: 20px; max-width: 400px; width: 100%; text-align: center; }
+
+        /* Modal Syarat & Ketentuan Styling */
+        #terms-modal { 
+            display: flex; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.85); 
+            z-index: 10000; 
+            justify-content: center; 
+            align-items: center; /* Ini yang membuat simetris tengah */
+            padding: 20px; 
+            backdrop-filter: blur(5px); 
+            box-sizing: border-box;
+        }
+
+        .terms-box { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 20px; 
+            max-width: 400px; 
+            width: 90%; /* Mengikuti lebar layar HP agar tidak miring */
+            text-align: center; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
         .check-container { display: flex; align-items: flex-start; text-align: left; background: #f9f9f9; padding: 12px; border-radius: 10px; margin: 15px 0; cursor: pointer; }
         #blocking-message { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
         .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; }
@@ -310,39 +336,30 @@
         "Pelayanan fulltimer Gereja": ["Kepala Sekolah PAUD & PPA", "Sekretaris Operasional Gereja", "Bendahara Operasional gereja", "Guru Paud", "Mentor PPA", "Staff Geraja", "Staff PPA", "Hospitality & Konsumsi", "Driver"]
     };
 
-    // --- FUNGSI NAVIGASI (SOLUSI STUCK & SPACE) ---
+    // --- FUNGSI NAVIGASI ---
     function nextStep(n) {
         const steps = document.querySelectorAll('.form-step');
         const indicators = document.querySelectorAll('.step');
-
         const targetStep = document.getElementById('step-' + n);
+        
         if (targetStep) {
-            // 1. Sembunyikan semua step secara fisik
             steps.forEach(step => {
                 step.classList.remove('active');
                 step.style.display = 'none'; 
             });
 
-            // 2. Tampilkan step yang dituju
             targetStep.style.display = 'block';
-            // Memberi jeda 10ms agar browser sempat merender display:block sebelum animasi class active jalan
             setTimeout(() => {
                 targetStep.classList.add('active');
             }, 10);
 
-            // 3. Update Bar (Indikator) - Tetap sesuai logikamu
             indicators.forEach((s, index) => {
                 if (index < n) s.classList.add('active');
                 else s.classList.remove('active');
             });
 
-            // 4. Jalankan fungsi otomatis aslimu
             if (n === 2) updateNIJPreview();
-            
-            // 5. Scroll ke atas agar user tidak melihat space kosong di bawah
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-            console.error("Elemen step-" + n + " tidak ditemukan!");
         }
     }
 
@@ -351,10 +368,9 @@
         const checkbox = document.getElementById("check-agree");
         const btn = document.getElementById("btn-agree-submit");
         if(checkbox && btn) {
-            const isChecked = checkbox.checked;
-            btn.disabled = !isChecked;
-            btn.style.opacity = isChecked ? "1" : "0.5";
-            btn.style.cursor = isChecked ? "pointer" : "not-allowed";
+            btn.disabled = !checkbox.checked;
+            btn.style.opacity = checkbox.checked ? "1" : "0.5";
+            btn.style.cursor = checkbox.checked ? "pointer" : "not-allowed";
         }
     }
 
@@ -362,7 +378,7 @@
         const modal = document.getElementById("terms-modal");
         if (modal) {
             modal.style.display = "none";
-            nextStep(1); // Mulai ke step 1
+            nextStep(1); 
         }
     }
 
@@ -457,5 +473,10 @@
             });
         }
     };
-</script></body>
+
+    window.addEventListener('DOMContentLoaded', (event) => {
+        console.log('DOM fully loaded and parsed');
+    });
+</script>
+</body>
 </html>
