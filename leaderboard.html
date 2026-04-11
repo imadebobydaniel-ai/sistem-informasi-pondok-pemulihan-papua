@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Leaderboard Final - Pondok Pemulihan Papua</title>
+    <title>Leaderboard Realtime - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -36,7 +36,7 @@
             gap: 8px; 
             margin-bottom: 20px; 
             position: relative;
-            z-index: 10; /* Pastikan filter di atas bintang */
+            z-index: 10;
         }
         .full-width { grid-column: span 2; }
         select { 
@@ -46,7 +46,6 @@
             background: #f9f9f9; 
             font-size: 12px; 
             width: 100%;
-            -webkit-appearance: none; /* Hilangkan style default mobile */
         }
 
         /* --- Podium --- */
@@ -54,7 +53,7 @@
             display: flex; justify-content: center; align-items: flex-end; 
             gap: 10px; margin: 20px 0 40px 0; position: relative; z-index: 5; 
         }
-        .podium-card { text-align: center; flex: 1; }
+        .podium-card { text-align: center; flex: 1; display: none; } /* Hidden until data loads */
         .rank-badge { font-size: 24px; font-weight: 900; display: block; font-style: italic; }
         .gold .rank-badge { color: #FFB900; }
         .silver .rank-badge { color: #A9A9A9; }
@@ -85,9 +84,8 @@
         .rank-name { font-weight: bold; color: #333; flex: 1; font-size: 14px; }
         .list-pts { background: var(--primary-blue); color: white; padding: 6px 12px; border-radius: 20px; font-weight: 800; font-size: 11px; cursor: pointer; }
 
-        .btn-back { width: 100%; padding: 18px; background: var(--dark-blue); color: white; border: none; font-weight: bold; border-radius: 0 0 30px 30px; margin-top: auto; position: relative; z-index: 5; }
+        .btn-back { width: 100%; padding: 18px; background: var(--dark-blue); color: white; border: none; font-weight: bold; border-radius: 0 0 30px 30px; margin-top: auto; position: relative; z-index: 5; cursor: pointer; }
 
-        /* --- Custom Modal (Block Display) --- */
         #customModal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--overlay);
@@ -109,6 +107,9 @@
         .modal-header { font-size: 18px; font-weight: 800; color: var(--dark-blue); margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .modal-body { font-size: 14px; color: #555; line-height: 1.6; text-align: left; margin-bottom: 20px; white-space: pre-line; }
         .modal-btn { background: var(--primary-blue); color: white; border: none; padding: 12px 30px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; }
+        
+        /* Loading Sektet */
+        #loading-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 20; color: var(--primary-blue); }
     </style>
 </head>
 <body>
@@ -124,65 +125,38 @@
     </div>
 
     <div class="filter-section">
-        <select class="full-width">
-            <option>Per Orangan (Jemaat)</option>
-            <option>Per Komsel</option>
-            <option>Per Wilayah</option>
-        </select>
-        <select>
-            <option>Semua Lokasi</option>
-            <option>Abepura</option>
-            <option>Sentani</option>
-            <option>Doyo</option>
-            <option>Arso 1</option>
-            <option>Arso 2</option>
-        </select>
-        <select>
-            <option>Semua Kategori</option>
-            <option>PW</option>
-            <option>Multimedia</option>
-            <option>Sound engineer</option>
-            <option>Tamborin</option>
-            <option>Choirs</option>
-            <option>Flag</option>
-        </select>
+        <select class="full-width"><option>Per Orangan (Jemaat)</option></select>
+        <select><option>Semua Lokasi</option></select>
+        <select><option>Semua Kategori</option></select>
     </div>
 
-    <div class="podium-section">
-        <div class="podium-card silver">
+    <div id="loading-overlay"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+
+    <div class="podium-section" id="podium-container">
+        <div class="podium-card silver" id="rank-2">
             <span class="rank-badge">2</span>
             <i class="fa-solid fa-medal medal-icon"></i>
-            <div class="podium-name">UMUM</div>
-            <div class="clickable-pts" onclick="openModal('history', 'UMUM')">110 Pts</div>
+            <div class="podium-name">---</div>
+            <div class="clickable-pts">0 Pts</div>
         </div>
-        <div class="podium-card gold">
+        <div class="podium-card gold" id="rank-1">
             <span class="rank-badge">1</span>
             <i class="fa-solid fa-trophy medal-icon"></i>
-            <div class="podium-name">JC 5</div>
-            <div class="clickable-pts" onclick="openModal('history', 'JC 5')">243 Pts</div>
+            <div class="podium-name">---</div>
+            <div class="clickable-pts">0 Pts</div>
         </div>
-        <div class="podium-card bronze">
+        <div class="podium-card bronze" id="rank-3">
             <span class="rank-badge">3</span>
             <i class="fa-solid fa-award medal-icon"></i>
-            <div class="podium-name">JC 1</div>
-            <div class="clickable-pts" onclick="openModal('history', 'JC 1')">50 Pts</div>
+            <div class="podium-name">---</div>
+            <div class="clickable-pts">0 Pts</div>
         </div>
     </div>
 
-    <div class="ranking-list">
-        <div class="rank-item">
-            <span style="width:25px; font-weight:900;">4.</span>
-            <span class="rank-name">Boby Daniel</span>
-            <div class="list-pts" onclick="openModal('history', 'Boby Daniel')">30 POIN</div>
+    <div class="ranking-list" id="ranking-list-container">
         </div>
-        <div class="rank-item">
-            <span style="width:25px; font-weight:900;">5.</span>
-            <span class="rank-name">Yohanes</span>
-            <div class="list-pts" onclick="openModal('history', 'Yohanes')">25 POIN</div>
-        </div>
-    </div>
 
-    <button class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</button>
+    <button class="btn-back" onclick="window.history.back()"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</button>
 </div>
 
 <div id="customModal">
@@ -193,20 +167,87 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
 <script>
-    // 1. Logic Modal
+    // Konfigurasi Firebase Anda
+    const firebaseConfig = {
+        apiKey: "API_KEY_ANDA",
+        authDomain: "PROJECT_ID.firebaseapp.com",
+        databaseURL: "https://PROJECT_ID-rtdb.firebaseio.com",
+        projectId: "PROJECT_ID",
+        storageBucket: "PROJECT_ID.appspot.com",
+        messagingSenderId: "SENDER_ID",
+        appId: "APP_ID"
+    };
+
+    // Inisialisasi Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 1. Sinkronisasi Data Realtime
+    function loadLeaderboard() {
+        const leaderboardRef = db.ref('leaderboard');
+        
+        leaderboardRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            document.getElementById('loading-overlay').style.display = 'none';
+            
+            if (data) {
+                // Convert object to array and sort by points descending
+                const users = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key]
+                })).sort((a, b) => b.points - a.points);
+
+                renderLeaderboard(users);
+            }
+        });
+    }
+
+    function renderLeaderboard(users) {
+        const listContainer = document.getElementById('ranking-list-container');
+        listContainer.innerHTML = ''; // Clear previous data
+
+        users.forEach((user, index) => {
+            const rank = index + 1;
+            
+            if (rank <= 3) {
+                // Render Podium
+                const card = document.getElementById(`rank-${rank}`);
+                card.style.display = 'block';
+                card.querySelector('.podium-name').innerText = user.name;
+                const ptsBtn = card.querySelector('.clickable-pts');
+                ptsBtn.innerText = `${user.points} Pts`;
+                ptsBtn.onclick = () => openModal('history', user.name, user.details);
+            } else {
+                // Render List Ranking 4+
+                const item = `
+                    <div class="rank-item">
+                        <span style="width:25px; font-weight:900;">${rank}.</span>
+                        <span class="rank-name">${user.name}</span>
+                        <div class="list-pts" onclick="openModal('history', '${user.name}', '${user.details || 'Data tervalidasi.'}')">${user.points} POIN</div>
+                    </div>
+                `;
+                listContainer.innerHTML += item;
+            }
+        });
+    }
+
+    // 2. Logic Modal
     const modal = document.getElementById('customModal');
     const mTitle = document.getElementById('modalTitle');
     const mBody = document.getElementById('modalBody');
 
-    function openModal(type, name = '') {
+    function openModal(type, name = '', details = '') {
         if (type === 'rules') {
             mTitle.innerHTML = '<i class="fa-solid fa-scroll"></i> Aturan Poin';
             mBody.innerText = "• Alkitab: 5 Pts\n• Kehadiran: 10 Pts\n• Latihan Bidang: 15 Pts\n• Pelayanan: 25 Pts\n\nSyarat: Poin Pelayanan hanya masuk jika Anda mengikuti latihan.";
         } else {
             mTitle.innerHTML = `<i class="fa-solid fa-user"></i> Riwayat ${name}`;
-            mBody.innerText = `Detail Poin ${name}:\n\n- Baca Alkitab: 10x (50 Pts)\n- Ibadah Raya: 4x (40 Pts)\n- Pelayanan: 2x (50 Pts)\n\nData ini sudah tervalidasi admin.`;
+            mBody.innerText = details || `Detail Poin ${name}:\n\n- Data sedang sinkron...\n- Terintegrasi dengan Sistem Pusat.`;
         }
         modal.style.display = 'flex';
     }
@@ -214,7 +255,7 @@
     function closeModal() { modal.style.display = 'none'; }
     window.onclick = function(event) { if (event.target == modal) closeModal(); }
 
-    // 2. Efek Bintang Kedap-kedip (Dikembalikan)
+    // 3. Efek Bintang Kedap-kedip
     const starLayer = document.getElementById('stars-layer');
     for (let i = 0; i < 20; i++) {
         const star = document.createElement('i');
@@ -229,7 +270,7 @@
         starLayer.appendChild(star);
     }
 
-    // 3. Efek Konfeti
+    // 4. Efek Konfeti
     const duration = 5 * 1000;
     const end = Date.now() + duration;
     (function frame() {
@@ -237,6 +278,9 @@
         confetti({ particleCount: 2, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#0056b3'] });
         if (Date.now() < end) requestAnimationFrame(frame);
     }());
+
+    // Jalankan Sinkronisasi saat Load
+    window.onload = loadLeaderboard;
 </script>
 
 </body>
