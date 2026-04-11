@@ -193,50 +193,118 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
 <script>
-    // 1. Logic Modal
+    // === KONFIGURASI FIREBASE (Ganti dengan milik Anda) ===
+    const firebaseConfig = {
+        apiKey: "AIzaSy...",
+        authDomain: "project-anda.firebaseapp.com",
+        databaseURL: "https://project-anda-default-rtdb.firebaseio.com",
+        projectId: "project-anda",
+        storageBucket: "project-anda.appspot.com",
+        messagingSenderId: "12345",
+        appId: "1:12345:web:6789"
+    };
+
+    // Inisialisasi Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // === ELEMENT SELECTOR ===
+    const podiumContainer = document.querySelector('.podium-section');
+    const listContainer = document.querySelector('.ranking-list');
     const modal = document.getElementById('customModal');
     const mTitle = document.getElementById('modalTitle');
     const mBody = document.getElementById('modalBody');
 
-    function openModal(type, name = '') {
+    // === 1. LOGIC AMBIL DATA REALTIME ===
+    // Fungsi ini akan otomatis jalan setiap kali ada perubahan poin di database
+    db.ref('users').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // Ubah objek menjadi array dan urutkan berdasarkan poin tertinggi
+            const userList = Object.values(data).sort((a, b) => b.points - a.points);
+            renderLeaderboard(userList);
+        }
+    });
+
+    // === 2. FUNGSI RENDER VISUAL ===
+    function renderLeaderboard(users) {
+        // --- Render Podium (Juara 1, 2, 3) ---
+        const top1 = users[0] || { name: "-", points: 0, history: "" };
+        const top2 = users[1] || { name: "-", points: 0, history: "" };
+        const top3 = users[2] || { name: "-", points: 0, history: "" };
+
+        podiumContainer.innerHTML = `
+            <div class="podium-card silver">
+                <span class="rank-badge">2</span>
+                <i class="fa-solid fa-medal medal-icon"></i>
+                <div class="podium-name">${top2.name}</div>
+                <div class="clickable-pts" onclick="openModal('history', '${top2.name}', '${top2.history}')">${top2.points} Pts</div>
+            </div>
+            <div class="podium-card gold">
+                <span class="rank-badge">1</span>
+                <i class="fa-solid fa-trophy medal-icon"></i>
+                <div class="podium-name">${top1.name}</div>
+                <div class="clickable-pts" onclick="openModal('history', '${top1.name}', '${top1.history}')">${top1.points} Pts</div>
+            </div>
+            <div class="podium-card bronze">
+                <span class="rank-badge">3</span>
+                <i class="fa-solid fa-award medal-icon"></i>
+                <div class="podium-name">${top3.name}</div>
+                <div class="clickable-pts" onclick="openModal('history', '${top3.name}', '${top3.history}')">${top3.points} Pts</div>
+            </div>
+        `;
+
+        // --- Render List (Peringkat 4 ke bawah) ---
+        listContainer.innerHTML = ''; // Kosongkan list lama
+        const others = users.slice(3); // Ambil mulai dari urutan ke-4
+        others.forEach((user, index) => {
+            listContainer.innerHTML += `
+                <div class="rank-item">
+                    <span style="width:25px; font-weight:900;">${index + 4}.</span>
+                    <span class="rank-name">${user.name}</span>
+                    <div class="list-pts" onclick="openModal('history', '${user.name}', '${user.history}')">${user.points} POIN</div>
+                </div>
+            `;
+        });
+    }
+
+    // === 3. LOGIC MODAL ===
+    function openModal(type, name = '', history = '') {
         if (type === 'rules') {
             mTitle.innerHTML = '<i class="fa-solid fa-scroll"></i> Aturan Poin';
-            mBody.innerText = "• Alkitab: 5 Pts\n• Kehadiran: 10 Pts\n• Latihan Bidang: 15 Pts\n• Pelayanan: 25 Pts\n\nSyarat: Poin Pelayanan hanya masuk jika Anda mengikuti latihan.";
+            mBody.innerText = "• Alkitab: 5 Pts\n• Kehadiran: 10 Pts\n• Latihan Bidang: 15 Pts\n• Pelayanan: 25 Pts";
         } else {
             mTitle.innerHTML = `<i class="fa-solid fa-user"></i> Riwayat ${name}`;
-            mBody.innerText = `Detail Poin ${name}:\n\n- Baca Alkitab: 10x (50 Pts)\n- Ibadah Raya: 4x (40 Pts)\n- Pelayanan: 2x (50 Pts)\n\nData ini sudah tervalidasi admin.`;
+            mBody.innerText = history ? history : `Belum ada riwayat tercatat untuk ${name}.`;
         }
         modal.style.display = 'flex';
     }
 
     function closeModal() { modal.style.display = 'none'; }
-    window.onclick = function(event) { if (event.target == modal) closeModal(); }
+    window.onclick = (e) => { if (e.target == modal) closeModal(); };
 
-    // 2. Efek Bintang Kedap-kedip (Dikembalikan)
+    // === 4. EFEK VISUAL (Bintang & Konfeti) ===
     const starLayer = document.getElementById('stars-layer');
     for (let i = 0; i < 20; i++) {
         const star = document.createElement('i');
         star.className = 'fa-solid fa-star';
-        star.style.position = 'absolute';
-        star.style.color = '#FFD700';
-        star.style.fontSize = Math.random() * 6 + 4 + 'px';
-        star.style.left = Math.random() * 100 + '%';
-        star.style.top = Math.random() * 100 + '%';
-        star.style.opacity = Math.random();
-        star.style.animation = `twinkle ${Math.random() * 2 + 1}s infinite ease-in-out`;
+        star.style.cssText = `
+            position: absolute; color: #FFD700; 
+            font-size: ${Math.random() * 6 + 4}px; 
+            left: ${Math.random() * 100}%; top: ${Math.random() * 100}%; 
+            opacity: ${Math.random()};
+            animation: twinkle ${Math.random() * 2 + 1}s infinite ease-in-out;
+        `;
         starLayer.appendChild(star);
     }
 
-    // 3. Efek Konfeti
-    const duration = 5 * 1000;
-    const end = Date.now() + duration;
-    (function frame() {
-        confetti({ particleCount: 2, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FFD700', '#0056b3'] });
-        confetti({ particleCount: 2, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#0056b3'] });
-        if (Date.now() < end) requestAnimationFrame(frame);
-    }());
+    // Efek Konfeti saat halaman terbuka
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#FFD700', '#0056b3'] });
 </script>
 
 </body>
