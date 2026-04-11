@@ -209,7 +209,7 @@
             this.classList.toggle('eye-active'); 
         });
 
-        // 4. Logic Login - SUDAH DIPERBAIKI KE KOLEKSI "users"
+        // 4. Logic Login dengan Debugging
         document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('user_email').value.trim();
@@ -220,8 +220,21 @@
             btn.innerText = "Memverifikasi...";
             btn.disabled = true;
 
+            // --- BAGIAN DEBUGGING START ---
+            console.log("Mencoba login dengan:", email, pass);
             try {
-                // Perubahan di sini: Menggunakan koleksi "users"
+                const debugSnap = await db.collection("users").get();
+                console.log("Total dokumen di koleksi users:", debugSnap.size);
+
+                debugSnap.forEach(doc => {
+                    console.log("Data di DB:", doc.data().email, "|", doc.data().password);
+                });
+            } catch (err) {
+                console.error("Gagal mengambil data koleksi untuk debug:", err);
+            }
+            // --- BAGIAN DEBUGGING END ---
+
+            try {
                 const snap = await db.collection("users")
                     .where("email", "==", email)
                     .where("password", "==", pass)
