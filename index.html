@@ -211,6 +211,7 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
+
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
     const auth = firebase.auth();
@@ -238,7 +239,7 @@
         });
     }
 
-    // 4. LOGIC LOGIN & VERIFIKASI OTOMATIS
+    // 4. LOGIC LOGIN & VERIFIKASI
     document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('user_email').value.trim();
@@ -250,32 +251,45 @@
         btn.disabled = true;
 
         try {
-            // LOGIN MENGGUNAKAN FIREBASE AUTH
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             const user = userCredential.user;
 
-            // CEK APAKAH EMAIL SUDAH DIKLIK VERIFIKASINYA
             if (user.emailVerified) {
-                // UPDATE STATUS DI FIRESTORE JADI ACTIVE SECARA OTOMATIS
+                // Simpan email ke localStorage agar halaman menu bisa mengenali user
+                localStorage.setItem("userEmail", email);
+                localStorage.setItem("adminLoggedIn", "false");
+
+                // Update status di Firestore
                 await db.collection("users").doc(user.uid).update({
                     status_verifikasi: "Active"
-                });
+                }).catch(e => console.log("Update status skipped: ", e));
 
-                msgBox.innerText = "Login Berhasil!";
+                msgBox.innerText = "Login Berhasil! Mengalihkan...";
                 msgBox.className = "msg-success";
                 
-                // ARAHKAN KE MENU UTAMA (BUKAN login.html)
-                setTimeout(() => { window.location.href = "menu.html"; }, 1500);
+                // REDIRECT KE menu.html
+                setTimeout(() => { 
+                    window.location.href = "menu.html"; 
+                }, 1500);
+
             } else {
-                // JIKA BELUM VERIFIKASI
                 msgBox.innerText = "Akun belum aktif! Silakan klik link verifikasi di email kamu.";
                 msgBox.className = "msg-error";
                 btn.innerText = "MASUK";
                 btn.disabled = false;
+                // Logout otomatis jika belum verifikasi agar tidak nyangkut
+                auth.signOut();
             }
 
         } catch (err) {
-            msgBox.innerText = "Gagal: " + err.message;
+            let errorMessage = "Gagal login. Periksa kembali email dan password.";
+            if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+                errorMessage = "Email atau Password salah!";
+            } else if (err.code === "auth/invalid-login-credentials") {
+                 errorMessage = "Data login tidak valid. Pastikan email benar (cek tanda titik).";
+            }
+            
+            msgBox.innerText = errorMessage;
             msgBox.className = "msg-error";
             btn.innerText = "MASUK";
             btn.disabled = false;
