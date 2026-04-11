@@ -6,7 +6,137 @@
     <title>Leaderboard - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* CSS diletakkan di bawah untuk kerapihan */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #f0f4f8; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+            padding-bottom: 80px; /* Memberi ruang untuk tombol bawah */
+        }
+
+        .leaderboard-container { 
+            background: white; 
+            width: 100%; 
+            max-width: 450px; 
+            border-radius: 30px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            padding: 20px; 
+            position: relative; 
+            overflow: hidden; 
+            border-top: 8px solid #0056b3; 
+            min-height: 600px;
+        }
+
+        /* Header */
+        .leaderboard-header { text-align: center; margin-bottom: 20px; }
+        .rules-icon { position: absolute; left: 25px; top: 25px; color: #0056b3; font-size: 22px; cursor: pointer; transition: 0.3s; }
+        .rules-icon:hover { transform: scale(1.1); }
+        .title { color: #003366; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+        .periode { font-size: 12px; color: #888; margin-top: 5px; }
+
+        /* Filter Select */
+        .filter-section { display: flex; gap: 8px; margin-bottom: 20px; }
+        select { 
+            flex: 1; 
+            padding: 10px; 
+            border-radius: 12px; 
+            border: 1px solid #ddd; 
+            background: #f9f9f9; 
+            font-size: 13px; 
+            outline: none; 
+            color: #333; 
+            cursor: pointer;
+        }
+
+        /* Podium Section */
+        .podium-section { 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-end; 
+            gap: 10px; 
+            margin-bottom: 30px; 
+            padding: 20px 10px; 
+            background: #fcfcfc; 
+            border-radius: 20px; 
+        }
+        .podium-card { text-align: center; flex: 1; padding: 15px 5px; border-radius: 15px; position: relative; transition: 0.3s; background: #fff; }
+        
+        /* Pengaturan Urutan Visual Podium */
+        .gold { border: 2px solid #FFD700; order: 2; transform: translateY(-15px); box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2); }
+        .silver { border: 2px solid #C0C0C0; order: 1; }
+        .bronze { border: 2px solid #CD7F32; order: 3; }
+
+        .medal-icon { font-size: 28px; margin-bottom: 10px; }
+        .gold .medal-icon { color: #FFD700; }
+        .silver .medal-icon { color: #A9A9A9; }
+        .bronze .medal-icon { color: #CD7F32; }
+
+        .podium-name { font-size: 12px; font-weight: bold; color: #003366; margin-bottom: 8px; text-transform: uppercase; }
+        .podium-points { 
+            background: #0056b3; 
+            color: white; 
+            border-radius: 20px; 
+            padding: 4px 12px; 
+            font-size: 11px; 
+            font-weight: bold; 
+            display: inline-block; 
+            cursor: pointer; 
+            transition: 0.3s;
+        }
+        .podium-points:active { transform: scale(0.9); }
+
+        /* Ranking List Card */
+        .ranking-list { margin-bottom: 60px; }
+        .rank-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #fff; 
+            border: 2px solid #e0e0e0; 
+            border-left: 8px solid #0056b3; 
+            margin-bottom: 12px; 
+            padding: 12px 18px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02); 
+            transition: 0.2s;
+        }
+        .rank-item:hover { transform: translateX(5px); }
+        .rank-info { display: flex; align-items: center; gap: 10px; }
+        .rank-number { font-weight: 800; color: #444; }
+        .rank-name { font-weight: bold; color: #003366; font-size: 14px; }
+        .rank-points-capsule { 
+            background: #0056b3; 
+            color: white; 
+            padding: 6px 15px; 
+            border-radius: 25px; 
+            font-size: 12px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            min-width: 60px; 
+            text-align: center; 
+        }
+
+        /* Button Back */
+        .btn-back-menu { 
+            width: 100%; 
+            padding: 18px; 
+            background: #003366; 
+            color: white; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+        .btn-back-menu:hover { background: #002244; }
     </style>
 </head>
 <body>
@@ -21,17 +151,17 @@
     <div class="filter-section">
         <select id="filter-segmen" onchange="updateLeaderboard()">
             <option value="gereja">Per Gereja (Wilayah)</option>
-            <option value="komsel">Per Komsel</option>
-            <option value="orangan" selected>Per Orangan (Jemaat)</option>
+            <option value="komsel" selected>Per Komsel</option>
+            <option value="orangan">Per Orangan (Jemaat)</option>
         </select>
 
         <select id="filter-kategori" onchange="updateLeaderboard()">
             <option value="semua">Semua Kategori</option>
-            <option value="pw">Praise & Worship (PW)</option>
+            <option value="pw">PW</option>
             <option value="multimedia">Multimedia</option>
             <option value="wl-singer">WL & Singer</option>
-            <option value="sound">Sound Engineering</option>
-            <option value="tamborin">Tamborin & Flag</option>
+            <option value="sound">Sound</option>
+            <option value="tamborin">Tamborin</option>
             <option value="choirs">Choirs</option>
         </select>
     </div>
@@ -40,19 +170,19 @@
         <div class="podium-card silver">
             <div class="medal-icon"><i class="fa-solid fa-medal"></i></div>
             <div class="podium-name" id="rank-2-name">UMUM</div>
-            <div class="podium-points" onclick="showHistory('USER_ID_2')">110 Pts</div>
+            <div class="podium-points" onclick="showHistory('ID_SILVER')">110 Pts</div>
         </div>
 
         <div class="podium-card gold">
             <div class="medal-icon"><i class="fa-solid fa-trophy"></i></div>
             <div class="podium-name" id="rank-1-name">JC 5</div>
-            <div class="podium-points" onclick="showHistory('USER_ID_1')">243 Pts</div>
+            <div class="podium-points" onclick="showHistory('ID_GOLD')">243 Pts</div>
         </div>
 
         <div class="podium-card bronze">
             <div class="medal-icon"><i class="fa-solid fa-award"></i></div>
             <div class="podium-name" id="rank-3-name">JC 1</div>
-            <div class="podium-points" onclick="showHistory('USER_ID_3')">50 Pts</div>
+            <div class="podium-points" onclick="showHistory('ID_BRONZE')">50 Pts</div>
         </div>
     </div>
 
@@ -62,14 +192,38 @@
                 <span class="rank-number">4.</span>
                 <span class="rank-name">JC</span>
             </div>
-            <div class="rank-points-capsule" onclick="showHistory('USER_ID_4')">
+            <div class="rank-points-capsule" onclick="showHistory('ID_USER_4')">
                 30 POIN
             </div>
         </div>
+        <div class="rank-item">
+            <div class="rank-info">
+                <span class="rank-number">5.</span>
+                <span class="rank-name">JC 05</span>
+            </div>
+            <div class="rank-points-capsule" onclick="showHistory('ID_USER_5')">
+                25 POIN
+            </div>
         </div>
+    </div>
 
     <button class="btn-back-menu"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</button>
 </div>
+
+<script>
+    function showRules() {
+        alert("Aturan Penilaian Poin:\n\n1. Pembacaan Alkitab: 5 Poin\n2. Kehadiran: 10 Poin\n3. Latihan Bidang: 15 Poin\n4. Pelayanan Hari H: 25 Poin\n\n*Catatan: Poin Pelayanan maksimal jika mengikuti latihan di kategori yang sama.");
+    }
+
+    function showHistory(id) {
+        alert("Membuka Riwayat Poin untuk ID: " + id + "\n\n- Alkitab: 50 Pts\n- Kehadiran: 30 Pts\n- Pelayanan: 30 Pts\nTotal: Lihat di kapsul biru.");
+    }
+
+    function updateLeaderboard() {
+        console.log("Memperbarui data berdasarkan filter...");
+        // Logika query database akan diletakkan di sini nanti
+    }
+</script>
 
 </body>
 </html>
