@@ -25,7 +25,7 @@
         }
         #lock-display i { font-size: 80px; margin-bottom: 20px; }
         
-        #extention-container, #reason-container { display: none; background: #fdfdfd; padding: 15px; border-radius: 15px; border: 1px dashed #ccc; margin-top: 10px; }
+        #extention-container, #gabungan-container, #reason-container { display: none; background: #fdfdfd; padding: 15px; border-radius: 15px; border: 1px dashed #ccc; margin-top: 10px; text-align: left; }
     </style>
 </head>
 <body>
@@ -46,15 +46,26 @@
         <label><i class="fa-solid fa-list-check"></i> Pilih Jenis Kegiatan:</label>
         <select id="jenis-kegiatan" onchange="cekJenisMenu()">
             <option value="Absen Ibadah Raya">Ibadah Raya</option>
-             <option value="Absen Komsel Reguler">Komsel Reguler</option>
-             <option value="Absen Komsel Gabungan">Komsel Gabungan</option>
+            <option value="Absen Komsel Reguler">Komsel Reguler</option>
+            <option value="Absen Komsel Gabungan">Komsel Gabungan</option>
             <option value="Absen Doa">Absen Doa</option>
             <option value="Absen KD">Absen KD</option>
-             <option value="Absen Pertemuan Pemimpin">Pertemuan Pemimpin</option>
+            <option value="Absen Pertemuan Pemimpin">Pertemuan Pemimpin</option>
             <option value="Absen Latihan PW">Latihan PW</option>
-            <option value="Absen Pelayanan PW">Pelayanan PW)</option>
+            <option value="Absen Pelayanan PW">Pelayanan PW</option>
             <option value="Absen Extention">KEGIATAN EXTENTION (Lainnya)</option>
         </select>
+    </div>
+
+    <div id="gabungan-container">
+        <label>Lokasi Komsel :</label>
+        <input type="text" id="gab-lokasi" placeholder="Nama Tempat / Alamat">
+        
+        <label>Nama Komsel Gabungan :</label>
+        <input type="text" id="gab-nama" placeholder="Contoh: Gabungan Wilayah A">
+
+        <label>Hari / Tanggal Kegiatan :</label>
+        <input type="date" id="gab-tanggal">
     </div>
 
     <div id="extention-container">
@@ -116,7 +127,9 @@
 
     function cekJenisMenu() {
         const menu = document.getElementById("jenis-kegiatan").value;
+        // Reset tampilan
         document.getElementById("extention-container").style.display = (menu === "Absen Extention") ? "block" : "none";
+        document.getElementById("gabungan-container").style.display = (menu === "Absen Komsel Gabungan") ? "block" : "none";
     }
 
     function tampilkanInputAlasan() { 
@@ -133,17 +146,23 @@
         const menu = document.getElementById("jenis-kegiatan").value;
         const today = new Date().toISOString().split('T')[0];
 
+        // Validasi input tambahan
         if(menu === "Absen Extention") {
             if(!document.getElementById("ext-nama-kegiatan").value || !document.getElementById("ext-tanggal").value) {
-                alert("Mohon isi Nama dan Tanggal Kegiatan!");
+                alert("Mohon lengkapi data Kegiatan Extension!");
+                return;
+            }
+        } else if(menu === "Absen Komsel Gabungan") {
+            if(!document.getElementById("gab-lokasi").value || !document.getElementById("gab-nama").value || !document.getElementById("gab-tanggal").value) {
+                alert("Mohon lengkapi data Komsel Gabungan!");
                 return;
             }
         }
 
         let targetColl = "kehadiran_jemaat";
-        if (menu === "Absen Doa") targetColl = "laporan_doa_umum";
-        else if (menu === "Absen Pelayanan") targetColl = "laporan_pelayanan_umum";
+        if (menu === "Absen Komsel Reguler" || menu === "Absen Komsel Gabungan") targetColl = "laporan_komsel_umum";
 
+        // Cek Double Submit
         const check = await db.collection(targetColl).where("nama", "==", userName).where("tanggal", "==", today).where("kegiatan", "==", menu).get();
         if (!check.empty) {
             showLockDisplay('error', 'Ditolak', 'Laporan sudah dikirim hari ini.');
@@ -175,16 +194,24 @@
             keterangan: (tipe === 'TIDAK HADIR') ? document.getElementById("alasan").value : "Hadir di Lokasi"
         };
 
+        // Data khusus Extension
         if (menu === "Absen Extention") {
             payload.extension_nama_kegiatan = document.getElementById("ext-nama-kegiatan").value;
             payload.extension_lokasi = document.getElementById("ext-lokasi").value;
-            payload.extension_tanggal_pelaksanaan = document.getElementById("ext-tanggal").value;
+            payload.extension_tanggal = document.getElementById("ext-tanggal").value;
+        }
+
+        // Data khusus Komsel Gabungan
+        if (menu === "Absen Komsel Gabungan") {
+            payload.gabungan_lokasi = document.getElementById("gab-lokasi").value;
+            payload.gabungan_nama_komsel = document.getElementById("gab-nama").value;
+            payload.gabungan_tanggal_pelaksanaan = document.getElementById("gab-tanggal").value;
         }
 
         try {
             await db.collection(collection).add(payload);
             await db.collection("statistik_jemaat_pusat").add({...payload, type: "Umum_Entry"});
-            showLockDisplay('success', 'Terimakasih', 'Laporan kehadiran jemaat berhasil terkirim.');
+            showLockDisplay('success', 'Terimakasih', 'Laporan berhasil terkirim ke sistem.');
         } catch (err) {
             showLockDisplay('error', 'Gagal', err.message);
         }
