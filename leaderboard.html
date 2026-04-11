@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaderboard - Pondok Pemulihan Papua</title>
+    <title>Leaderboard Meriah - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root {
+            --gold-gradient: linear-gradient(45deg, #FFD700, #FFCC00, #FFB900, #FDB931);
+            --silver-gradient: linear-gradient(45deg, #C0C0C0, #E8E8E8, #DCDCDC);
+            --bronze-gradient: linear-gradient(45deg, #CD7F32, #E3964D, #B87333);
+        }
+
         body { 
             font-family: 'Segoe UI', sans-serif; 
             background-color: #f0f4f8; 
@@ -13,7 +19,6 @@
             padding: 20px; 
             display: flex; 
             justify-content: center; 
-            padding-bottom: 80px; /* Memberi ruang untuk tombol bawah */
         }
 
         .leaderboard-container { 
@@ -21,208 +26,176 @@
             width: 100%; 
             max-width: 450px; 
             border-radius: 30px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1); 
             padding: 20px; 
             position: relative; 
             overflow: hidden; 
             border-top: 8px solid #0056b3; 
-            min-height: 600px;
+        }
+
+        /* Efek Bintang Animasi */
+        .stars-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 300px;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
         }
 
         /* Header */
-        .leaderboard-header { text-align: center; margin-bottom: 20px; }
-        .rules-icon { position: absolute; left: 25px; top: 25px; color: #0056b3; font-size: 22px; cursor: pointer; transition: 0.3s; }
-        .rules-icon:hover { transform: scale(1.1); }
-        .title { color: #003366; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
-        .periode { font-size: 12px; color: #888; margin-top: 5px; }
+        .leaderboard-header { text-align: center; margin-bottom: 20px; position: relative; z-index: 1; }
+        .title { color: #003366; margin: 0; font-size: 20px; font-weight: 800; }
 
-        /* Filter Select */
-        .filter-section { display: flex; gap: 8px; margin-bottom: 20px; }
-        select { 
-            flex: 1; 
-            padding: 10px; 
-            border-radius: 12px; 
-            border: 1px solid #ddd; 
-            background: #f9f9f9; 
-            font-size: 13px; 
-            outline: none; 
-            color: #333; 
-            cursor: pointer;
-        }
+        /* Filter */
+        .filter-section { display: flex; gap: 8px; margin-bottom: 25px; position: relative; z-index: 1; }
+        select { flex: 1; padding: 10px; border-radius: 12px; border: 1px solid #ddd; font-size: 13px; }
 
-        /* Podium Section */
+        /* Podium Tanpa Container */
         .podium-section { 
             display: flex; 
             justify-content: center; 
             align-items: flex-end; 
-            gap: 10px; 
-            margin-bottom: 30px; 
-            padding: 20px 10px; 
-            background: #fcfcfc; 
-            border-radius: 20px; 
+            gap: 20px; 
+            margin-bottom: 40px; 
+            min-height: 180px;
+            position: relative;
+            z-index: 1;
         }
-        .podium-card { text-align: center; flex: 1; padding: 15px 5px; border-radius: 15px; position: relative; transition: 0.3s; background: #fff; }
+
+        .podium-card { text-align: center; flex: 1; position: relative; }
         
-        /* Pengaturan Urutan Visual Podium */
-        .gold { border: 2px solid #FFD700; order: 2; transform: translateY(-15px); box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2); }
-        .silver { border: 2px solid #C0C0C0; order: 1; }
-        .bronze { border: 2px solid #CD7F32; order: 3; }
+        /* Angka Juara di Atas */
+        .rank-badge {
+            font-size: 24px;
+            font-weight: 900;
+            display: block;
+            margin-bottom: -5px;
+            font-style: italic;
+        }
 
-        .medal-icon { font-size: 28px; margin-bottom: 10px; }
-        .gold .medal-icon { color: #FFD700; }
-        .silver .medal-icon { color: #A9A9A9; }
-        .bronze .medal-icon { color: #CD7F32; }
+        .gold .rank-badge { color: #FFB900; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .silver .rank-badge { color: #A9A9A9; }
+        .bronze .rank-badge { color: #CD7F32; }
 
-        .podium-name { font-size: 12px; font-weight: bold; color: #003366; margin-bottom: 8px; text-transform: uppercase; }
+        /* Ikon & Animasi Meriah */
+        .medal-icon { 
+            font-size: 45px; 
+            margin-bottom: 10px; 
+            display: block;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .gold .medal-icon { color: #FFD700; animation-delay: 0s; }
+        .silver .medal-icon { color: #C0C0C0; animation-delay: 0.5s; font-size: 35px; }
+        .bronze .medal-icon { color: #CD7F32; animation-delay: 1s; font-size: 35px; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .podium-name { font-size: 13px; font-weight: bold; color: #003366; margin-bottom: 8px; }
+        
+        /* Kapsul Poin Goldish */
         .podium-points { 
             background: #0056b3; 
             color: white; 
             border-radius: 20px; 
-            padding: 4px 12px; 
+            padding: 5px 15px; 
             font-size: 11px; 
-            font-weight: bold; 
-            display: inline-block; 
-            cursor: pointer; 
-            transition: 0.3s;
+            font-weight: 800; 
+            box-shadow: 0 4px 10px rgba(0,86,179,0.3);
         }
-        .podium-points:active { transform: scale(0.9); }
 
-        /* Ranking List Card */
-        .ranking-list { margin-bottom: 60px; }
+        .gold .podium-points { background: var(--gold-gradient); color: #4d3a00; border: 1px solid #e6ac00; }
+
+        /* List Styling */
         .rank-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            background: #fff; 
-            border: 2px solid #e0e0e0; 
-            border-left: 8px solid #0056b3; 
-            margin-bottom: 12px; 
-            padding: 12px 18px; 
-            border-radius: 15px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02); 
-            transition: 0.2s;
+            display: flex; justify-content: space-between; align-items: center; 
+            background: #fff; border: 1px solid #e0e0e0; border-left: 6px solid #0056b3;
+            margin-bottom: 12px; padding: 15px; border-radius: 15px; 
         }
-        .rank-item:hover { transform: translateX(5px); }
-        .rank-info { display: flex; align-items: center; gap: 10px; }
-        .rank-number { font-weight: 800; color: #444; }
-        .rank-name { font-weight: bold; color: #003366; font-size: 14px; }
-        .rank-points-capsule { 
-            background: #0056b3; 
-            color: white; 
-            padding: 6px 15px; 
-            border-radius: 25px; 
-            font-size: 12px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            min-width: 60px; 
-            text-align: center; 
-        }
+        .rank-number { font-weight: 900; color: #003366; width: 25px; }
+        .rank-name { font-weight: bold; color: #333; flex: 1; }
+        .rank-points-capsule { background: #0056b3; color: white; padding: 6px 15px; border-radius: 25px; font-weight: 800; font-size: 12px; }
 
-        /* Button Back */
-        .btn-back-menu { 
-            width: 100%; 
-            padding: 18px; 
-            background: #003366; 
-            color: white; 
-            border: none; 
-            font-weight: bold; 
-            cursor: pointer; 
-            position: absolute; 
-            bottom: 0; 
-            left: 0; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: 0.3s;
-        }
-        .btn-back-menu:hover { background: #002244; }
+        .btn-back { width: 100%; padding: 18px; background: #003366; color: white; border: none; font-weight: bold; border-radius: 0 0 30px 30px; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="leaderboard-container">
+    <div class="stars-container" id="confetti"></div>
+
     <div class="leaderboard-header">
-        <div class="rules-icon" onclick="showRules()"><i class="fa-solid fa-circle-question"></i></div>
-        <h2 class="title"><i class="fa-solid fa-crown"></i> LEADERBOARD</h2>
-        <p class="periode">Periode: April 2026</p>
+        <h2 class="title"><i class="fa-solid fa-crown" style="color: #FFD700;"></i> LEADERBOARD</h2>
+        <p style="font-size: 12px; color: #888;">Periode: April 2026</p>
     </div>
 
     <div class="filter-section">
-        <select id="filter-segmen" onchange="updateLeaderboard()">
-            <option value="gereja">Per Gereja (Wilayah)</option>
-            <option value="komsel" selected>Per Komsel</option>
-            <option value="orangan">Per Orangan (Jemaat)</option>
-        </select>
-
-        <select id="filter-kategori" onchange="updateLeaderboard()">
-            <option value="semua">Semua Kategori</option>
-            <option value="pw">PW</option>
-            <option value="multimedia">Multimedia</option>
-            <option value="wl-singer">WL & Singer</option>
-            <option value="sound">Sound</option>
-            <option value="tamborin">Tamborin</option>
-            <option value="choirs">Choirs</option>
-        </select>
+        <select><option>Per Orangan (Jemaat)</option></select>
+        <select><option>Semua Kategori</option></select>
     </div>
 
     <div class="podium-section">
         <div class="podium-card silver">
-            <div class="medal-icon"><i class="fa-solid fa-medal"></i></div>
-            <div class="podium-name" id="rank-2-name">UMUM</div>
-            <div class="podium-points" onclick="showHistory('ID_SILVER')">110 Pts</div>
+            <span class="rank-badge">2</span>
+            <i class="fa-solid fa-medal medal-icon"></i>
+            <div class="podium-name">UMUM</div>
+            <div class="podium-points">110 Pts</div>
         </div>
 
         <div class="podium-card gold">
-            <div class="medal-icon"><i class="fa-solid fa-trophy"></i></div>
-            <div class="podium-name" id="rank-1-name">JC 5</div>
-            <div class="podium-points" onclick="showHistory('ID_GOLD')">243 Pts</div>
+            <span class="rank-badge">1</span>
+            <i class="fa-solid fa-trophy medal-icon"></i>
+            <div class="podium-name">JC 5</div>
+            <div class="podium-points">243 Pts</div>
         </div>
 
         <div class="podium-card bronze">
-            <div class="medal-icon"><i class="fa-solid fa-award"></i></div>
-            <div class="podium-name" id="rank-3-name">JC 1</div>
-            <div class="podium-points" onclick="showHistory('ID_BRONZE')">50 Pts</div>
+            <span class="rank-badge">3</span>
+            <i class="fa-solid fa-award medal-icon"></i>
+            <div class="podium-name">JC 1</div>
+            <div class="podium-points">50 Pts</div>
         </div>
     </div>
 
-    <div class="ranking-list" id="ranking-container">
+    <div class="ranking-list">
         <div class="rank-item">
-            <div class="rank-info">
-                <span class="rank-number">4.</span>
-                <span class="rank-name">JC</span>
-            </div>
-            <div class="rank-points-capsule" onclick="showHistory('ID_USER_4')">
-                30 POIN
-            </div>
+            <span class="rank-number">4.</span>
+            <span class="rank-name">JC</span>
+            <div class="rank-points-capsule">30 POIN</div>
         </div>
         <div class="rank-item">
-            <div class="rank-info">
-                <span class="rank-number">5.</span>
-                <span class="rank-name">JC 05</span>
-            </div>
-            <div class="rank-points-capsule" onclick="showHistory('ID_USER_5')">
-                25 POIN
-            </div>
+            <span class="rank-number">5.</span>
+            <span class="rank-name">JC 05</span>
+            <div class="rank-points-capsule">25 POIN</div>
         </div>
     </div>
 
-    <button class="btn-back-menu"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</button>
+    <button class="btn-back"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</button>
 </div>
 
 <script>
-    function showRules() {
-        alert("Aturan Penilaian Poin:\n\n1. Pembacaan Alkitab: 5 Poin\n2. Kehadiran: 10 Poin\n3. Latihan Bidang: 15 Poin\n4. Pelayanan Hari H: 25 Poin\n\n*Catatan: Poin Pelayanan maksimal jika mengikuti latihan di kategori yang sama.");
+    // Simple Sparkle Effect
+    const container = document.getElementById('confetti');
+    for (let i = 0; i < 20; i++) {
+        const star = document.createElement('i');
+        star.className = 'fa-solid fa-star';
+        star.style.position = 'absolute';
+        star.style.color = '#FFD700';
+        star.style.fontSize = Math.random() * 10 + 5 + 'px';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 100 + '%';
+        star.style.opacity = Math.random();
+        star.style.animation = `blink ${Math.random() * 2 + 1}s infinite`;
+        container.appendChild(star);
     }
 
-    function showHistory(id) {
-        alert("Membuka Riwayat Poin untuk ID: " + id + "\n\n- Alkitab: 50 Pts\n- Kehadiran: 30 Pts\n- Pelayanan: 30 Pts\nTotal: Lihat di kapsul biru.");
-    }
-
-    function updateLeaderboard() {
-        console.log("Memperbarui data berdasarkan filter...");
-        // Logika query database akan diletakkan di sini nanti
-    }
+    const style = document.createElement('style');
+    style.innerHTML = `@keyframes blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }`;
+    document.head.appendChild(style);
 </script>
 
 </body>
