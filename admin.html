@@ -171,40 +171,43 @@
             tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
-                const namaTampil = d.Nama || d.nama_lengkap || '-';
+                
+                // --- Sinkronisasi Nama & Identitas ---
+                const namaTampil = d.nama || d.nama_lengkap || d.Nama || '-';
                 const nij = d.nij || '-';
                 const goldar = d.darah || d.golongan_darah || '-'; 
-                const whatsapp = d.WhatsApp || d.whatsapp || '-';
+                
+                // --- Sinkronisasi Kontak & Keluarga ---
+                const whatsapp = d.whatsapp || d.WhatsApp || '-';
                 const email = d.email || '-';
-                const alamat = d.wilayah || d.Alamat || d.alamat || '-';
-                const lokasi = d.lokasi_berjemaat || d.wilayah_berjemaat || '-';
-                const komsel = d.Komsel || d.komsel || '-';
-                const jabatan = d.jabatan || '-';
-                const fungsi = d.fungsi_pelayanan || d.fungsi_non_struktural || '-';
-                const status = d.status_akun || 'Pending';
                 const pasangan = d.nama_pasangan || '-';
                 const anak = d.jumlah_anak || '0';
 
-                // --- LOGIKA FILE / BERKAS TERBARU ---
-                let fileHtml = "";
-                // Cek semua kemungkinan field untuk berkas/lampiran
-                const linkBerkas = d.url_berkas || d.berkas || d.file_lampiran;
-                const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp;
+                // --- Sinkronisasi Alamat & Lokasi ---
+                const alamatDetail = d.alamat || d.Alamat || '-';
+                const wilayah = d.wilayah || '-';
+                const komsel = d.komsel || d.Komsel || '-';
 
-                if (linkBerkas && linkBerkas !== '-') {
-                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link" title="Lihat Berkas" style="margin-right:8px; color:var(--primary);"><i class="fas fa-file-alt"></i></a>`;
-                }
+                // --- Sinkronisasi Jabatan & Pelayanan ---
+                const jabatan = d.jabatan || '-';
+                const fungsi = d.sub_bidang || d.fungsi_pelayanan || d.fungsi_spesifik || '-';
+
+                // --- Logika File / Berkas (Lampiran) ---
+                let fileHtml = "";
+                const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp;
+                const linkBerkas = d.url_berkas || d.berkas || d.file_lampiran;
 
                 if (linkKtp && linkKtp !== '-') {
-                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link" title="Lihat KTP" style="color:var(--accent);"><i class="fas fa-id-card"></i></a>`;
+                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link" title="Lihat KTP"><i class="fas fa-id-card"></i></a> `;
                 }
+                if (linkBerkas && linkBerkas !== '-') {
+                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link" title="Lihat Berkas"><i class="fas fa-file-alt"></i></a>`;
+                }
+                if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
 
-                // Jika keduanya kosong, tampilkan teks strip
-                if (fileHtml === "") {
-                    fileHtml = '<span style="color:#ccc;">-</span>';
-                }
-                // ------------------------------------
+                const status = d.status_akun || 'Pending';
                 
+                // --- UI State ---
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
@@ -217,8 +220,8 @@
                     <td style="text-align:center;"><strong>${goldar}</strong></td> 
                     <td>${whatsapp}<br><small>${email}</small></td>
                     <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
-                    <td><small>${alamat}</small></td>
-                    <td><small>${lokasi}<br>K: ${komsel}</small></td>
+                    <td><small>${alamatDetail}</small></td>
+                    <td><small>${wilayah}<br>K: ${komsel}</small></td>
                     <td><small>${jabatan}<br>F: ${fungsi}</small></td>
                     <td style="text-align:center; font-size:18px;">${fileHtml}</td>
                     <td>
@@ -259,8 +262,8 @@
                     tds[3].innerText, // Goldar
                     tds[4].innerText.replace(/\n/g, ' / '), // Kontak
                     tds[6].innerText, // Alamat
-                    tds[7].innerText.replace(/\n/g, ' '), // Lokasi
-                    tds[8].innerText.replace(/\n/g, ' '), // Jabatan
+                    tds[7].innerText.replace(/\n/g, ' '), // Wilayah/Komsel
+                    tds[8].innerText.replace(/\n/g, ' '), // Jabatan/Pelayanan
                     tds[10].innerText.split('\n')[0] // Status
                 ]);
             }
@@ -273,7 +276,7 @@
 
         doc.autoTable({
             startY: 30,
-            head: [['NIJ', 'Nama Lengkap', 'G.D', 'WhatsApp/Email', 'Alamat', 'Lokasi/Komsel', 'Jabatan/Pelayanan', 'Status']],
+            head: [['NIJ', 'Nama Lengkap', 'G.D', 'WhatsApp/Email', 'Alamat', 'Wilayah/Komsel', 'Jabatan/Sub-Bidang', 'Status']],
             body: rows,
             theme: 'striped',
             headStyles: { fillColor: [0, 51, 102] },
@@ -327,6 +330,5 @@
             if(selectedCountElem) selectedCountElem.innerText = `${count} Terpilih`;
         }
     }
-</script>
-</body>
+</script></body>
 </html>
