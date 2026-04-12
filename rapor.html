@@ -3,67 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapor Anda - Pondok Pemulihan</title>
+    <title>RAPOR ANDA</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        .user-info { display: flex; justify-content: space-between; margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 8px; font-size: 14px; }
+        body { font-family: Arial, sans-serif; background: #fff; margin: 0; padding: 10px; color: #000; }
+        .container { max-width: 1000px; margin: auto; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background-color: #f2f2f2; font-size: 13px; }
+        h2 { text-align: center; text-transform: uppercase; margin-bottom: 5px; font-size: 18px; }
+        .sub-header { text-align: center; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+
+        .info-table { width: 100%; margin-bottom: 15px; font-size: 13px; font-weight: bold; }
         
-        /* Indikator Warna sesuai Excel */
-        .excel-green { background-color: #00FF00; color: black; font-weight: bold; }
-        .excel-yellow { background-color: #FFFF00; color: black; font-weight: bold; }
-        .excel-red { background-color: #FF0000; color: white; font-weight: bold; }
+        table.rapor-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        table.rapor-table th, table.rapor-table td { border: 1px solid #000; padding: 8px; text-align: center; }
+        table.rapor-table th { background-color: #fff; text-transform: uppercase; }
         
-        .loading { text-align: center; color: #888; font-style: italic; }
-        .btn-back { display: block; width: 100%; padding: 10px; margin-top: 20px; background: #007bff; color: white; text-align: center; text-decoration: none; border-radius: 5px; }
+        .komsel-row { background-color: #fce4d6; font-weight: bold; text-align: left !important; }
+
+        /* Keterangan Warna Sesuai Gambar Excel */
+        .sangat-baik { background-color: #00FF00; color: #000; } /* Hijau Terang */
+        .cukup { background-color: #548235; color: #fff; }       /* Hijau Tua */
+        .kurang { background-color: #ed7d31; color: #000; }      /* Oranye */
+        .sangat-kurang { background-color: #ff0000; color: #fff; } /* Merah */
+
+        .btn-keluar { display: block; width: 200px; margin: 30px auto; padding: 10px; background: #004080; color: white; text-align: center; text-decoration: none; border-radius: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <h2>REKAPITULASI PRIBADI</h2>
-        <p id="tgl-sekarang"></p>
-    </div>
+    <h2>RAPOR ANDA</h2>
+    <div class="sub-header" id="bulan-tahun">MARET 2026</div>
 
-    <div class="user-info" id="info-box">
-        <div>
-            <strong>Nama:</strong> <span id="u-nama">Memuat...</span><br>
-            <strong>Komsel:</strong> <span id="u-komsel">-</span>
-        </div>
-        <div style="text-align: right;">
-            <strong>Wilayah:</strong> <span id="u-wilayah">-</span><br>
-            <strong>Gereja:</strong> <span id="u-gereja">-</span>
-        </div>
-    </div>
-
-    <div id="loading-msg" class="loading">Menghubungkan ke database jemaat...</div>
-
-    <table id="main-table" style="display:none;">
-        <thead>
-            <tr>
-                <th>JENIS LAPORAN</th>
-                <th>CAPAIAN</th>
-                <th>KETERANGAN</th>
-            </tr>
-        </thead>
-        <tbody id="rapor-body">
-            </tbody>
+    <table class="info-table">
+        <tr>
+            <td width="15%">GEREJA</td><td>: <span id="u-gereja">-</span></td>
+            <td width="15%">WILAYAH</td><td>: <span id="u-wilayah">-</span></td>
+        </tr>
     </table>
 
-    <a href="menu.html" class="btn-back">Kembali ke Menu Utama</a>
+    <table class="rapor-table">
+        <thead>
+            <tr>
+                <th rowspan="2">KOMSEL</th>
+                <th rowspan="2">NAMA</th>
+                <th colspan="4">JUMLAH (%)</th>
+                <th rowspan="2">KETERANGAN</th>
+            </tr>
+            <tr>
+                <th>PEMBACAAN FT</th>
+                <th>KEHADIRAN DOA</th>
+                <th>KEHADIRAN KOMSEL</th>
+                <th>IBADAH RAYA</th>
+            </tr>
+        </thead>
+        <tbody id="rapor-content">
+            <tr><td colspan="7">Memuat data rapor...</td></tr>
+        </tbody>
+    </table>
+
+    <a href="menu.html" class="btn-keluar">KEMBALI</a>
 </div>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -75,64 +79,58 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Set Tanggal Otomatis
-    const d = new Date();
-    document.getElementById('tgl-sekarang').innerText = d.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-
     auth.onAuthStateChanged(user => {
         if (user) {
-            loadUserData(user.uid);
+            fetchRaporData(user.uid);
         } else {
             window.location.href = "login.html";
         }
     });
 
-    function loadUserData(uid) {
-        // 1. Ambil data Profil User (Nama, Komsel, dll)
-        db.ref('users/' + uid).once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById('u-nama').innerText = data.namaLengkap || "User";
-                document.getElementById('u-komsel').innerText = data.komsel || "-";
-                document.getElementById('u-wilayah').innerText = data.wilayah || "-";
-                document.getElementById('u-gereja').innerText = data.gereja || "-";
-            }
-            // 2. Ambil data Nilai/Poin
-            return db.ref('rapor/' + uid).once('value');
-        }).then(snapshot => {
-            const poin = snapshot.val() || {};
-            tampilkanRapor(poin);
-        });
+    function getStatusClass(val) {
+        if (val >= 95) return 'sangat-baik';
+        if (val >= 80) return 'cukup';
+        if (val >= 50) return 'kurang';
+        return 'sangat-kurang';
     }
 
-    function tampilkanRapor(data) {
-        const categories = [
-            { id: 'pembacaan_ft', label: 'Pembacaan Firman Tuhan' },
-            { id: 'hadir_doa', label: 'Kehadiran Doa' },
-            { id: 'hadir_komsel', label: 'Kehadiran Komsel' },
-            { id: 'hadir_ibadah_raya', label: 'Ibadah Raya' },
-            { id: 'ibadah_gabungan', label: 'Ibadah Gabungan' }
-        ];
+    function getKeterangan(val) {
+        if (val >= 95) return 'SANGAT BAIK';
+        if (val >= 80) return 'CUKUP';
+        if (val >= 50) return 'KURANG';
+        return 'SANGAT KURANG';
+    }
 
-        let html = '';
-        categories.forEach(cat => {
-            const skor = data[cat.id] || 0; // default 0 jika belum ada data
-            let warnaClass = 'excel-red';
-            if (skor >= 90) warnaClass = 'excel-green';
-            else if (skor >= 70) warnaClass = 'excel-yellow';
+    function fetchRaporData(uid) {
+        db.ref('users/' + uid).once('value').then(snapshot => {
+            const u = snapshot.val() || {};
+            document.getElementById('u-gereja').innerText = u.gereja || "-";
+            document.getElementById('u-wilayah').innerText = u.wilayah || "-";
 
-            html += `
+            return db.ref('rapor/' + uid).once('value');
+        }).then(snapshot => {
+            const r = snapshot.val() || { ft: 0, doa: 0, komsel: 0, ibadah: 0 };
+            const userSnap = document.getElementById('u-gereja').innerText; // Dummy check
+
+            // Menghitung rata-rata untuk kolom keterangan
+            const avg = (r.ft + r.doa + r.komsel + r.ibadah) / 4;
+
+            const html = `
+                <tr class="komsel-row">
+                    <td colspan="7">${document.getElementById('u-wilayah').innerText} / ${document.getElementById('u-komsel-info')?.innerText || 'KOMSEL'}</td>
+                </tr>
                 <tr>
-                    <td style="text-align:left;">${cat.label}</td>
-                    <td class="${warnaClass}">${skor}%</td>
-                    <td>${skor >= 90 ? 'Sangat Baik' : (skor >= 70 ? 'Cukup' : 'Perlu Ditingkatkan')}</td>
+                    <td>-</td>
+                    <td style="text-align:left;">${auth.currentUser.displayName || 'Nama User'}</td>
+                    <td class="${getStatusClass(r.ft)}">${r.ft}%</td>
+                    <td class="${getStatusClass(r.doa)}">${r.doa}%</td>
+                    <td class="${getStatusClass(r.komsel)}">${r.komsel}%</td>
+                    <td class="${getStatusClass(r.ibadah)}">${r.ibadah}%</td>
+                    <td class="${getStatusClass(avg)}">${getKeterangan(avg)}</td>
                 </tr>
             `;
+            document.getElementById('rapor-content').innerHTML = html;
         });
-
-        document.getElementById('rapor-body').innerHTML = html;
-        document.getElementById('loading-msg').style.display = 'none';
-        document.getElementById('main-table').style.display = 'table';
     }
 </script>
 
