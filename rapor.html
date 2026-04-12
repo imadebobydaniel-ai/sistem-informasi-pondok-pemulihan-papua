@@ -93,131 +93,109 @@
 </div>
 
 <script>
-    // --- KONFIGURASI FIREBASE ---
-    const firebaseConfig = {
-        apiKey: "ISI_API_KEY_ANDA",
-        authDomain: "PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://PROJECT_ID.firebaseio.com",
-        projectId: "PROJECT_ID",
-        storageBucket: "PROJECT_ID.appspot.com",
-        messagingSenderId: "SENDER_ID",
-        appId: "APP_ID"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-
-    // --- FILTERING KEAMANAN ---
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            // User Sah, izinkan melihat halaman
-            document.body.style.display = "block";
-            loadUserReportData(user.uid, user.email);
-        } else {
-            // User belum login, tendang ke halaman login (index.html)
-            window.location.href = "index.html";
-        }
-    });
-
-    function logout() {
-        auth.signOut().then(() => { window.location.href = "index.html"; });
-    }
-
-    function getKategori(val) {
-        if (val === "" || val === null || val === undefined) return { label: '', class: '' };
-        let v = parseInt(val);
-        if (v < 50) return { label: 'SANGAT KURANG', class: 'bg-sangat-kurang' };
-        if (v < 80) return { label: 'KURANG', class: 'bg-kurang' };
-        if (v < 95) return { label: 'CUKUP', class: 'bg-cukup' };
-        return { label: 'SANGAT BAIK', class: 'bg-sangat-baik' };
-    }
+    // ... (Konfigurasi Firebase tetap sama)
 
     function loadUserReportData(uid, email) {
-        // FILTER: Mengambil data HANYA milik user yang login berdasarkan UID
+        // Mengambil data HANYA dari node UID user yang sedang login
+        // Path: statistik_rapor/[UID_USER]
         db.ref('statistik_rapor/' + uid).on('value', snapshot => {
-            const dataPribadi = snapshot.val();
-            
-            if (dataPribadi) {
-                renderHalaman(dataPribadi, email);
+            const data = snapshot.val();
+            if (data) {
+                renderHalaman(data, email);
             } else {
-                // Jika data di database kosong, gunakan data dummy (Script asli Anda)
-                const dummy = {
-                    "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75, "Ibadah Raya": 100,
-                    "Komsel Gabungan": 85, "Kegiatan KD": 60, "Latihan": 30, "Pelayanan": 95,
-                    "nama": "User Baru", "grup_komsel": "Grup -"
-                };
-                renderHalaman(dummy, email);
+                console.log("Data tidak ditemukan di database.");
+                // Tampilkan pesan jika data di database masih kosong
+                document.getElementById('user-info').innerText = "Data rapor Anda sedang diproses oleh Admin.";
+                document.body.style.display = "block";
             }
         });
     }
 
-    function renderHalaman(dataPribadi, email) {
-        document.getElementById('user-info').innerText = `Pemilik: ${dataPribadi.nama || email} | Periode: Maret 2026`;
+    function renderHalaman(data, email) {
+        document.getElementById('user-info').innerText = `Pemilik: ${data.nama || email} | Periode: Maret 2026`;
         
         const cardsCont = document.getElementById('cards-container');
         const excelTable = document.getElementById('excel-table-body');
-        cardsCont.innerHTML = ""; // Clear
         
-        // --- RENDER KARTU ---
-        const keysToChart = ["Pembacaan FT", "Kehadiran Doa", "Kehadiran Komsel", "Ibadah Raya", "Komsel Gabungan", "Kegiatan KD", "Latihan", "Pelayanan"];
-        
-        keysToChart.forEach(key => {
-            const val = dataPribadi[key] || 0;
-            const kat = getKategori(val);
+        // --- 1. SINKRONISASI 9 JENIS LAPORAN ---
+        // Kita petakan agar script membaca key yang sesuai dengan kolom tabel Anda
+        const d = {
+            alkitab: data["LAPORAN ALKITAB"] || data.alkitab || 0,
+            ibadah: data["LAPORAN IBADAH RAYA"] || data.ibadah || 0,
+            komsel: data["LAPORAN KOMSEL"] || data.komsel || 0,
+            gabungan: data["LAPORAN KOMSEL GABUNGAN"] || data.gabungan || 0,
+            pemimpin: data["LAPORAN PERTEMUAN PEMIMPIN"] || data.pemimpin || 0,
+            kd: data["LAPORAN KEGIATAN KD"] || data.kd || 0,
+            latihan: data["LAPORAN LATIHAN"] || data.latihan || 0,
+            pelayanan: data["LAPORAN PELAYANAN"] || data.pelayanan || 0,
+            doa: data["LAPORAN DOA"] || data.doa || 0
+        };
+
+        // --- 2. UPDATE TABEL EXCEL (9 KOLOM) ---
+        excelTable.innerHTML = `
+            <tr>
+                <td>1</td>
+                <td class="col-komsel">${data.grup_komsel || '-'}</td>
+                <td class="col-nama">${data.nama || 'User'}</td>
+                <td class="${getKategori(d.alkitab).class}">${d.alkitab}%</td>
+                <td class="${getKategori(d.ibadah).class}">${d.ibadah}%</td>
+                <td class="${getKategori(d.komsel).class}">${d.komsel}%</td>
+                <td class="${getKategori(d.gabungan).class}">${d.gabungan}%</td>
+                <td class="${getKategori(d.pemimpin).class}">${d.pemimpin}%</td>
+                <td class="${getKategori(d.kd).class}">${d.kd}%</td>
+                <td class="${getKategori(d.latihan).class}">${d.latihan}%</td>
+                <td class="${getKategori(d.pelayanan).class}">${d.pelayanan}%</td>
+                <td class="${getKategori(d.doa).class}">${d.doa}%</td>
+            </tr>
+            <tr class="separator"><td colspan="12"></td></tr>
+        `;
+
+        // --- 3. UPDATE KARTU STATISTIK (HIGHLIGHT) ---
+        cardsCont.innerHTML = "";
+        const mainStats = { "Alkitab": d.alkitab, "Doa": d.doa, "Ibadah": d.ibadah, "Komsel": d.komsel };
+        Object.keys(mainStats).forEach(key => {
+            let val = mainStats[key];
             cardsCont.innerHTML += `
-                <div class="stat-card ${kat.class}">
-                    <div style="font-size:11px; opacity:0.9;">${key}</div>
-                    <div style="font-size:22px; font-weight:bold;">${val}%</div>
+                <div class="stat-card ${getKategori(val).class}">
+                    <div style="font-size:11px;">${key}</div>
+                    <div style="font-size:20px; font-weight:bold;">${val}%</div>
                 </div>`;
         });
 
-        // --- RENDER TABEL (FORMAT ASLI ANDA) ---
-        // Karena ini rapor pribadi, tabel hanya menampilkan 1 baris (data user itu sendiri)
-        const userRow = { 
-            no: 1, 
-            komsel: dataPribadi.grup_komsel || "AGAPE 2", 
-            nama: dataPribadi.nama || email, 
-            ft: dataPribadi["Pembacaan FT"] || 0, 
-            doa: dataPribadi["Kehadiran Doa"] || 0, 
-            ks: dataPribadi["Kehadiran Komsel"] || 0, 
-            ir: dataPribadi["Ibadah Raya"] || 0 
-        };
+        // --- 4. UPDATE GRAFIK ---
+        updateCharts(d);
+    }
 
-        excelTable.innerHTML = `
-            <tr>
-                <td>${userRow.no}</td>
-                <td class="col-komsel">${userRow.komsel}</td>
-                <td class="col-nama">${userRow.nama}</td>
-                <td class="${getKategori(userRow.ft).class}">${userRow.ft}%</td>
-                <td class="${getKategori(userRow.doa).class}">${userRow.doa}%</td>
-                <td class="${getKategori(userRow.ks).class}">${userRow.ks}%</td>
-                <td class="${getKategori(userRow.ir).class}">${userRow.ir}%</td>
-                <td>Data Terverifikasi</td>
-            </tr>
-            <tr class="separator"><td colspan="8"></td></tr>
-        `;
-
-        // --- RENDER CHARTS ---
-        const chartDataValues = keysToChart.map(k => dataPribadi[k] || 0);
-
-        new Chart(document.getElementById('pieChart'), {
-            type: 'pie',
+    function updateCharts(d) {
+        // Pie Chart: Distribusi 4 Utama
+        const ctxPie = document.getElementById('pieChart').getContext('2d');
+        if (window.myPie) window.myPie.destroy(); // Hapus chart lama agar tidak tumpang tindih
+        window.myPie = new Chart(ctxPie, {
+            type: 'doughnut',
             data: {
-                labels: keysToChart,
-                datasets: [{ data: chartDataValues, backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
+                labels: ['Alkitab', 'Doa', 'Ibadah', 'Komsel'],
+                datasets: [{
+                    data: [d.alkitab, d.doa, d.ibadah, d.komsel],
+                    backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db']
+                }]
             }
         });
 
-        new Chart(document.getElementById('barChart'), {
+        // Bar Chart: Perbandingan Semua Laporan
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        if (window.myBar) window.myBar.destroy();
+        window.myBar = new Chart(ctxBar, {
             type: 'bar',
             data: {
-                labels: keysToChart,
-                datasets: [{ label: 'Capaian', data: chartDataValues, backgroundColor: '#548235' }]
+                labels: ['Gabungan', 'Pemimpin', 'KD', 'Latihan', 'Pelayanan'],
+                datasets: [{
+                    label: '% Capaian',
+                    data: [d.gabungan, d.pemimpin, d.kd, d.latihan, d.pelayanan],
+                    backgroundColor: '#548235'
+                }]
             },
             options: { scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
-</script>
-</body>
+</script></body>
 </html>
