@@ -9,7 +9,6 @@
         :root { --primary: #0056b3; --secondary: #f8f9fa; --accent: #ffc107; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 0; }
         
-        /* Header Blue Bar */
         .header-bar {
             background: var(--primary); color: white; padding: 20px;
             text-align: center; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -17,7 +16,6 @@
 
         .container { padding: 20px; max-width: 500px; margin: auto; }
 
-        /* Form Card */
         .report-card {
             background: white; border-radius: 15px; padding: 25px;
             box-shadow: 0 8px 20px rgba(0,0,0,0.05);
@@ -28,7 +26,7 @@
         
         .form-group select, .form-group input {
             width: 100%; padding: 12px; border: 2px solid #e1e4e8;
-            border-radius: 10px; font-size: 15px; outline: none; transition: 0.3s;
+            border-radius: 10px; font-size: 15px; outline: none; transition: 0.3s; box-sizing: border-box;
         }
 
         .form-group select:focus, .form-group input:focus { border-color: var(--primary); }
@@ -40,26 +38,24 @@
             display: flex; justify-content: center; align-items: center; gap: 10px;
         }
 
-        .btn-submit:active { transform: scale(0.98); }
-
-        /* Back Button */
-        .btn-back {
-            display: block; text-align: center; margin-top: 20px;
-            color: var(--primary); text-decoration: none; font-weight: bold; font-size: 14px;
-        }
-
-        /* Notif Block Display */
+        /* Notif Block Display Style */
         #status-msg {
-            display: none; padding: 20px; border-radius: 12px; 
-            margin-bottom: 20px; text-align: center; 
-            font-weight: bold; line-height: 1.6;
-            border: 1px solid transparent;
+            display: none; padding: 30px 20px; border-radius: 15px; 
+            text-align: center; font-weight: bold; line-height: 1.8;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
-        .success-box {
-            background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7 !important;
+        .success-box { background: white; color: #2e7d32; border: 2px solid #a5d6a7; }
+        .error-box { background: #ffebee; color: #c62828; border: 2px solid #ef9a9a; }
+
+        .btn-action {
+            display: inline-block; margin-top: 20px; padding: 12px 25px;
+            background: var(--primary); color: white; text-decoration: none;
+            border-radius: 8px; font-size: 14px; transition: 0.3s;
         }
-        .error-box {
-            background: #ffebee; color: #c62828; border-color: #ef9a9a !important;
+
+        .btn-secondary-back {
+            display: block; text-align: center; margin-top: 25px;
+            color: #666; text-decoration: none; font-size: 14px; font-weight: 500;
         }
     </style>
 </head>
@@ -90,17 +86,17 @@
                             <option value="Tamborin">Tamborin</option>
                             <option value="Flag">Flag</option>
                         </optgroup>
-                        <optgroup label="Multimedia & Sound engineer">
+                        <optgroup label="Multimedia & Sound">
                             <option value="Multimedia">Multimedia</option>
                             <option value="Sound Engineer">Sound Engineer</option>
                         </optgroup>
-                        <optgroup label="Pelayanan Mimbar|Doa Syafaat">
+                        <optgroup label="Pelayanan Mimbar | Doa">
                             <option value="Kotbah">Kotbah</option>
                             <option value="MC">MC (Master Of Ceremony)</option>
                             <option value="Pelayanan Altar">Pelayanan Altar</option>
                             <option value="Doa Syafaat">Doa Syafaat</option>
                         </optgroup>
-                        <optgroup label="Pelayanan KD (Kingdom Discipleship)">
+                        <optgroup label="Pelayanan KD">
                             <option value="Koordinator KD">Koordinator KD</option>
                             <option value="Supervisor KD">Supervisor KD</option>
                             <option value="Pendamping KD">Pendamping KD</option>
@@ -117,12 +113,12 @@
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-star"></i> Nama Kegiatan </label>
-                    <input type="text" id="nama_kegiatan" placeholder="Contoh: Ibadah Raya Minggu Sesi Pertama" required>
+                    <input type="text" id="nama_kegiatan" placeholder="Contoh: Ibadah Raya Minggu Sesi 1" required>
                 </div>
 
                 <div class="form-group">
                     <label><i class="fa-solid fa-location-dot"></i> Lokasi Pelayanan</label>
-                    <input type="text" id="lokasi_kegiatan" placeholder="Gedung Pusat / Pos Pelayanan X" required>
+                    <input type="text" id="lokasi_kegiatan" placeholder="Gedung Pusat / Pos Pelayanan" required>
                 </div>
 
                 <div class="form-group">
@@ -136,12 +132,15 @@
             </form>
         </div>
 
-        <a href="menu.html" class="btn-back"><i class="fa-solid fa-house"></i> Kembali ke Menu Utama</a>
+        <div id="navArea">
+            <a href="laporan-komsel.html" class="btn-secondary-back" id="backToReportMenu">
+                <i class="fa-solid fa-chevron-left"></i> Kembali ke Menu Laporan
+            </a>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <script>
         const firebaseConfig = {
@@ -160,10 +159,11 @@
             const btn = document.getElementById('btnKirim');
             const msg = document.getElementById('status-msg');
             const formContainer = document.getElementById('formContainer');
+            const navArea = document.getElementById('navArea');
             const userEmail = localStorage.getItem("userEmail");
 
             btn.disabled = true;
-            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Memproses...";
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengirim...";
 
             const dataLaporan = {
                 email: userEmail,
@@ -176,37 +176,35 @@
             };
 
             try {
-                // 1. Simpan ke Firestore
                 await db.collection("laporan_pelayanan").add(dataLaporan);
 
-                // 2. Update Poin Leaderboard
+                // Update Poin Leaderboard
                 const userRef = db.collection("users").where("email", "==", userEmail);
                 const snapshot = await userRef.get();
-                
                 if (!snapshot.empty) {
                     const docId = snapshot.docs[0].id;
                     const currentPoints = snapshot.docs[0].data().total_poin || 0;
-                    await db.collection("users").doc(docId).update({
-                        total_poin: currentPoints + 10
-                    });
+                    await db.collection("users").doc(docId).update({ total_poin: currentPoints + 10 });
                 }
 
-                // 3. Tampilan Sukses (Block Display)
-                formContainer.style.display = "none"; // Sembunyikan form agar notif terlihat jelas
+                // EFEK BLOCK DISPLAY SUKSES
+                formContainer.style.display = "none";
+                navArea.style.display = "none"; // Sembunyikan navigasi lama
+                
                 msg.style.display = "block";
                 msg.className = "success-box";
                 msg.innerHTML = `
-                    <i class="fa-solid fa-circle-check" style="font-size: 40px; margin-bottom: 10px;"></i><br>
-                    Selamat! Laporan Anda telah dikirim.<br>
-                    Terimakasih Atas Pelayanan Anda Hari ini.<br>
-                    Tuhan Yesus Memberkati!
+                    <i class="fa-solid fa-circle-check" style="font-size: 50px; color: #4caf50; margin-bottom: 15px;"></i><br>
+                    <span style="font-size: 18px;">Selamat! Laporan Anda telah dikirim.</span><br>
+                    <p style="font-weight: normal; color: #555;">Terimakasih Atas Pelayanan Anda Hari ini.<br>Tuhan Yesus Memberkati!</p>
+                    <a href="laporan-komsel.html" class="btn-action">Selesai & Kembali</a>
                 `;
 
             } catch (error) {
                 console.error(error);
                 msg.style.display = "block";
                 msg.className = "error-box";
-                msg.innerText = "Gagal mengirim laporan. Periksa koneksi internet Anda.";
+                msg.innerText = "Gagal mengirim. Silahkan coba lagi.";
                 btn.disabled = false;
                 btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> KIRIM LAPORAN";
             }
