@@ -162,86 +162,85 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
-   // --- LOAD DATA REALTIME ---
-function loadMembersRealtime() {
-    db.collection("users").onSnapshot(snapshot => {
-        const tableBody = document.getElementById("memberData");
-        if(!tableBody) return;
-        
-        tableBody.innerHTML = "";
-        snapshot.forEach(doc => {
-            const d = doc.data();
+    // --- LOAD DATA REALTIME ---
+    function loadMembersRealtime() {
+        db.collection("users").onSnapshot(snapshot => {
+            const tableBody = document.getElementById("memberData");
+            if(!tableBody) return;
             
-            // --- Sinkronisasi Nama & Identitas ---
-            const namaTampil = d.nama || d.nama_lengkap || d.Nama || '-';
-            const nij = d.nij || '-';
-            const goldar = d.darah || d.golongan_darah || '-'; 
-            
-            // --- Sinkronisasi Kontak ---
-            const whatsapp = d.whatsapp || d.WhatsApp || '-';
-            const email = d.email || '-';
+            tableBody.innerHTML = "";
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                
+                // --- Sinkronisasi Nama & Identitas ---
+                const namaTampil = d.nama || d.nama_lengkap || d.Nama || '-';
+                const nij = d.nij || '-';
+                const goldar = d.darah || d.golongan_darah || '-'; 
+                
+                // --- Sinkronisasi Kontak ---
+                const whatsapp = d.whatsapp || d.WhatsApp || '-';
+                const email = d.email || '-';
 
-            // --- SINKRONISASI KELUARGA (UPDATE TERBARU) ---
-            const pasangan = d.nama_pasangan || d.suami || d.istri || d.nama_suami_istri || '-';
-            const anak = d.jumlah_anak || d.anak || '0';
+                // --- SINKRONISASI KELUARGA (LOGIKA TERBARU) ---
+                const pasangan = d.nama_pasangan || d.suami || d.istri || d.nama_suami_istri || '-';
+                const anak = d.jumlah_anak || d.anak || '0';
 
-            // --- Sinkronisasi Alamat & Lokasi ---
-            const alamatDetail = d.alamat || d.Alamat || '-';
-            const wilayah = d.wilayah || '-';
-            const komsel = d.komsel || d.Komsel || '-';
+                // --- Sinkronisasi Alamat & Lokasi ---
+                const alamatDetail = d.alamat || d.Alamat || '-';
+                const wilayah = d.wilayah || '-';
+                const komsel = d.komsel || d.Komsel || '-';
 
-            // --- Sinkronisasi Jabatan & Pelayanan ---
-            const jabatan = d.jabatan || '-';
-            const fungsi = d.sub_bidang || d.fungsi_pelayanan || d.fungsi_spesifik || '-';
+                // --- Sinkronisasi Jabatan & Pelayanan ---
+                const jabatan = d.jabatan || '-';
+                const fungsi = d.sub_bidang || d.fungsi_pelayanan || d.fungsi_spesifik || '-';
 
-            // --- LOGIKA LAMPIRAN / FILE (UPDATE TERBARU) ---
-            const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp || d.lampiran_ktp;
-            const linkBerkas = d.url_berkas || d.berkas || d.lampiran || d.file;
+                // --- LOGIKA LAMPIRAN / FILE (LOGIKA TERBARU & LEBIH KUAT) ---
+                const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp || d.lampiran_ktp;
+                const linkBerkas = d.url_berkas || d.berkas || d.lampiran || d.file;
 
-            let fileHtml = "";
-            // Pastikan link ada dan bukan string kosong atau tanda strip
-            if (linkKtp && linkKtp !== "" && linkKtp !== "-") {
-                fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link" title="Lihat KTP"><i class="fas fa-id-card"></i></a> `;
-            }
-            if (linkBerkas && linkBerkas !== "" && linkBerkas !== "-") {
-                fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link" title="Lihat Berkas"><i class="fas fa-file-alt"></i></a>`;
-            }
-            if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
+                let fileHtml = "";
+                if (linkKtp && linkKtp !== "" && linkKtp !== "-") {
+                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link" title="Lihat KTP"><i class="fas fa-id-card"></i></a> `;
+                }
+                if (linkBerkas && linkBerkas !== "" && linkBerkas !== "-") {
+                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link" title="Lihat Berkas"><i class="fas fa-file-alt"></i></a>`;
+                }
+                if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
 
-            const status = d.status_akun || 'Pending';
-            
-            // --- UI State & Badges ---
-            const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
-            const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
-            const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
+                const status = d.status_akun || 'Pending';
+                
+                // --- UI State & Badges ---
+                const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
+                const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
+                const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
-            tableBody.innerHTML += `
-            <tr>
-                <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
-                <td class="nij-col">${nij}</td>
-                <td><strong>${namaTampil}</strong></td>
-                <td style="text-align:center;"><strong>${goldar}</strong></td> 
-                <td>${whatsapp}<br><small>${email}</small></td>
-                <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
-                <td><small>${alamatDetail}</small></td>
-                <td><small>${wilayah}<br>K: ${komsel}</small></td>
-                <td><small>${jabatan}<br>F: ${fungsi}</small></td>
-                <td style="text-align:center; font-size:18px;">${fileHtml}</td>
-                <td>
-                    <span class="${statusBadge}">${status}</span>
-                    <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${status}')">
-                        <i class="fas ${statusIcon}"></i>
-                    </button>
-                </td>
-                <td>
-                    <button onclick="openEditModal('${doc.id}')" class="btn-action" style="background:var(--accent); padding:4px 8px;"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
+                tableBody.innerHTML += `
+                <tr>
+                    <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
+                    <td class="nij-col">${nij}</td>
+                    <td><strong>${namaTampil}</strong></td>
+                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
+                    <td>${whatsapp}<br><small>${email}</small></td>
+                    <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
+                    <td><small>${alamatDetail}</small></td>
+                    <td><small>${wilayah}<br>K: ${komsel}</small></td>
+                    <td><small>${jabatan}<br>F: ${fungsi}</small></td>
+                    <td style="text-align:center; font-size:18px;">${fileHtml}</td>
+                    <td>
+                        <span class="${statusBadge}">${status}</span>
+                        <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${status}')">
+                            <i class="fas ${statusIcon}"></i>
+                        </button>
+                    </td>
+                    <td>
+                        <button onclick="openEditModal('${doc.id}')" class="btn-action" style="background:var(--accent); padding:4px 8px;"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${doc.id}')" class="btn-action" style="background:var(--danger); padding:4px 8px;"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            updateActionMenu();
         });
-        updateActionMenu();
-    });
-}
+    }
 
     // --- FUNGSI EXTRACT PDF ---
     function extractSelectedToPDF() {
