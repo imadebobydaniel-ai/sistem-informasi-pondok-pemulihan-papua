@@ -241,9 +241,9 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 
    <script>
     // 1. FIREBASE CONFIG
@@ -283,7 +283,7 @@
         });
     }
 
-    // 4. LOGIC LOGIN & VERIFIKASI
+    // 4. LOGIC LOGIN & VERIFIKASI (DIPERBARUI)
     document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('user_email').value.trim();
@@ -298,37 +298,40 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             const user = userCredential.user;
 
-            if (user.emailVerified) {
+            // Update status ke objek user untuk data terbaru
+            await user.reload();
+
+            if (auth.currentUser.emailVerified) {
                 localStorage.setItem("userEmail", email);
+                localStorage.setItem("userUID", user.uid);
                 localStorage.setItem("adminLoggedIn", "false");
 
+                // Update Firestore secara silent
                 await db.collection("users").doc(user.uid).update({
                     status_verifikasi: "Active"
-                }).catch(e => console.log("Update status skipped: ", e));
+                }).catch(e => console.log("Update status skipped"));
 
                 msgBox.innerText = "Login Berhasil! Mengalihkan...";
                 msgBox.className = "msg-success";
                 
                 setTimeout(() => { 
-                    window.location.href = "menu.html"; 
-                }, 1500);
+                    window.location.replace("menu.html"); 
+                }, 1000);
 
             } else {
-                msgBox.innerText = "Akun belum aktif! Silakan klik link verifikasi di email kamu.";
+                msgBox.innerText = "Akun belum aktif! Cek inbox/spam email kamu untuk link verifikasi.";
                 msgBox.className = "msg-error";
                 btn.innerText = "MASUK";
                 btn.disabled = false;
-                auth.signOut();
+                await auth.signOut();
             }
 
         } catch (err) {
+            console.error(err);
             let errorMessage = "Gagal login. Periksa kembali email dan password.";
             if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
                 errorMessage = "Email atau Password salah!";
-            } else if (err.code === "auth/invalid-login-credentials") {
-                 errorMessage = "Data login tidak valid. Pastikan email benar (cek tanda titik).";
             }
-            
             msgBox.innerText = errorMessage;
             msgBox.className = "msg-error";
             btn.innerText = "MASUK";
@@ -336,7 +339,7 @@
         }
     });
 
-    // 5. LOGIKA RESET PASSWORD (DENGAN LIMITASI 1 MENIT)
+    // 5. LOGIKA RESET PASSWORD
     const btnForgot = document.getElementById('btnForgot');
     const forgotModal = document.getElementById('forgotModal');
     const closeModal = document.getElementById('closeModal');
@@ -344,64 +347,32 @@
     const forgotEmailInput = document.getElementById('forgotEmail');
     const mainMsgBox = document.getElementById('login-msg');
 
-    // Buka Modal
     btnForgot.onclick = () => { forgotModal.style.display = 'flex'; };
-
-    // Tutup Modal
     closeModal.onclick = () => { forgotModal.style.display = 'none'; };
 
-    // Fungsi Kirim Link ke Email + Simpan Timestamp
     sendReset.onclick = async () => {
         const email = forgotEmailInput.value.trim();
-        
-        if (!email) {
-            alert("Mohon masukkan email Anda!");
-            return;
-        }
+        if (!email) { alert("Mohon masukkan email Anda!"); return; }
 
         sendReset.innerText = "Mengirim...";
         sendReset.disabled = true;
 
         try {
-            // A. Kirim email reset password melalui Firebase Auth
             await auth.sendPasswordResetEmail(email);
-            
-            // B. Simpan Timestamp permintaan ke Firestore untuk validasi 1 menit
-            // Kita mencari dokumen user berdasarkan email
-            const userQuery = await db.collection("users").where("email", "==", email).get();
-            
-            if (!userQuery.empty) {
-                const docId = userQuery.docs[0].id;
-                await db.collection("users").doc(docId).update({
-                    reset_request_at: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
-
-            // C. Feedback ke User
             forgotModal.style.display = 'none';
-            mainMsgBox.innerText = "Link perbaikan dikirim! Harap segera cek email (Link berlaku 1 menit).";
+            mainMsgBox.innerText = "Link pemulihan terkirim! Silakan cek email Anda.";
             mainMsgBox.className = "msg-success";
-            
             forgotEmailInput.value = "";
         } catch (error) {
-            let errRes = "Gagal mengirim email.";
-            if (error.code === "auth/user-not-found") {
-                errRes = "Email tersebut tidak terdaftar di sistem SIPAPUA!";
-            } else if (error.code === "auth/invalid-email") {
-                errRes = "Format email tidak valid!";
-            }
-            alert(errRes);
+            alert("Gagal: " + error.message);
         } finally {
             sendReset.innerText = "KIRIM LINK";
             sendReset.disabled = false;
         }
     };
 
-    // Menutup modal jika user klik di luar area modal
     window.onclick = (event) => {
-        if (event.target == forgotModal) {
-            forgotModal.style.display = "none";
-        }
+        if (event.target == forgotModal) { forgotModal.style.display = "none"; }
     };
 </script></body>
 </html>
