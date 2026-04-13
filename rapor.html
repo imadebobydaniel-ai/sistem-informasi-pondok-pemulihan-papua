@@ -171,23 +171,25 @@
         firebase.initializeApp(firebaseConfig);
     }
 
+    // POINT UTAMA: Inisialisasi Firestore secara eksplisit
+    const db = firebase.firestore();
+
     // --- INTEGRASI FIRESTORE ---
     function fetchDataJemaat() {
-        const db = firebase.firestore();
-        // Menggunakan ID dokumen spesifik Anda dari koleksi 'users'
         const userDocId = "1P18YJxbYiT42vjHBjma"; 
         const userRef = db.collection('users').doc(userDocId);
 
         userRef.onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                // Memasukkan data ke elemen ID yang sudah ada tanpa mengubah struktur
-                document.getElementById('display-nama').innerText = data.nama_lengkap || data.nama || '-';
-                document.getElementById('display-nij').innerText = data.nij || '-';
+                // Mencoba mengambil dari beberapa kemungkinan nama field di database Anda
+                document.getElementById('display-nama').innerText = data.nama || data.nama_lengkap || data.Name || '-';
+                document.getElementById('display-nij').innerText = data.nij || data.NIJ || '-';
                 document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || data.jemaat || '-';
                 document.getElementById('display-komsel-info').innerText = data.nama_komsel || data.komsel || '-';
             } else {
-                console.log("Data tidak ditemukan di Firestore");
+                console.log("Dokumen ID 1P18YJxbYiT42vjHBjma tidak ditemukan!");
+                document.getElementById('display-nama').innerText = "Data tidak ditemukan";
             }
         }, (error) => {
             console.error("Gagal sinkronisasi Firestore:", error);
