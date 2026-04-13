@@ -157,7 +157,6 @@
 
 <script>
     // --- KONFIGURASI FIREBASE ---
-    // (Tetap menggunakan config Anda, pastikan API Key sudah benar)
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -172,96 +171,69 @@
         firebase.initializeApp(firebaseConfig);
     }
 
-    const database = firebase.database();
+    const dataPribadi = {
+        "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75,
+        "Ibadah Raya": 100, "Komsel Gabungan": 85, "Kegiatan KD": 60,
+        "Latihan": 30, "Pelayanan": 95
+    };
 
-    // Mapping Kategori Warna (Tetap sesuai standar Anda)
     function getKategori(val) {
-        if (val === "" || val === null || isNaN(val)) return { label: '', class: '' };
+        if (val === "" || val === null) return { label: '', class: '' };
         if (val < 50) return { label: 'SANGAT KURANG', class: 'bg-sangat-kurang' };
         if (val < 80) return { label: 'KURANG', class: 'bg-kurang' };
         if (val < 95) return { label: 'CUKUP', class: 'bg-cukup' };
         return { label: 'SANGAT BAIK', class: 'bg-sangat-baik' };
     }
 
-    // Fungsi Utama Integrasi
+    function exportToPDF() {
+        const element = document.getElementById('report-content');
+        const btn = document.querySelector('.pdf-export-btn');
+        
+        btn.style.display = 'none';
+
+        const opt = {
+            margin:       [10, 10, 10, 10],
+            filename:     'Rapor_Pondok_Pemulihan_Papua.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true,
+                logging: false,
+                y: 0 
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.style.display = 'block';
+        });
+    }
+
     function fetchDataJemaat() {
         const userId = "boby_daniel"; 
-        const userRef = database.ref('users/' + userId);
+        const userRef = firebase.database().ref('users/' + userId);
 
         userRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                // 1. Integrasi Info Profil
                 document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
                 document.getElementById('display-nij').innerText = data.nij || '-';
                 document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
                 document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
-
-                // 2. Integrasi & Routing Tabel (Mingguan)
-                renderTables(data.laporan_mingguan);
-
-                // 3. Integrasi Stat Cards & Charts (Berdasarkan Rata-rata atau Rekap)
-                updateVisuals(data.rekap_persentase);
             }
+        }, (error) => {
+            console.error("Gagal mengambil data Firebase:", error);
         });
     }
 
-    function renderTables(mingguan) {
+    function renderHalaman() {
+        const cardsCont = document.getElementById('cards-container');
         const excelTable = document.getElementById('excel-table-body');
         const excelTablePoin = document.getElementById('excel-table-body-poin');
         
-        const periodes = ["Minggu I", "Minggu II", "Minggu III", "Minggu IV"];
-        const keys = [
-            "alkitab", "ibadah_raya", "komsel", "komsel_gabungan", 
-            "pemimpin", "kegiatan_kd", "latihan", "pelayanan", "doa"
-        ];
-
-        let htmlPersentase = "";
-        let htmlPoin = "";
-
-        periodes.forEach((minggu, index) => {
-            const mKey = `minggu_${index + 1}`;
-            const rowData = mingguan ? mingguan[mKey] : null;
-
-            // Baris Tabel Persentase
-            htmlPersentase += `<tr><td>${minggu}</td>`;
-            // Baris Tabel Poin
-            htmlPoin += `<tr><td>${minggu}</td>`;
-
-            keys.forEach(k => {
-                const val = rowData ? rowData[k] : 0;
-                const kat = getKategori(val);
-                
-                // Isi Tabel Persentase dengan warna status
-                htmlPersentase += `<td class="${kat.class}">${val}%</td>`;
-                
-                // Rumus Poin: (Misal: Jika > 0 maka dapat poin 100, atau sesuai nilai mentah)
-                const poin = val > 0 ? 100 : 0; 
-                htmlPoin += `<td>${poin}</td>`;
-            });
-
-            htmlPersentase += `</tr>`;
-            htmlPoin += `</tr>`;
-        });
-
-        excelTable.innerHTML = htmlPersentase + `<tr class="separator"><td colspan="10"></td></tr>`;
-        excelTablePoin.innerHTML = htmlPoin + `<tr class="separator"><td colspan="10"></td></tr>`;
-    }
-
-    function updateVisuals(rekap) {
-        const cardsCont = document.getElementById('cards-container');
         cardsCont.innerHTML = "";
-
-        // Jika data Firebase kosong, gunakan default agar tidak error
-        const activeData = rekap || {
-            "Pembacaan FT": 0, "Kehadiran Doa": 0, "Kehadiran Komsel": 0,
-            "Ibadah Raya": 0, "Komsel Gabungan": 0, "Kegiatan KD": 0,
-            "Latihan": 0, "Pelayanan": 0
-        };
-
-        // Update Stat Cards
-        Object.keys(activeData).forEach(key => {
-            const val = activeData[key];
+        Object.keys(dataPribadi).forEach(key => {
+            const val = dataPribadi[key];
             const kat = getKategori(val);
             cardsCont.innerHTML += `
                 <div class="stat-card ${kat.class}">
@@ -270,23 +242,36 @@
                 </div>`;
         });
 
-        // Update Charts dengan data terbaru dari Firebase
-        updateCharts(activeData);
-    }
+        const listAnggota = [
+            { periode: "Minggu I" },
+            { periode: "Minggu II" },
+            { periode: "Minggu III" },
+            { periode: "Minggu IV" }
+        ];
 
-    function updateCharts(dataPribadi) {
-        // Hapus chart lama jika ada untuk mencegah tumpang tindih visual
-        const labels = Object.keys(dataPribadi);
-        const values = Object.values(dataPribadi);
+        let tableHTML = "";
+        listAnggota.forEach((user) => {
+            tableHTML += `
+                <tr>
+                    <td>${user.periode}</td>
+                    <td></td> <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> </tr>`;
+        });
+        
+        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
 
         new Chart(document.getElementById('pieChart'), {
             type: 'pie',
             data: {
-                labels: labels,
-                datasets: [{ 
-                    data: values, 
-                    backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] 
-                }]
+                labels: Object.keys(dataPribadi),
+                datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
             },
             options: { responsive: true, maintainAspectRatio: true }
         });
@@ -294,36 +279,17 @@
         new Chart(document.getElementById('barChart'), {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{ 
-                    label: 'Capaian', 
-                    data: values, 
-                    backgroundColor: '#548235' 
-                }]
+                labels: Object.keys(dataPribadi),
+                datasets: [{ label: 'Capaian', data: Object.values(dataPribadi), backgroundColor: '#548235' }]
             },
             options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
 
-    // Fungsi Export PDF (Tetap sesuai original Anda)
-    function exportToPDF() {
-        const element = document.getElementById('report-content');
-        const btn = document.querySelector('.pdf-export-btn');
-        btn.style.display = 'none';
-        const opt = {
-            margin: [10, 10, 10, 10],
-            filename: 'Rapor_Pondok_Pemulihan_Papua.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-        html2pdf().set(opt).from(element).save().then(() => {
-            btn.style.display = 'block';
-        });
-    }
-
     window.onload = function() {
-        fetchDataJemaat(); // Langsung memanggil data dari Firebase saat load
+        renderHalaman();
+        fetchDataJemaat();
     };
-</script></body>
+</script>
+</body>
 </html>
