@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -160,9 +159,10 @@
     // --- KONFIGURASI FIREBASE ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project", 
-        storageBucket: "boby-apps-project.appspot.com",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
         messagingSenderId: "YOUR_ID",
         appId: "YOUR_APP_ID"
     };
@@ -170,26 +170,37 @@
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
-    const db = firebase.firestore();
+
+    const dataPribadi = {
+        "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75,
+        "Ibadah Raya": 100, "Komsel Gabungan": 85, "Kegiatan KD": 60,
+        "Latihan": 30, "Pelayanan": 95
+    };
 
     function getKategori(val) {
-        const numericVal = parseFloat(val) || 0;
-        if (numericVal < 50) return { label: 'SANGAT KURANG', class: 'bg-sangat-kurang' };
-        if (numericVal < 80) return { label: 'KURANG', class: 'bg-kurang' };
-        if (numericVal < 95) return { label: 'CUKUP', class: 'bg-cukup' };
+        if (val === "" || val === null) return { label: '', class: '' };
+        if (val < 50) return { label: 'SANGAT KURANG', class: 'bg-sangat-kurang' };
+        if (val < 80) return { label: 'KURANG', class: 'bg-kurang' };
+        if (val < 95) return { label: 'CUKUP', class: 'bg-cukup' };
         return { label: 'SANGAT BAIK', class: 'bg-sangat-baik' };
     }
 
     function exportToPDF() {
         const element = document.getElementById('report-content');
         const btn = document.querySelector('.pdf-export-btn');
+        
         btn.style.display = 'none';
 
         const opt = {
             margin:       [10, 10, 10, 10],
             filename:     'Rapor_Pondok_Pemulihan_Papua.pdf',
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false, y: 0 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true,
+                logging: false,
+                y: 0 
+            },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
         };
 
@@ -199,63 +210,43 @@
     }
 
     function fetchDataJemaat() {
-        // ID Dokumen sesuai database Anda
-        const userDocId = "XyDbpciDX4UKVxkFNddNiXuMTqj2"; 
-        
-        db.collection('users').doc(userDocId).onSnapshot((doc) => {
-            if (doc.exists) {
-                const userData = doc.data();
+        const userId = "boby_daniel"; 
+        const userRef = firebase.database().ref('users/' + userId);
 
-                // 1. Update Header Info
-                document.getElementById('display-nama').innerText = userData.nama_lengkap || '-';
-                document.getElementById('display-nij').innerText = userData.nij || '-';
-                document.getElementById('display-komsel-info').innerText = userData.komsel || '-';
-                document.getElementById('display-jemaat').innerText = userData.lokasi_berjemaat || '-';
-
-                // 2. Siapkan data untuk Chart & Cards (Data Pribadi dinamis dari Firestore)
-                const dataReal = {
-                    "Pembacaan FT": userData.pembacaan_ft || 0,
-                    "Kehadiran Doa": userData.kehadiran_doa || 0,
-                    "Kehadiran Komsel": userData.kehadiran_komsel || 0,
-                    "Ibadah Raya": userData.ibadah_raya || 0,
-                    "Komsel Gabungan": userData.komsel_gabungan || 0,
-                    "Kegiatan KD": userData.kegiatan_kd || 0,
-                    "Latihan": userData.latihan || 0,
-                    "Pelayanan": userData.pelayanan || 0
-                };
-
-                // 3. Jalankan Render Visual & Tabel
-                renderHalaman(dataReal);
-            } else {
-                console.error("Dokumen tidak ditemukan!");
+        userRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
+                document.getElementById('display-nij').innerText = data.nij || '-';
+                document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
+                document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
             }
         }, (error) => {
-            console.error("Error Firestore:", error);
+            console.error("Gagal mengambil data Firebase:", error);
         });
     }
 
-    function renderHalaman(data) {
+    function renderHalaman() {
         const cardsCont = document.getElementById('cards-container');
         const excelTable = document.getElementById('excel-table-body');
         const excelTablePoin = document.getElementById('excel-table-body-poin');
         
-        // Render Stat Cards secara dinamis
         cardsCont.innerHTML = "";
-        Object.keys(data).forEach(key => {
-            const val = data[key];
+        Object.keys(dataPribadi).forEach(key => {
+            const val = dataPribadi[key];
             const kat = getKategori(val);
             cardsCont.innerHTML += `
                 <div class="stat-card ${kat.class}">
                     <div style="font-size:11px; opacity:0.9;">${key}</div>
                     <div style="font-size:22px; font-weight:bold;">${val}%</div>
-                    <div style="font-size:10px; font-weight:bold;">${kat.label}</div>
                 </div>`;
         });
 
-        // Struktur baris tabel tetap sesuai desain Anda
         const listAnggota = [
-            { periode: "Minggu I" }, { periode: "Minggu II" },
-            { periode: "Minggu III" }, { periode: "Minggu IV" }
+            { periode: "Minggu I" },
+            { periode: "Minggu II" },
+            { periode: "Minggu III" },
+            { periode: "Minggu IV" }
         ];
 
         let tableHTML = "";
@@ -263,45 +254,40 @@
             tableHTML += `
                 <tr>
                     <td>${user.periode}</td>
-                    <td></td> <td></td> <td></td> <td></td> 
-                    <td></td> <td></td> <td></td> <td></td> <td></td> 
-                </tr>`;
+                    <td></td> <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> </tr>`;
         });
         
         excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
         excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
 
-        // Render Grafik menggunakan data dari Firestore
-        updateCharts(data);
-    }
-
-    function updateCharts(data) {
-        const labels = Object.keys(data);
-        const values = Object.values(data);
-
-        if(window.myPie) window.myPie.destroy();
-        if(window.myBar) window.myBar.destroy();
-
-        window.myPie = new Chart(document.getElementById('pieChart'), {
+        new Chart(document.getElementById('pieChart'), {
             type: 'pie',
             data: {
-                labels: labels,
-                datasets: [{ data: values, backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
+                labels: Object.keys(dataPribadi),
+                datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
             },
             options: { responsive: true, maintainAspectRatio: true }
         });
 
-        window.myBar = new Chart(document.getElementById('barChart'), {
+        new Chart(document.getElementById('barChart'), {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: [{ label: 'Capaian (%)', data: values, backgroundColor: '#548235' }]
+                labels: Object.keys(dataPribadi),
+                datasets: [{ label: 'Capaian', data: Object.values(dataPribadi), backgroundColor: '#548235' }]
             },
             options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
 
     window.onload = function() {
+        renderHalaman();
         fetchDataJemaat();
     };
 </script>
