@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -159,10 +160,9 @@
     // --- KONFIGURASI FIREBASE ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project", 
+        storageBucket: "boby-apps-project.appspot.com",
         messagingSenderId: "YOUR_ID",
         appId: "YOUR_APP_ID"
     };
@@ -170,6 +170,7 @@
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
+    const db = firebase.firestore();
 
     const dataPribadi = {
         "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75,
@@ -210,19 +211,40 @@
     }
 
     function fetchDataJemaat() {
-        const userId = "boby_daniel"; 
-        const userRef = firebase.database().ref('users/' + userId);
+        // Menggunakan ID Dokumen sesuai database Firestore Anda
+        const userDocId = "XyDbpciDX4UKVxkFNddNiXuMTqj2"; 
+        
+        db.collection('users').doc(userDocId).onSnapshot((doc) => {
+            if (doc.exists) {
+                const userData = doc.data();
+                console.log("Data diterima:", userData);
 
-        userRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
-                document.getElementById('display-nij').innerText = data.nij || '-';
-                document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
-                document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
+                // MAPPING DATA KE ELEMENT HTML
+                if (document.getElementById('display-nama')) {
+                    document.getElementById('display-nama').innerText = userData.nama_lengkap || '-';
+                }
+                
+                if (document.getElementById('display-nij')) {
+                    document.getElementById('display-nij').innerText = userData.nij || '-';
+                }
+
+                if (document.getElementById('display-komsel-info')) {
+                    document.getElementById('display-komsel-info').innerText = userData.komsel || '-';
+                }
+
+                if (document.getElementById('display-jemaat')) {
+                    document.getElementById('display-jemaat').innerText = userData.lokasi_berjemaat || '-';
+                }
+
+                // VALIDASI UID UNTUK RENDER TABEL
+                if (userData.uid === "x5pM88lbPCSwhDcqb1Sb2bqbtew1") {
+                    renderHalaman(); 
+                }
+            } else {
+                console.error("Dokumen tidak ditemukan!");
             }
         }, (error) => {
-            console.error("Gagal mengambil data Firebase:", error);
+            console.error("Error Firestore:", error);
         });
     }
 
@@ -287,7 +309,6 @@
     }
 
     window.onload = function() {
-        renderHalaman();
         fetchDataJemaat();
     };
 </script>
