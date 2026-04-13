@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -25,7 +26,7 @@
         .bg-sangat-baik { background: #00FF00 !important; color: black !important; }
 
         /* Gaya Tabel Excel */
-        .excel-table-container { overflow-x: auto; margin-top: 20px; border-top: 3px solid #000; padding-top: 20px; margin-bottom: 30px; }
+        .excel-table-container { overflow-x: auto; margin-top: 20px; border-top: 3px solid #000; padding-top: 20px; margin-bottom: 30px; position: relative; }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; color: #000; }
         .excel-table th, .excel-table td { border: 1px solid #000; padding: 6px; text-align: center; }
         .excel-table th { background: #f2f2f2; text-transform: uppercase; }
@@ -41,16 +42,37 @@
         .info-row { display: flex; align-items: flex-start; margin-bottom: 2px; }
         .info-label { width: 120px; display: inline-block; font-weight: bold; }
 
+        /* Tombol Export PDF (Posisi Kanan Tabel) */
+        .pdf-export-btn {
+            position: absolute;
+            right: 0;
+            top: -10px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .pdf-export-btn:hover { background: #b71c1c; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
         @media (max-width: 768px) { .chart-section { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-<div class="dashboard-container">
+<div class="dashboard-container" id="report-content">
     <h2 style="text-align:center; margin-bottom:0;">REKAPITULASI RAPOR ANDA</h2>
     <p style="text-align:center; color:#666; margin-top:5px;">Periode: Maret 2026</p>
 
     <div class="excel-table-container">
+        <button class="pdf-export-btn" onclick="exportToPDF()">
+            <i class="fas fa-file-pdf"></i> EXTRACT PDF
+        </button>
+
         <div id="info-jemaat" class="info-jemaat-box">
             <div class="info-row"><span class="info-label">NAMA</span> : <span id="display-nama" style="margin-left: 10px; font-weight: bold;">Memuat...</span></div>
             <div class="info-row"><span class="info-label">NIJ</span> : <span id="display-nij" style="margin-left: 10px;">Memuat...</span></div>
@@ -121,6 +143,27 @@
         if (val < 80) return { label: 'KURANG', class: 'bg-kurang' };
         if (val < 95) return { label: 'CUKUP', class: 'bg-cukup' };
         return { label: 'SANGAT BAIK', class: 'bg-sangat-baik' };
+    }
+
+    // Fungsi Extract ke PDF
+    function exportToPDF() {
+        const element = document.getElementById('report-content');
+        const btn = document.querySelector('.pdf-export-btn');
+        
+        // Sembunyikan tombol saat proses cetak agar tidak ikut masuk ke PDF
+        btn.style.display = 'none';
+
+        const opt = {
+            margin:       [10, 10, 10, 10],
+            filename:     'Rapor_Pondok_Pemulihan_Papua.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.style.display = 'block'; // Tampilkan kembali tombol
+        });
     }
 
     function fetchDataJemaat() {
