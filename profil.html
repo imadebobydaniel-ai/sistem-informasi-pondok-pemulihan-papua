@@ -67,12 +67,58 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
-    
+
     const rawEmail = localStorage.getItem("userEmail");
     const userEmail = rawEmail ? rawEmail.toLowerCase().trim() : null;
     const debug = document.getElementById("debug-msg");
 
-    // --- LOGIKA APRIL ---
+    // --- LOGIKA SINKRONISASI DATA USER ---
+    if (userEmail) {
+        db.collection("users").where("email", "==", userEmail)
+        .onSnapshot((querySnapshot) => {
+            if (!querySnapshot.empty) {
+                const d = querySnapshot.docs[0].data();
+                
+                // Sinkronisasi data ke elemen profil
+                const elNama = document.getElementById("nama_lengkap"); 
+                const elNIJ = document.getElementById("no_komsel");
+                const elJemaat = document.getElementById("lokasi_berjemaat");
+                const elKomsel = document.getElementById("lokasi_komsel");
+                const elFoto = document.getElementById('view-foto');
+
+                if(elNama) elNama.innerText = d.nama_lengkap || d.nama || "Tanpa Nama";
+                if(elNIJ) elNIJ.innerText = d.nij || "-";
+                if(elJemaat) elJemaat.innerText = d.lokasi_berjemaat || "-";
+                if(elKomsel) elKomsel.innerText = d.komsel || "-";
+                if(elFoto) elFoto.src = d.foto_profil || d.url_berkas || "https://via.placeholder.com/150";
+
+                // Update field tambahan
+                if(document.getElementById("jabatan")) document.getElementById("jabatan").innerText = d.jabatan || "-";
+                if(document.getElementById("email_aktif")) document.getElementById("email_aktif").innerText = d.email || "-";
+                if(document.getElementById("no_hp")) document.getElementById("no_hp").innerText = d.whatsapp || "-";
+                if(document.getElementById("gol_darah")) document.getElementById("gol_darah").innerText = d.darah || "-";
+                if(document.getElementById("alamat")) document.getElementById("alamat").innerText = d.alamat || "-";
+
+                // Update Header Menu jika ada selector terkait
+                const menuNama = document.querySelector(".header-user-name");
+                const menuKomsel = document.querySelector(".header-komsel-name");
+                if(menuNama) menuNama.innerText = d.nama_lengkap || d.nama;
+                if(menuKomsel) menuKomsel.innerText = d.komsel || "-";
+
+                if(debug) debug.innerText = "";
+                console.log("Data Identitas Berhasil Disinkronkan");
+            } else {
+                if(debug) debug.innerHTML = `<span style='color:orange'>ℹ️ Akun tidak terdaftar.</span>`;
+            }
+        }, (error) => {
+            console.error("Error Firestore:", error);
+            if(debug) debug.innerHTML = `<span style='color:red'>❌ Error: ${error.message}</span>`;
+        });
+    } else {
+        if(debug) debug.innerHTML = "<span style='color:red'>⚠️ Sesi Habis. Silakan Login Kembali.</span>";
+    }
+
+    // --- LOGIKA APRIL 2026 ---
     const skrg = new Date();
     const bulanIni = skrg.getMonth(); 
     const tahunIni = skrg.getFullYear();
@@ -80,43 +126,6 @@
         document.querySelectorAll(".persentase-box").forEach(el => {
             el.innerText = "0%";
             el.style.backgroundColor = "#e0e0e0"; 
-        });
-    }
-
-    if (!userEmail) {
-        debug.innerHTML = "<span style='color:red'>⚠️ Sesi Habis. Silakan Login Kembali.</span>";
-    } else {
-        debug.innerText = "⌛ Menghubungkan ke database...";
-
-        db.collection("users").where("email", "==", userEmail)
-        .onSnapshot((querySnapshot) => {
-            if (!querySnapshot.empty) {
-                const d = querySnapshot.docs[0].data();
-                console.log("Data ditemukan:", d);
-
-                // 1. Foto Profil (Mengambil dari field 'foto_profil' atau 'url_berkas')
-                document.getElementById('view-foto').src = d.foto_profil || d.url_berkas || "https://via.placeholder.com/150";
-
-                // 2. Sinkronisasi Field (Disesuaikan dengan database Anda)
-                document.getElementById("nama_lengkap").innerText = d.nama_lengkap || "Tanpa Nama";
-                document.getElementById("no_komsel").innerText = d.nij || "-";
-                document.getElementById("jabatan").innerText = d.jabatan || "-";
-                document.getElementById("email_aktif").innerText = d.email || "-";
-                
-                // Perhatikan pemanggilan di bawah ini:
-                document.getElementById("no_hp").innerText = d.whatsapp || "-"; 
-                document.getElementById("lokasi_berjemaat").innerText = d.lokasi_berjemaat || "-";
-                document.getElementById("lokasi_komsel").innerText = d.komsel || "-";
-                document.getElementById("gol_darah").innerText = d.darah || "-";
-                document.getElementById("alamat").innerText = d.alamat || "-";
-
-                debug.innerText = ""; // Hilangkan pesan loading
-            } else {
-                debug.innerHTML = `<span style='color:orange'>ℹ️ Akun '${userEmail}' tidak terdaftar.</span>`;
-            }
-        }, (error) => {
-            console.error("Error Firestore:", error);
-            debug.innerHTML = `<span style='color:red'>❌ Error: ${error.message}</span>`;
         });
     }
 
