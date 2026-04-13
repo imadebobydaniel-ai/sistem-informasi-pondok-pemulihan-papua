@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rapor Anda - Lengkap</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -159,23 +158,23 @@
 <script>
     // --- KONFIGURASI FIREBASE ---
     const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        databaseURL: "https://boby-apps-project-default-rtdb.firebaseio.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.firebasestorage.app",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
     };
     
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
 
-    let dataPribadi = {
-        "Pembacaan FT": 0, "Kehadiran Doa": 0, "Kehadiran Komsel": 0,
-        "Ibadah Raya": 0, "Komsel Gabungan": 0, "Kegiatan KD": 0,
-        "Latihan": 0, "Pelayanan": 0
+    const dataPribadi = {
+        "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75,
+        "Ibadah Raya": 100, "Komsel Gabungan": 85, "Kegiatan KD": 60,
+        "Latihan": 30, "Pelayanan": 95
     };
 
     function getKategori(val) {
@@ -210,76 +209,27 @@
         });
     }
 
-    // Fungsi Pengambilan Data Berbasis Auth (Sesuai Perintah)
     function fetchDataJemaat() {
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                const userId = user.uid; 
-                console.log("User terdeteksi dengan UID:", userId);
-                
-                const userRef = firebase.database().ref('users/' + userId);
+        const userId = "boby_daniel"; 
+        const userRef = firebase.database().ref('users/' + userId);
 
-                userRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
-                        document.getElementById('display-nij').innerText = data.nij || '-';
-                        document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
-                        document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
-                        
-                        if(data.performa) {
-                            Object.keys(data.performa).forEach(key => {
-                                if(dataPribadi.hasOwnProperty(key)) {
-                                    dataPribadi[key] = data.performa[key];
-                                }
-                            });
-                            renderHalaman(); 
-                        }
-
-                        if(data.laporan_mingguan) {
-                            renderTabelOtomatis(data.laporan_mingguan);
-                        }
-                    } else {
-                        console.warn("Data profil belum dibuat di Realtime Database untuk UID ini.");
-                    }
-                }, (error) => {
-                    console.error("Gagal mengambil data Firebase:", error);
-                });
-            } else {
-                console.log("Tidak ada user aktif, mengalihkan...");
-                window.location.href = "login.html"; 
+        userRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
+                document.getElementById('display-nij').innerText = data.nij || '-';
+                document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
+                document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
             }
+        }, (error) => {
+            console.error("Gagal mengambil data Firebase:", error);
         });
-    }
-
-    // Fungsi Render Tabel Otomatis (Sesuai Perintah)
-    function renderTabelOtomatis(laporan) {
-        const excelTable = document.getElementById('excel-table-body');
-        const excelTablePoin = document.getElementById('excel-table-body-poin');
-        let tableHTML = "";
-        
-        laporan.forEach((minggu) => {
-            tableHTML += `
-                <tr>
-                    <td>${minggu.periode}</td>
-                    <td>${minggu.alkitab || ''}</td>
-                    <td>${minggu.ibadah_raya || ''}</td>
-                    <td>${minggu.komsel || ''}</td>
-                    <td>${minggu.komsel_gab || ''}</td>
-                    <td>${minggu.pemimpin || ''}</td>
-                    <td>${minggu.kd || ''}</td>
-                    <td>${minggu.latihan || ''}</td>
-                    <td>${minggu.pelayanan || ''}</td>
-                    <td>${minggu.doa || ''}</td>
-                </tr>`;
-        });
-        
-        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
-        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
     }
 
     function renderHalaman() {
         const cardsCont = document.getElementById('cards-container');
+        const excelTable = document.getElementById('excel-table-body');
+        const excelTablePoin = document.getElementById('excel-table-body-poin');
         
         cardsCont.innerHTML = "";
         Object.keys(dataPribadi).forEach(key => {
@@ -292,14 +242,32 @@
                 </div>`;
         });
 
-        // Menghapus chart lama sebelum membuat baru untuk menghindari tumpang tindih
-        const pieCtx = document.getElementById('pieChart').getContext('2d');
-        const barCtx = document.getElementById('barChart').getContext('2d');
-        
-        if (window.myPieChart) window.myPieChart.destroy();
-        if (window.myBarChart) window.myBarChart.destroy();
+        const listAnggota = [
+            { periode: "Minggu I" },
+            { periode: "Minggu II" },
+            { periode: "Minggu III" },
+            { periode: "Minggu IV" }
+        ];
 
-        window.myPieChart = new Chart(pieCtx, {
+        let tableHTML = "";
+        listAnggota.forEach((user) => {
+            tableHTML += `
+                <tr>
+                    <td>${user.periode}</td>
+                    <td></td> <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> </tr>`;
+        });
+        
+        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+
+        new Chart(document.getElementById('pieChart'), {
             type: 'pie',
             data: {
                 labels: Object.keys(dataPribadi),
@@ -308,7 +276,7 @@
             options: { responsive: true, maintainAspectRatio: true }
         });
 
-        window.myBarChart = new Chart(barCtx, {
+        new Chart(document.getElementById('barChart'), {
             type: 'bar',
             data: {
                 labels: Object.keys(dataPribadi),
@@ -319,6 +287,7 @@
     }
 
     window.onload = function() {
+        renderHalaman();
         fetchDataJemaat();
     };
 </script>
