@@ -172,10 +172,10 @@
         firebase.initializeApp(firebaseConfig);
     }
 
-    const dataPribadi = {
-        "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75,
-        "Ibadah Raya": 100, "Komsel Gabungan": 85, "Kegiatan KD": 60,
-        "Latihan": 30, "Pelayanan": 95
+    let dataPribadi = {
+        "Pembacaan FT": 0, "Kehadiran Doa": 0, "Kehadiran Komsel": 0,
+        "Ibadah Raya": 0, "Komsel Gabungan": 0, "Kegiatan KD": 0,
+        "Latihan": 0, "Pelayanan": 0
     };
 
     function getKategori(val) {
@@ -210,27 +210,76 @@
         });
     }
 
+    // Fungsi Pengambilan Data Berbasis Auth (Sesuai Perintah)
     function fetchDataJemaat() {
-        const userId = "boby_daniel"; 
-        const userRef = firebase.database().ref('users/' + userId);
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                const userId = user.uid; 
+                console.log("User terdeteksi dengan UID:", userId);
+                
+                const userRef = firebase.database().ref('users/' + userId);
 
-        userRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
-                document.getElementById('display-nij').innerText = data.nij || '-';
-                document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
-                document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
+                userRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
+                        document.getElementById('display-nij').innerText = data.nij || '-';
+                        document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
+                        document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
+                        
+                        if(data.performa) {
+                            Object.keys(data.performa).forEach(key => {
+                                if(dataPribadi.hasOwnProperty(key)) {
+                                    dataPribadi[key] = data.performa[key];
+                                }
+                            });
+                            renderHalaman(); 
+                        }
+
+                        if(data.laporan_mingguan) {
+                            renderTabelOtomatis(data.laporan_mingguan);
+                        }
+                    } else {
+                        console.warn("Data profil belum dibuat di Realtime Database untuk UID ini.");
+                    }
+                }, (error) => {
+                    console.error("Gagal mengambil data Firebase:", error);
+                });
+            } else {
+                console.log("Tidak ada user aktif, mengalihkan...");
+                window.location.href = "login.html"; 
             }
-        }, (error) => {
-            console.error("Gagal mengambil data Firebase:", error);
         });
+    }
+
+    // Fungsi Render Tabel Otomatis (Sesuai Perintah)
+    function renderTabelOtomatis(laporan) {
+        const excelTable = document.getElementById('excel-table-body');
+        const excelTablePoin = document.getElementById('excel-table-body-poin');
+        let tableHTML = "";
+        
+        laporan.forEach((minggu) => {
+            tableHTML += `
+                <tr>
+                    <td>${minggu.periode}</td>
+                    <td>${minggu.alkitab || ''}</td>
+                    <td>${minggu.ibadah_raya || ''}</td>
+                    <td>${minggu.komsel || ''}</td>
+                    <td>${minggu.komsel_gab || ''}</td>
+                    <td>${minggu.pemimpin || ''}</td>
+                    <td>${minggu.kd || ''}</td>
+                    <td>${minggu.latihan || ''}</td>
+                    <td>${minggu.pelayanan || ''}</td>
+                    <td>${minggu.doa || ''}</td>
+                </tr>`;
+        });
+        
+        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
     }
 
     function renderHalaman() {
         const cardsCont = document.getElementById('cards-container');
-        const excelTable = document.getElementById('excel-table-body');
-        const excelTablePoin = document.getElementById('excel-table-body-poin');
         
         cardsCont.innerHTML = "";
         Object.keys(dataPribadi).forEach(key => {
@@ -243,32 +292,14 @@
                 </div>`;
         });
 
-        const listAnggota = [
-            { periode: "Minggu I" },
-            { periode: "Minggu II" },
-            { periode: "Minggu III" },
-            { periode: "Minggu IV" }
-        ];
-
-        let tableHTML = "";
-        listAnggota.forEach((user) => {
-            tableHTML += `
-                <tr>
-                    <td>${user.periode}</td>
-                    <td></td> <td></td> 
-                    <td></td> 
-                    <td></td> 
-                    <td></td> 
-                    <td></td> 
-                    <td></td> 
-                    <td></td> 
-                    <td></td> </tr>`;
-        });
+        // Menghapus chart lama sebelum membuat baru untuk menghindari tumpang tindih
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        const barCtx = document.getElementById('barChart').getContext('2d');
         
-        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
-        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        if (window.myPieChart) window.myPieChart.destroy();
+        if (window.myBarChart) window.myBarChart.destroy();
 
-        new Chart(document.getElementById('pieChart'), {
+        window.myPieChart = new Chart(pieCtx, {
             type: 'pie',
             data: {
                 labels: Object.keys(dataPribadi),
@@ -277,7 +308,7 @@
             options: { responsive: true, maintainAspectRatio: true }
         });
 
-        new Chart(document.getElementById('barChart'), {
+        window.myBarChart = new Chart(barCtx, {
             type: 'bar',
             data: {
                 labels: Object.keys(dataPribadi),
@@ -288,7 +319,6 @@
     }
 
     window.onload = function() {
-        renderHalaman();
         fetchDataJemaat();
     };
 </script>
