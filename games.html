@@ -37,10 +37,10 @@
         @keyframes pulse { 0% { transform: scale(1); } 70% { transform: scale(1.05); } 100% { transform: scale(1); } }
         #start-btn-container button { animation: pulse 1.5s infinite; }
 
-        /* TAMBAHAN BARU: CSS LEADERBOARD */
+        /* CSS LEADERBOARD */
         .leaderboard-section {
-            display: block;
-            height: 40vh; /* Setengah layar bagian bawah */
+            display: none; /* Awalnya disembunyikan sesuai permintaan */
+            height: 40vh;
             margin-top: 10px;
             background: rgba(0, 20, 40, 0.7);
             border-top: 2px solid var(--emas);
@@ -110,7 +110,13 @@
         <button id="ll-audience" class="btn-lifeline" onclick="useAudience()"><i class="fa-solid fa-users"></i></button>
     </div>
 
-    <div class="leaderboard-section">
+    <div style="text-align: center; margin-top: 15px;">
+        <button id="btn-toggle-lb" onclick="toggleLeaderboard()" style="background: rgba(212, 175, 55, 0.2); color: var(--emas); border: 1px solid var(--emas); padding: 8px 15px; border-radius: 10px; cursor: pointer; font-size: 12px;">
+            <i class="fa-solid fa-list-ol"></i> TAMPILKAN PERINGKAT
+        </button>
+    </div>
+
+    <div id="leaderboard-container" class="leaderboard-section">
         <div class="lb-title"><i class="fa-solid fa-trophy"></i> Peringkat Pemain</div>
         <table class="lb-table">
             <thead>
@@ -132,7 +138,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Firebase Config (Tetap)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -144,7 +149,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Data Audio & Quiz (Tetap)
     const soundOpening = new Audio('OPENING SOUND-new.mp3');
     const soundStart   = new Audio('START SOUND-new.mp3');
     const soundCorrect = new Audio('jawaban_benar.mp3');
@@ -155,11 +159,9 @@
     soundOpening.loop = true;
     soundBgGame.loop = true;
 
-    // Quiz Raw Data (Tetap - Dipotong untuk ringkasan tapi silakan gunakan data lengkap Anda)
     const quizRawData = [
         { q: "Siapa raja pertama bangsa Israel?", a: ["Daud", "Saul", "Salomo", "Yosua"], c: 1 },
         { q: "Apa arti nama 'Imanuel'?", a: ["Allah Mahakuasa", "Tuhan Raja kami", "Allah menyertai kita", "Gembala Baik"], c: 2 },
-        // ... (lanjutkan dengan semua data quiz Anda yang asli)
         { q: "Apa isi Tabut Perjanjian?", a: ["Loh Batu", "Mahkota Daud", "Jubah Harun", "Pedang Musa"], c: 0 }
     ];
 
@@ -172,7 +174,18 @@
     let winStreak = parseInt(localStorage.getItem("winStreak")) || 0;
     let userData = JSON.parse(localStorage.getItem("userData")) || null;
 
-    // TAMBAHAN BARU: FUNGSI AMBIL LEADERBOARD (Real-time)
+    function toggleLeaderboard() {
+        const lb = document.getElementById('leaderboard-container');
+        const btn = document.getElementById('btn-toggle-lb');
+        if (lb.style.display === 'none' || lb.style.display === '') {
+            lb.style.display = 'block';
+            btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> SEMBUNYIKAN PERINGKAT';
+        } else {
+            lb.style.display = 'none';
+            btn.innerHTML = '<i class="fa-solid fa-list-ol"></i> TAMPILKAN PERINGKAT';
+        }
+    }
+
     function fetchLeaderboard() {
         db.collection("game_scores")
           .orderBy("skor", "desc")
@@ -183,14 +196,15 @@
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 let badgeClass = "";
-                if(data.streak >= 7) badgeClass = "rank-gold";
-                else if(data.streak >= 4) badgeClass = "rank-silver";
-                else if(data.streak >= 2) badgeClass = "rank-bronze";
+                let streakVal = data.streak || 0;
+                if(streakVal >= 7) badgeClass = "rank-gold";
+                else if(streakVal >= 4) badgeClass = "rank-silver";
+                else if(streakVal >= 2) badgeClass = "rank-bronze";
 
                 const row = `<tr>
-                    <td>${data.nama}</td>
-                    <td>${data.skor}</td>
-                    <td>${data.streak}x</td>
+                    <td>${data.nama || "Anonim"}</td>
+                    <td>${data.skor || 0}</td>
+                    <td>${streakVal}x</td>
                     <td class="${badgeClass}">${data.predikat || "-"}</td>
                 </tr>`;
                 body.innerHTML += row;
@@ -198,10 +212,8 @@
         });
     }
 
-    // Panggil Leaderboard saat load
     window.onload = fetchLeaderboard;
 
-    // Logika Game (Tetap Sesuai Struktur Anda)
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -233,14 +245,16 @@
     function startGlobalTimer() {
         const circle = document.getElementById('progress');
         const text = document.getElementById('timer-text');
+        const initialTime = 180;
         timerInterval = setInterval(() => {
             totalTime--;
             text.innerText = totalTime;
-            const offset = (totalTime / 180) * 251;
+            const offset = (totalTime / initialTime) * 251;
             circle.style.strokeDashoffset = 251 - offset;
             if (totalTime <= 0) {
                 clearInterval(timerInterval);
-                handleFailure("WAKTU HABIS");
+                if(score > 0) finishGame();
+                else handleFailure("WAKTU HABIS");
             }
         }, 1000);
     }
@@ -264,16 +278,24 @@
 
     function checkAnswer(idx, btn) {
         const correct = quizData[currentQ].c;
+        const allButtons = document.querySelectorAll('.btn-answer');
+        allButtons.forEach(b => b.style.pointerEvents = 'none');
+
         if(idx === correct) {
             soundCorrect.play().catch(() => {});
             btn.classList.add('correct');
             score += 20;
             setTimeout(() => {
                 currentQ++;
-                loadQuestion();
+                if (currentQ < quizData.length) {
+                    loadQuestion();
+                } else {
+                    finishGame();
+                }
             }, 1000);
         } else {
             btn.classList.add('wrong');
+            document.getElementById(`ans-${correct}`).classList.add('correct');
             handleFailure("JAWABAN SALAH");
         }
     }
@@ -336,7 +358,6 @@
         };
     }
 
-    // Lifelines (Tetap)
     function use5050() {
         if(document.getElementById('ll-5050').classList.contains('used')) return;
         const correct = quizData[currentQ].c;
