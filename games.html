@@ -29,7 +29,24 @@
         .lifelines-container { display: flex; justify-content: center; gap: 15px; margin: 10px 0; }
         .btn-lifeline { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--emas); background: var(--biru-tua); color: var(--emas); font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; padding: 0; overflow: hidden; box-sizing: border-box; }
         .btn-lifeline.used { opacity: 0.3; cursor: default; }
-        #leaderboard-overlay { display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 55vh; background: white; border-radius: 25px 25px 0 0; z-index: 5000; overflow-y: auto; padding: 15px; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+
+        /* Tampilan Leaderboard Setengah Layar */
+        #leaderboard-overlay { 
+            display: none; 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 50vh; 
+            background: white; 
+            border-radius: 25px 25px 0 0; 
+            z-index: 5000; 
+            overflow-y: auto; 
+            padding: 15px; 
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5); 
+            box-sizing: border-box;
+        }
+
         .rank-card { background: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #ddd; }
         .rank-numb { font-weight: bold; color: var(--biru-tua); width: 25px; }
         .rank-img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 1px solid var(--emas); }
@@ -123,12 +140,11 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // --- INISIALISASI AUDIO (Nama file sudah disesuaikan) ---
     const soundOpening = new Audio('OPENING SOUND-new.mp3');
     const soundStart = new Audio('START SOUND-new.mp3');
     const soundBg = new Audio('background_soal.mp3');
     const soundCorrect = new Audio('jawaban_benar.mp3');
-    const soundWrong = new Audio('timer_tick.mp3'); // Menggunakan intens sound untuk salah
+    const soundWrong = new Audio('timer_tick.mp3');
     const soundTimer = new Audio('timer_tick.mp3');
     const soundWin = new Audio('pemenang.mp3');
 
@@ -136,7 +152,6 @@
     soundBg.loop = true;
     soundTimer.loop = true;
 
-    // --- DAFTAR SOAL ---
     const quizRawData = [
         { q: "Siapa raja pertama bangsa Israel?", a: ["Daud", "Saul", "Salomo", "Yosua"], c: 1 },
         { q: "Apa arti nama 'Imanuel'?", a: ["Allah Mahakuasa", "Tuhan Raja kami", "Allah menyertai kita", "Gembala Baik"], c: 2 },
@@ -227,9 +242,7 @@
         isGameStarted = true;
         soundOpening.pause();
         soundStart.play().catch(() => {});
-        
         document.getElementById('start-btn-container').style.display = 'none';
-        
         setTimeout(() => {
             soundBg.play().catch(() => {});
             soundTimer.play().catch(() => {});
@@ -256,16 +269,12 @@
         document.getElementById('question-text').innerText = data.q;
         const container = document.getElementById('answers-container');
         container.innerHTML = '';
-        
         data.a.forEach((ans, idx) => {
             const btn = document.createElement('button');
             btn.className = 'btn-answer';
             btn.id = `ans-${idx}`;
             btn.innerHTML = `<b>${String.fromCharCode(65 + idx)}:</b> ${ans}`;
-            btn.onclick = () => {
-                if(!isGameStarted) return;
-                checkAnswer(idx, btn);
-            };
+            btn.onclick = () => { if(!isGameStarted) return; checkAnswer(idx, btn); };
             container.appendChild(btn);
         });
     }
@@ -293,6 +302,7 @@
         }
     }
 
+    // LOGIKA AKUMULASI SKOR (Pemain sama = Skor bertambah)
     async function finishGame() {
         clearInterval(timerInterval);
         soundBg.pause(); soundTimer.pause();
@@ -301,13 +311,24 @@
             const ref = db.collection("game_scores").doc(userData.email);
             const doc = await ref.get();
             if(doc.exists) {
-                await ref.update({ skor: doc.data().skor + score, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                // Akumulasi skor lama + skor baru
+                await ref.update({ 
+                    skor: doc.data().skor + score, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp() 
+                });
             } else {
-                await ref.set({ nama: userData.nama, email: userData.email, skor: score, foto: userData.foto_profil || "", timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                // Pemain baru
+                await ref.set({ 
+                    nama: userData.nama, 
+                    email: userData.email, 
+                    skor: score, 
+                    foto: userData.foto_profil || "", 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp() 
+                });
             }
         }
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        showNotif("SELESAI!", `Poin ${score} berhasil disimpan.`, "success", () => location.reload());
+        showNotif("SELESAI!", `Poin ${score} ditambahkan ke total skor Anda.`, "success", () => location.reload());
     }
 
     function showNotif(title, msg, icon, action) {
@@ -332,11 +353,19 @@
     function loadLeaderboard() {
         const list = document.getElementById('rank-list');
         list.innerHTML = "<p style='text-align:center;'>Memuat...</p>";
-        db.collection("game_scores").orderBy("skor", "desc").limit(15).get().then(snap => {
+        db.collection("game_scores").orderBy("skor", "desc").limit(10).get().then(snap => {
             let html = ""; let rank = 1;
             snap.forEach(doc => {
                 const d = doc.data();
-                html += `<div class="rank-card"><div class="rank-numb">${rank++}</div><img src="${d.foto || 'https://via.placeholder.com/100'}" class="rank-img"><div class="rank-info"><p class="rank-name">${d.nama}</p></div><div class="rank-score">${d.skor.toLocaleString()} Pt</div></div>`;
+                html += `
+                    <div class="rank-card">
+                        <div class="rank-numb">${rank++}</div>
+                        <img src="${d.foto || 'https://via.placeholder.com/100'}" class="rank-img">
+                        <div class="rank-info">
+                            <p class="rank-name" style="margin:0; font-size:13px; font-weight:bold;">${d.nama}</p>
+                        </div>
+                        <div class="rank-score">${d.skor.toLocaleString()} Pt</div>
+                    </div>`;
             });
             list.innerHTML = html || "<p style='text-align:center;'>Belum ada pemain.</p>";
         });
