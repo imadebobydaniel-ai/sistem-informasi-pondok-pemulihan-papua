@@ -39,18 +39,46 @@
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .splash-hidden { opacity: 0 !important; visibility: hidden !important; }
 
-        /* --- ASISTEN VIRTUAL (MODIFIKASI VISUAL & TOMBOL) --- */
+        /* --- ASISTEN VIRTUAL (MODIFIKASI VISUAL & SMOOTH TRANSITION) --- */
         #assistant-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #0a0f1f, #000);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 888888;
+            opacity: 0; visibility: hidden;
+            transition: opacity 1.5s ease, visibility 1.5s ease; /* Fade Smooth */
         }
+        
+        #assistant-container.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
         .assistant-img {
             width: 300px;
-            animation: breathing 4s ease-in-out infinite;
-            filter: drop-shadow(0 0 25px rgba(0,212,255,0.3));
+            animation: breathing 4s ease-in-out infinite, aura-glow 3s infinite alternate; /* Cahaya Dinamis */
+            filter: drop-shadow(0 0 25px rgba(0, 212, 255, 0.4));
+            transition: transform 0.1s ease-in-out;
         }
+
+        /* Efek Cahaya Aura */
+        @keyframes aura-glow {
+            from { filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.4)) brightness(1); }
+            to { filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.8)) brightness(1.2); }
+        }
+
+        /* Penambahan Efek Stop Motion */
+        @keyframes talkingStopMotion {
+            0% { transform: scale(1) rotate(0deg) translateY(0); }
+            25% { transform: scale(1.02) rotate(1.5deg) translateY(-3px); }
+            50% { transform: scale(1) rotate(-1.5deg) translateY(0); }
+            75% { transform: scale(1.03) rotate(0deg) translateY(-4px); }
+            100% { transform: scale(1) rotate(1.5deg) translateY(0); }
+        }
+        .talking {
+            animation: talkingStopMotion 0.4s steps(4) infinite !important;
+        }
+
         .text-box-asisten {
             margin-top: 20px; 
             padding: 0 20px;
@@ -82,7 +110,7 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             cursor: pointer;
-            display: none; /* Muncul hanya setelah teks selesai diketik */
+            display: none; 
             transition: all 0.3s;
             box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
         }
@@ -101,7 +129,14 @@
             background: #ffffff; padding: 40px; border-radius: 15px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; 
             box-sizing: border-box; border-top: 5px solid #007bff; position: relative; z-index: 1; 
+            opacity: 0;
+            transition: opacity 1s ease;
         }
+        .login-card.fade-in {
+            display: block;
+            opacity: 1;
+        }
+
         .header { text-align: center; margin-bottom: 30px; }
         .header img { width: 80px; margin-bottom: 10px; }
         .header h2 { margin: 0; color: #333; font-size: 20px; text-transform: uppercase; }
@@ -218,18 +253,19 @@
         let isTyping = false;
         const typingEl = document.getElementById('typing');
         const assistantContainer = document.getElementById('assistant-container');
+        const assistantImg = document.querySelector('.assistant-img');
         const loginCard = document.getElementById('main-login-card');
         const nextBtn = document.getElementById('next-btn');
 
-        // Splash ke Asisten
+        // Splash ke Asisten (Fade In Smooth)
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 splash.classList.add('splash-hidden');
                 setTimeout(() => {
                     splash.style.display = 'none';
-                    assistantContainer.style.display = 'flex';
-                    startTyping();
+                    assistantContainer.classList.add('active'); // Trigger Fade In
+                    setTimeout(startTyping, 1000);
                 }, 1200);
             }, 5000); 
         });
@@ -238,15 +274,16 @@
             if (msgIndex < messages.length) {
                 isTyping = true;
                 nextBtn.style.display = 'none';
+                assistantImg.classList.add('talking');
                 let currentText = messages[msgIndex];
-                
                 if (charIndex < currentText.length) {
                     typingEl.innerHTML += currentText.charAt(charIndex);
                     charIndex++;
                     setTimeout(startTyping, 35);
                 } else {
                     isTyping = false;
-                    nextBtn.style.display = 'block'; // Munculkan tombol setelah teks selesai
+                    assistantImg.classList.remove('talking');
+                    nextBtn.style.display = 'block'; 
                     if (msgIndex === messages.length - 1) {
                         nextBtn.innerHTML = 'Buka Login <i class="fa-solid fa-unlock"></i>';
                     }
@@ -256,25 +293,26 @@
 
         function nextMessage() {
             if (isTyping) return;
-            
             msgIndex++;
             if (msgIndex < messages.length) {
                 charIndex = 0;
                 typingEl.innerHTML = "";
                 startTyping();
             } else {
-                // Selesai, masuk ke Login
-                assistantContainer.style.opacity = '0';
-                assistantContainer.style.transition = 'opacity 0.8s';
+                // Fade Out Asisten Smooth
+                assistantContainer.classList.remove('active');
                 setTimeout(() => {
                     assistantContainer.style.display = 'none';
                     loginCard.style.display = 'block';
+                    // Force reflow for opacity transition
+                    void loginCard.offsetWidth;
+                    loginCard.classList.add('fade-in');
                     document.body.style.overflow = "auto";
-                }, 800);
+                }, 1500);
             }
         }
 
-        // --- FUNGSI LOGIN & UI ASLI ---
+        // --- FUNGSI LOGIN & UI ASLI (TIDAK BERUBAH) ---
         document.getElementById('eyeIcon').onclick = function() {
             const pass = document.getElementById('user_pass');
             const isPass = pass.type === 'password';
