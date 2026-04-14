@@ -3,107 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapor Anda - Pondok Pemulihan Papua</title>
-    
+    <title>Rapor Anda - Lengkap</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Sesuai Desain Asli Anda Tanpa Perubahan */
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7f9; padding: 20px; margin: 0; }
         .dashboard-container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        
+        /* Gaya Visualisasi */
         .header-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .stat-card { padding: 15px; border-radius: 12px; color: white; text-align: center; }
-        .chart-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; margin-top: 50px; }
+        
+        /* Penyesuaian Posisi Chart Section agar tidak terpotong di PDF */
+        .chart-section { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px;
+            margin-bottom: 40px; 
+            margin-top: 50px; /* Menurunkan posisi untuk ruang judul */
+        }
+ 
+        /* Pewarnaan Status */
         .bg-sangat-kurang { background: #ff0000 !important; color: white; }
         .bg-kurang { background: #ed7d31 !important; color: white; }
         .bg-cukup { background: #548235 !important; color: white; }
         .bg-sangat-baik { background: #00FF00 !important; color: black !important; }
-        .excel-table-container { overflow-x: auto; margin-top: 20px; border-top: 3px solid #000; padding-top: 20px; margin-bottom: 30px; position: relative; }
-        .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; color: #000; min-width: 800px; }
+ 
+        /* Gaya Tabel Excel */
+        .excel-table-container { overflow-x: auto; margin-top: 20px; border-top: 3px solid #000; padding-top: 20px; margin-bottom: 30px; position: relative; -webkit-overflow-scrolling: touch; }
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; color: #000; min-width: 800px; } /* min-width agar tabel bisa di-scroll di HP */
         .excel-table th, .excel-table td { border: 1px solid #000; padding: 6px; text-align: center; }
-        .info-jemaat-box { margin-bottom: 20px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; color: #000; }
+        .excel-table th { background: #f2f2f2; text-transform: uppercase; }
+        .col-nama { text-align: left; padding-left: 10px; font-weight: bold; }
+        .col-komsel { background-color: #f4cccc; font-weight: bold; width: 80px; }
+        
+        /* Baris Pemisah Hitam Tebal */
+        .separator { background-color: #000; color: #000; height: 12px !important; }
+        .separator td { border: none; }
+ 
+        /* Gaya Info Jemaat */
+        .info-jemaat-box { margin-bottom: 20px; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6; color: #000; }
         .info-row { display: flex; align-items: flex-start; margin-bottom: 2px; }
         .info-label { width: 120px; display: inline-block; font-weight: bold; }
-        .pdf-export-btn { position: absolute; right: 0; top: -10px; background: #d32f2f; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
+ 
+        /* Tombol Export PDF (Posisi Kanan Tabel) */
+        .pdf-export-btn {
+            position: absolute;
+            right: 0;
+            top: -10px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: 0.3s;
+            z-index: 10;
+        }
+        .pdf-export-btn:hover { background: #b71c1c; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+ 
+        /* MOBILE OPTIMIZATION */
+        @media (max-width: 768px) { 
+            body { padding: 10px; }
+            .dashboard-container { padding: 15px; border-radius: 10px; }
+            .chart-section { grid-template-columns: 1fr; margin-top: 20px; } 
+            .header-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card { padding: 10px; }
+            .stat-card div:last-child { font-size: 18px !important; }
+            .pdf-export-btn { position: relative; width: 100%; top: 0; margin-bottom: 15px; }
+            .info-label { width: 80px; }
+            h2 { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
-
+ 
 <div class="dashboard-container" id="report-content">
     <h2 style="text-align:center; margin-bottom:0;">REKAPITULASI RAPOR ANDA</h2>
     <p style="text-align:center; color:#666; margin-top:5px;">Periode: Maret 2026</p>
-
+ 
     <div class="excel-table-container">
         <button class="pdf-export-btn" onclick="exportToPDF()">
             <i class="fas fa-file-pdf"></i> EXTRACT PDF
-        </button>
-
+       </button>
+ 
         <div id="info-jemaat" class="info-jemaat-box">
             <div class="info-row"><span class="info-label">NAMA</span> : <span id="display-nama" style="margin-left: 10px; font-weight: bold;">Memuat...</span></div>
             <div class="info-row"><span class="info-label">NIJ</span> : <span id="display-nij" style="margin-left: 10px;">Memuat...</span></div>
             <div class="info-row"><span class="info-label">JEMAAT</span> : <span id="display-jemaat" style="margin-left: 10px;">Memuat...</span></div>
             <div class="info-row"><span class="info-label">KOMSEL</span> : <span id="display-komsel-info" style="margin-left: 10px;">Memuat...</span></div>
         </div>
-
+ 
         <h3 style="text-align:left; font-size:16px; margin-bottom:10px;">TABEL PERSENTASE</h3>
         <table class="excel-table">
             <thead>
                 <tr>
                     <th>PERIODE MINGGU</th>
-                    <th>ALKITAB</th><th>IBADAH</th><th>KOMSEL</th><th>GABUNGAN</th><th>PEMIMPIN</th><th>KD</th><th>LATIHAN</th><th>PELAYANAN</th><th>DOA</th>
+                    <th>LAPORAN ALKITAB</th>
+                    <th>LAPORAN IBADAH RAYA</th>
+                    <th>LAPORAN KOMSEL</th>
+                    <th>LAPORAN KOMSEL GABUNGAN</th>
+                    <th>LAPORAN PERTEMUAN PEMIMPIN</th>
+                    <th>LAPORAN KEGIATAN KD</th>
+                    <th>LAPORAN LATIHAN</th>
+                    <th>LAPORAN PELAYANAN</th>
+                    <th>LAPORAN DOA</th>
                 </tr>
             </thead>
             <tbody id="excel-table-body">
-                </tbody>
+            </tbody>
+        </table>
+ 
+        <h3 style="text-align:left; font-size:16px; margin-top:30px; margin-bottom:10px;">TABEL POIN</h3>
+        <table class="excel-table">
+            <thead>
+                <tr>
+                    <th>PERIODE MINGGU</th>
+                    <th>LAPORAN ALKITAB</th>
+                    <th>LAPORAN IBADAH RAYA</th>
+                    <th>LAPORAN KOMSEL</th>
+                    <th>LAPORAN KOMSEL GABUNGAN</th>
+                    <th>LAPORAN PERTEMUAN PEMIMPIN</th>
+                    <th>LAPORAN KEGIATAN KD</th>
+                    <th>LAPORAN LATIHAN</th>
+                    <th>LAPORAN PELAYANAN</th>
+                    <th>LAPORAN DOA</th>
+                </tr>
+            </thead>
+            <tbody id="excel-table-body-poin">
+            </tbody>
         </table>
     </div>
-
+ 
     <div class="header-stats" id="cards-container"></div>
-
+ 
     <div class="chart-section">
-        <canvas id="pieChart"></canvas>
-        <canvas id="barChart"></canvas>
+        <div>
+            <h3 style="font-size:14px; text-align:center;">Proporsi Keaktifan</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+        <div>
+            <h3 style="font-size:14px; text-align:center;">Perbandingan Capaian (%)</h3>
+            <canvas id="barChart"></canvas>
+        </div>
     </div>
 </div>
-
+ 
 <script>
-    // 1. Konfigurasi SDK Firebase (Data Asli Anda)
+    // --- KONFIGURASI FIREBASE ---
+    // Pastikan URL ini benar sesuai dashboard Firebase Anda untuk menghindari WebSocket Failed
     const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        apiKey: "AIzaSy...", 
         authDomain: "boby-apps-project.firebaseapp.com",
         databaseURL: "https://boby-apps-project-default-rtdb.firebaseio.com",
         projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.firebasestorage.app",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389",
-        measurementId: "G-X14300RJL4"
+        storageBucket: "boby-apps-project.appspot.com",
+        appId: "1:..."
     };
-
-    // Inisialisasi
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const dbRT = firebase.database();
-
-    // Data tampilan (Contoh - Nanti bisa ditarik dari Firebase juga)
+    
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+ 
     const dataPribadi = {
-        "Alkitab": 97, "Ibadah Raya": 100, "Komsel": 75, "Komsel Gabungan": 85,
-        "Pertemuan Pemimpin": 50, "Kegiatan KD": 60, "Latihan": 30, "Pelayanan": 95, "Doa": 40
+        "Pembacaan FT": 97, "Kehadiran Doa": 40, "Kehadiran Komsel": 75,
+        "Ibadah Raya": 100, "Komsel Gabungan": 85, "Kegiatan KD": 60,
+        "Latihan": 30, "Pelayanan": 95
     };
-
+ 
     function getKategori(val) {
+        if (val === "" || val === null) return { label: '', class: '' };
         if (val < 50) return { label: 'SANGAT KURANG', class: 'bg-sangat-kurang' };
         if (val < 80) return { label: 'KURANG', class: 'bg-kurang' };
         if (val < 95) return { label: 'CUKUP', class: 'bg-cukup' };
         return { label: 'SANGAT BAIK', class: 'bg-sangat-baik' };
     }
-
-    // 2. Fungsi Ambil Data (Sesuai Path Database Anda)
-    function fetchData() {
+ 
+    function exportToPDF() {
+        const element = document.getElementById('report-content');
+        const btn = document.querySelector('.pdf-export-btn');
+        
+        btn.style.display = 'none';
+ 
+        const opt = {
+            margin:       [10, 10, 10, 10],
+            filename:     'Rapor_Pondok_Pemulihan_Papua.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true,
+                logging: false,
+                y: 0 
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+ 
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.style.display = 'block';
+        });
+    }
+ 
+    function fetchDataJemaat() {
         const userId = "boby_daniel"; 
-        dbRT.ref('users/' + userId).on('value', (snapshot) => {
+        const userRef = firebase.database().ref('users/' + userId);
+ 
+        userRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 document.getElementById('display-nama').innerText = data.nama_lengkap || '-';
@@ -111,15 +221,16 @@
                 document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
                 document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
             }
+        }, (error) => {
+            console.error("Gagal mengambil data Firebase:", error);
         });
     }
-
-    // 3. Render Desain Tabel & Chart
+ 
     function renderHalaman() {
         const cardsCont = document.getElementById('cards-container');
         const excelTable = document.getElementById('excel-table-body');
+        const excelTablePoin = document.getElementById('excel-table-body-poin');
         
-        // Render Stat Cards
         cardsCont.innerHTML = "";
         Object.keys(dataPribadi).forEach(key => {
             const val = dataPribadi[key];
@@ -130,33 +241,54 @@
                     <div style="font-size:22px; font-weight:bold;">${val}%</div>
                 </div>`;
         });
-
-        // Render Baris Tabel Minggu (I - IV)
+ 
+        const listAnggota = [
+            { periode: "Minggu I" },
+            { periode: "Minggu II" },
+            { periode: "Minggu III" },
+            { periode: "Minggu IV" }
+        ];
+ 
         let tableHTML = "";
-        ["Minggu I", "Minggu II", "Minggu III", "Minggu IV"].forEach(mgg => {
-            tableHTML += `<tr><td>${mgg}</td>${'<td></td>'.repeat(9)}</tr>`;
+        listAnggota.forEach((user) => {
+            tableHTML += `
+                <tr>
+                    <td>${user.periode}</td>
+                    <td></td> <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> 
+                    <td></td> </tr>`;
         });
-        excelTable.innerHTML = tableHTML;
-
-        // Render Charts
+        
+        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+ 
         new Chart(document.getElementById('pieChart'), {
             type: 'pie',
             data: {
                 labels: Object.keys(dataPribadi),
-                datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e','#7f8c8d'] }]
-            }
+                datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+ 
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(dataPribadi),
+                datasets: [{ label: 'Capaian', data: Object.values(dataPribadi), backgroundColor: '#548235' }]
+            },
+            options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true, max: 100 } } }
         });
     }
-
-    function exportToPDF() {
-        const element = document.getElementById('report-content');
-        const opt = { margin: 10, filename: 'Rapor_Jemaat.pdf', jsPDF: { orientation: 'landscape' } };
-        html2pdf().from(element).set(opt).save();
-    }
-
+ 
     window.onload = function() {
-        fetchData();
         renderHalaman();
+        fetchDataJemaat();
     };
 </script>
 </body>
