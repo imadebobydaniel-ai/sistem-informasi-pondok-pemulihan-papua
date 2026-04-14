@@ -244,6 +244,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
    <script>
     // 1. FIREBASE CONFIG
@@ -253,13 +254,13 @@
         projectId: "boby-apps-project",
         storageBucket: "boby-apps-project.appspot.com",
         messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389",
+        databaseURL: "https://boby-apps-project-default-rtdb.firebaseio.com" // Menambahkan URL database
     };
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
     const auth = firebase.auth();
-    // Inisialisasi Realtime Database untuk fungsi baru
     const dbRT = firebase.database(); 
 
     // 2. LOGIC STARTUP SPLASH SCREEN
@@ -285,7 +286,7 @@
         });
     }
 
-    // 4. LOGIC LOGIN & VERIFIKASI (DIPERBARUI)
+    // 4. LOGIC LOGIN & VERIFIKASI
     document.getElementById('userLoginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('user_email').value.trim();
@@ -299,8 +300,6 @@
         try {
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             const user = userCredential.user;
-
-            // Update status ke objek user untuk data terbaru
             await user.reload();
 
             if (auth.currentUser.emailVerified) {
@@ -308,7 +307,6 @@
                 localStorage.setItem("userUID", user.uid);
                 localStorage.setItem("adminLoggedIn", "false");
 
-                // Update Firestore secara silent
                 await db.collection("users").doc(user.uid).update({
                     status_verifikasi: "Active"
                 }).catch(e => console.log("Update status skipped"));
@@ -377,40 +375,37 @@
         if (event.target == forgotModal) { forgotModal.style.display = "none"; }
     };
 
-    // --- PENAMBAHAN FUNGSI FETCH REPORT DATA (SESUAI PERINTAH) ---
-    function fetchUserReportData(uid) {
-        // Ambil data profil dari Realtime Database berdasarkan UID user yang sedang login
-        const userRef = dbRT.ref('users/' + uid);
-
-        userRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            
-            if (data) {
-                // 1. ISI PROFIL JEMAAT (Otomatis sesuai UID)
-                document.getElementById('display-nama').innerText = data.nama_lengkap || 'Anggota';
-                document.getElementById('display-nij').innerText = data.nij || '-';
-                document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || '-';
-                document.getElementById('display-komsel-info').innerText = data.nama_komsel || '-';
-
-                // 2. AMBIL DATA STATISTIK (Jika admin sudah mengisi di database)
-                const stats = data.statistik || {
-                    "Pembacaan FT": 0, "Kehadiran Doa": 0, "Kehadiran Komsel": 0,
-                    "Ibadah Raya": 0, "Komsel Gabungan": 0, "Kegiatan KD": 0,
-                    "Latihan": 0, "Pelayanan": 0
+    // --- FUNGSI REAL-TIME FETCHING (HANYA AKTIF JIKA ADA ELEMEN TARGET DI HALAMAN) ---
+    function syncPercentageTable() {
+        const targetRef = dbRT.ref('users/boby_daniel/statistik_bulanan');
+        
+        targetRef.on('value', (snapshot) => {
+            const val = snapshot.val();
+            if (val) {
+                // Mencari elemen berdasarkan ID yang disepakati sebelumnya
+                const fields = {
+                    'val-alkitab': val.Alkitab,
+                    'val-ibadah': val['Ibadah Raya'],
+                    'val-komsel': val.Komsel,
+                    'val-gabungan': val['komsel gabungan'],
+                    'val-pemimpin': val['pertemuan pemimpin'],
+                    'val-kd': val['kegiatan KD'],
+                    'val-latihan': val.latihan,
+                    'val-pelayanan': val.pelayanan,
+                    'val-doa': val.Doa
                 };
-                
-                // Panggil fungsi render yang sudah didefinisikan di elemen lain
-                if (typeof renderVisualisasi === "function") {
-                    renderVisualisasi(stats);
+
+                for (const [id, value] of Object.entries(fields)) {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = (value || 0) + "%";
                 }
-                
-            } else {
-                console.warn("Data profil belum dibuat di Realtime Database untuk UID:", uid);
-                document.getElementById('display-nama').innerText = "Data Tidak Ditemukan";
             }
-        }, (error) => {
-            console.error("Error mengambil data:", error);
         });
     }
-</script></body>
+
+    // Jalankan sinkronisasi
+    syncPercentageTable();
+
+</script>
+</body>
 </html>
