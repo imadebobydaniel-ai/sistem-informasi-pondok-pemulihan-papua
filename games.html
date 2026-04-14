@@ -8,43 +8,94 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     
     <style>
+        * { box-sizing: border-box; } 
+
         :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #001f3f; --putih: #ffffff; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; color: white; overflow: hidden; height: 100vh; }
-        .header-game { background: var(--biru-tua); padding: 10px; display: flex; align-items: center; border-bottom: 3px solid var(--emas); height: 50px; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            color: white; 
+            overflow: hidden; 
+            height: 100vh; 
+            width: 100vw;
+        }
+
+        .header-game { background: var(--biru-tua); padding: 10px; display: flex; align-items: center; border-bottom: 3px solid var(--emas); height: 50px; }
         .btn-back { color: white; font-size: 18px; text-decoration: none; z-index: 10; }
         .header-title { flex: 1; text-align: center; font-weight: bold; font-size: 14px; letter-spacing: 1px; }
-        .game-container { padding: 15px; text-align: center; max-width: 500px; margin: auto; height: calc(100vh - 50px); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }
+
+        .game-container { padding: 15px; text-align: center; max-width: 500px; margin: auto; height: calc(100vh - 50px); display: flex; flex-direction: column; justify-content: space-between; }
+
+        /* Timer */
         .timer-container { position: relative; width: 80px; height: 80px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
         .timer-svg { transform: rotate(-90deg); width: 80px; height: 80px; }
         .timer-circle-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 6; }
         .timer-circle-progress { fill: none; stroke: #ff4d4d; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 251; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
         .timer-text { position: absolute; font-size: 20px; font-weight: bold; color: #ff4d4d; }
+
+        /* Game Elements */
         .prize-level { color: var(--emas); font-weight: bold; font-size: 14px; margin: 5px 0; }
         .question-box { background: rgba(0, 51, 102, 0.8); border: 2px solid var(--emas); padding: 15px; border-radius: 30px 0 30px 0; font-size: 15px; min-height: 70px; display: flex; align-items: center; justify-content: center; }
-        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn-answer { background: transparent; border: 1px solid var(--emas); color: white; padding: 10px; border-radius: 20px; cursor: pointer; font-size: 12px; transition: 0.3s; text-align: left; min-height: 45px; }
+        
+        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+        .btn-answer { background: transparent; border: 1px solid var(--emas); color: white; padding: 12px 8px; border-radius: 20px; cursor: pointer; font-size: 13px; transition: 0.3s; text-align: left; min-height: 45px; line-height: 1.2; }
         .btn-answer.correct { background: #28a745 !important; border-color: white; }
         .btn-answer.wrong { background: #d9534f !important; border-color: white; }
         .btn-answer.hidden { visibility: hidden; }
+
         .lifelines-container { display: flex; justify-content: center; gap: 15px; margin: 10px 0; }
-        .btn-lifeline { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--emas); background: var(--biru-tua); color: var(--emas); font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; padding: 0; overflow: hidden; box-sizing: border-box; }
+        .btn-lifeline { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--emas); background: var(--biru-tua); color: var(--emas); font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; padding: 0; overflow: hidden; }
         .btn-lifeline.used { opacity: 0.3; cursor: default; }
 
-        /* Tampilan Leaderboard Setengah Layar */
+        /* Overlay & Notifikasi (Presisi Mobile) */
+        .notif-overlay { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); 
+            z-index: 9999; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+        }
+
+        .notif-box, .start-box { 
+            background: var(--biru-tua); 
+            border: 2px solid var(--emas); 
+            padding: 25px; 
+            border-radius: 20px; 
+            width: 100%; 
+            max-width: 320px; 
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .btn-notif-ok {
+            background: var(--emas); 
+            color: var(--biru-tua);
+            padding: 12px 30px; 
+            border: none; 
+            border-radius: 15px; 
+            font-weight: bold; 
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+
         #leaderboard-overlay { 
             display: none; 
             position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 50vh; 
+            bottom: 0; left: 0; 
+            width: 100%; height: 60vh; 
             background: white; 
             border-radius: 25px 25px 0 0; 
-            z-index: 5000; 
+            z-index: 8000; 
             overflow-y: auto; 
-            padding: 15px; 
+            padding: 20px; 
             box-shadow: 0 -10px 30px rgba(0,0,0,0.5); 
-            box-sizing: border-box;
         }
 
         .rank-card { background: #f8f9fa; border-radius: 12px; padding: 10px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid #ddd; }
@@ -52,11 +103,11 @@
         .rank-img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 1px solid var(--emas); }
         .rank-info { flex: 1; color: #333; text-align: left; }
         .rank-score { font-weight: bold; color: #28a745; font-size: 13px; }
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 6000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .start-box { background: var(--biru-tua); border: 2px solid var(--emas); padding: 25px; border-radius: 20px; width: 100%; max-width: 350px; }
-        .notif-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 7000; align-items: center; justify-content: center; padding: 20px; }
-        #start-btn-container button { animation: pulse 1.5s infinite; }
+
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 6000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
         @keyframes pulse { 0% { transform: scale(1); } 70% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        #start-btn-container button { animation: pulse 1.5s infinite; }
     </style>
 </head>
 <body>
@@ -73,11 +124,11 @@
 </div>
 
 <div id="custom-notif" class="notif-overlay">
-    <div class="start-box">
-        <div id="notif-icon" style="font-size: 40px;"></div>
-        <h3 id="notif-title">INFO</h3>
-        <p id="notif-message" style="font-size: 14px;"></p>
-        <button onclick="closeNotif()" style="background:var(--emas); padding:10px 25px; border:none; border-radius:15px; font-weight:bold; cursor:pointer;">OKE</button>
+    <div class="notif-box">
+        <div id="notif-icon" style="font-size: 50px; margin-bottom: 10px;"></div>
+        <h3 id="notif-title" style="color: var(--emas); margin: 0 0 10px 0;">INFO</h3>
+        <p id="notif-message" style="font-size: 15px; line-height: 1.4; margin-bottom: 20px; color: white;"></p>
+        <button onclick="closeNotif()" class="btn-notif-ok">OKE</button>
     </div>
 </div>
 
@@ -140,6 +191,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // Audio Assets
     const soundOpening = new Audio('OPENING SOUND-new.mp3');
     const soundStart = new Audio('START SOUND-new.mp3');
     const soundBg = new Audio('background_soal.mp3');
@@ -302,7 +354,6 @@
         }
     }
 
-    // LOGIKA AKUMULASI SKOR (Pemain sama = Skor bertambah)
     async function finishGame() {
         clearInterval(timerInterval);
         soundBg.pause(); soundTimer.pause();
@@ -311,13 +362,11 @@
             const ref = db.collection("game_scores").doc(userData.email);
             const doc = await ref.get();
             if(doc.exists) {
-                // Akumulasi skor lama + skor baru
                 await ref.update({ 
                     skor: doc.data().skor + score, 
                     timestamp: firebase.firestore.FieldValue.serverTimestamp() 
                 });
             } else {
-                // Pemain baru
                 await ref.set({ 
                     nama: userData.nama, 
                     email: userData.email, 
