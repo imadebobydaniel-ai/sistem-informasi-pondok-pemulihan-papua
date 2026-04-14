@@ -3,122 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asisten Virtual - SIPAPUA</title>
-
+    <title>SIPAPUA - Integrated</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        body {
-            margin: 0;
-            background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
+        :root { --emas-lux: #D4AF37; --grey-bg: #2c2c2c; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #1a1a1a; overflow: hidden; }
+
+        /* 1. STYLE SPLASH SCREEN */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--grey-bg); display: flex;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 1s ease;
         }
 
-        /* CONTAINER */
-        .assistant {
-            text-align: center;
-            padding: 20px;
-            max-width: 600px;
-            animation: fadeIn 2s ease-in-out;
+        /* 2. STYLE ASISTEN VIRTUAL (HIDDEN BY DEFAULT) */
+        #assistant-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #0a0f1f, #000);
+            display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 8888;
         }
+        .assistant-img { 
+            width: 280px; 
+            animation: breathing 4s ease-in-out infinite; 
+            filter: drop-shadow(0 0 25px rgba(0,150,255,0.4));
+        }
+        .text-box { margin-top: 25px; color: #fff; font-size: 18px; text-align: center; max-width: 80%; min-height: 80px; line-height: 1.5; }
+        
+        /* 3. STYLE LOGIN CARD (HIDDEN BY DEFAULT) */
+        #login-page {
+            display: none; height: 100vh; justify-content: center; align-items: center;
+        }
+        /* ... Style login card Anda tetap sama seperti sebelumnya ... */
+        .login-card { background: #ffffff; padding: 30px; border-radius: 15px; width: 90%; max-width: 380px; }
 
-        /* GAMBAR */
-        .assistant img {
-            width: 280px;
-            height: auto;
-            margin-bottom: 20px;
-            animation: idleMove 3s infinite ease-in-out;
-            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
-        }
-
-        /* BOX TEKS */
-        .text-container {
-            min-height: 120px; /* Menjaga posisi tetap stabil saat teks ganti */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .text {
-            color: white;
-            font-size: 20px;
-            line-height: 1.6;
-            text-shadow: 0 0 10px rgba(0,0,0,0.5);
-            transition: opacity 0.8s ease-in-out;
-            opacity: 1;
-        }
-
-        .fade-out {
-            opacity: 0;
-        }
-
-        /* ANIMASI GERAK (STOP MOTION STYLE) */
-        @keyframes idleMove {
-            0% { transform: translateY(0px) scale(1); }
-            25% { transform: translateY(-8px) scale(1.01); }
-            50% { transform: translateY(0px) scale(1); }
-            75% { transform: translateY(-4px) scale(1.005); }
-            100% { transform: translateY(0px) scale(1); }
-        }
-
-        /* FADE */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        /* ANIMASI */
+        @keyframes breathing { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .cursor { display: inline-block; width: 8px; background: white; margin-left: 5px; animation: blink 1s infinite; }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
-
 <body>
 
-<div class="assistant">
-    <img src="asisten_virtual.png" alt="Asisten Virtual">
-    <div class="text-container">
-        <div id="message" class="text">Memulai asisten...</div>
+    <div id="splash-screen">
+        <div style="text-align: center;">
+            <img src="logo_pondok.png" style="width: 120px; margin-bottom: 20px;">
+            <p style="color: var(--emas-lux); font-size: 32px; font-weight: bold; letter-spacing: 5px;">SIPAPUA</p>
+        </div>
     </div>
-</div>
 
-<script>
-    const messages = [
-        "Selamat Datang di <b>SIPAPUA</b> (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
-        "Aplikasi ini sangat membantu saudara mempermudah melakukan kontrol terhadap penilaian disetiap bidang pelayanan yang Anda lakukan.",
-        "Kami percaya dengan pertumbuhan Rohani dapat diukur melalui sebuah tindakan positif dan bukti nyata serta dibantu dengan penilaian yang tepat, untuk menjadikan kita sebagai pelayan-pelayan yang baik.",
-        "Selamat datang, Tuhan memberkati."
-    ];
+    <div id="assistant-screen">
+        <img src="asisten_papua.png" class="assistant-img">
+        <div class="text-box">
+            <span id="typing"></span><span class="cursor"></span>
+        </div>
+    </div>
 
-    let currentStep = 0;
-    const messageEl = document.getElementById('message');
+    <div id="login-page">
+        <div class="login-card">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="logo_pondok.png" style="width: 70px;">
+                <h2 style="font-size: 18px;">Pondok Pemulihan Papua</h2>
+            </div>
+            <input type="email" placeholder="Email" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ddd;">
+            <input type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #ddd;">
+            <button style="width:100%; padding:12px; background:#007bff; color:white; border:none; border-radius:5px; font-weight:bold;">MASUK</button>
+        </div>
+    </div>
 
-    function changeText() {
-        if (currentStep < messages.length) {
-            // Efek Fade Out
-            messageEl.classList.add('fade-out');
+    <script>
+        const splash = document.getElementById('splash-screen');
+        const assistant = document.getElementById('assistant-screen');
+        const loginPage = document.getElementById('login-page');
+        const typingEl = document.getElementById('typing');
 
+        const messages = [
+            "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
+            "Aplikasi ini sangat membantu saudara mempermudah melakukan kontrol terhadap penilaian disetiap bidang pelayanan yang Anda lakukan.",
+            "Kami percaya dengan pertumbuhan Rohani dapat diukur melalui sebuah tindakan positif dan bukti nyata serta dibantu dengan penilaian yang tepat.",
+            "Selamat datang, Tuhan memberkati."
+        ];
+
+        let msgIndex = 0;
+        let charIndex = 0;
+
+        // 1. Jalankan Splash Screen (3 Detik)
+        setTimeout(() => {
+            splash.style.opacity = '0';
             setTimeout(() => {
-                // Ganti Teks
-                messageEl.innerHTML = messages[currentStep];
-                // Efek Fade In
-                messageEl.classList.remove('fade-out');
-                currentStep++;
+                splash.style.display = 'none';
+                assistant.style.display = 'flex'; // Munculkan Asisten
+                startTyping();
+            }, 1000);
+        }, 3000);
+
+        // 2. Fungsi Typing Effect
+        function startTyping() {
+            if (msgIndex < messages.length) {
+                let currentText = messages[msgIndex];
                 
-                // Durasi tampil per slide (5 detik, kecuali slide terakhir 3 detik)
-                let displayTime = (currentStep === messages.length) ? 3000 : 5000;
-                
-                setTimeout(changeText, displayTime);
-            }, 800); // Waktu transisi fade out
-        } else {
-            // Selesai semua slide, pindah ke halaman login
-            // Ganti 'index.html' dengan nama file login Anda jika berbeda
-            window.location.href = "index.html"; 
+                if (charIndex < currentText.length) {
+                    typingEl.innerHTML += currentText.charAt(charIndex);
+                    charIndex++;
+                    setTimeout(startTyping, 40); // Kecepatan ketik
+                } else {
+                    // Jeda setelah satu slide selesai diketik
+                    setTimeout(() => {
+                        charIndex = 0;
+                        typingEl.innerHTML = "";
+                        msgIndex++;
+                        startTyping();
+                    }, 3000); // Jeda antar pesan (3 detik)
+                }
+            } else {
+                // 3. Masuk ke Halaman Login setelah semua pesan selesai
+                assistant.style.display = 'none';
+                loginPage.style.display = 'flex';
+                document.body.style.overflow = "auto";
+            }
         }
-    }
-
-    // Mulai animasi setelah jeda singkat
-    setTimeout(changeText, 1000);
-</script>
-
+    </script>
 </body>
 </html>
