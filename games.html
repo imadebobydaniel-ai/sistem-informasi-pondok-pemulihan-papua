@@ -43,6 +43,14 @@
     <div class="start-box">
         <h2 style="color:var(--emas)">SYALOM!</h2>
         <p>Uji pengetahuan Alkitab Anda dalam 3 Menit (100 Soal).</p>
+        
+        <div id="leaderboard-section" style="margin-top: 20px; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 10px; max-height: 200px; overflow-y: auto;">
+            <h4 style="color: var(--emas); margin: 0 0 10px 0; font-size: 14px;"><i class="fa-solid fa-trophy"></i> Peringkat Teratas</h4>
+            <div id="leaderboard-list" style="font-size: 12px; text-align: left;">
+                <p style="text-align: center; opacity: 0.6;">Memuat peringkat...</p>
+            </div>
+        </div>
+
         <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
             <button onclick="startGame()" style="background:#28a745; color:white; padding:10px 25px; border:none; border-radius:20px; font-weight:bold; cursor:pointer;">SIAP</button>
             <button onclick="location.href='menu.html'" style="background:#d9534f; color:white; padding:10px 25px; border:none; border-radius:20px; font-weight:bold; cursor:pointer;">TIDAK</button>
@@ -116,6 +124,32 @@
 
     soundOpening.loop = true;
     soundBgGame.loop = true;
+    function realStart() {
+    if(isGameStarted) return;
+    isGameStarted = true;
+    
+    // Menghentikan musik pembuka
+    soundOpening.pause();
+    soundOpening.currentTime = 0;
+
+    // Memutar sound start
+    soundStart.play().catch(err => console.log("Audio start terhambat:", err));
+    
+    document.getElementById('start-btn-container').style.display = 'none';
+    
+    setTimeout(() => {
+        // Memastikan audio dimuat ulang sebelum diputar
+        soundBgGame.load(); 
+        soundBgGame.play().catch(err => {
+            console.log("Audio background gagal putar:", err);
+            // Fallback: Coba putar kembali jika gagal
+            document.addEventListener('click', () => {
+                soundBgGame.play();
+            }, { once: true });
+        });
+        startGlobalTimer();
+    }, 1500);
+}
 
     // Quiz Data
     const quizRawData = [
@@ -230,6 +264,34 @@
     let winStreak = parseInt(localStorage.getItem("winStreak")) || 0;
     let userData = JSON.parse(localStorage.getItem("userData")) || null;
 
+    // FUNGSI: Load Leaderboard dari Firestore
+    function loadLeaderboard() {
+        const listContainer = document.getElementById('leaderboard-list');
+        
+        db.collection("game_scores")
+            .orderBy("skor", "desc")
+            .limit(5)
+            .onSnapshot((querySnapshot) => {
+                listContainer.innerHTML = "";
+                let i = 1;
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const row = document.createElement('div');
+                    row.style.cssText = "display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1);";
+                    row.innerHTML = `
+                        <span><b>${i}.</b> ${data.nama} ${data.predikat || ''}</span>
+                        <span style="color: var(--emas)">${data.skor} Poin</span>
+                    `;
+                    listContainer.appendChild(row);
+                    i++;
+                });
+                
+                if (querySnapshot.empty) {
+                    listContainer.innerHTML = "<p style='text-align:center'>Belum ada data peringkat.</p>";
+                }
+            });
+    }
+
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -326,24 +388,31 @@
         localStorage.setItem("winStreak", winStreak);
 
         let predikat = "";
-        if (winStreak >= 7) predikat = "🏆 GOLD";
-        else if (winStreak >= 4) predikat = "🥈 SILVER";
-        else if (winStreak >= 2) predikat = "🥉 BRONZE";
+        if (winStreak >= 7) predikat = "🏆";
+        else if (winStreak >= 4) predikat = "🥈";
+        else if (winStreak >= 2) predikat = "🥉";
 
         if(userData && userData.email) {
-            const ref = db.collection("game_scores").doc(userData.email);
-            const doc = await ref.get();
-            let totalSkorBaru = score;
-            if(doc.exists) totalSkorBaru = (doc.data().skor || 0) + score;
+            try {
+                const ref = db.collection("game_scores").doc(userData.email);
+                const doc = await ref.get();
+                let totalSkorBaru = score;
+                
+                if(doc.exists) {
+                    totalSkorBaru = (doc.data().skor || 0) + score;
+                }
 
-            await ref.set({
-                nama: userData.nama || "Pemain",
-                email: userData.email,
-                skor: totalSkorBaru,
-                streak: winStreak,
-                predikat: predikat,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
+                await ref.set({
+                    nama: userData.nama || "Pemain",
+                    email: userData.email,
+                    skor: totalSkorBaru,
+                    streak: winStreak,
+                    predikat: predikat,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (err) {
+                console.error("Gagal simpan skor:", err);
+            }
         }
 
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
@@ -364,7 +433,7 @@
         };
     }
 
-    // Lifelines (Logika Sederhana)
+    // Lifelines
     function use5050() {
         if(document.getElementById('ll-5050').classList.contains('used')) return;
         const correct = quizData[currentQ].c;
@@ -390,6 +459,10 @@
         alert("Penonton memberikan suara terbanyak untuk jawaban yang benar!");
         document.getElementById('ll-audience').classList.add('used');
     }
+
+    // Panggil fungsi load leaderboard saat halaman dibuka
+    window.onload = loadLeaderboard;
+
 </script>
 </body>
 </html>
