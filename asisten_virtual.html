@@ -16,6 +16,7 @@
             background-color: var(--grey-bg); display: flex;
             justify-content: center; align-items: center; z-index: 9999;
             transition: opacity 1s ease;
+            cursor: pointer; /* Memberitahu user bahwa ini bisa diklik */
         }
 
         /* 2. STYLE ASISTEN VIRTUAL */
@@ -45,10 +46,11 @@
 </head>
 <body>
 
-    <div id="splash-screen">
+    <div id="splash-screen" onclick="startExperience()">
         <div style="text-align: center;">
             <img src="logo_pondok.png" style="width: 120px; margin-bottom: 20px;">
             <p style="color: var(--emas-lux); font-size: 32px; font-weight: bold; letter-spacing: 5px;">SIPAPUA</p>
+            <p style="color: white; font-size: 12px; margin-top: 10px; opacity: 0.8;">Klik di mana saja untuk memulai</p>
         </div>
     </div>
 
@@ -77,9 +79,9 @@
         const loginPage = document.getElementById('login-page');
         const typingEl = document.getElementById('typing');
 
-        // --- TAMBAHAN LOGIKA AUDIO ---
+        // Setup Audio
         const bgSound = new Audio('asisten_virtual_sound.mp3');
-        bgSound.loop = true; // Agar musik terus berputar selama sesi asisten
+        bgSound.loop = true;
 
         const messages = [
             "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
@@ -90,24 +92,26 @@
 
         let msgIndex = 0;
         let charIndex = 0;
+        let isStarted = false;
 
-        // 1. Jalankan Splash Screen (3 Detik)
-        setTimeout(() => {
+        // Fungsi utama yang dipicu oleh klik user
+        function startExperience() {
+            if (isStarted) return; // Mencegah klik ganda
+            isStarted = true;
+
+            // Putar suara (sekarang diizinkan browser karena ada interaksi klik)
+            bgSound.play().catch(e => console.log("Audio play error:", e));
+            
+            // Transisi Splash ke Asisten
             splash.style.opacity = '0';
             setTimeout(() => {
                 splash.style.display = 'none';
-                assistant.style.display = 'flex'; 
-                
-                // --- MULAI PUTAR SUARA ---
-                bgSound.play().catch(error => {
-                    console.log("Autoplay diblokir browser, suara akan muncul setelah interaksi pengguna.");
-                });
-
+                assistant.style.display = 'flex';
                 startTyping();
             }, 1000);
-        }, 3000);
+        }
 
-        // 2. Fungsi Typing Effect
+        // Fungsi Typing Effect
         function startTyping() {
             if (msgIndex < messages.length) {
                 let currentText = messages[msgIndex];
@@ -125,10 +129,9 @@
                     }, 3000); 
                 }
             } else {
-                // 3. Masuk ke Halaman Login & Matikan Suara
-                bgSound.pause(); // Musik berhenti saat masuk ke login
-                bgSound.currentTime = 0; // Reset ke awal jika ingin diputar lagi nanti
-
+                // Selesai, matikan suara dan ke halaman login
+                bgSound.pause();
+                bgSound.currentTime = 0;
                 assistant.style.display = 'none';
                 loginPage.style.display = 'flex';
                 document.body.style.overflow = "auto";
