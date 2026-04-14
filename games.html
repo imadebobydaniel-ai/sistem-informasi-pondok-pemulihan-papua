@@ -6,29 +6,43 @@
     <title>Millionaire Alkitab - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #001f3f; }
+        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #001f3f; --putih: #ffffff; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; color: white; overflow: hidden; }
 
-        /* Header */
-        .header-game { background: var(--biru-tua); padding: 15px; display: flex; align-items: center; border-bottom: 3px solid var(--emas); }
-        .btn-back { color: white; font-size: 20px; text-decoration: none; margin-right: 15px; }
+        /* Header Simetris */
+        .header-game { 
+            background: var(--biru-tua); 
+            padding: 15px; 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 3px solid var(--emas);
+            position: relative;
+            height: 60px;
+            box-sizing: border-box;
+        }
+        .btn-back { color: white; font-size: 20px; text-decoration: none; position: absolute; left: 15px; z-index: 10; }
+        .header-title { width: 100%; text-align: center; font-weight: bold; font-size: 16px; letter-spacing: 1px; }
 
         /* Game Container */
-        .game-container { padding: 20px; text-align: center; max-width: 600px; margin: auto; height: 80vh; display: flex; flex-direction: column; justify-content: center; }
+        .game-container { padding: 20px; text-align: center; max-width: 600px; margin: auto; height: 90vh; display: flex; flex-direction: column; justify-content: center; }
 
-        .prize-level { color: var(--emas); font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        .prize-level { color: var(--emas); font-weight: bold; font-size: 18px; margin-bottom: 10px; text-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
         
         .question-box {
             background: rgba(0, 51, 102, 0.8);
             border: 2px solid var(--emas);
             padding: 20px;
             border-radius: 50px 0 50px 0;
-            margin-bottom: 30px;
-            font-size: 18px;
+            margin-bottom: 20px;
+            font-size: 17px;
             box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
         .btn-answer {
             background: transparent;
@@ -37,61 +51,126 @@
             padding: 15px;
             border-radius: 30px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             transition: 0.3s;
             text-align: left;
-            position: relative;
         }
 
         .btn-answer:hover { background: rgba(212, 175, 55, 0.2); }
-        .btn-answer.correct { background: #28a745 !important; border-color: white; }
+        .btn-answer.correct { background: #28a745 !important; border-color: white; animation: blink 0.5s 2; }
         .btn-answer.wrong { background: #d9534f !important; border-color: white; }
 
-        /* Lifelines */
-        .lifelines { display: flex; justify-content: center; gap: 20px; margin-top: 30px; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* Lifelines & Menu Ranking */
+        .lifelines { display: flex; justify-content: center; gap: 15px; margin-top: 25px; }
         .lifeline-btn { 
-            width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--emas);
+            width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--emas);
             background: var(--biru-tua); color: var(--emas); display: flex; align-items: center;
-            justify-content: center; cursor: pointer; font-size: 18px;
+            justify-content: center; cursor: pointer; font-size: 16px; transition: 0.3s;
         }
-        .lifeline-btn.used { opacity: 0.3; cursor: not-allowed; }
+        .lifeline-btn.btn-rank { background: var(--emas); color: var(--biru-tua); border-radius: 10px; width: auto; padding: 0 15px; font-weight: bold; font-size: 12px; }
+        .lifeline-btn.used { opacity: 0.3; pointer-events: none; grayscale: 1; }
+
+        /* Overlay Leaderboard (Style Pope Shelter) */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .leaderboard-content { max-width: 500px; margin: auto; }
+        .rank-card { 
+            background: white; border-radius: 15px; padding: 15px; margin-bottom: 12px; 
+            display: flex; align-items: center; gap: 15px; border-left: 5px solid var(--emas);
+        }
+        .rank-img { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--emas); object-fit: cover; }
+        .rank-info { flex: 1; color: var(--biru-tua); }
+        .rank-name { font-weight: bold; font-size: 14px; margin: 0; }
+        .rank-meta { font-size: 11px; color: #666; margin: 2px 0; }
+        .rank-score { background: var(--biru-tua); color: var(--emas); padding: 5px 10px; border-radius: 8px; font-weight: bold; font-size: 12px; }
+
+        .btn-close { color: var(--emas); text-align: center; padding: 20px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
+<div id="leaderboard-overlay" class="overlay">
+    <div class="leaderboard-content">
+        <h2 style="text-align: center; color: var(--emas);">Peringkat Tertinggi</h2>
+        <div id="rank-list">
+            </div>
+        <div class="btn-close" onclick="toggleRank()">TUTUP</div>
+    </div>
+</div>
+
 <div class="header-game">
     <a href="menu.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
-    <div style="font-weight: bold;">MILLIONAIRE ALKITAB</div>
+    <div class="header-title">MILLIONAIRE ALKITAB</div>
 </div>
 
 <div class="game-container" id="game-ui">
-    <div class="prize-level" id="level-display">Pertanyaan 1 - Rp 100.000</div>
-    <div class="question-box" id="question-text">Memuat pertanyaan...</div>
+    <div class="prize-level" id="level-display">Memuat...</div>
+    <div class="question-box" id="question-text">Menyiapkan soal acak...</div>
     
-    <div class="answers-grid" id="answers-container">
-        </div>
+    <div class="answers-grid" id="answers-container"></div>
 
     <div class="lifelines">
         <div class="lifeline-btn" onclick="use5050(this)" title="50:50">50:50</div>
         <div class="lifeline-btn" onclick="usePhone(this)"><i class="fa-solid fa-phone"></i></div>
         <div class="lifeline-btn" onclick="useAudience(this)"><i class="fa-solid fa-users"></i></div>
+        <div class="lifeline-btn btn-rank" onclick="toggleRank()"><i class="fa-solid fa-trophy"></i> RANKING</div>
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <script>
-    const quizData = [
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const quizRawData = [
         { q: "Siapa raja pertama bangsa Israel?", a: ["Daud", "Saul", "Salomo", "Yosua"], c: 1 },
         { q: "Apa arti nama 'Imanuel'?", a: ["Allah Mahakuasa", "Tuhan Raja kami", "Allah menyertai kita", "Gembala Baik"], c: 2 },
         { q: "Berapa hari Tuhan menciptakan alam semesta?", a: ["5 Hari", "7 Hari", "6 Hari", "40 Hari"], c: 2 },
-        // Tambahkan lebih banyak pertanyaan di sini
+        { q: "Siapa putra tertua dari Yakub?", a: ["Yusuf", "Benyamin", "Ruben", "Yehuda"], c: 2 },
+        { q: "Dimana Yesus dilahirkan?", a: ["Yerusalem", "Nazaret", "Betlehem", "Yudea"], c: 2 }
     ];
 
+    let quizData = [];
     let currentQ = 0;
     let score = 0;
+    let startTime;
+    let userData = null;
+
+    // 1. Fungsi Acak (Fisher-Yates Shuffle)
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    async function initGame() {
+        // Ambil data user dari local/session
+        const email = localStorage.getItem("userEmail");
+        const snap = await db.collection("users").where("email", "==", email).get();
+        if (!snap.empty) userData = snap.docs[0].data();
+
+        // Acak Soal
+        quizData = shuffleArray([...quizRawData]);
+        startTime = new Date(); // Catat waktu mulai
+        loadQuestion();
+    }
 
     function loadQuestion() {
         const data = quizData[currentQ];
-        document.getElementById('level-display').innerText = `Pertanyaan ${currentQ + 1} - Skor: ${score}`;
+        document.getElementById('level-display').innerText = `Level ${currentQ + 1} - Poin: ${score}`;
         document.getElementById('question-text').innerText = data.q;
         
         const container = document.getElementById('answers-container');
@@ -106,39 +185,95 @@
         });
     }
 
-    function checkAnswer(idx, btn) {
+    async function checkAnswer(idx, btn) {
         const correct = quizData[currentQ].c;
         if(idx === correct) {
             btn.classList.add('correct');
             score += 1000;
-            setTimeout(() => {
+            setTimeout(async () => {
                 currentQ++;
                 if(currentQ < quizData.length) loadQuestion();
-                else alert("Luar Biasa! Anda Millionaire Rohani!");
-            }, 1000);
+                else finishGame();
+            }, 1200);
         } else {
             btn.classList.add('wrong');
-            alert("Sayang sekali, jawaban Anda salah. Coba lagi nanti!");
-            window.location.reload();
+            setTimeout(() => {
+                alert("Jawaban Salah! Game Over.");
+                window.location.reload();
+            }, 500);
         }
     }
 
-    // Fungsi Bantuan Sederhana
-    function use5050(btn) {
-        if(btn.classList.contains('used')) return;
-        btn.classList.add('used');
-        const correct = quizData[currentQ].c;
-        const buttons = document.querySelectorAll('.btn-answer');
-        let hidden = 0;
-        buttons.forEach((b, i) => {
-            if(i !== correct && hidden < 2) {
-                b.style.visibility = 'hidden';
-                hidden++;
-            }
-        });
+    async function finishGame() {
+        const timeTaken = Math.floor((new Date() - startTime) / 1000); // dalam detik
+        alert(`Selamat! Anda Menang.\nSkor: ${score}\nWaktu: ${timeTaken} detik`);
+        
+        if(userData) {
+            await db.collection("game_scores").add({
+                nama: userData.nama,
+                email: userData.email,
+                nij: userData.nij || "-",
+                komsel: userData.komsel || "Umum",
+                foto: userData.foto_profil || "",
+                skor: score,
+                waktu: timeTaken,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        window.location.reload();
     }
 
-    window.onload = loadQuestion;
+    // 2. Fungsi Ranking Tertinggi
+    function toggleRank() {
+        const overlay = document.getElementById('leaderboard-overlay');
+        if(overlay.style.display === 'flex') {
+            overlay.style.display = 'none';
+        } else {
+            overlay.style.display = 'flex';
+            loadLeaderboard();
+        }
+    }
+
+    function loadLeaderboard() {
+        db.collection("game_scores")
+          .orderBy("skor", "desc")
+          .orderBy("waktu", "asc") // Yang paling cepat waktu tempuhnya di atas
+          .limit(10)
+          .get()
+          .then(snap => {
+              let html = "";
+              snap.forEach((doc, index) => {
+                  const d = doc.data();
+                  html += `
+                    <div class="rank-card">
+                        <div style="font-weight:bold; color:var(--emas)">#${index+1}</div>
+                        <img src="${d.foto || 'https://via.placeholder.com/100'}" class="rank-img">
+                        <div class="rank-info">
+                            <p class="rank-name">${d.nama}</p>
+                            <p class="rank-meta">NIJ: ${d.nij} • ${d.komsel}</p>
+                            <p class="rank-meta" style="color:var(--emas)"><i class="fa-regular fa-clock"></i> ${d.waktu} detik</p>
+                        </div>
+                        <div class="rank-score">${d.skor}</div>
+                    </div>`;
+              });
+              document.getElementById('rank-list').innerHTML = html || "<p style='text-align:center'>Belum ada rekor.</p>";
+          });
+    }
+
+    // Lifeline Stubs
+    function use5050(btn) {
+        btn.classList.add('used');
+        const correct = quizData[currentQ].c;
+        const btns = document.querySelectorAll('.btn-answer');
+        let hidden = 0;
+        btns.forEach((b, i) => {
+            if(i !== correct && hidden < 2) { b.style.visibility = 'hidden'; hidden++; }
+        });
+    }
+    function usePhone(btn) { btn.classList.add('used'); alert("Teman Anda bilang jawabannya mungkin " + String.fromCharCode(65 + quizData[currentQ].c)); }
+    function useAudience(btn) { btn.classList.add('used'); alert("80% Penonton yakin jawabannya adalah " + String.fromCharCode(65 + quizData[currentQ].c)); }
+
+    window.onload = initGame;
 </script>
 </body>
 </html>
