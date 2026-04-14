@@ -48,6 +48,26 @@
             opacity: 0;
             transition: opacity 1.5s ease;
         }
+
+        /* --- TAMBAHAN TOMBOL SUARA --- */
+        .audio-control {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--cyan-glow);
+            color: var(--cyan-glow);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 999999;
+            transition: all 0.3s ease;
+        }
+        .audio-control:hover { background: var(--cyan-glow); color: #000; box-shadow: 0 0 15px var(--cyan-glow); }
         
         .assistant-img {
             width: 300px;
@@ -156,6 +176,10 @@
     </div>
 
     <div id="assistant-container">
+        <div class="audio-control" id="toggleAudio" onclick="toggleMute()">
+            <i class="fa-solid fa-volume-high" id="volIcon"></i>
+        </div>
+
         <img src="asisten_virtual.png" class="assistant-img">
         <div class="text-box-asisten">
             <span id="typing"></span><span class="cursor-asisten"></span>
@@ -245,8 +269,36 @@
         const nextBtn = document.getElementById('next-btn');
         const bgSound = document.getElementById('asistenAudio');
 
+        // Fungsi Tambahan: Toggle Mute/Unmute
+        function toggleMute() {
+            const volIcon = document.getElementById('volIcon');
+            if (bgSound.paused) {
+                bgSound.play().catch(e => console.log("Audio play failed"));
+                volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+                bgSound.muted = false;
+            } else {
+                if (bgSound.muted) {
+                    bgSound.muted = false;
+                    volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+                } else {
+                    bgSound.muted = true;
+                    volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
+                }
+            }
+        }
+
         // Initialized after Splash Screen
         document.addEventListener("DOMContentLoaded", () => {
+            // Trik Pancingan Audio agar diizinkan browser
+            const unlockAudio = () => {
+                bgSound.play().then(() => {
+                    bgSound.pause();
+                    bgSound.currentTime = 0;
+                }).catch(e => {});
+                document.removeEventListener("click", unlockAudio);
+            };
+            document.addEventListener("click", unlockAudio);
+
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 splash.classList.add('splash-hidden');
@@ -255,7 +307,10 @@
                     assistantContainer.style.display = 'flex';
                     setTimeout(() => { 
                         assistantContainer.style.opacity = '1'; 
-                        bgSound.play().catch(e => console.log("Menunggu interaksi user untuk audio"));
+                        bgSound.play().catch(e => {
+                            // Jika diblokir, ikon berubah menjadi xmark sebagai penanda
+                            document.getElementById('volIcon').classList.replace('fa-volume-high', 'fa-volume-xmark');
+                        });
                     }, 50);
                     startTyping();
                 }, 1200);
