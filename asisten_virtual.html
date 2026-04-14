@@ -74,75 +74,75 @@
         </div>
     </div>
 
-    <script>
-        const splash = document.getElementById('splash-screen');
-        const assistant = document.getElementById('assistant-screen');
-        const loginPage = document.getElementById('login-page');
-        const typingEl = document.getElementById('typing');
-        const bgSound = document.getElementById('asistenAudio');
+   <script>
+    const splash = document.getElementById('splash-screen');
+    const assistant = document.getElementById('assistant-screen');
+    const loginPage = document.getElementById('login-page');
+    const typingEl = document.getElementById('typing');
+    const bgSound = document.getElementById('asisten_virtual_sound.mp3');
 
-        const messages = [
-            "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
-            "Aplikasi ini sangat membantu saudara mempermudah melakukan kontrol terhadap penilaian disetiap bidang pelayanan yang Anda lakukan.",
-            "Kami percaya dengan pertumbuhan Rohani dapat diukur melalui sebuah tindakan positif dan bukti nyata serta dibantu dengan penilaian yang tepat.",
-            "Selamat datang, Tuhan memberkati."
-        ];
+    const messages = [
+        "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
+        "Aplikasi ini sangat membantu saudara mempermudah melakukan kontrol terhadap penilaian disetiap bidang pelayanan yang Anda lakukan.",
+        "Kami percaya dengan pertumbuhan Rohani dapat diukur melalui sebuah tindakan positif dan bukti nyata serta dibantu dengan penilaian yang tepat.",
+        "Selamat datang, Tuhan memberkati."
+    ];
 
-        let msgIndex = 0;
-        let charIndex = 0;
-        let isStarted = false;
+    let msgIndex = 0;
+    let charIndex = 0;
+    let isStarted = false;
 
-        function startExperience() {
-            if (isStarted) return;
-            isStarted = true;
+    function startExperience() {
+        if (isStarted) return;
+        isStarted = true;
 
-            // Memaksa reload audio untuk memastikan path benar sebelum diputar
-            bgSound.load(); 
-            
-            // Mencoba memutar audio dengan penanganan janji (promise)
-            const playPromise = bgSound.play();
-
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    console.log("Audio berhasil diputar");
-                }).catch(error => {
-                    console.error("Gagal memutar audio. Cek path file:", error);
-                    // Tetap lanjut transisi meskipun audio gagal (agar app tidak stuck)
-                });
-            }
-
-            // Transisi Visual
-            splash.style.opacity = '0';
-            setTimeout(() => {
-                splash.style.display = 'none';
-                assistant.style.display = 'flex';
-                startTyping();
-            }, 1000);
+        // --- KONFIGURASI SEPERTI DI GAME (UNLOCK AUDIO) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
         }
 
-        function startTyping() {
-            if (msgIndex < messages.length) {
-                let currentText = messages[msgIndex];
-                if (charIndex < currentText.length) {
-                    typingEl.innerHTML += currentText.charAt(charIndex);
-                    charIndex++;
-                    setTimeout(startTyping, 40); 
-                } else {
-                    setTimeout(() => {
-                        charIndex = 0;
-                        typingEl.innerHTML = "";
-                        msgIndex++;
-                        startTyping();
-                    }, 3000); 
-                }
+        // Memastikan audio diputar setelah interaksi klik
+        bgSound.play().then(() => {
+            console.log("Audio playing...");
+        }).catch(e => {
+            console.log("Audio error/blocked:", e);
+        });
+        // --------------------------------------------------
+
+        // Transisi Visual
+        splash.style.opacity = '0';
+        setTimeout(() => {
+            splash.style.display = 'none';
+            assistant.style.display = 'flex';
+            startTyping();
+        }, 1000);
+    }
+
+    function startTyping() {
+        if (msgIndex < messages.length) {
+            let currentText = messages[msgIndex];
+            if (charIndex < currentText.length) {
+                typingEl.innerHTML += currentText.charAt(charIndex);
+                charIndex++;
+                setTimeout(startTyping, 40); 
             } else {
-                // Berhenti saat masuk login
-                bgSound.pause();
-                assistant.style.display = 'none';
-                loginPage.style.display = 'flex';
-                document.body.style.overflow = "auto";
+                setTimeout(() => {
+                    charIndex = 0;
+                    typingEl.innerHTML = "";
+                    msgIndex++;
+                    startTyping();
+                }, 3000); 
             }
+        } else {
+            // Berhenti saat masuk login
+            bgSound.pause();
+            bgSound.currentTime = 0; // Reset audio
+            assistant.style.display = 'none';
+            loginPage.style.display = 'flex';
+            document.body.style.overflow = "auto";
         }
-    </script>
+    }
+</script>
 </body>
 </html>
