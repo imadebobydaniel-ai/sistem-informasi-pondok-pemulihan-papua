@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pope Shelter - Pondok Pemulihan</title>
+    <title>Ruang Kesaksian - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f6; }
@@ -14,7 +14,7 @@
         .container { padding: 15px; max-width: 600px; margin: auto; }
         
         /* Tombol Utama */
-        .btn-add { width: 100%; background: var(--biru-tua); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,51,102,0.2); }
+        .btn-add { width: 100%; background: var(--biru-tua); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,51,102,0.2); font-size: 13px; }
 
         /* Card Artikel Kesaksian */
         .kesaksian-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-top: 4px solid var(--emas); }
@@ -22,7 +22,7 @@
         
         /* Footer Artikel (Biodata Otomatis) */
         .kesaksian-footer { display: flex; align-items: center; gap: 12px; padding-top: 15px; border-top: 1px solid #eee; }
-        .author-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--emas); }
+        .author-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--emas); background: #eee; }
         .author-info { flex: 1; }
         .author-name { font-weight: bold; font-size: 14px; color: var(--biru-tua); margin: 0; }
         .author-meta { font-size: 11px; color: #777; margin: 2px 0 0 0; text-transform: uppercase; }
@@ -37,19 +37,32 @@
         .btn-save { width: 100%; background: var(--emas); color: var(--biru-tua); border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
         .btn-cancel { display: block; text-align: center; margin-top: 15px; color: #999; font-size: 13px; text-decoration: none; cursor: pointer; }
 
-        /* Toast Notif */
-        .toast-box { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--biru-tua); color: white; padding: 12px 25px; border-radius: 30px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.3); font-size: 13px; }
+        /* Notifikasi Sukses Custom */
+        .success-toast { 
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%); 
+            background: white; color: var(--biru-tua); padding: 15px 25px; 
+            border-radius: 50px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+            display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px;
+            transition: top 0.5s cubic-bezier(0.68, -0.55, 0.26, 1.55);
+            border-bottom: 3px solid var(--emas);
+            width: 80%; max-width: 320px; justify-content: center;
+        }
+        .success-toast.show { top: 30px; }
     </style>
 </head>
 <body>
+
+<div id="toast-success" class="success-toast">
+    <i class="fa-solid fa-circle-check" style="color: green; font-size: 20px;"></i>
+    Terimakasih, Kesaksian Anda Telah Diinput
+</div>
 
 <div class="header-app">RUANG KESAKSIAN</div>
 
 <div class="container">
     <button class="btn-add" onclick="bukaPopupAdd()">
-        <i class="fa-solid fa-pen-fancy"></i> TULIS KESAKSIAN HIDUP
+        <i class="fa-solid fa-pen-fancy"></i> TULIS DAN CERITAKAN KESAKSIAN ANDA UNTUK MEMBERKATI ORANG LAIN
     </button>
-    
     <div id="rubrik-kesaksian-container"></div>
 </div>
 
@@ -86,7 +99,6 @@
         const email = localStorage.getItem("userEmail");
         if (!email) return window.location.href = "index.html";
 
-        // Ambil Data Profil User untuk otomatisasi bottom artikel
         db.collection("users").where("email", "==", email).get().then(snap => {
             if (!snap.empty) {
                 currentUserData = snap.docs[0].data();
@@ -96,7 +108,6 @@
     };
 
     function loadRubrikKesaksian() {
-        // Mengambil semua data kesaksian tanpa filter Komsel agar dibaca semua jemaat
         db.collection("kesaksian")
           .orderBy("timestamp", "desc")
           .onSnapshot(snap => {
@@ -112,7 +123,7 @@
                       <div class="kesaksian-card">
                           <div class="kesaksian-text">"${data.isi_kesaksian}"</div>
                           <div class="kesaksian-footer">
-                              <img src="${foto}" class="author-img" alt="Profile">
+                              <img src="${foto}" class="author-img" onerror="this.src='https://via.placeholder.com/100'">
                               <div class="author-info">
                                   <p class="author-name">${data.author_nama}</p>
                                   <p class="author-meta">NIJ: ${data.author_nij} • KOMSEL: ${data.author_komsel}</p>
@@ -128,21 +139,28 @@
         document.getElementById('popup-add').style.display = 'flex';
     }
 
+    function showSuccessMessage() {
+        const toast = document.getElementById('toast-success');
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 4000);
+    }
+
     async function simpanKesaksian() {
         const cerita = document.getElementById('add-cerita').value.trim();
-        if (!cerita) return alert("Silahkan tulis cerita kesaksian Anda.");
+        if (!cerita) return;
 
         const btn = document.getElementById('btnKirim');
         btn.disabled = true;
         btn.innerText = "Memposting...";
 
         try {
-            // Menyimpan artikel dengan menyematkan data profil secara otomatis
             await db.collection("kesaksian").add({
                 isi_kesaksian: cerita,
                 author_nama: currentUserData.nama,
                 author_nij: currentUserData.nij || "-",
-                author_komsel: currentUserData.komsel || "JC Umum",
+                author_komsel: currentUserData.komsel || "Umum",
                 author_foto: currentUserData.foto_profil || "", 
                 author_email: currentUserData.email,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -150,9 +168,9 @@
             
             tutupPopup();
             document.getElementById('add-cerita').value = "";
-            alert("Terima kasih! Kesaksian Anda telah diposting.");
+            showSuccessMessage(); // Panggil Display Block Sukses
         } catch (e) {
-            alert("Gagal memposting. Coba lagi.");
+            console.error(e);
         } finally {
             btn.disabled = false;
             btn.innerText = "POSTING KESAKSIAN";
