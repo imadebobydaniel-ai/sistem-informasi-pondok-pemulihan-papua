@@ -62,15 +62,15 @@
 
         .text-box-asisten {
             margin-top: 20px; 
-            padding: 0 20px;
+            padding: 0 25px;
             text-align: center;
-            max-width: 85%;
-            min-height: 120px;
+            max-width: 600px;
+            min-height: 160px;
         }
         #typing {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: 500;
-            line-height: 1.6;
+            line-height: 1.8;
             background: linear-gradient(to right, #ffffff, var(--cyan-glow));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -139,10 +139,6 @@
     </style>
 </head>
 <body>
-
-    <audio id="bg-music" loop>
-        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3" type="audio/mpeg">
-    </audio>
 
     <div id="splash-screen">
         <div class="splash-content">
@@ -219,26 +215,12 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // --- AUDIO ENGINE UNTUK SUARA KEYBOARD ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playTypingSound() {
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.05);
-        }
-
+        // Pesan yang sudah dirapikan paragrafnya
         const messages = [
-            "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
-            "Aplikasi ini sangat membantu saudara mempermudah melakukan kontrol terhadap penilaian disetiap bidang pelayanan yang Anda lakukan.",
-            "Kami percaya dengan pertumbuhan Rohani dapat diukur melalui sebuah tindakan positif dan bukti nyata serta dibantu dengan penilaian yang tepat, untuk menjadikan kita sebagai pelayan pelayan yang baik.",
-            "Silahkan Registrasi. Tuhan Yesus Memberkati."
+            "Shalom! Selamat Datang di SIPAPUA.<br><br>Aplikasi ini hadir sebagai terobosan digital untuk membantu Anda mengelola dan memantau setiap aspek pelayanan di Pondok Pemulihan Papua secara lebih efektif.",
+            "Dengan sistem ini, Saudara dapat dengan mudah melakukan kontrol penilaian di setiap bidang pelayanan yang sedang dijalankan, kapan saja dan di mana saja.",
+            "Kami percaya bahwa pertumbuhan Rohani sejati terpancar melalui bukti nyata dan dedikasi. Mari bersama menjadi pelayan yang lebih baik melalui penilaian yang objektif dan terukur.",
+            "Silahkan lakukan Registrasi bagi anggota baru atau Login untuk melanjutkan.<br><br>Tuhan Yesus Memberkati."
         ];
 
         let msgIndex = 0;
@@ -248,7 +230,6 @@
         const assistantContainer = document.getElementById('assistant-container');
         const loginCard = document.getElementById('main-login-card');
         const nextBtn = document.getElementById('next-btn');
-        const bgMusic = document.getElementById('bg-music');
 
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
@@ -258,9 +239,6 @@
                     splash.style.display = 'none';
                     assistantContainer.style.display = 'flex';
                     setTimeout(() => { assistantContainer.style.opacity = '1'; }, 50);
-                    // Mulai Musik saat asisten muncul
-                    bgMusic.volume = 0.3;
-                    bgMusic.play().catch(() => console.log("Menunggu interaksi user untuk musik"));
                     startTyping();
                 }, 1200);
             }, 5000); 
@@ -271,9 +249,14 @@
                 isTyping = true;
                 nextBtn.style.display = 'none';
                 let currentText = messages[msgIndex];
-                if (charIndex < currentText.length) {
+                
+                // Logika khusus untuk menghandle tag HTML seperti <br> agar tidak diketik per karakter
+                if (currentText.slice(charIndex, charIndex + 4) === "<br>") {
+                    typingEl.innerHTML += "<br>";
+                    charIndex += 4;
+                    setTimeout(startTyping, 35);
+                } else if (charIndex < currentText.length) {
                     typingEl.innerHTML += currentText.charAt(charIndex);
-                    playTypingSound(); // Mainkan suara setiap huruf
                     charIndex++;
                     setTimeout(startTyping, 35);
                 } else {
@@ -288,26 +271,13 @@
 
         function nextMessage() {
             if (isTyping) return;
-            // Resume audio context jika terblokir browser
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
             msgIndex++;
             if (msgIndex < messages.length) {
                 charIndex = 0;
                 typingEl.innerHTML = "";
                 startTyping();
             } else {
-                // Fade Out Asisten
                 assistantContainer.style.opacity = '0';
-                // Fade out musik sedikit demi sedikit
-                const fadeInterval = setInterval(() => {
-                    if (bgMusic.volume > 0.05) bgMusic.volume -= 0.05;
-                    else {
-                        bgMusic.pause();
-                        clearInterval(fadeInterval);
-                    }
-                }, 200);
-
                 setTimeout(() => {
                     assistantContainer.style.display = 'none';
                     loginCard.style.display = 'block';
@@ -317,7 +287,7 @@
             }
         }
 
-        // --- FUNGSI LOGIN & MODAL (TETAP SAMA) ---
+        // --- FUNGSI LOGIN & MODAL ---
         document.getElementById('eyeIcon').onclick = function() {
             const pass = document.getElementById('user_pass');
             const isPass = pass.type === 'password';
