@@ -210,222 +210,255 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 
-    <script>
-        // Firebase Config
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-            authDomain: "boby-apps-project.firebaseapp.com", 
-            projectId: "boby-apps-project", 
-            storageBucket: "boby-apps-project.appspot.com", 
-            messagingSenderId: "125984859692", 
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
-        };
+   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-        const db = firebase.firestore();
-        let ytPlayer; 
-        const userEmail = localStorage.getItem("userEmail");
+<script>
+    // 1. Konfigurasi Firebase
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+        authDomain: "boby-apps-project.firebaseapp.com", 
+        projectId: "boby-apps-project", 
+        storageBucket: "boby-apps-project.appspot.com", 
+        messagingSenderId: "125984859692", 
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    };
 
-        // --- FUNGSI LOGOUT (PERBAIKAN DI SINI) ---
-        function confirmLogout() { 
-            document.getElementById('modal-logout').style.display = 'flex'; 
-        }
+    if (!firebase.apps.length) { 
+        firebase.initializeApp(firebaseConfig); 
+    }
+    
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    let ytPlayer; 
+    const userEmail = localStorage.getItem("userEmail");
 
-        function closeLogoutModal() { 
-            document.getElementById('modal-logout').style.display = 'none'; 
-        }
-
-        function executeLogout() { 
-            localStorage.clear(); 
-            // Mengarahkan ke index.html setelah data dibersihkan
+    // 2. SATPAM KEAMANAN (Mencegah Akses Tanpa Login)
+    auth.onAuthStateChanged((user) => {
+        const isAdmin = localStorage.getItem("adminLoggedIn");
+        
+        if (!user && isAdmin !== "true") {
+            console.log("Akses ditolak, mengalihkan ke index...");
+            // Mengarahkan ke index.html (karena login.html sudah dihapus)
             window.location.replace("index.html"); 
+        } else {
+            console.log("Akses diterima. Selamat datang di Pondok Pemulihan Papua.");
         }
+    });
 
-        // --- Fungsi-fungsi lainnya (Running Text, Media, Inbox, dll) ---
-        function syncRunningText() {
-            db.collection("config").doc("running_text").onSnapshot((doc) => {
-                if (doc.exists) {
-                    const teksBaru = doc.data().pesan; 
-                    const textElement = document.getElementById("running-text");
-                    if (textElement) {
-                        if (!textElement.innerText.includes("HAPPY BIRTHDAY") && !textElement.innerText.includes("SELAMAT ULANG TAHUN")) {
-                            textElement.innerText = teksBaru || "Selamat Datang di Pondok Pemulihan Papua";
-                        }
+    // --- FUNGSI LOGOUT ---
+    function confirmLogout() { 
+        document.getElementById('modal-logout').style.display = 'flex'; 
+    }
+
+    function closeLogoutModal() { 
+        document.getElementById('modal-logout').style.display = 'none'; 
+    }
+
+    function executeLogout() { 
+        auth.signOut().then(() => {
+            localStorage.clear(); 
+            window.location.replace("index.html"); 
+        }).catch((error) => {
+            console.error("Logout Gagal:", error);
+            localStorage.clear();
+            window.location.replace("index.html");
+        });
+    }
+
+    // --- Fungsi-fungsi lainnya (Running Text, Media, Inbox, dll) ---
+    function syncRunningText() {
+        db.collection("config").doc("running_text").onSnapshot((doc) => {
+            if (doc.exists) {
+                const teksBaru = doc.data().pesan; 
+                const textElement = document.getElementById("running-text");
+                if (textElement) {
+                    if (!textElement.innerText.includes("HAPPY BIRTHDAY") && !textElement.innerText.includes("SELAMAT ULANG TAHUN")) {
+                        textElement.innerText = teksBaru || "Selamat Datang di Pondok Pemulihan Papua";
+                    }
+                }
+            }
+        });
+    }
+
+    function onYouTubeIframeAPIReady() { initMediaPlayer(); }
+
+    function initMediaPlayer() {
+        db.collection("portal_media").orderBy("urutan", "asc").limit(1).onSnapshot(snapshot => {
+            const otherMedia = document.getElementById('other-media');
+            const ytContainer = document.getElementById('player');
+            if (!snapshot.empty) {
+                const data = snapshot.docs[0].data();
+                const type = data.tipe || "video_youtube";
+                const content = data.url || "";
+                otherMedia.style.display = 'none';
+                ytContainer.style.display = 'none';
+                if (type === "video_youtube" || type === "youtube") {
+                    ytContainer.style.display = 'block';
+                    playYouTube(content);
+                } else if (type === "video_player" || type === "video") {
+                    otherMedia.style.display = 'flex';
+                    otherMedia.innerHTML = `<video src="${content}" autoplay controls style="width:100%; height:100%; object-fit:contain;"></video>`;
+                } else if (type === "gambar") {
+                    otherMedia.style.display = 'flex';
+                    otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
+                } else if (type === "teks") {
+                    otherMedia.style.display = 'flex';
+                    otherMedia.innerHTML = `<div style="color:white; padding:20px; font-weight:bold; font-size:16px;">${data.isi_artikel || content}</div>`;
+                }
+            }
+        });
+    }
+
+    function extractYouTubeID(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    }
+
+    function playYouTube(rawUrl) {
+        const videoId = extractYouTubeID(rawUrl);
+        if (!videoId) return;
+        if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+            ytPlayer.loadVideoById({ videoId: videoId });
+        } else {
+            ytPlayer = new YT.Player('player', {
+                videoId: videoId,
+                playerVars: { 'autoplay': 1, 'controls': 1, 'loop': 1, 'playlist': videoId },
+                events: { 'onReady': e => e.target.playVideo() }
+            });
+        }
+    }
+
+    function monitorEmailInbox(userJC, emailUser) {
+        db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            let unreadCount = 0;
+            const listDiv = document.getElementById('list-pesan');
+            if(!listDiv) return;
+            listDiv.innerHTML = "";
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const target = data.target_jc || data.target;
+                const tgl = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('id-ID') : "-";
+                if (target === "Semua JC" || target === userJC || target === ("JC"+userJC)) {
+                    const sudahDibaca = data.sudahDibaca || [];
+                    const isUnread = !sudahDibaca.includes(emailUser);
+                    if (isUnread) unreadCount++;
+                    listDiv.innerHTML += `<div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}"><div style="flex:1;" onclick="bukaDetailPesan('${doc.id}')"><b>${data.judul || 'Pesan'}</b><br><small>${data.kategori || 'Info'} - ${tgl}</small></div></div>`;
+                }
+            });
+            const badge = document.getElementById('email-badge');
+            if (badge) {
+                badge.style.display = unreadCount > 0 ? 'block' : 'none';
+                badge.innerText = unreadCount;
+            }
+        });
+    }
+
+    async function bukaDetailPesan(id) {
+        const docRef = db.collection("pengumuman_komsel").doc(id);
+        const doc = await docRef.get();
+        const data = doc.data();
+        document.getElementById('det-kategori').innerText = data.kategori || 'PENGUMUMAN';
+        document.getElementById('det-judul').innerText = data.judul;
+        document.getElementById('det-isi').innerText = data.isi || data.isi_pesan || "Tidak ada detail.";
+        document.getElementById('modal-pesan').style.display = 'flex';
+        if(!data.sudahDibaca || !data.sudahDibaca.includes(userEmail)) {
+            await docRef.update({ sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail) });
+        }
+    }
+
+    function syncUser() {
+        const isAdmin = localStorage.getItem("adminLoggedIn");
+        if (isAdmin === "true") {
+            document.getElementById('disp_nama').innerText = "Administrator";
+            document.getElementById('admin-badge').style.display = "inline-block";
+            monitorEmailInbox("Semua JC", "admin@system.com");
+        } else if (userEmail) {
+            document.getElementById('disp_email').innerText = userEmail;
+            db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
+                if (!s.empty) {
+                    const d = s.docs[0].data();
+                    document.getElementById('disp_nama').innerText = d.nama || "User";
+                    document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                    monitorEmailInbox(String(d.komsel), userEmail);
+                    
+                    const profilePhoto = d.foto_profil || d.fotoUrl;
+                    if (profilePhoto) { 
+                        document.getElementById('user-photo').src = profilePhoto; 
+                        document.getElementById('user-photo').style.display = "block";
+                        document.getElementById('default-icon').style.display = "none"; 
+                    }
+                    
+                    const today = new Date();
+                    const formatHariH = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+                    if (d.tgl_lahir && d.tgl_lahir.startsWith(formatHariH)) {
+                        applyBirthdayEffect(d.nama);
                     }
                 }
             });
         }
+    }
 
-        function onYouTubeIframeAPIReady() { initMediaPlayer(); }
+    function applyBirthdayEffect(nama) {
+        document.getElementById('photo-frame').classList.add('ultah-active');
+        const rt = document.getElementById('running-text');
+        if(rt) rt.innerText = `🎉 SELAMAT ULANG TAHUN ${nama.toUpperCase()}! TUHAN YESUS MEMBERKATI 🎉`;
+        initFireworks();
+    }
 
-        function initMediaPlayer() {
-            db.collection("portal_media").orderBy("urutan", "asc").limit(1).onSnapshot(snapshot => {
-                const otherMedia = document.getElementById('other-media');
-                const ytContainer = document.getElementById('player');
-                if (!snapshot.empty) {
-                    const data = snapshot.docs[0].data();
-                    const type = data.tipe || "video_youtube";
-                    const content = data.url || "";
-                    otherMedia.style.display = 'none';
-                    ytContainer.style.display = 'none';
-                    if (type === "video_youtube" || type === "youtube") {
-                        ytContainer.style.display = 'block';
-                        playYouTube(content);
-                    } else if (type === "video_player" || type === "video") {
-                        otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<video src="${content}" autoplay controls style="width:100%; height:100%; object-fit:contain;"></video>`;
-                    } else if (type === "gambar") {
-                        otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<img src="${content}" style="width:100%; height:100%; object-fit:contain;">`;
-                    } else if (type === "teks") {
-                        otherMedia.style.display = 'flex';
-                        otherMedia.innerHTML = `<div style="color:white; padding:20px; font-weight:bold; font-size:16px;">${data.isi_artikel || content}</div>`;
-                    }
-                }
+    function initFireworks() {
+        const canvas = document.getElementById('birthday-canvas');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = canvas.parentElement.offsetHeight;
+        let particles = [];
+        for(let i=0; i<40; i++) {
+            particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 1 + 0.5, opacity: Math.random(), color: i % 2 === 0 ? "#D4AF37" : "#FFD700" });
+        }
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.y -= p.speed;
+                if(p.y < 0) p.y = canvas.height;
+                ctx.globalAlpha = p.opacity; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
             });
+            requestAnimationFrame(animate);
         }
+        animate();
+    }
 
-        function extractYouTubeID(url) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = url.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : null;
-        }
+    function updateTime() {
+        const now = new Date();
+        const tglElement = document.getElementById('display-tanggal');
+        const jamElement = document.getElementById('digital-clock');
+        if(tglElement) tglElement.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        if(jamElement) jamElement.innerText = now.toLocaleTimeString('id-ID') + " WIT";
+    }
 
-        function playYouTube(rawUrl) {
-            const videoId = extractYouTubeID(rawUrl);
-            if (!videoId) return;
-            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-                ytPlayer.loadVideoById({ videoId: videoId });
-            } else {
-                ytPlayer = new YT.Player('player', {
-                    videoId: videoId,
-                    playerVars: { 'autoplay': 1, 'controls': 1, 'loop': 1, 'playlist': videoId },
-                    events: { 'onReady': e => e.target.playVideo() }
-                });
-            }
-        }
+    function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
+    function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
+    function tutupDetail() { document.getElementById('modal-pesan').style.display = 'none'; }
 
-        function monitorEmailInbox(userJC, emailUser) {
-            db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-                let unreadCount = 0;
-                const listDiv = document.getElementById('list-pesan');
-                if(!listDiv) return;
-                listDiv.innerHTML = "";
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const target = data.target_jc || data.target;
-                    const tgl = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('id-ID') : "-";
-                    if (target === "Semua JC" || target === userJC || target === ("JC"+userJC)) {
-                        const sudahDibaca = data.sudahDibaca || [];
-                        const isUnread = !sudahDibaca.includes(emailUser);
-                        if (isUnread) unreadCount++;
-                        listDiv.innerHTML += `<div class="msg-item" style="${isUnread ? 'background:#fff9e6; border-left:4px solid var(--emas-lux);' : 'background:#fff;'}"><div style="flex:1;" onclick="bukaDetailPesan('${doc.id}')"><b>${data.judul || 'Pesan'}</b><br><small>${data.kategori || 'Info'} - ${tgl}</small></div></div>`;
-                    }
-                });
-                const badge = document.getElementById('email-badge');
-                if (badge) {
-                    badge.style.display = unreadCount > 0 ? 'block' : 'none';
-                    badge.innerText = unreadCount;
-                }
-            });
-        }
-
-        async function bukaDetailPesan(id) {
-            const docRef = db.collection("pengumuman_komsel").doc(id);
-            const doc = await docRef.get();
-            const data = doc.data();
-            document.getElementById('det-kategori').innerText = data.kategori || 'PENGUMUMAN';
-            document.getElementById('det-judul').innerText = data.judul;
-            document.getElementById('det-isi').innerText = data.isi || data.isi_pesan || "Tidak ada detail.";
-            document.getElementById('modal-pesan').style.display = 'flex';
-            if(!data.sudahDibaca || !data.sudahDibaca.includes(userEmail)) {
-                await docRef.update({ sudahDibaca: firebase.firestore.FieldValue.arrayUnion(userEmail) });
-            }
-        }
-
-        function syncUser() {
-            const isAdmin = localStorage.getItem("adminLoggedIn");
-            if (isAdmin === "true") {
-                document.getElementById('disp_nama').innerText = "Administrator";
-                document.getElementById('admin-badge').style.display = "inline-block";
-                monitorEmailInbox("Semua JC", "admin@system.com");
-            } else if (userEmail) {
-                document.getElementById('disp_email').innerText = userEmail;
-                db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
-                    if (!s.empty) {
-                        const d = s.docs[0].data();
-                        document.getElementById('disp_nama').innerText = d.nama || "User";
-                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                        monitorEmailInbox(String(d.komsel), userEmail);
-                        if (d.fotoUrl) { 
-                            document.getElementById('user-photo').src = d.fotoUrl; 
-                            document.getElementById('user-photo').style.display = "block";
-                            document.getElementById('default-icon').style.display = "none"; 
-                            if (d.foto_profil) { // <--- Benar (sesuai field di Firestore)
-    document.getElementById('user-photo').src = d.foto_profil; 
-    document.getElementById('user-photo').style.display = "block";
-    document.getElementById('default-icon').style.display = "none"; 
-}
-                        }
-                        const today = new Date();
-                        const formatHariH = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-                        if (d.tgl_lahir && d.tgl_lahir.startsWith(formatHariH)) {
-                            applyBirthdayEffect(d.nama);
-                        }
-                    }
-                });
-            }
-        }
-
-        function applyBirthdayEffect(nama) {
-            document.getElementById('photo-frame').classList.add('ultah-active');
-            const rt = document.getElementById('running-text');
-            if(rt) rt.innerText = `🎉 SELAMAT ULANG TAHUN ${nama.toUpperCase()}! TUHAN YESUS MEMBERKATI 🎉`;
-            initFireworks();
-        }
-
-        function initFireworks() {
-            const canvas = document.getElementById('birthday-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = canvas.parentElement.offsetWidth;
-            canvas.height = canvas.parentElement.offsetHeight;
-            let particles = [];
-            for(let i=0; i<40; i++) {
-                particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 3 + 1, speed: Math.random() * 1 + 0.5, opacity: Math.random(), color: i % 2 === 0 ? "#D4AF37" : "#FFD700" });
-            }
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                particles.forEach(p => {
-                    p.y -= p.speed;
-                    if(p.y < 0) p.y = canvas.height;
-                    ctx.globalAlpha = p.opacity; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
-                });
-                requestAnimationFrame(animate);
-            }
-            animate();
-        }
-
-        function updateTime() {
-            const now = new Date();
-            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
-        }
-
-        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
-        function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
-        function tutupDetail() { document.getElementById('modal-pesan').style.display = 'none'; }
-
-        window.onload = () => { 
-            updateTime(); setInterval(updateTime, 1000); 
-            syncUser(); syncRunningText();
-            
-            const btnToggle = document.getElementById('toggleProfile');
-            const profileCard = document.getElementById('profileCard');
+    window.onload = () => { 
+        updateTime(); 
+        setInterval(updateTime, 1000); 
+        syncUser(); 
+        syncRunningText();
+        
+        const btnToggle = document.getElementById('toggleProfile');
+        const profileCard = document.getElementById('profileCard');
+        if(btnToggle && profileCard) {
             btnToggle.addEventListener('click', () => {
                 profileCard.classList.toggle('closed');
-                document.getElementById('toggleIcon').className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+                const icon = document.getElementById('toggleIcon');
+                if(icon) icon.className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
             });
-        };
-    </script>
+        }
+    };
+</script>
 </body>
 </html>
