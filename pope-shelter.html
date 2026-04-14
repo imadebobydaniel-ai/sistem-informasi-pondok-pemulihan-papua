@@ -6,31 +6,36 @@
     <title>Pope Shelter - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f6; }
+        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #f4f7f6; --merah: #d9534f; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* Header dengan Tombol Kembali */
+        .sticky-top-container {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: var(--bg);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
         .header-app { 
             background: var(--biru-tua); 
             color: white; 
             padding: 18px; 
             display: flex;
             align-items: center;
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            position: relative;
         }
 
         .btn-back {
             color: white;
-            font-size: 20px;
+            font-size: 22px;
             text-decoration: none;
             position: absolute;
             left: 18px;
             cursor: pointer;
             display: flex;
             align-items: center;
+            z-index: 10;
         }
 
         .header-title {
@@ -39,43 +44,103 @@
             font-weight: bold;
             letter-spacing: 1px;
             font-size: 16px;
+            text-transform: uppercase;
         }
         
-        .container { padding: 15px; max-width: 600px; margin: auto; }
+        .action-container { padding: 15px; max-width: 600px; margin: auto; }
         
-        /* Tombol Utama */
-        .btn-add { width: 100%; background: var(--biru-tua); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,51,102,0.2); font-size: 13px; }
+        .btn-add { 
+            width: 100%; 
+            background: var(--biru-tua); 
+            color: white; 
+            border: none; 
+            padding: 15px; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            font-size: 13px; 
+        }
 
-        /* Card Artikel Kesaksian */
-        .kesaksian-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-top: 4px solid var(--emas); }
-        .kesaksian-text { font-size: 15px; color: #333; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; font-style: italic; }
+        .content-scroll { padding: 0 15px 15px 15px; max-width: 600px; margin: auto; }
+
+        /* Card Artikel */
+        .kesaksian-card { 
+            background: white; 
+            border-radius: 15px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); 
+            border-top: 4px solid var(--emas); 
+            position: relative;
+        }
+
+        /* Control Panel (Checkbox & Hapus) */
+        .card-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .select-box { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; font-weight: bold; }
+        .select-box input { width: 18px; height: 18px; cursor: pointer; }
+
+        .btn-delete { color: var(--merah); cursor: pointer; font-size: 14px; background: none; border: none; }
+
+        .kesaksian-text { font-size: 15px; color: #333; line-height: 1.6; margin-bottom: 15px; font-style: italic; }
         
-        /* Footer Artikel */
+        /* Share Buttons */
+        .share-panel { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            opacity: 0.3; 
+            pointer-events: none; 
+            transition: 0.3s;
+        }
+        .share-panel.active { opacity: 1; pointer-events: auto; }
+        
+        .btn-share { 
+            flex: 1; 
+            padding: 8px; 
+            border-radius: 8px; 
+            border: none; 
+            color: white; 
+            font-size: 12px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 5px; 
+        }
+        .bg-wa { background: #25D366; }
+        .bg-fb { background: #1877F2; }
+        .bg-ig { background: #E4405F; }
+
         .kesaksian-footer { display: flex; align-items: center; gap: 12px; padding-top: 15px; border-top: 1px solid #eee; }
-        .author-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--emas); background: #eee; }
+        .author-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--emas); }
         .author-info { flex: 1; }
-        .author-name { font-weight: bold; font-size: 14px; color: var(--biru-tua); margin: 0; }
-        .author-meta { font-size: 11px; color: #777; margin: 2px 0 0 0; text-transform: uppercase; }
+        .author-name { font-weight: bold; font-size: 13px; color: var(--biru-tua); margin: 0; }
+        .author-meta { font-size: 10px; color: #777; margin: 0; }
 
-        /* Popup Form */
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        .popup { background: white; width: 100%; max-width: 400px; border-radius: 20px; padding: 25px; position: relative; }
-        .popup h3 { margin-top: 0; color: var(--biru-tua); text-align: center; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { font-size: 12px; color: #666; display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; background: #f9f9f9; box-sizing: border-box; height: 150px; resize: none; }
-        .btn-save { width: 100%; background: var(--emas); color: var(--biru-tua); border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-cancel { display: block; text-align: center; margin-top: 15px; color: #999; font-size: 13px; text-decoration: none; cursor: pointer; }
-
-        /* Notifikasi Sukses Custom */
+        /* Popups & Toast */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .popup { background: white; width: 100%; max-width: 400px; border-radius: 20px; padding: 25px; }
+        .form-group textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; height: 150px; resize: none; box-sizing: border-box; }
+        .btn-save { width: 100%; background: var(--emas); color: var(--biru-tua); border: none; padding: 14px; border-radius: 10px; font-weight: bold; margin-top: 10px; }
+        
         .success-toast { 
             position: fixed; top: -100px; left: 50%; transform: translateX(-50%); 
             background: white; color: var(--biru-tua); padding: 15px 25px; 
             border-radius: 50px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
-            display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px;
-            transition: top 0.5s cubic-bezier(0.68, -0.55, 0.26, 1.55);
-            border-bottom: 3px solid var(--emas);
-            width: 80%; max-width: 320px; justify-content: center;
+            display: flex; align-items: center; gap: 10px; font-weight: bold;
+            transition: top 0.5s; border-bottom: 3px solid var(--emas);
         }
         .success-toast.show { top: 30px; }
     </style>
@@ -84,32 +149,33 @@
 
 <div id="toast-success" class="success-toast">
     <i class="fa-solid fa-circle-check" style="color: green; font-size: 20px;"></i>
-    Terimakasih, Kesaksian Anda Telah Diinput
+    <span id="toast-text">Berhasil!</span>
 </div>
 
-<div class="header-app">
-    <a href="index.html" class="btn-back">
-        <i class="fa-solid fa-arrow-left"></i>
-    </a>
-    <div class="header-title">RUANG KESAKSIAN</div>
+<div class="sticky-top-container">
+    <div class="header-app">
+        <a href="menu.html" class="btn-back"><i class="fa-solid fa-circle-chevron-left"></i></a>
+        <div class="header-title">RUANG KESAKSIAN</div>
+    </div>
+    <div class="action-container">
+        <button class="btn-add" onclick="bukaPopupAdd()">
+            <i class="fa-solid fa-pen-fancy"></i> TULIS KESAKSIAN HIDUP
+        </button>
+    </div>
 </div>
 
-<div class="container">
-    <button class="btn-add" onclick="bukaPopupAdd()">
-        <i class="fa-solid fa-pen-fancy"></i> TULIS DAN CERITAKAN KESAKSIAN ANDA UNTUK MEMBERKATI ORANG LAIN
-    </button>
+<div class="content-scroll">
     <div id="rubrik-kesaksian-container"></div>
 </div>
 
 <div id="popup-add" class="overlay">
     <div class="popup">
-        <h3>Bagikan Kesaksian</h3>
+        <h3 style="text-align:center; color:var(--biru-tua)">Bagikan Kesaksian</h3>
         <div class="form-group">
-            <label>Cerita Kesaksian Anda</label>
-            <textarea id="add-cerita" placeholder="Tuliskan perjalanan hidup atau kebaikan Tuhan yang ingin Anda bagikan..."></textarea>
+            <textarea id="add-cerita" placeholder="Tuliskan kebaikan Tuhan..."></textarea>
         </div>
-        <button class="btn-save" id="btnKirim" onclick="simpanKesaksian()">POSTING KESAKSIAN</button>
-        <div class="btn-cancel" onclick="tutupPopup()">Batal</div>
+        <button class="btn-save" id="btnKirim" onclick="simpanKesaksian()">POSTING SEKARANG</button>
+        <div style="text-align:center; margin-top:15px; color:#999; cursor:pointer;" onclick="tutupPopup()">Batal</div>
     </div>
 </div>
 
@@ -143,53 +209,87 @@
     };
 
     function loadRubrikKesaksian() {
-        db.collection("kesaksian")
-          .orderBy("timestamp", "desc")
-          .onSnapshot(snap => {
-              let html = "";
-              if (snap.empty) {
-                  html = "<p style='text-align:center; color:#888; margin-top:30px;'>Belum ada kesaksian yang dibagikan.</p>";
-              }
-              snap.forEach(doc => {
-                  const data = doc.data();
-                  const foto = data.author_foto || 'https://via.placeholder.com/100';
-                  
-                  html += `
-                      <div class="kesaksian-card">
-                          <div class="kesaksian-text">"${data.isi_kesaksian}"</div>
-                          <div class="kesaksian-footer">
-                              <img src="${foto}" class="author-img" onerror="this.src='https://via.placeholder.com/100'">
-                              <div class="author-info">
-                                  <p class="author-name">${data.author_nama}</p>
-                                  <p class="author-meta">NIJ: ${data.author_nij} • KOMSEL: ${data.author_komsel}</p>
-                              </div>
-                          </div>
-                      </div>`;
-              });
-              document.getElementById('rubrik-kesaksian-container').innerHTML = html;
-          });
+        db.collection("kesaksian").orderBy("timestamp", "desc").onSnapshot(snap => {
+            let html = "";
+            if (snap.empty) {
+                html = "<p style='text-align:center; color:#888; margin-top:30px;'>Belum ada kesaksian.</p>";
+            }
+            snap.forEach(doc => {
+                const data = doc.data();
+                const id = doc.id;
+                const textKesaksian = data.isi_kesaksian.replace(/\n/g, " ");
+                const foto = data.author_foto || 'https://via.placeholder.com/100';
+                
+                // Cek apakah ini milik user saat ini untuk fungsi hapus
+                const canDelete = data.author_email === currentUserData.email;
+
+                html += `
+                    <div class="kesaksian-card" id="card-${id}">
+                        <div class="card-controls">
+                            <label class="select-box">
+                                <input type="checkbox" onchange="toggleShare('${id}', this)"> Aktifkan Share
+                            </label>
+                            ${canDelete ? `<button class="btn-delete" onclick="hapusKesaksian('${id}')"><i class="fa-solid fa-trash-can"></i> Hapus</button>` : ''}
+                        </div>
+
+                        <div class="kesaksian-text">"${data.isi_kesaksian}"</div>
+
+                        <div class="share-panel" id="share-${id}">
+                            <button class="btn-share bg-wa" onclick="shareWA('${textKesaksian}')"><i class="fa-brands fa-whatsapp"></i> WA</button>
+                            <button class="btn-share bg-fb" onclick="shareFB('${id}')"><i class="fa-brands fa-facebook-f"></i> FB</button>
+                            <button class="btn-share bg-ig" onclick="shareIG()"><i class="fa-brands fa-instagram"></i> IG</button>
+                        </div>
+
+                        <div class="kesaksian-footer">
+                            <img src="${foto}" class="author-img" onerror="this.src='https://via.placeholder.com/100'">
+                            <div class="author-info">
+                                <p class="author-name">${data.author_nama}</p>
+                                <p class="author-meta">NIJ: ${data.author_nij} • ${data.author_komsel}</p>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            document.getElementById('rubrik-kesaksian-container').innerHTML = html;
+        });
     }
 
-    function bukaPopupAdd() {
-        document.getElementById('popup-add').style.display = 'flex';
+    // FUNGSI TOGGLE SHARE
+    function toggleShare(id, cb) {
+        const panel = document.getElementById(`share-${id}`);
+        if(cb.checked) panel.classList.add('active');
+        else panel.classList.remove('active');
     }
 
-    function showSuccessMessage() {
-        const toast = document.getElementById('toast-success');
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 4000);
+    // FUNGSI SHARE
+    function shareWA(text) {
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent("*Kesaksian Pondok Pemulihan Papua* \n\n" + text)}`;
+        window.open(url, '_blank');
+    }
+
+    function shareFB(id) {
+        const shareUrl = window.location.href; // Sebaiknya arahkan ke landing page artikel
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+    }
+
+    function shareIG() {
+        alert("Buka Instagram, lalu paste cerita di Story Anda!");
+    }
+
+    // FUNGSI HAPUS
+    async function hapusKesaksian(id) {
+        if(confirm("Apakah Anda yakin ingin menghapus kesaksian ini?")) {
+            try {
+                await db.collection("kesaksian").doc(id).delete();
+                showToast("Kesaksian telah dihapus");
+            } catch (e) { console.error(e); }
+        }
     }
 
     async function simpanKesaksian() {
         const cerita = document.getElementById('add-cerita').value.trim();
         if (!cerita) return;
-
         const btn = document.getElementById('btnKirim');
         btn.disabled = true;
-        btn.innerText = "Memposting...";
-
         try {
             await db.collection("kesaksian").add({
                 isi_kesaksian: cerita,
@@ -200,21 +300,22 @@
                 author_email: currentUserData.email,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            
             tutupPopup();
             document.getElementById('add-cerita').value = "";
-            showSuccessMessage();
-        } catch (e) {
-            console.error(e);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "POSTING KESAKSIAN";
-        }
+            showToast("Kesaksian Berhasil Diposting!");
+        } catch (e) { console.error(e); }
+        finally { btn.disabled = false; }
     }
 
-    function tutupPopup() { 
-        document.getElementById('popup-add').style.display = 'none'; 
+    function showToast(msg) {
+        const toast = document.getElementById('toast-success');
+        document.getElementById('toast-text').innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
     }
+
+    function bukaPopupAdd() { document.getElementById('popup-add').style.display = 'flex'; }
+    function tutupPopup() { document.getElementById('popup-add').style.display = 'none'; }
 </script>
 </body>
 </html>
