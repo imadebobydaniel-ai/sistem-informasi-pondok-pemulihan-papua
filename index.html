@@ -270,22 +270,34 @@
         const bgSound = document.getElementById('asistenAudio');
 
         // Fungsi Tambahan: Toggle Mute/Unmute
-        function toggleMute() {
-            const volIcon = document.getElementById('volIcon');
-            if (bgSound.paused) {
-                bgSound.play().catch(e => console.log("Audio play failed"));
+       function toggleMute() {
+    const volIcon = document.getElementById('volIcon');
+    
+    // Baris krusial: Memastikan status muted bawaan browser dimatikan
+    bgSound.muted = false; 
+
+    if (bgSound.paused) {
+        // Force play dengan penanganan error
+        const playPromise = bgSound.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
                 volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-                bgSound.muted = false;
-            } else {
-                if (bgSound.muted) {
-                    bgSound.muted = false;
-                    volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-                } else {
-                    bgSound.muted = true;
-                    volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
-                }
-            }
+            }).catch(e => {
+                console.log("Sistem masih memblokir: ", e);
+            });
         }
+    } else {
+        // Logika toggle jika sudah berputar
+        if (volIcon.classList.contains('fa-volume-high')) {
+            bgSound.pause();
+            volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
+        } else {
+            bgSound.play();
+            volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+        }
+    }
+}
 
         // Initialized after Splash Screen
         document.addEventListener("DOMContentLoaded", () => {
