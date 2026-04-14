@@ -5,36 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asisten Virtual - SIPAPUA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
         :root { --emas-lux: #D4AF37; --grey-bg: #2c2c2c; }
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #1a1a1a; overflow: hidden; }
-
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--grey-bg); display: flex;
             justify-content: center; align-items: center; z-index: 9999;
-            transition: opacity 1s ease;
-            cursor: pointer;
+            transition: opacity 1s ease; cursor: pointer;
         }
-
         #assistant-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #0a0f1f, #000);
             display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 8888;
         }
-        .assistant-img { 
-            width: 280px; 
-            animation: breathing 4s ease-in-out infinite; 
-            filter: drop-shadow(0 0 25px rgba(0,150,255,0.4));
-        }
+        .assistant-img { width: 280px; animation: breathing 4s ease-in-out infinite; filter: drop-shadow(0 0 25px rgba(0,150,255,0.4)); }
         .text-box { margin-top: 25px; color: #fff; font-size: 18px; text-align: center; max-width: 80%; min-height: 80px; line-height: 1.5; }
-        
-        #login-page {
-            display: none; height: 100vh; justify-content: center; align-items: center;
-        }
-        .login-card { background: #ffffff; padding: 30px; border-radius: 15px; width: 90%; max-width: 380px; }
-
+        #login-page { display: none; height: 100vh; justify-content: center; align-items: center; }
+        .login-card { background: #ffffff; padding: 30px; border-radius: 15px; width: 90%; max-width: 380px; text-align: center; }
         @keyframes breathing { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .cursor { display: inline-block; width: 8px; background: white; margin-left: 5px; animation: blink 1s infinite; }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
@@ -43,15 +31,14 @@
 <body>
 
     <audio id="asistenAudio" loop preload="auto">
-        <source src="asisten_virtual_sound.mp3" type="audio/mpeg">
-        Browser Anda tidak mendukung elemen audio.
+        <source src="asisten_virtual_sound.mp3" type="audio/mp.3">
     </audio>
 
     <div id="splash-screen" onclick="startExperience()">
         <div style="text-align: center;">
             <img src="logo_pondok.png" style="width: 120px; margin-bottom: 20px;">
             <p style="color: var(--emas-lux); font-size: 32px; font-weight: bold; letter-spacing: 5px;">SIPAPUA</p>
-            <p style="color: white; font-size: 12px; margin-top: 10px; opacity: 0.8;">Klik di mana saja untuk memulai</p>
+            <p style="color: white; font-size: 12px; margin-top: 10px; opacity: 0.8;">Klik untuk memulai</p>
         </div>
     </div>
 
@@ -64,13 +51,11 @@
 
     <div id="login-page">
         <div class="login-card">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img src="logo_pondok.png" style="width: 70px;">
-                <h2 style="font-size: 18px;">Pondok Pemulihan Papua</h2>
-            </div>
-            <input type="email" placeholder="Email" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ddd;">
+            <img src="logo_pondok.png" style="width: 70px; margin-bottom: 10px;">
+            <h2 style="font-size: 18px; margin-bottom: 20px;">Pondok Pemulihan Papua</h2>
+            <input type="email" id="userEmail" placeholder="Email" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid #ddd;">
             <input type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid #ddd;">
-            <button style="width:100%; padding:12px; background:#007bff; color:white; border:none; border-radius:5px; font-weight:bold;">MASUK</button>
+            <button onclick="handleLogin()" style="width:100%; padding:12px; background:#007bff; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">MASUK</button>
         </div>
     </div>
 
@@ -79,40 +64,24 @@
     const assistant = document.getElementById('assistant-screen');
     const loginPage = document.getElementById('login-page');
     const typingEl = document.getElementById('typing');
-    
-    // Hubungkan langsung ke ID audio di atas
     const bgSound = document.getElementById('asistenAudio');
 
     const messages = [
-        "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
-        "Aplikasi ini sangat membantu saudara mempermudah melakukan kontrol terhadap penilaian disetiap bidang pelayanan yang Anda lakukan.",
-        "Kami percaya dengan pertumbuhan Rohani dapat diukur melalui sebuah tindakan positif dan bukti nyata serta dibantu dengan penilaian yang tepat.",
+        "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua).",
+        "Aplikasi ini membantu Anda mengontrol penilaian disetiap bidang pelayanan.",
+        "Pertumbuhan Rohani dapat diukur melalui tindakan positif dan bukti nyata.",
         "Selamat datang, Tuhan memberkati."
     ];
 
-    let msgIndex = 0;
-    let charIndex = 0;
-    let isStarted = false;
+    let msgIndex = 0, charIndex = 0, isStarted = false;
 
     function startExperience() {
         if (isStarted) return;
         isStarted = true;
-
-        // Buka blokir audio untuk browser HP & Chrome
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        bgSound.play().catch(e => console.log("Audio play blocked"));
 
-        // Paksa load dan putar
-        bgSound.load();
-        bgSound.play().then(() => {
-            console.log("Audio SIPAPUA diputar");
-        }).catch(e => {
-            console.error("Audio diblokir atau file tidak ditemukan:", e);
-        });
-
-        // Efek visual pindah halaman
         splash.style.opacity = '0';
         setTimeout(() => {
             splash.style.display = 'none';
@@ -127,22 +96,30 @@
             if (charIndex < currentText.length) {
                 typingEl.innerHTML += currentText.charAt(charIndex);
                 charIndex++;
-                setTimeout(startTyping, 40); 
+                setTimeout(startTyping, 40);
             } else {
                 setTimeout(() => {
                     charIndex = 0;
                     typingEl.innerHTML = "";
                     msgIndex++;
                     startTyping();
-                }, 3000); 
+                }, 2500);
             }
         } else {
-            // Berhenti saat masuk halaman login
             bgSound.pause();
-            bgSound.currentTime = 0; 
             assistant.style.display = 'none';
             loginPage.style.display = 'flex';
-            document.body.style.overflow = "auto";
+        }
+    }
+
+    function handleLogin() {
+        const email = document.getElementById('userEmail').value;
+        if(email) {
+            // Simpan email agar game.html bisa menarik data leaderboard
+            localStorage.setItem("userData", JSON.stringify({ email: email, nama: email.split('@')[0] }));
+            window.location.href = 'game.html'; // Arahkan langsung ke game atau menu
+        } else {
+            alert("Silakan masukkan email");
         }
     }
 </script>
