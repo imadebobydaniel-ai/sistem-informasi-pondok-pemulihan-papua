@@ -10,16 +10,14 @@
         :root { --emas-lux: #D4AF37; --grey-bg: #2c2c2c; }
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background-color: #1a1a1a; overflow: hidden; }
 
-        /* 1. STYLE SPLASH SCREEN */
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--grey-bg); display: flex;
             justify-content: center; align-items: center; z-index: 9999;
             transition: opacity 1s ease;
-            cursor: pointer; /* Memberitahu user bahwa ini bisa diklik */
+            cursor: pointer;
         }
 
-        /* 2. STYLE ASISTEN VIRTUAL */
         #assistant-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #0a0f1f, #000);
@@ -32,19 +30,22 @@
         }
         .text-box { margin-top: 25px; color: #fff; font-size: 18px; text-align: center; max-width: 80%; min-height: 80px; line-height: 1.5; }
         
-        /* 3. STYLE LOGIN CARD */
         #login-page {
             display: none; height: 100vh; justify-content: center; align-items: center;
         }
         .login-card { background: #ffffff; padding: 30px; border-radius: 15px; width: 90%; max-width: 380px; }
 
-        /* ANIMASI */
         @keyframes breathing { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .cursor { display: inline-block; width: 8px; background: white; margin-left: 5px; animation: blink 1s infinite; }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
+
+    <audio id="asistenAudio" loop preload="auto">
+        <source src="asisten_virtual_sound.mp3" type="audio/mpeg">
+        Browser Anda tidak mendukung elemen audio.
+    </audio>
 
     <div id="splash-screen" onclick="startExperience()">
         <div style="text-align: center;">
@@ -78,12 +79,7 @@
         const assistant = document.getElementById('assistant-screen');
         const loginPage = document.getElementById('login-page');
         const typingEl = document.getElementById('typing');
-
-      // Gunakan Audio object dengan preload
-    const bgSound = new Audio();
-    bgSound.src = 'asisten_virtual_sound.mp3'; // Pastikan nama file ini 100% sama
-    bgSound.loop = true;
-    bgSound.preload = 'auto'; // Memaksa browser mendownload audio lebih awal
+        const bgSound = document.getElementById('asistenAudio');
 
         const messages = [
             "Selamat Datang di SIPAPUA (Sistem Informasi Pondok Pemulihan Papua). Aplikasi ini adalah sebuah terobosan untuk membantu Anda dalam menjalankan penilaian dari segi level pelayanan yang Anda lakukan.",
@@ -96,15 +92,26 @@
         let charIndex = 0;
         let isStarted = false;
 
-        // Fungsi utama yang dipicu oleh klik user
         function startExperience() {
-            if (isStarted) return; // Mencegah klik ganda
+            if (isStarted) return;
             isStarted = true;
 
-            // Putar suara (sekarang diizinkan browser karena ada interaksi klik)
-            bgSound.play().catch(e => console.log("Audio play error:", e));
+            // Memaksa reload audio untuk memastikan path benar sebelum diputar
+            bgSound.load(); 
             
-            // Transisi Splash ke Asisten
+            // Mencoba memutar audio dengan penanganan janji (promise)
+            const playPromise = bgSound.play();
+
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log("Audio berhasil diputar");
+                }).catch(error => {
+                    console.error("Gagal memutar audio. Cek path file:", error);
+                    // Tetap lanjut transisi meskipun audio gagal (agar app tidak stuck)
+                });
+            }
+
+            // Transisi Visual
             splash.style.opacity = '0';
             setTimeout(() => {
                 splash.style.display = 'none';
@@ -113,11 +120,9 @@
             }, 1000);
         }
 
-        // Fungsi Typing Effect
         function startTyping() {
             if (msgIndex < messages.length) {
                 let currentText = messages[msgIndex];
-                
                 if (charIndex < currentText.length) {
                     typingEl.innerHTML += currentText.charAt(charIndex);
                     charIndex++;
@@ -131,9 +136,8 @@
                     }, 3000); 
                 }
             } else {
-                // Selesai, matikan suara dan ke halaman login
+                // Berhenti saat masuk login
                 bgSound.pause();
-                bgSound.currentTime = 0;
                 assistant.style.display = 'none';
                 loginPage.style.display = 'flex';
                 document.body.style.overflow = "auto";
