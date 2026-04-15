@@ -198,7 +198,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <script>
-        // --- KONFIGURASI FIREBASE ---
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
@@ -213,6 +213,7 @@
 
         // --- GLOBAL VARIABLES ---
         const bgSound = document.getElementById('asistenAudio');
+        const volIcon = document.getElementById('volIcon');
         const typingEl = document.getElementById('typing');
         const assistantContainer = document.getElementById('assistant-container');
         const loginCard = document.getElementById('main-login-card');
@@ -229,21 +230,17 @@
         let charIndex = 0;
         let isTyping = false;
 
-        // --- AUDIO LOGIC INTEGRATION ---
+        // --- AUDIO ENGINE (OPTIMIZED) ---
 
-        // 1. Fungsi Toggle Mute
         function toggleMute() {
-            const volIcon = document.getElementById('volIcon');
             if (bgSound.paused) {
-                bgSound.muted = false; 
-                const playPromise = bgSound.play();
+                bgSound.muted = false;
+                let playPromise = bgSound.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
                         volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-                        bgSound.setAttribute('data-unlocked', 'true');
                     }).catch(error => {
-                        console.log("Klik layar terlebih dahulu agar audio aktif.");
-                        volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
+                        console.log("Audio diblokir, butuh klik.");
                     });
                 }
             } else {
@@ -252,33 +249,24 @@
             }
         }
 
-        // 2. Listener untuk Unlock Audio (Sekali klik di mana saja)
-        document.addEventListener("click", function initAudio() {
-            bgSound.muted = false; 
+        function unlockAudio() {
+            bgSound.muted = false;
             bgSound.play().then(() => {
                 bgSound.pause();
                 bgSound.currentTime = 0;
-                bgSound.setAttribute('data-unlocked', 'true'); 
-                console.log("Audio Permission Granted");
-            }).catch(e => {
-                console.log("Interaksi pertama belum cukup untuk unlock audio.");
-            });
-            document.removeEventListener("click", initAudio);
-        }, { once: true });
+                console.log("Izin Audio Diterima");
+                document.removeEventListener('click', unlockAudio);
+                document.removeEventListener('touchstart', unlockAudio);
+            }).catch(e => console.log("Menunggu interaksi nyata..."));
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
 
-        // --- END AUDIO LOGIC ---
-
-        // --- AUTH CHECK ---
-        auth.onAuthStateChanged((user) => {
-            if (user && user.emailVerified) {
-                localStorage.setItem("userEmail", user.email);
-                window.location.replace("menu.html");
-            }
-        });
+        // --- MESSAGE & TRANSITION ENGINE ---
 
         async function nextMessage() {
             if (isTyping) return;
-            
+
             try {
                 bgSound.pause();
                 bgSound.currentTime = 0;
@@ -290,9 +278,7 @@
                 typingEl.innerHTML = "";
                 
                 setTimeout(() => {
-                    if (bgSound.getAttribute('data-unlocked') === 'true') {
-                        bgSound.play().catch(e => console.log("Menunggu interaksi user..."));
-                    }
+                    bgSound.play().catch(() => console.log("Audio tertahan browser"));
                     startTyping();
                 }, 300); 
             } else {
@@ -329,6 +315,8 @@
             }
         }
 
+        // --- INITIALIZATION ---
+
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
@@ -338,15 +326,16 @@
                     assistantContainer.style.display = 'flex';
                     setTimeout(() => { 
                         assistantContainer.style.opacity = '1'; 
-                        // Mencoba play otomatis jika sudah ada interaksi sebelumnya
-                        bgSound.play().catch(e => {
-                            document.getElementById('volIcon').classList.replace('fa-volume-high', 'fa-volume-xmark');
+                        bgSound.play().catch(() => {
+                            volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
                         });
+                        startTyping();
                     }, 50);
-                    startTyping();
                 }, 1200);
             }, 3000);
         });
+
+        // --- UI HANDLERS ---
 
         document.getElementById('eyeIcon').onclick = function() {
             const pass = document.getElementById('user_pass');
@@ -379,7 +368,7 @@
                     auth.signOut();
                 }
             } catch (err) {
-                msg.innerText = "Periksa Kembali Pasword dan Email Anda";
+                msg.innerText = "Periksa Kembali Password dan Email Anda";
                 msg.className = "msg-error";
                 btn.innerText = "MASUK";
                 btn.disabled = false;
