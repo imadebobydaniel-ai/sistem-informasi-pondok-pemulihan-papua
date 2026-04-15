@@ -49,7 +49,6 @@
             transition: opacity 1.5s ease;
         }
 
-        /* --- TAMBAHAN TOMBOL SUARA --- */
         .audio-control {
             position: absolute;
             top: 25px;
@@ -159,9 +158,10 @@
     </style>
 </head>
 <body>
-<audio id="asistenAudio" preload="auto">
-    <source src="sound_virtual.mp3" type="audio/mpeg">
-</audio>
+
+    <audio id="asistenAudio" preload="auto">
+        <source src="sound_virtual.mp3" type="audio/mpeg">
+    </audio>
 
     <div id="splash-screen">
         <div class="splash-content">
@@ -268,32 +268,31 @@
         const nextBtn = document.getElementById('next-btn');
         const bgSound = document.getElementById('asistenAudio');
 
-        // Fungsi Tambahan: Toggle Mute/Unmute
-    function toggleMute() {
-    // Ambil ulang elemen untuk memastikan tidak "null"
-    const audio = document.getElementById('asistenAudio');
-    const volIcon = document.getElementById('volIcon');
-    
-    if (!audio) return; // Keamanan jika elemen tidak ditemukan
+        // FUNGSI TOGGLE MUTE - DIPERBAIKI
+        function toggleMute() {
+            const volIcon = document.getElementById('volIcon');
+            
+            // Buka kunci paksa agar suara muncul
+            bgSound.muted = false; 
 
-    audio.muted = false; // Buka kunci mute browser
+            if (bgSound.paused) {
+                // Gunakan jeda sedikit untuk menghindari AbortError browser
+                setTimeout(() => {
+                    bgSound.play().then(() => {
+                        volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+                    }).catch(e => {
+                        console.log("Browser memblokir audio:", e);
+                    });
+                }, 50);
+            } else {
+                bgSound.pause();
+                volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
+            }
+        }
 
-    if (audio.paused) {
-        audio.play().then(() => {
-            volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-        }).catch(e => {
-            alert("Klik layar sekali lagi, lalu tekan tombol speaker.");
-            console.error(e);
-        });
-    } else {
-        audio.pause();
-        volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
-    }
-}
-
-        // Initialized after Splash Screen
+        // INITIALIZATION
         document.addEventListener("DOMContentLoaded", () => {
-            // Trik Pancingan Audio agar diizinkan browser
+            // Trik Pancingan Audio (User Interaction)
             const unlockAudio = () => {
                 bgSound.play().then(() => {
                     bgSound.pause();
@@ -311,8 +310,9 @@
                     assistantContainer.style.display = 'flex';
                     setTimeout(() => { 
                         assistantContainer.style.opacity = '1'; 
+                        // Coba mainkan audio otomatis (jika diizinkan browser)
                         bgSound.play().catch(e => {
-                            // Jika diblokir, ikon berubah menjadi xmark sebagai penanda
+                            // Jika gagal, set ikon ke Xmark sebagai tanda perlu klik manual
                             document.getElementById('volIcon').classList.replace('fa-volume-high', 'fa-volume-xmark');
                         });
                     }, 50);
@@ -345,9 +345,17 @@
             }
         }
 
+        // FUNGSI NEXT MESSAGE - DIPERBAIKI
         function nextMessage() {
             if (isTyping) return;
-            bgSound.play().catch(e => {});
+            
+            // Hindari tabrakan play/pause
+            bgSound.pause();
+            bgSound.currentTime = 0;
+            
+            setTimeout(() => {
+                bgSound.play().catch(e => {});
+            }, 50);
 
             msgIndex++;
             if (msgIndex < messages.length) {
