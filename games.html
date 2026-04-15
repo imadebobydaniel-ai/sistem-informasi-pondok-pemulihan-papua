@@ -10,53 +10,8 @@
     <style>
         /* CSS ASLI ANDA TETAP DIJAGA */
         * { box-sizing: border-box; } 
-        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #001f3f; --putih: #ffffff; --emas-lux: #D4AF37; }
+        :root { --biru-tua: #003366; --emas: #D4AF37; --bg: #001f3f; --putih: #ffffff; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; color: white; overflow: hidden; height: 100vh; width: 100vw; }
-        
-        /* CSS Tambahan untuk Logo Startup */
-        #start-overlay { 
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            background: var(--bg); 
-            z-index: 6000; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            flex-direction: column;
-            text-align: center;
-        }
-        .logo-wrapper { position: relative; margin-bottom: 20px; }
-        .splash-logo { width: 120px; position: relative; z-index: 10; }
-        .gold-loader {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 150px; height: 150px;
-            border: 3px solid transparent;
-            border-top: 3px solid var(--emas);
-            border-radius: 50%;
-            animation: spin 2s linear infinite;
-        }
-        @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
-        
-        /* Gaya tombol baru yang diminta */
-        #start-app-btn {
-            margin-top: 30px; 
-            padding: 15px 40px; 
-            background: var(--emas-lux); 
-            color: black; 
-            border: none; 
-            border-radius: 30px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 16px; 
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.5); 
-            z-index: 9999999; 
-            display: none; /* Muncul via JS */
-            animation: pulse 1.5s infinite;
-        }
-
-        /* Sisanya tetap sama dengan kode lama Anda */
         .header-game { background: var(--biru-tua); padding: 10px; display: flex; align-items: center; border-bottom: 3px solid var(--emas); height: 50px; }
         .btn-back { color: white; font-size: 18px; text-decoration: none; z-index: 10; }
         .header-title { flex: 1; text-align: center; font-weight: bold; font-size: 14px; letter-spacing: 1px; }
@@ -76,34 +31,43 @@
         .btn-lifeline { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--emas); background: var(--biru-tua); color: var(--emas); font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; padding: 0; }
         .btn-lifeline.used { opacity: 0.3; cursor: default; }
         .notif-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
-        .notif-box { background: var(--biru-tua); border: 2px solid var(--emas); padding: 25px; border-radius: 20px; width: 100%; max-width: 320px; text-align: center; }
+        .notif-box, .start-box { background: var(--biru-tua); border: 2px solid var(--emas); padding: 25px; border-radius: 20px; width: 100%; max-width: 320px; text-align: center; }
         .btn-notif-ok { background: var(--emas); color: var(--biru-tua); padding: 12px 30px; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
-        
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 6000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         @keyframes pulse { 0% { transform: scale(1); } 70% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        #start-btn-container button { animation: pulse 1.5s infinite; }
 
-        /* LEADERBOARD */
-        .leaderboard-section { display: none; height: 35vh; margin-top: 10px; background: rgba(0, 20, 40, 0.7); border-top: 2px solid var(--emas); overflow-y: auto; border-radius: 15px 15px 0 0; padding: 10px; }
+        /* CSS LEADERBOARD */
+        .leaderboard-section {
+            display: none;
+            height: 40vh;
+            margin-top: 10px;
+            background: rgba(0, 20, 40, 0.7);
+            border-top: 2px solid var(--emas);
+            overflow-y: auto;
+            border-radius: 15px 15px 0 0;
+            padding: 10px;
+        }
         .lb-title { color: var(--emas); font-size: 14px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
         .lb-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .lb-table td, .lb-table th { padding: 8px 5px; text-align: left; border-bottom: 1px solid rgba(212,175,55,0.1); }
+        .lb-table tr { border-bottom: 1px solid rgba(212, 175, 55, 0.2); }
+        .lb-table th { color: var(--emas); text-align: left; padding: 5px; }
+        .lb-table td { padding: 8px 5px; text-align: left; }
+        .rank-gold { color: #FFD700; font-weight: bold; }
+        .rank-silver { color: #C0C0C0; font-weight: bold; }
+        .rank-bronze { color: #CD7F32; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="start-overlay">
-    <div class="logo-wrapper">
-        <img src="logo_pondok.png" alt="Logo" class="splash-logo">
-        <div class="gold-loader"></div>
-    </div>
-    <h2 style="color:var(--emas); margin: 0;">SIPAPUA</h2>
-    <p style="font-size: 12px; opacity: 0.8;">Sistem Informasi Pondok Pemulihan Papua</p>
-    
-    <button id="start-app-btn">
-        MASUK APLIKASI <i class="fa-solid fa-right-to-bracket"></i>
-    </button>
-
-    <div style="margin-top: 20px;">
-        <button onclick="location.href='menu.html'" style="background:transparent; color:#ff4d4d; border:none; cursor:pointer; font-size: 13px;">TIDAK, KEMBALI</button>
+    <div class="start-box">
+        <h2 style="color:var(--emas)">SYALOM!</h2>
+        <p>Uji pengetahuan Alkitab Anda dalam 3 Menit (100 Soal).</p>
+        <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+            <button onclick="startGame()" style="background:#28a745; color:white; padding:10px 25px; border:none; border-radius:20px; font-weight:bold; cursor:pointer;">SIAP</button>
+            <button onclick="location.href='menu.html'" style="background:#d9534f; color:white; padding:10px 25px; border:none; border-radius:20px; font-weight:bold; cursor:pointer;">TIDAK</button>
+        </div>
     </div>
 </div>
 
@@ -122,7 +86,7 @@
 </div>
 
 <div class="game-container">
-    <div id="start-btn-container" style="display:none;">
+    <div id="start-btn-container">
         <button onclick="realStart()" style="background:var(--emas); color:var(--biru-tua); padding:12px 30px; border:none; border-radius:25px; font-weight:bold; font-size: 16px; cursor:pointer;">
             <i class="fa-solid fa-play"></i> MULAI SEKARANG
         </button>
@@ -146,13 +110,26 @@
         <button id="ll-audience" class="btn-lifeline" onclick="useAudience()"><i class="fa-solid fa-users"></i></button>
     </div>
 
-    <button id="btn-toggle-lb" onclick="toggleLeaderboard()" style="background: rgba(212, 175, 55, 0.2); color: var(--emas); border: 1px solid var(--emas); padding: 8px 15px; border-radius: 10px; cursor: pointer; font-size: 12px; margin: 10px auto; display: block;">
-        <i class="fa-solid fa-list-ol"></i> PERINGKAT
-    </button>
+    <div style="text-align: center; margin-top: 15px;">
+        <button id="btn-toggle-lb" onclick="toggleLeaderboard()" style="background: rgba(212, 175, 55, 0.2); color: var(--emas); border: 1px solid var(--emas); padding: 8px 15px; border-radius: 10px; cursor: pointer; font-size: 12px;">
+            <i class="fa-solid fa-list-ol"></i> TAMPILKAN PERINGKAT
+        </button>
+    </div>
 
     <div id="leaderboard-container" class="leaderboard-section">
+        <div class="lb-title"><i class="fa-solid fa-trophy"></i> Peringkat Pemain</div>
         <table class="lb-table">
-            <tbody id="leaderboard-body"></tbody>
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Skor</th>
+                    <th>Streak</th>
+                    <th>Medali</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+                <tr><td colspan="4" style="text-align:center;">Memuat peringkat...</td></tr>
+            </tbody>
         </table>
     </div>
 </div>
@@ -161,7 +138,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -173,48 +149,118 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Audio
+    // Inisialisasi Audio
     const soundOpening = new Audio('opening_sound.mp3');
     const soundStart   = new Audio('star_sound.mp3');
     const soundCorrect = new Audio('jawaban_benar.mp3');
     const soundWin     = new Audio('pemenang.mp3');
     const soundBgGame  = new Audio('sound_full.mp3'); 
     const soundGagal   = new Audio('wrong_question.mp3');
+
     soundOpening.loop = true;
     soundBgGame.loop = true;
 
-    // --- LOGIKA STARTUP BARU ---
-    document.addEventListener("DOMContentLoaded", () => {
-        const startBtn = document.getElementById('start-app-btn');
-        const overlay = document.getElementById('start-overlay');
-        const playContainer = document.getElementById('start-btn-container');
-
-        // Munculkan tombol masuk setelah 2 detik loading logo
-        setTimeout(() => {
-            startBtn.style.display = 'block';
-        }, 2000);
-
-        startBtn.onclick = () => {
-            // UNLOCK AUDIO: Memulai audio opening saat klik tombol
-            soundOpening.play().catch(e => console.log("Audio diblokir browser"));
-            
-            // Sembunyikan Overlay
-            overlay.style.transition = '0.5s';
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                playContainer.style.display = 'block'; // Munculkan tombol "MULAI SEKARANG"
-                quizData = shuffleArray([...quizRawData]);
-                loadQuestion();
-            }, 500);
-        };
-    });
-
-    // --- SISANYA LOGIKA GAME ANDA ---
+    // DATA 100 SOAL ALKITAB
     const quizRawData = [
         { q: "Siapa raja pertama bangsa Israel?", a: ["Daud", "Saul", "Salomo", "Yosua"], c: 1 },
         { q: "Apa arti nama 'Imanuel'?", a: ["Allah Mahakuasa", "Tuhan Raja kami", "Allah menyertai kita", "Gembala Baik"], c: 2 },
-        // ... (Data soal lainnya tetap sama)
+        { q: "Apa isi Tabut Perjanjian?", a: ["Loh Batu", "Mahkota Daud", "Jubah Harun", "Pedang Musa"], c: 0 },
+        { q: "Siapa yang mengalahkan raksasa Goliat?", a: ["Saul", "Salomo", "Daud", "Samuel"], c: 2 },
+        { q: "Berapa jumlah murid Yesus?", a: ["10", "12", "7", "14"], c: 1 },
+        { q: "Di mana Yesus lahir?", a: ["Nazaret", "Yerusalem", "Betlehem", "Yerikho"], c: 2 },
+        { q: "Siapa yang membelah Laut Teberau?", a: ["Yosua", "Musa", "Harun", "Abraham"], c: 1 },
+        { q: "Apa kitab pertama di Alkitab?", a: ["Keluaran", "Imamat", "Kejadian", "Matius"], c: 2 },
+        { q: "Siapa istri Ishak?", a: ["Lea", "Rahel", "Ribka", "Sara"], c: 2 },
+        { q: "Berapa hari Allah menciptakan alam semesta?", a: ["7 hari", "6 hari", "5 hari", "40 hari"], c: 1 },
+        { q: "Siapa yang dibuang ke kandang singa?", a: ["Daniel", "Sadrakh", "Mesakh", "Abetnego"], c: 0 },
+        { q: "Siapa putra bungsu Yakub?", a: ["Yusuf", "Benyamin", "Ruben", "Lewi"], c: 1 },
+        { q: "Apa kitab terakhir di Alkitab?", a: ["Yudas", "Wahyu", "Maleakhi", "Ibrani"], c: 1 },
+        { q: "Siapa yang berjalan di atas air bersama Yesus?", a: ["Yohanes", "Petrus", "Yakobus", "Andreas"], c: 1 },
+        { q: "Di gunung mana Musa menerima 10 Hukum Tuhan?", a: ["Sinai", "Nebo", "Karmel", "Zaitun"], c: 0 },
+        { q: "Siapa orang tertua di Alkitab?", a: ["Nuh", "Metusalah", "Adam", "Set"], c: 1 },
+        { q: "Apa nama sungai tempat Yesus dibaptis?", a: ["Nil", "Yordan", "Efrat", "Tigris"], c: 1 },
+        { q: "Siapa yang membaptis Yesus?", a: ["Petrus", "Yohanes Pembaptis", "Paulus", "Nikodemus"], c: 1 },
+        { q: "Apa senjata Daud saat melawan Goliat?", a: ["Pedang", "Umpan/Ketapel", "Tombak", "Panah"], c: 1 },
+        { q: "Berapa kali Petrus menyangkal Yesus?", a: ["1 kali", "2 kali", "3 kali", "7 kali"], c: 2 },
+        { q: "Siapa yang mengkhianati Yesus?", a: ["Tomas", "Yudas Iskariot", "Filipus", "Bartolomeus"], c: 1 },
+        { q: "Apa nama kota yang runtuh temboknya karena sorakan?", a: ["Sodom", "Gomora", "Yerikho", "Ninewe"], c: 2 },
+        { q: "Siapa nabi yang naik ke surga dengan kereta berapi?", a: ["Elia", "Elisa", "Yesaya", "Yeremia"], c: 0 },
+        { q: "Siapa yang ditelan ikan besar?", a: ["Yunus", "Nuh", "Musa", "Daud"], c: 0 },
+        { q: "Siapa nama ayah dari Ishak?", a: ["Terah", "Abraham", "Lot", "Nahor"], c: 1 },
+        { q: "Apa tanda perjanjian Allah dengan Nuh?", a: ["Pelangi", "Sunat", "Awan", "Bintang"], c: 0 },
+        { q: "Berapa jumlah hukum Tuhan (Dasa Titah)?", a: ["5", "10", "12", "7"], c: 1 },
+        { q: "Siapa nama ibu Yesus?", a: ["Elisabet", "Marta", "Maria", "Magdalena"], c: 2 },
+        { q: "Siapa rasul yang sebelumnya menganiaya umat Kristen?", a: ["Petrus", "Paulus", "Yohanes", "Lukas"], c: 1 },
+        { q: "Apa mujizat pertama Yesus?", a: ["Membangkitkan Lazarus", "Mengubah air menjadi anggur", "Memberi makan 5000 orang", "Menyembuhkan orang buta"], c: 1 },
+        { q: "Siapa pria terkuat di Alkitab?", a: ["Simson", "Daud", "Gideon", "Yosua"], c: 0 },
+        { q: "Siapa yang membangun Bahtera?", a: ["Musa", "Nuh", "Abraham", "Yosua"], c: 1 },
+        { q: "Apa makanan bangsa Israel di padang gurun?", a: ["Manna", "Gandum", "Roti", "Madu"], c: 0 },
+        { q: "Siapa nabi yang menyembuhkan Naaman dari kusta?", a: ["Elia", "Elisa", "Yesaya", "Ezekiel"], c: 1 },
+        { q: "Siapa yang menjual hak kesulungannya?", a: ["Yakub", "Esau", "Yusuf", "Ruben"], c: 1 },
+        { q: "Siapa penulis Kitab Mazmur terbanyak?", a: ["Salomo", "Daud", "Asaf", "Musa"], c: 1 },
+        { q: "Siapa yang menggantikan Musa memimpin Israel?", a: ["Kaleb", "Yosua", "Gideon", "Samuel"], c: 1 },
+        { q: "Apa nama menara yang dibangun manusia mencapai langit?", a: ["Babel", "Bethel", "Peniël", "Sion"], c: 0 },
+        { q: "Siapa yang membangkitkan Lazarus?", a: ["Petrus", "Yesus", "Paulus", "Yohanes"], c: 1 },
+        { q: "Siapa rasul yang ragu akan kebangkitan Yesus?", a: ["Petrus", "Tomas", "Filipus", "Matius"], c: 1 },
+        { q: "Apa nama taman tempat Adam dan Hawa tinggal?", a: ["Eden", "Getsemani", "Karmel", "Sion"], c: 0 },
+        { q: "Siapa raja yang paling berhikmat?", a: ["Daud", "Saul", "Salomo", "Yosia"], c: 2 },
+        { q: "Apa warna jubah yang dipakaikan pada Yesus saat diadili?", a: ["Putih", "Ungu/Merah Tua", "Hitam", "Hijau"], c: 1 },
+        { q: "Siapa nabi yang dipanggil Tuhan saat masih kecil?", a: ["Samuel", "Yeremia", "Daniel", "Daud"], c: 0 },
+        { q: "Siapa yang lari dari panggilan Tuhan ke Tarsis?", a: ["Yunus", "Amos", "Obaja", "Mikha"], c: 0 },
+        { q: "Apa nama bukit tempat Yesus disalibkan?", a: ["Zaitun", "Sinai", "Golgota", "Nebo"], c: 2 },
+        { q: "Siapa saksi pertama kebangkitan Yesus?", a: ["Petrus", "Yohanes", "Maria Magdalena", "Tomas"], c: 2 },
+        { q: "Berapa banyak keranjang sisa saat Yesus memberi makan 5000 orang?", a: ["7", "10", "12", "5"], c: 2 },
+        { q: "Siapa yang mendoakan agar matahari berhenti?", a: ["Musa", "Yosua", "Gideon", "Elia"], c: 1 },
+        { q: "Apa arti nama Petrus?", a: ["Batu Karang", "Anak Allah", "Gembala", "Penebus"], c: 0 },
+        { q: "Siapa yang merobohkan tiang gedung Filistin?", a: ["Daud", "Simson", "Saul", "Salomo"], c: 1 },
+        { q: "Apa bahasa asli Perjanjian Baru?", a: ["Ibrani", "Latin", "Yunani", "Aram"], c: 2 },
+        { q: "Siapa nabi yang dijuluki 'Nabi Peratap'?", a: ["Yesaya", "Yeremia", "Yehezkiel", "Daniel"], c: 1 },
+        { q: "Apa nama tempat Yesus berdoa sebelum ditangkap?", a: ["Eden", "Getsemani", "Golgota", "Sinai"], c: 1 },
+        { q: "Siapa teman dekat Daud, anak Saul?", a: ["Abner", "Yonatan", "Absalom", "Ahitofel"], c: 1 },
+        { q: "Siapa yang diletakkan di dalam keranjang di sungai Nil?", a: ["Yusuf", "Musa", "Harun", "Abraham"], c: 1 },
+        { q: "Siapa raja yang ingin membunuh bayi Yesus?", a: ["Herodes", "Agripa", "Pilatus", "Kaisar"], c: 0 },
+        { q: "Apa arti nama 'Ishak'?", a: ["Tertawa", "Menangis", "Berdoa", "Berkat"], c: 0 },
+        { q: "Berapa lama bangsa Israel di padang gurun?", a: ["10 tahun", "40 tahun", "70 tahun", "100 tahun"], c: 1 },
+        { q: "Siapa rasul yang menulis Kitab Wahyu?", a: ["Petrus", "Paulus", "Yohanes", "Yakobus"], c: 2 },
+        { q: "Siapa nabi yang melihat lembah tulang-tulang kering?", a: ["Yesaya", "Yeremia", "Yehezkiel", "Daniel"], c: 2 },
+        { q: "Apa nama istri pertama Adam?", a: ["Hawa", "Sara", "Ribka", "Rahel"], c: 0 },
+        { q: "Siapa yang menafsirkan mimpi Firaun?", a: ["Daniel", "Yusuf", "Musa", "Harun"], c: 1 },
+        { q: "Siapa yang selamat dari perapian yang menyala-nyala?", a: ["Daniel", "Sadrakh, dkk", "Yunus", "Ester"], c: 1 },
+        { q: "Siapa ratu yang menyelamatkan bangsa Yahudi?", a: ["Rut", "Ester", "Debora", "Atalya"], c: 1 },
+        { q: "Apa nama saudara perempuan Musa?", a: ["Miryam", "Debora", "Hana", "Elisabet"], c: 0 },
+        { q: "Siapa yang dipilih menggantikan Yudas Iskariot?", a: ["Barnabas", "Matias", "Silas", "Timotius"], c: 1 },
+        { q: "Siapa nabi yang memberikan tantangan di Gunung Karmel?", a: ["Elia", "Elisa", "Amos", "Hosea"], c: 0 },
+        { q: "Apa pekerjaan Petrus sebelum menjadi murid Yesus?", a: ["Pemungut Cukai", "Nelayan", "Tukang Kayu", "Tentara"], c: 1 },
+        { q: "Berapa banyak buah Roh menurut Galatia 5?", a: ["7", "9", "12", "10"], c: 1 },
+        { q: "Siapa yang menguburkan Yesus?", a: ["Petrus", "Yusuf Arimatea", "Nikodemus", "Zakeus"], c: 1 },
+        { q: "Siapa nabi yang menikahi Gomer?", a: ["Hosea", "Amos", "Yoel", "Mikha"], c: 0 },
+        { q: "Di mana Paulus dipenjara saat menulis surat-suratnya?", a: ["Roma", "Korintus", "Galatia", "Efesus"], c: 0 },
+        { q: "Apa kitab yang berisi nyanyian cinta?", a: ["Amsal", "Pengkhotbah", "Kidung Agung", "Ratapan"], c: 2 },
+        { q: "Siapa nabi yang makan madu hutan dan belalang?", a: ["Yohanes Pembaptis", "Elia", "Ezekiel", "Yesaya"], c: 0 },
+        { q: "Siapa perempuan yang membantu pengintai di Yerikho?", a: ["Rahab", "Rut", "Orpa", "Delila"], c: 0 },
+        { q: "Siapa menantu Naomi yang setia?", a: ["Orpa", "Rut", "Sara", "Ribka"], c: 1 },
+        { q: "Siapa nabi yang memberkati Yesus saat bayi di Bait Allah?", a: ["Simeon", "Samuel", "Zakharia", "Nikodemus"], c: 0 },
+        { q: "Siapa yang memotong rambut Simson?", a: ["Seorang pria (atas perintah Delila)", "Delila sendiri", "Simson sendiri", "Orang Filistin"], c: 0 },
+        { q: "Siapa nabi yang melihat kereta Allah di sungai Kebar?", a: ["Yehezkiel", "Yeremia", "Yesaya", "Daniel"], c: 0 },
+        { q: "Apa mujizat Yesus di pesta pernikahan Kana?", a: ["Air jadi anggur", "Roti jadi ikan", "Air jadi susu", "Lumpuh berjalan"], c: 0 },
+        { q: "Berapa jumlah suku Israel?", a: ["10", "12", "7", "40"], c: 1 },
+        { q: "Siapa nabi yang mengurapi Daud jadi raja?", a: ["Nathan", "Samuel", "Gad", "Elia"], c: 1 },
+        { q: "Apa nama kota tempat para pengikut Yesus pertama kali disebut Kristen?", a: ["Antiokhia", "Roma", "Yerusalem", "Efesus"], c: 0 },
+        { q: "Siapa yang menemani Paulus pada perjalanan misi pertamanya?", a: ["Lukas", "Barnabas", "Silas", "Timotius"], c: 1 },
+        { q: "Apa nama pulau tempat Yohanes menerima penglihatan Wahyu?", a: ["Malta", "Patmos", "Kreta", "Siprus"], c: 1 },
+        { q: "Siapa nabi yang menegur Daud atas dosanya dengan Batsyeba?", a: ["Nathan", "Samuel", "Elia", "Yesaya"], c: 0 },
+        { q: "Berapa lama Tuhan Yesus berpuasa di padang gurun?", a: ["7 hari", "40 hari", "12 hari", "3 hari"], c: 1 },
+        { q: "Siapa rasul yang menulis Kitab Roma?", a: ["Petrus", "Paulus", "Yohanes", "Lukas"], c: 1 },
+        { q: "Apa nama gunung tempat bahtera Nuh kandas?", a: ["Ararat", "Sinai", "Horeb", "Hermon"], c: 0 },
+        { q: "Siapa hakim wanita pertama di Israel?", a: ["Debora", "Yael", "Hana", "Ester"], c: 0 },
+        { q: "Apa yang digunakan Maria untuk meminyaki kaki Yesus?", a: ["Minyak Narwastu", "Minyak Zaitun", "Madu", "Air Mawar"], c: 0 },
+        { q: "Siapa yang menggantikan posisi Saul sebagai raja?", a: ["Samuel", "Daud", "Yonatan", "Salomo"], c: 1 },
+        { q: "Siapa yang disembuhkan dari kebutaan di pinggir jalan Yerikho?", a: ["Bartimeus", "Zakeus", "Lazarus", "Tomas"], c: 0 },
+        { q: "Apa nama kitab yang berisi hukum kesucian?", a: ["Keluaran", "Imamat", "Bilangan", "Ulangan"], c: 1 },
+        { q: "Siapa pemungut cukai yang memanjat pohon ara?", a: ["Zakeus", "Matius", "Petrus", "Andreas"], c: 0 },
+        { q: "Berapa banyak orang yang selamat di dalam Bahtera Nuh?", a: ["2", "8", "12", "7"], c: 1 },
+        { q: "Apa yang diletakkan di atas kepala Yesus saat disalib?", a: ["Mahkota Emas", "Mahkota Duri", "Topi Besi", "Kain Putih"], c: 1 },
+        { q: "Siapa nabi terakhir di Perjanjian Lama?", a: ["Zefanya", "Zakharia", "Maleakhi", "Habakuk"], c: 2 },
         { q: "Siapa yang menulis Kitab Kisah Para Rasul?", a: ["Paulus", "Lukas", "Petrus", "Yohanes"], c: 1 }
     ];
 
@@ -227,6 +273,47 @@
     let winStreak = parseInt(localStorage.getItem("winStreak")) || 0;
     let userData = JSON.parse(localStorage.getItem("userData")) || null;
 
+    function toggleLeaderboard() {
+        const lb = document.getElementById('leaderboard-container');
+        const btn = document.getElementById('btn-toggle-lb');
+        if (lb.style.display === 'none' || lb.style.display === '') {
+            lb.style.display = 'block';
+            btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> SEMBUNYIKAN PERINGKAT';
+        } else {
+            lb.style.display = 'none';
+            btn.innerHTML = '<i class="fa-solid fa-list-ol"></i> TAMPILKAN PERINGKAT';
+        }
+    }
+
+    function fetchLeaderboard() {
+        db.collection("game_scores")
+          .orderBy("skor", "desc")
+          .limit(10)
+          .onSnapshot((querySnapshot) => {
+            const body = document.getElementById('leaderboard-body');
+            body.innerHTML = "";
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                let badgeClass = "";
+                let streakVal = data.streak || 0;
+                if(streakVal >= 7) badgeClass = "rank-gold";
+                else if(streakVal >= 4) badgeClass = "rank-silver";
+                else if(streakVal >= 2) badgeClass = "rank-bronze";
+
+                const row = `<tr>
+                    <td>${data.nama || "Anonim"}</td>
+                    <td>${data.skor || 0}</td>
+                    <td>${streakVal}x</td>
+                    <td class="${badgeClass}">${data.predikat || "-"}</td>
+                </tr>`;
+                body.innerHTML += row;
+            });
+        });
+    }
+
+    window.onload = fetchLeaderboard;
+
+    // FUNGSI ACAK ARRAY (Fisher-Yates)
     function shuffleArray(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -235,15 +322,31 @@
         return arr;
     }
 
+    function startGame() {
+        // Unlock Audio Context
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        document.getElementById('start-overlay').style.display = 'none';
+        soundOpening.play().catch(e => console.log("Audio play prevented:", e));
+        
+        // Selalu mengacak soal setiap kali mulai
+        quizData = shuffleArray([...quizRawData]);
+        loadQuestion();
+    }
+
     function realStart() {
         if(isGameStarted) return;
         isGameStarted = true;
         soundOpening.pause();
-        soundStart.play();
+        soundOpening.currentTime = 0;
+        soundStart.play().catch(() => {});
         document.getElementById('start-btn-container').style.display = 'none';
         
         setTimeout(() => {
-            soundBgGame.play();
+            soundBgGame.play().catch(() => {});
             startGlobalTimer();
         }, 1500);
     }
@@ -251,19 +354,22 @@
     function startGlobalTimer() {
         const circle = document.getElementById('progress');
         const text = document.getElementById('timer-text');
+        const initialTime = 180;
         timerInterval = setInterval(() => {
             totalTime--;
             text.innerText = totalTime;
-            const offset = (totalTime / 180) * 251;
+            const offset = (totalTime / initialTime) * 251;
             circle.style.strokeDashoffset = 251 - offset;
             if (totalTime <= 0) {
                 clearInterval(timerInterval);
-                handleFailure("WAKTU HABIS");
+                if(score > 0) finishGame();
+                else handleFailure("WAKTU HABIS");
             }
         }, 1000);
     }
 
     function loadQuestion() {
+        if (currentQ >= quizData.length) { finishGame(); return; }
         const data = quizData[currentQ];
         document.getElementById('level-display').innerText = `Level ${currentQ + 1} - Poin: ${score}`;
         document.getElementById('question-text').innerText = data.q;
@@ -281,16 +387,20 @@
 
     function checkAnswer(idx, btn) {
         const correct = quizData[currentQ].c;
-        document.querySelectorAll('.btn-answer').forEach(b => b.style.pointerEvents = 'none');
+        const allButtons = document.querySelectorAll('.btn-answer');
+        allButtons.forEach(b => b.style.pointerEvents = 'none');
 
         if(idx === correct) {
-            soundCorrect.play();
+            soundCorrect.play().catch(() => {});
             btn.classList.add('correct');
             score += 20;
             setTimeout(() => {
                 currentQ++;
-                if (currentQ < quizData.length) loadQuestion();
-                else finishGame();
+                if (currentQ < quizData.length) {
+                    loadQuestion();
+                } else {
+                    finishGame();
+                }
             }, 1000);
         } else {
             btn.classList.add('wrong');
@@ -303,19 +413,47 @@
         winStreak = 0;
         localStorage.setItem("winStreak", 0);
         soundBgGame.pause();
-        soundGagal.play();
+        soundGagal.play().catch(() => {});
         clearInterval(timerInterval);
+        
         setTimeout(() => {
-            showNotif(title, `Skor: ${score}.`, "fail", () => location.reload());
+            // location.reload() akan memicu pengacakan ulang soal
+            showNotif(title, `Skor akhir: ${score}. Streak kembali ke 0.`, "fail", () => location.reload());
         }, 1500);
     }
 
     async function finishGame() {
         clearInterval(timerInterval);
         soundBgGame.pause();
-        soundWin.play();
+        soundWin.play().catch(() => {});
+        winStreak++;
+        localStorage.setItem("winStreak", winStreak);
+
+        let predikat = "";
+        if (winStreak >= 7) predikat = "🏆 GOLD";
+        else if (winStreak >= 4) predikat = "🥈 SILVER";
+        else if (winStreak >= 2) predikat = "🥉 BRONZE";
+
+        if(userData && userData.email) {
+            const ref = db.collection("game_scores").doc(userData.email);
+            const doc = await ref.get();
+            let totalSkorBaru = score;
+            if(doc.exists) totalSkorBaru = (doc.data().skor || 0) + score;
+
+            await ref.set({
+                nama: userData.nama || "Pemain",
+                email: userData.email,
+                skor: totalSkorBaru,
+                streak: winStreak,
+                predikat: predikat,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        showNotif("LUAR BIASA!", `Selesai dengan skor ${score}`, "success", () => location.reload());
+        let msg = `Selesai! Skor +${score}. Streak: ${winStreak}x.`;
+        if(predikat) msg += ` Predikat: ${predikat}!`;
+        showNotif("LUAR BIASA!", msg, "success", () => location.reload());
     }
 
     function showNotif(title, msg, type, callback) {
@@ -328,22 +466,6 @@
             n.style.display = 'none';
             if(callback) callback();
         };
-    }
-
-    function toggleLeaderboard() {
-        const lb = document.getElementById('leaderboard-container');
-        lb.style.display = (lb.style.display === 'none' || lb.style.display === '') ? 'block' : 'none';
-        if(lb.style.display === 'block') fetchLeaderboard();
-    }
-
-    function fetchLeaderboard() {
-        db.collection("game_scores").orderBy("skor", "desc").limit(10).get().then(qs => {
-            const body = document.getElementById('leaderboard-body');
-            body.innerHTML = qs.docs.map(doc => {
-                const d = doc.data();
-                return `<tr><td>${d.nama}</td><td>${d.skor}</td><td>${d.streak}x</td></tr>`;
-            }).join('');
-        });
     }
 
     function use5050() {
@@ -361,13 +483,14 @@
 
     function usePhone() {
         if(document.getElementById('ll-phone').classList.contains('used')) return;
-        alert(`Teman Anda yakin jawabannya adalah ${String.fromCharCode(65 + quizData[currentQ].c)}`);
+        const correctChar = String.fromCharCode(65 + quizData[currentQ].c);
+        alert(`Teman Anda berkata: "Saya yakin jawabannya adalah ${correctChar}!"`);
         document.getElementById('ll-phone').classList.add('used');
     }
 
     function useAudience() {
         if(document.getElementById('ll-audience').classList.contains('used')) return;
-        alert("Penonton mendukung jawaban yang benar!");
+        alert("Penonton memberikan suara terbanyak untuk jawaban yang benar!");
         document.getElementById('ll-audience').classList.add('used');
     }
 </script>
