@@ -232,38 +232,44 @@
 
     // --- AUDIO ENGINE (FIXED) ---
 
-    // Fungsi untuk memastikan audio bisa berputar setelah interaksi pertama
-    function forceUnlockAudio() {
-        bgSound.muted = false;
-        // Play sebentar lalu pause untuk memicu "izin" dari browser
-        bgSound.play().then(() => {
+// --- AUDIO ENGINE (ULTIMATE FIX) ---
+
+function forceUnlockAudio() {
+    bgSound.muted = false;
+    
+    // Simpan hasil play dalam variable untuk mengecek promise
+    let playPromise = bgSound.play();
+
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            // Audio berhasil diputar, sekarang baru aman untuk di-pause
             bgSound.pause();
             bgSound.currentTime = 0;
-            console.log("Audio Unlocked");
+            console.log("Audio Unlocked & Ready");
             
-            // Hapus listener setelah berhasil unlock
+            // Hapus listener agar tidak berjalan berkali-kali
             document.removeEventListener('click', forceUnlockAudio);
             document.removeEventListener('touchstart', forceUnlockAudio);
-        }).catch(e => console.log("Menunggu interaksi pengguna..."));
+        }).catch(e => {
+            console.log("Menunggu klik yang lebih mantap dari pengguna...");
+        });
     }
+}
 
-    // Pasang listener di dokumen untuk "memancing" izin browser
-    document.addEventListener('click', forceUnlockAudio);
-    document.addEventListener('touchstart', forceUnlockAudio);
-
-    function toggleMute() {
-        if (bgSound.paused) {
-            bgSound.muted = false;
-            bgSound.play().then(() => {
-                volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-            }).catch(error => {
-                console.error("Gagal memutar audio:", error);
-            });
-        } else {
-            bgSound.pause();
-            volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
-        }
+function toggleMute() {
+    if (bgSound.paused) {
+        bgSound.muted = false;
+        bgSound.play().then(() => {
+            volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+        }).catch(error => {
+            console.log("Play tertunda:", error);
+        });
+    } else {
+        // Pastikan kita tidak mem-pause sesuatu yang belum selesai di-play
+        bgSound.pause();
+        volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
     }
+}
 
     // --- MESSAGE & TRANSITION ENGINE ---
 
