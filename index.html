@@ -29,12 +29,11 @@
         }
         .splash-content { text-align: center; display: flex; flex-direction: column; align-items: center; }
         .logo-wrapper { position: relative; width: 180px; height: 180px; display: flex; justify-content: center; align-items: center; margin-bottom: 15px; }
-        .splash-logo { width: 120px; height: auto; z-index: 2; filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1)); animation: pulse 2s infinite ease-in-out; cursor: pointer; } /* Tambah Cursor Pointer */
+        .splash-logo { width: 120px; height: auto; z-index: 2; filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1)); animation: pulse 2s infinite ease-in-out; cursor: pointer; } 
         .gold-loader { position: absolute; width: 160px; height: 160px; border: 5px solid rgba(212, 175, 55, 0.1); border-top: 5px solid var(--emas-lux); border-radius: 50%; animation: spin 1.5s linear infinite; box-shadow: 0 0 25px rgba(212, 175, 55, 0.3); z-index: 1; }
         .sipapua-text { color: var(--emas-lux); font-weight: bold; font-size: 48px; letter-spacing: 6px; text-transform: uppercase; margin: 0; text-shadow: 0 0 20px rgba(212, 175, 55, 0.8); animation: glow 2s infinite alternate; }
         .subtitle-text { color: #ffffff; font-size: 18px; font-weight: 600; margin-top: 5px; letter-spacing: 2px; text-transform: uppercase; }
         
-        /* Tombol Masuk di bawah Logo */
         .btn-enter-splash { margin-top: 20px; padding: 10px 25px; background: var(--emas-lux); color: #000; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; z-index: 10; }
         .btn-enter-splash:hover { background: #fff; box-shadow: 0 0 15px var(--emas-lux); }
 
@@ -52,6 +51,27 @@
             opacity: 0;
            transition: opacity 1.5s ease;
         }
+
+        /* --- MUTE BUTTON --- */
+        .mute-toggle {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: var(--cyan-glow);
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 999999;
+            background: rgba(255, 255, 255, 0.1);
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 1px solid var(--cyan-glow);
+            transition: 0.3s;
+        }
+        .mute-toggle:hover { background: var(--cyan-glow); color: #000; }
         
         .assistant-img {
             width: 300px;
@@ -161,6 +181,10 @@
     </div>
  
     <div id="assistant-container">
+        <div class="mute-toggle" onclick="toggleMute()">
+            <i id="mute-icon" class="fa-solid fa-volume-high"></i>
+        </div>
+
         <img src="asisten_virtual.png" class="assistant-img">
         <div class="text-box-asisten">
             <span id="typing"></span><span class="cursor-asisten"></span>
@@ -224,8 +248,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
  
-        // 1. AUTO-LOGIN GATEKEEPER
-       auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged((user) => {
             if (user && user.emailVerified) {
                localStorage.setItem("userEmail", user.email);
                window.location.replace("menu.html");
@@ -247,13 +270,22 @@
         const loginCard = document.getElementById('main-login-card');
         const nextBtn = document.getElementById('next-btn');
         const backsound = document.getElementById('backsound');
+        const muteIcon = document.getElementById('mute-icon');
 
-        // Fungsi Utama saat tombol Masuk diklik
+        // Fungsi Mute/Unmute
+        function toggleMute() {
+            if (backsound.muted) {
+                backsound.muted = false;
+                muteIcon.className = "fa-solid fa-volume-high";
+            } else {
+                backsound.muted = true;
+                muteIcon.className = "fa-solid fa-volume-xmark";
+            }
+        }
+
         function enterSystem() {
-            // Putar musik
             backsound.play().catch(e => console.log("Audio play failed: ", e));
             
-            // Transisi Splash ke Asisten
             const splash = document.getElementById('splash-screen');
             splash.classList.add('splash-hidden');
             setTimeout(() => {
@@ -296,7 +328,7 @@
                typingEl.innerHTML = "";
                startTyping();
             } else {
-                // Matikan Musik saat masuk Login Page
+                // Biarkan musik tetap menyala atau matikan jika ingin masuk login sunyi
                 backsound.pause();
                 backsound.currentTime = 0;
 
