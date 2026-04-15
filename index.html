@@ -22,10 +22,10 @@
         /* --- SPLASH SCREEN --- */
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-           background-color: var(--grey-bg); display: flex;
-           justify-content: center; align-items: center; z-index: 999999;
+            background-color: var(--grey-bg); display: flex;
+            justify-content: center; align-items: center; z-index: 999999;
             opacity: 1; visibility: visible; 
-           transition: opacity 1.2s ease, visibility 1.2s;
+            transition: opacity 1.2s ease, visibility 1.2s;
         }
         .splash-content { text-align: center; display: flex; flex-direction: column; align-items: center; }
         .logo-wrapper { position: relative; width: 180px; height: 180px; display: flex; justify-content: center; align-items: center; margin-bottom: 15px; }
@@ -45,11 +45,11 @@
         /* --- ASISTEN VIRTUAL --- */
         #assistant-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-           background: radial-gradient(circle at center, #0a0f1f, #000);
+            background: radial-gradient(circle at center, #0a0f1f, #000);
             display: none; flex-direction: column; align-items: center; justify-content: center;
             z-index: 888888;
             opacity: 0;
-           transition: opacity 1.5s ease;
+            transition: opacity 1.5s ease;
         }
 
         .mute-toggle {
@@ -71,7 +71,7 @@
         
         .assistant-img {
             width: 300px;
-            animation: breathing 4s ease-in-out infinite, aura-glow 3s infinite alternate;
+            animation: breathing 4s ease-in-out infinite;
             filter: drop-shadow(0 0 25px rgba(0, 212, 255, 0.4));
         }
  
@@ -132,9 +132,7 @@
 <body>
 
     <audio id="backsound" loop preload="auto">
-        <source src="<audio id="backsound" loop preload="auto">
-    <source src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Ketsa/Raising_Frequency/Ketsa_-_09_-_Day_Trip.mp3" type="audio/mpeg">
-</audio>" type="audio/mpeg">
+        <source src="endgame.mp3" type="audio/mpeg">
     </audio>
  
     <div id="splash-screen">
@@ -207,25 +205,26 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
  
     <script>
+        // FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-           authDomain: "boby-apps-project.firebaseapp.com",
+            authDomain: "boby-apps-project.firebaseapp.com",
             projectId: "boby-apps-project",
-           storageBucket: "boby-apps-project.appspot.com",
-           messagingSenderId: "125984859692",
+            storageBucket: "boby-apps-project.appspot.com",
+            messagingSenderId: "125984859692",
             appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const auth = firebase.auth();
         const db = firebase.firestore();
  
-        auth.onAuthStateChanged((user) => {
-            if (user && user.emailVerified) {
-               localStorage.setItem("userEmail", user.email);
-               window.location.replace("menu.html");
-            }
-        });
- 
+        // DOM ELEMENTS
+        const backsound = document.getElementById('backsound');
+        const typingEl = document.getElementById('typing');
+        const assistantContainer = document.getElementById('assistant-container');
+        const loginCard = document.getElementById('main-login-card');
+        const nextBtn = document.getElementById('next-btn');
+
         const messages = [
            "Shalom! Selamat Datang di SIPAPUA.<br><br>Aplikasi ini hadir sebagai terobosan digital untuk membantu Anda mengelola pelayanan di Pondok Pemulihan Papua secara efektif.",
            "Dengan sistem ini, Saudara dapat memantau penilaian setiap bidang pelayanan kapan saja dan di mana saja.",
@@ -236,13 +235,15 @@
         let msgIndex = 0;
         let charIndex = 0;
         let isTyping = false;
-        const typingEl = document.getElementById('typing');
-        const assistantContainer = document.getElementById('assistant-container');
-        const loginCard = document.getElementById('main-login-card');
-        const nextBtn = document.getElementById('next-btn');
-        const backsound = document.getElementById('backsound');
+ 
+        auth.onAuthStateChanged((user) => {
+            if (user && user.emailVerified) {
+               localStorage.setItem("userEmail", user.email);
+               window.location.replace("menu.html");
+            }
+        });
 
-        // FUNGSI UTAMA AUDIO
+        // AUDIO FUNCTIONS
         function toggleMute() {
             const muteIcon = document.getElementById('mute-icon');
             if (backsound.muted) {
@@ -254,9 +255,25 @@
             }
         }
 
+        function stopAudioGracefully() {
+            if (!backsound.paused) {
+                let fadeOut = setInterval(() => {
+                    if (backsound.volume > 0.1) {
+                        backsound.volume -= 0.1;
+                    } else {
+                        clearInterval(fadeOut);
+                        backsound.pause();
+                        backsound.currentTime = 0;
+                        backsound.volume = 1.0;
+                    }
+                }, 50);
+            }
+        }
+
+        // NAVIGATION FUNCTIONS
         function enterSystem() {
-            // Putar musik saat klik tombol pertama kali (Interaksi Sah)
-            backsound.play().catch(e => console.log("Audio play failed: ", e));
+            // Play audio
+            backsound.play().catch(e => console.log("Audio ditahan browser:", e));
             
             const splash = document.getElementById('splash-screen');
             splash.classList.add('splash-hidden');
@@ -266,12 +283,6 @@
                 setTimeout(() => { assistantContainer.style.opacity = '1'; }, 50);
                 startTyping();
             }, 1200);
-        }
-
-        function stopAudioGracefully() {
-            // Fungsi untuk mematikan musik saat masuk login
-            backsound.pause();
-            backsound.currentTime = 0;
         }
  
         function startTyping() {
@@ -300,41 +311,39 @@
  
         function nextMessage() {
             if (isTyping) return;
-           msgIndex++;
+            msgIndex++;
             if (msgIndex < messages.length) {
                charIndex = 0;
                typingEl.innerHTML = "";
                startTyping();
             } else {
-                stopAudioGracefully();
-                assistantContainer.style.opacity = '0';
-                setTimeout(() => {
-                   assistantContainer.style.display = 'none';
-                   loginCard.style.display = 'block';
-                   setTimeout(() => { loginCard.style.opacity = '1'; }, 50);
-                }, 1000);
+                showLogin();
             }
         }
 
         function skipAssistant() {
+            showLogin();
+        }
+
+        function showLogin() {
             stopAudioGracefully();
             assistantContainer.style.opacity = '0';
             setTimeout(() => {
                 assistantContainer.style.display = 'none';
                 loginCard.style.display = 'block';
                 setTimeout(() => { loginCard.style.opacity = '1'; }, 50);
-            }, 500);
+            }, 1000);
         }
  
-        // --- FUNGSI LOGIN ---
-       document.getElementById('eyeIcon').onclick = function() {
+        // LOGIN LOGIC
+        document.getElementById('eyeIcon').onclick = function() {
             const pass = document.getElementById('user_pass');
             const isPass = pass.type === 'password';
             pass.type = isPass ? 'text' : 'password';
             this.classList.toggle('fa-eye-slash');
         };
  
-       document.getElementById('userLoginForm').onsubmit = async (e) => {
+        document.getElementById('userLoginForm').onsubmit = async (e) => {
            e.preventDefault();
             const btn = document.getElementById('btnMasuk');
             const msg = document.getElementById('login-msg');
@@ -366,10 +375,10 @@
             }
         };
  
-        // --- MODAL LUPA PASSWORD ---
-       document.getElementById('btnForgot').onclick = () => document.getElementById('forgotModal').style.display = 'flex';
-       document.getElementById('closeModal').onclick = () => document.getElementById('forgotModal').style.display = 'none';
-       document.getElementById('sendReset').onclick = async () => {
+        // FORGOT PASSWORD
+        document.getElementById('btnForgot').onclick = () => document.getElementById('forgotModal').style.display = 'flex';
+        document.getElementById('closeModal').onclick = () => document.getElementById('forgotModal').style.display = 'none';
+        document.getElementById('sendReset').onclick = async () => {
             const email = document.getElementById('forgotEmail').value.trim();
             if (!email) return alert("Masukkan email!");
             try {
