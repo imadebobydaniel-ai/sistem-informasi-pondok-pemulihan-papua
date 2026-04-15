@@ -50,20 +50,13 @@
         }
 
         .audio-control {
-            position: absolute;
-            top: 25px;
-            right: 25px;
+            position: absolute; top: 25px; right: 25px;
             background: rgba(0, 212, 255, 0.1);
             border: 1px solid var(--cyan-glow);
             color: var(--cyan-glow);
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            z-index: 999999;
+            width: 45px; height: 45px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 999999;
             transition: all 0.3s ease;
         }
         .audio-control:hover { background: var(--cyan-glow); color: #000; box-shadow: 0 0 15px var(--cyan-glow); }
@@ -79,57 +72,34 @@
             to { filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.8)) brightness(1.2); }
         }
 
-        .text-box-asisten {
-            margin-top: 20px; 
-            padding: 0 25px;
-            text-align: center;
-            max-width: 600px;
-            min-height: 160px;
-        }
+        .text-box-asisten { margin-top: 20px; padding: 0 25px; text-align: center; max-width: 600px; min-height: 160px; }
         #typing {
-            font-size: 1.15rem;
-            font-weight: 500;
-            line-height: 1.8;
+            font-size: 1.15rem; font-weight: 500; line-height: 1.8;
             background: linear-gradient(to right, #ffffff, var(--cyan-glow));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             text-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
             display: inline-block;
         }
         .cursor-asisten { display: inline-block; width: 3px; height: 20px; background: var(--cyan-glow); margin-left: 5px; animation: blink 1s infinite; vertical-align: middle; }
         
         #next-btn {
-            margin-top: 30px;
-            padding: 12px 35px;
-            background: transparent;
-            color: var(--cyan-glow);
-            border: 2px solid var(--cyan-glow);
-            border-radius: 30px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: pointer;
-            display: none; 
-            transition: all 0.3s;
+            margin-top: 30px; padding: 12px 35px; background: transparent;
+            color: var(--cyan-glow); border: 2px solid var(--cyan-glow); border-radius: 30px;
+            font-weight: bold; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; display: none; transition: all 0.3s;
             box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
         }
-        #next-btn:hover {
-            background: var(--cyan-glow);
-            color: #000;
-            box-shadow: 0 0 25px rgba(0, 212, 255, 0.5);
-        }
+        #next-btn:hover { background: var(--cyan-glow); color: #000; box-shadow: 0 0 25px rgba(0, 212, 255, 0.5); }
 
         @keyframes breathing { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
 
         /* --- LOGIN CARD --- */
         .login-card { 
-            display: none; 
-            background: #ffffff; padding: 40px; border-radius: 15px; 
+            display: none; background: #ffffff; padding: 40px; border-radius: 15px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; 
             box-sizing: border-box; border-top: 5px solid #007bff; position: relative; z-index: 1; 
-            opacity: 0;
-            transition: opacity 1s ease;
+            opacity: 0; transition: opacity 1s ease;
         }
 
         .header { text-align: center; margin-bottom: 30px; }
@@ -149,7 +119,6 @@
         
         .footer-links { text-align: center; margin-top: 20px; font-size: 13px; color: #666; }
         .forgot-pass { display: block; margin: 15px 0; font-size: 12px; color: #ff5722; text-decoration: none; font-weight: bold; cursor: pointer; }
-
         .admin-link { display: inline-block; margin-top: 10px; font-weight: 800; color: #2c3e50; font-size: 14px; text-decoration: none; text-transform: uppercase; border: 2px solid #2c3e50; padding: 8px 20px; border-radius: 5px; transition: all 0.3s ease; }
         .admin-link:hover { background: #2c3e50; color: #ffffff; }
 
@@ -178,7 +147,6 @@
         <div class="audio-control" id="toggleAudio" onclick="toggleMute()">
             <i class="fa-solid fa-volume-high" id="volIcon"></i>
         </div>
-
         <img src="asisten_virtual.png" class="assistant-img">
         <div class="text-box-asisten">
             <span id="typing"></span><span class="cursor-asisten"></span>
@@ -243,15 +211,13 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // --- AUTH CHECK ---
-        auth.onAuthStateChanged((user) => {
-            if (user && user.emailVerified) {
-                localStorage.setItem("userEmail", user.email);
-                window.location.replace("menu.html");
-            }
-        });
-
-        // --- ASISTEN VIRTUAL LOGIC ---
+        // --- GLOBAL VARIABLES ---
+        const bgSound = document.getElementById('asistenAudio');
+        const typingEl = document.getElementById('typing');
+        const assistantContainer = document.getElementById('assistant-container');
+        const loginCard = document.getElementById('main-login-card');
+        const nextBtn = document.getElementById('next-btn');
+        
         const messages = [
             "Shalom! Selamat Datang di SIPAPUA.<br><br>Aplikasi ini hadir sebagai terobosan digital untuk membantu Anda mengelola pelayanan di Pondok Pemulihan Papua secara efektif.",
             "Dengan sistem ini, Saudara dapat memantau penilaian setiap bidang pelayanan kapan saja dan di mana saja.",
@@ -262,65 +228,65 @@
         let msgIndex = 0;
         let charIndex = 0;
         let isTyping = false;
-        const typingEl = document.getElementById('typing');
-        const assistantContainer = document.getElementById('assistant-container');
-        const loginCard = document.getElementById('main-login-card');
-        const nextBtn = document.getElementById('next-btn');
-        const bgSound = document.getElementById('asistenAudio');
 
-        // FUNGSI TOGGLE MUTE - DIPERBAIKI
+        // --- AUTH CHECK ---
+        auth.onAuthStateChanged((user) => {
+            if (user && user.emailVerified) {
+                localStorage.setItem("userEmail", user.email);
+                window.location.replace("menu.html");
+            }
+        });
+
+        // 1. FUNGSI TOGGLE MUTE
         function toggleMute() {
             const volIcon = document.getElementById('volIcon');
-            
-            // Buka kunci paksa agar suara muncul
-            bgSound.muted = false; 
-
             if (bgSound.paused) {
-                // Gunakan jeda sedikit untuk menghindari AbortError browser
-                setTimeout(() => {
-                    bgSound.play().then(() => {
-                        volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-                    }).catch(e => {
-                        console.log("Browser memblokir audio:", e);
-                    });
-                }, 50);
+                bgSound.muted = false; 
+                bgSound.play().then(() => {
+                    volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+                }).catch(e => console.error("Gagal memutar:", e));
             } else {
                 bgSound.pause();
                 volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
             }
         }
 
-        // INITIALIZATION
-        document.addEventListener("DOMContentLoaded", () => {
-            // Trik Pancingan Audio (User Interaction)
-            const unlockAudio = () => {
-                bgSound.play().then(() => {
-                    bgSound.pause();
-                    bgSound.currentTime = 0;
-                }).catch(e => {});
-                document.removeEventListener("click", unlockAudio);
-            };
-            document.addEventListener("click", unlockAudio);
+        // 2. UNLOCK AUDIO (TRICK UNTUK BROWSER)
+        document.addEventListener("click", function unlockAudio() {
+            bgSound.play().then(() => {
+                bgSound.pause();
+                bgSound.currentTime = 0;
+            }).catch(e => console.log("Menunggu interaksi..."));
+            document.removeEventListener("click", unlockAudio);
+        }, { once: true });
 
-            setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                splash.classList.add('splash-hidden');
+        // 3. FUNGSI NEXT MESSAGE
+        function nextMessage() {
+            if (isTyping) return;
+            
+            bgSound.pause();
+            bgSound.currentTime = 0;
+
+            msgIndex++;
+            if (msgIndex < messages.length) {
+                charIndex = 0;
+                typingEl.innerHTML = "";
                 setTimeout(() => {
-                    splash.style.display = 'none';
-                    assistantContainer.style.display = 'flex';
-                    setTimeout(() => { 
-                        assistantContainer.style.opacity = '1'; 
-                        // Coba mainkan audio otomatis (jika diizinkan browser)
-                        bgSound.play().catch(e => {
-                            // Jika gagal, set ikon ke Xmark sebagai tanda perlu klik manual
-                            document.getElementById('volIcon').classList.replace('fa-volume-high', 'fa-volume-xmark');
-                        });
-                    }, 50);
+                    bgSound.play().catch(e => {});
                     startTyping();
-                }, 1200);
-            }, 3000);
-        });
+                }, 100); 
+            } else {
+                bgSound.pause();
+                assistantContainer.style.opacity = '0';
+                setTimeout(() => {
+                    assistantContainer.style.display = 'none';
+                    loginCard.style.display = 'block';
+                    setTimeout(() => { loginCard.style.opacity = '1'; }, 50);
+                }, 1000);
+            }
+        }
 
+        // --- TYPING LOGIC ---
         function startTyping() {
             if (msgIndex < messages.length) {
                 isTyping = true;
@@ -345,39 +311,29 @@
             }
         }
 
-        // FUNGSI NEXT MESSAGE - DIPERBAIKI
-        function nextMessage() {
-            if (isTyping) return;
-            
-            // Hindari tabrakan play/pause
-            bgSound.pause();
-            bgSound.currentTime = 0;
-            
+        // INITIALIZATION LOAD
+        document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
-                bgSound.play().catch(e => {});
-            }, 50);
-
-            msgIndex++;
-            if (msgIndex < messages.length) {
-                charIndex = 0;
-                typingEl.innerHTML = "";
-                startTyping();
-            } else {
-                bgSound.pause();
-                assistantContainer.style.opacity = '0';
+                const splash = document.getElementById('splash-screen');
+                splash.classList.add('splash-hidden');
                 setTimeout(() => {
-                    assistantContainer.style.display = 'none';
-                    loginCard.style.display = 'block';
-                    setTimeout(() => { loginCard.style.opacity = '1'; }, 50);
-                }, 1000);
-            }
-        }
+                    splash.style.display = 'none';
+                    assistantContainer.style.display = 'flex';
+                    setTimeout(() => { 
+                        assistantContainer.style.opacity = '1'; 
+                        bgSound.play().catch(e => {
+                            document.getElementById('volIcon').classList.replace('fa-volume-high', 'fa-volume-xmark');
+                        });
+                    }, 50);
+                    startTyping();
+                }, 1200);
+            }, 3000);
+        });
 
-        // --- FORM LOGIC ---
+        // --- FORM & MODAL LOGIC ---
         document.getElementById('eyeIcon').onclick = function() {
             const pass = document.getElementById('user_pass');
-            const isPass = pass.type === 'password';
-            pass.type = isPass ? 'text' : 'password';
+            pass.type = (pass.type === 'password') ? 'text' : 'password';
             this.classList.toggle('fa-eye-slash');
         };
 
@@ -413,7 +369,6 @@
             }
         };
 
-        // --- MODAL LOGIC ---
         document.getElementById('btnForgot').onclick = () => document.getElementById('forgotModal').style.display = 'flex';
         document.getElementById('closeModal').onclick = () => document.getElementById('forgotModal').style.display = 'none';
         document.getElementById('sendReset').onclick = async () => {
@@ -423,9 +378,7 @@
                 await auth.sendPasswordResetEmail(email);
                 alert("Link reset password telah dikirim ke email Anda.");
                 document.getElementById('forgotModal').style.display = 'none';
-            } catch (err) {
-                alert("Error: " + err.message);
-            }
+            } catch (err) { alert("Error: " + err.message); }
         };
     </script>
 </body>
