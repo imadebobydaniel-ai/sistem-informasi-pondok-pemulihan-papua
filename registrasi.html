@@ -274,7 +274,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
-    // 1. FIREBASE CONFIG
+  // 1. FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -288,65 +288,115 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // --- FUNGSI REGISTRASI ---
+    // --- PERBAIKAN LOGIKA NIJ (MENGAMBIL URUTAN TERAKHIR) ---
+    async function updateNIJPreview() {
+        const lokasi = document.getElementById("lokasi")?.value;
+        const displayInput = document.getElementById("nij-display");
+        if (!lokasi || !displayInput) return;
+
+        try {
+            // Mencari data terakhir di lokasi tersebut untuk menentukan nomor urut selanjutnya
+            const lastUser = await db.collection("users")
+                .where("lokasi", "==", lokasi)
+                .orderBy("nij", "desc")
+                .limit(1)
+                .get();
+
+            let nextNumber = 1;
+
+            if (!lastUser.empty) {
+                const lastNij = lastUser.docs[0].data().nij; 
+                const parts = lastNij.split("-");
+                // Mengambil angka urut dari bagian ke-4 (index 3)
+                const lastSerial = parseInt(parts[3]); 
+                nextNumber = lastSerial + 1;
+            }
+
+            const urut = String(nextNumber).padStart(3, '0');
+            const tahun = new Date().getFullYear();
+            displayInput.value = `NIJ-PPP-${lokasi}-${urut}-${tahun}`;
+            
+        } catch (error) {
+            console.error("Gagal generate NIJ:", error);
+            displayInput.value = `NIJ-PPP-${lokasi}-001-${new Date().getFullYear()}`;
+        }
+    }
+
+    // --- FUNGSI REGISTRASI (INPUT LENGKAP KE FIRESTORE) ---
     async function handleRegistrasi() {
         const btnSubmit = document.getElementById("btnSubmit");
+        
+        // Menangkap data dari Form
         const email = document.getElementById("email").value;
         const password = document.getElementById("pass").value;
         const nama = document.getElementById("nama").value;
+        const nij = document.getElementById("nij-display").value;
+        const whatsapp = document.getElementById("hp").value;
+        const lokasi = document.getElementById("lokasi").value;
+        const komsel = document.getElementById("komsel").value;
+        const jabatan = document.getElementById("jabatan_jemaat").value;
+        const subJabatan = document.getElementById("sub_jabatan").value;
+        const pelayanan = document.getElementById("pelayanan").value;
+        const detailPelayanan = document.getElementById("pelayanan_spesifik_non").value;
+        const alamat = document.getElementById("alamat").value;
+        
+        // Data Tambahan (Status Pernikahan & Pekerjaan)
+        const statusNikah = document.getElementById("status_pernikahan").value;
+        const pekerjaan = document.getElementById("pekerjaan").value;
 
-        // 1. Validasi Sederhana
-        if (!email || !password || !nama) {
-            alert("Mohon lengkapi Nama, Email, dan Password!");
+        if (!email || !password || !nama || !lokasi) {
+            alert("Mohon lengkapi Nama, Email, Password, dan Lokasi!");
             return;
         }
 
-        // Ubah tombol jadi loading
         btnSubmit.disabled = true;
         btnSubmit.innerText = "Memproses...";
 
         try {
-            // 2. Buat Akun di Firebase Auth
+            // 1. Buat Akun di Firebase Auth
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
-            // 3. Kirim Email Verifikasi
+            // 2. Kirim Email Verifikasi
             await user.sendEmailVerification();
 
-            // 4. Simpan Data Tambahan ke Firestore
+            // 3. Simpan Data LENGKAP ke Firestore
             await db.collection("users").doc(user.uid).set({
+                uid: user.uid,
                 nama: nama,
                 email: email,
-                nij: document.getElementById("nij-display").value,
-                whatsapp: document.getElementById("hp").value,
-                status: "pending_verification",
+                nij: nij,
+                whatsapp: whatsapp,
+                lokasi: lokasi,
+                komsel: komsel,
+                jabatan: jabatan,
+                sub_jabatan: subJabatan,
+                pelayanan: pelayanan,
+                detail_pelayanan: detailPelayanan,
+                alamat: alamat,
+                status_pernikahan: statusNikah,
+                pekerjaan: pekerjaan,
+                status_akun: "Aktif",
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // 5. Tampilkan Modal Berhasil
+            // 4. Tampilkan Modal Berhasil
             document.getElementById("blocking-message").style.display = "flex";
 
         } catch (error) {
-            // 6. Tangani Pesan Error Firebase
             btnSubmit.disabled = false;
             btnSubmit.innerText = "FINALISASI & DAFTAR";
-            
             console.error("Error Registrasi:", error);
             
             let errorMessage = "Terjadi kesalahan saat mendaftar.";
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = "Email ini sudah terdaftar. Silakan gunakan email lain.";
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = "Password terlalu lemah. Gunakan minimal 6 karakter.";
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = "Format email tidak valid.";
-            }
+            if (error.code === 'auth/email-already-in-use') errorMessage = "Email sudah terdaftar.";
+            else if (error.code === 'auth/weak-password') errorMessage = "Password terlalu lemah.";
             
-            alert(errorMessage);
+            alert(errorMessage + " (" + error.message + ")");
         }
     }
 
-    // --- DATA DINAMIS ---
+    // --- DATA DINAMIS (TIDAK BERUBAH) ---
     const dataKomsel = {
         "ABE": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "esther 8", "esther 9", "Esther 10", "esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "STN": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -475,18 +525,6 @@
         if(!sel) return;
         sel.innerHTML = '<option value="">-- Pilih Komsel --</option>';
         if (dataKomsel[lok]) dataKomsel[lok].forEach(i => sel.add(new Option(i, i)));
-    }
-
-    async function updateNIJPreview() {
-        const lokasi = document.getElementById("lokasi")?.value;
-        const displayInput = document.getElementById("nij-display");
-        if (!lokasi || !displayInput) return;
-        try {
-            const snap = await db.collection("users").get();
-            const urut = String(snap.size + 1).padStart(3, '0');
-            const tahun = new Date().getFullYear();
-            displayInput.value = `NIJ-PPP-${lokasi}-${urut}-${tahun}`;
-        } catch (error) { console.error("Gagal NIJ:", error); }
     }
 
     // --- API WILAYAH ---
