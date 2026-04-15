@@ -175,7 +175,7 @@
         </form>
         <div class="footer-links">
             Belum punya akun? <a href="registrasi.html" style="font-weight: bold;">Daftar Sekarang</a>
-            <span class="forgot-pass" id="btnForgot">Lupa Password Ya ?? 😊</span>
+            <span class="forgot-pass" id="btnForgot">Lupa Password Ya ?? ??</span>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             <a href="login_cyber.html" class="admin-link">Masuk sebagai Admin</a>
         </div>
@@ -237,57 +237,44 @@
             }
         });
 
-        // 1. FUNGSI TOGGLE MUTE (DIPERKUAT)
+        // 1. FUNGSI TOGGLE MUTE (DIPERBAIKI)
         function toggleMute() {
             const volIcon = document.getElementById('volIcon');
             
             if (bgSound.paused) {
                 bgSound.muted = false; 
-                const playPromise = bgSound.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
-                    }).catch(error => {
-                        console.log("Playback dicegah oleh browser.");
-                    });
-                }
+                bgSound.play().then(() => {
+                    volIcon.classList.replace('fa-volume-xmark', 'fa-volume-high');
+                }).catch(error => {
+                    console.log("Klik layar terlebih dahulu agar audio aktif.");
+                });
             } else {
                 bgSound.pause();
                 volIcon.classList.replace('fa-volume-high', 'fa-volume-xmark');
             }
         }
 
-        // 2. UNLOCK AUDIO (TRICK UNTUK BROWSER)
-        document.addEventListener("click", function unlockAudio() {
-            bgSound.play().then(() => {
-                bgSound.pause();
-                bgSound.currentTime = 0;
-            }).catch(e => console.log("Menunggu interaksi..."));
-            document.removeEventListener("click", unlockAudio);
-        }, { once: true });
-
-        // 3. FUNGSI NEXT MESSAGE (MENCEGAH TABRAKAN AUDIO)
+        // 2. FUNGSI NEXT MESSAGE (DENGAN PENANGANAN ASYNC)
         async function nextMessage() {
             if (isTyping) return;
             
-            // Hentikan audio sebelumnya secara bersih
-            bgSound.pause();
-            bgSound.currentTime = 0;
+            try {
+                bgSound.pause();
+                bgSound.currentTime = 0;
+            } catch (e) {}
 
             msgIndex++;
             if (msgIndex < messages.length) {
                 charIndex = 0;
                 typingEl.innerHTML = "";
                 
-                // Jeda memberikan waktu browser untuk memproses pause sebelum play lagi
                 setTimeout(() => {
-                    if (!bgSound.muted) {
-                        bgSound.play().catch(e => console.log("Audio dihentikan manual"));
+                    if (bgSound.getAttribute('data-unlocked') === 'true') {
+                        bgSound.play().catch(e => console.log("Menunggu interaksi user..."));
                     }
                     startTyping();
-                }, 200); 
+                }, 300); 
             } else {
-                bgSound.pause();
                 assistantContainer.style.opacity = '0';
                 setTimeout(() => {
                     assistantContainer.style.display = 'none';
@@ -296,6 +283,18 @@
                 }, 1000);
             }
         }
+
+        // 3. UNLOCK AUDIO (PENTING: Agar Playback tidak dicegah browser)
+        document.addEventListener("click", function initAudio() {
+            bgSound.play().then(() => {
+                bgSound.pause();
+                bgSound.currentTime = 0;
+                bgSound.setAttribute('data-unlocked', 'true'); 
+                console.log("Audio Unlocked");
+            }).catch(e => console.log("Interaksi pertama gagal"));
+            
+            document.removeEventListener("click", initAudio);
+        }, { once: true });
 
         // --- TYPING LOGIC ---
         function startTyping() {
@@ -322,7 +321,7 @@
             }
         }
 
-        // INITIALIZATION LOAD
+        // --- INITIALIZATION LOAD ---
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
