@@ -114,11 +114,11 @@
                     <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                     <th>NIJ</th>
                     <th>Nama Lengkap</th>
-                    <th>TTL</th> 
-                    <th>G.D</th> 
+                    <th>Tempat Tanggal Lahir</th> 
+                    <th>Golongan Darah</th> 
                     <th>Kontak</th>
                     <th>Keluarga</th>
-                    <th>Alamat</th>
+                    <th>Alamat Domisili</th>
                     <th>Lokasi/Komsel</th>
                     <th>Jabatan</th>
                     <th>Lampiran</th>
@@ -148,7 +148,7 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // 2. FUNGSI CETAK (Didefinisikan di awal agar tidak error)
+    // 2. FUNGSI CETAK
     function generateMemberCards() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
         if (selected.length === 0) {
@@ -156,11 +156,10 @@
             return;
         }
         const ids = Array.from(selected).map(cb => cb.value);
-        // Membuka halaman cetak
         window.location.href = `cetak-kartu.html?ids=${ids.join(',')}`;
     }
 
-    // 3. FUNGSI LOAD DATA
+    // 3. FUNGSI LOAD DATA (Realtime)
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -179,7 +178,7 @@
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${d.nij || '-'}</td>
                     <td><strong>${nama}</strong></td>
-                    <td>${d.kota || '-'}<br><small>${d.tanggal_lahir || '-'}</small></td>
+                    <td>${d.kota || '-'}<br><small>${d.tanggal_lahir || d.tgl_lahir || '-'}</small></td>
                     <td style="text-align:center;">${d.darah || '-'}</td>
                     <td>${d.whatsapp || '-'}<br><small>${d.email || '-'}</small></td>
                     <td><small>P: ${d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || '0'}</small></td>
@@ -245,8 +244,7 @@
         });
     }
 
-    // Jalankan load data
+    // Jalankan load data saat halaman siap
     window.onload = loadMembersRealtime;
-</script>
-</body>
+</script></body>
 </html>
