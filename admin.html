@@ -144,7 +144,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Konfigurasi Firebase
+    // 1. Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -157,22 +157,41 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    window.onload = function() { loadMembersRealtime(); };
+    // Jalankan saat halaman dibuka
+    window.onload = function() { 
+        loadMembersRealtime(); 
+    };
 
-    // --- FUNGSI CETAK KARTU ---
+    // --- FUNGSI UTAMA: CETAK KARTU (Anti-Freeze) ---
     function generateMemberCards() {
+        console.log("Tombol Cetak diklik..."); 
+        
+        // 1. Ambil semua jemaat yang dicentang
         const selected = document.querySelectorAll('.user-checkbox:checked');
+        
+        // 2. Validasi jika tidak ada yang dipilih
         if (selected.length === 0) {
-            alert("Silakan pilih minimal satu jemaat dengan mencentang kotak di sebelah kiri nama.");
+            alert("Pilih jemaat dulu! Centang kotak di sebelah kiri nama.");
             return;
         }
 
+        // 3. Kumpulkan ID dari checkbox yang dicentang
         const ids = Array.from(selected).map(cb => cb.value);
-        // Mengirimkan ID ke file cetak-kartu.html
-        window.location.href = `cetak-kartu.html?ids=${ids.join(',')}`;
+        console.log("ID jemaat yang akan dicetak:", ids);
+
+        // 4. Arahkan ke halaman cetak
+        // PASTIKAN: Nama file di GitHub adalah 'cetak-kartu.html'
+        const targetUrl = `cetak-kartu.html?ids=${ids.join(',')}`;
+        
+        try {
+            window.location.href = targetUrl;
+        } catch (err) {
+            console.error("Gagal pindah halaman:", err);
+            alert("Terjadi kesalahan saat mencoba membuka halaman cetak.");
+        }
     }
 
-    // --- LOAD DATA REALTIME ---
+    // --- LOAD DATA DARI FIREBASE ---
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -184,31 +203,18 @@
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
-                // TTL Logic
+                // Format Tempat Tanggal Lahir
                 const tempatLahir = d.kota || "-"; 
                 const tglLahir = d.tanggal_lahir_murni || d.tanggal_lahir || "-";
-                let ttl = (tempatLahir !== "-" && tglLahir !== "-") ? `${tempatLahir.toUpperCase()}, ${tglLahir}` : (tempatLahir !== "-" ? tempatLahir.toUpperCase() : tglLahir);
+                let ttl = (tempatLahir !== "-" && tglLahir !== "-") ? `${tempatLahir.toUpperCase()}, ${tglLahir}` : "-";
 
-                // Alamat Logic
+                // Format Alamat
                 const jalanDomisili = d.alamat || '-';
                 let areaDetail = (d.wilayah && typeof d.wilayah === 'object') ? `Kel. ${d.wilayah.desa || '-'}, Kec. ${d.wilayah.kec || '-'}` : `Wilayah: ${d.wilayah || '-'}`;
-                const alamatHtml = `${jalanDomisili}<br><small>${areaDetail}</small>`;
-
-                // Data lainnya
-                const goldar = d.darah || d.golongan_darah || '-'; 
-                const contact = `${d.whatsapp || d.hp || '-'}<br><small>${d.email || '-'}</small>`;
-                const keluarga = `P: ${d.nama_suami_istri || d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || d.anak || '0'}`;
-                
-                // Lampiran / File
-                let fileHtml = "";
-                if (d.url_ktp || d.ktp) fileHtml += `<a href="${d.url_ktp || d.ktp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a> `;
-                if (d.url_berkas || d.berkas) fileHtml += `<a href="${d.url_berkas || d.berkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i></a>`;
-                if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
 
                 // Status Akun
                 const status = d.status_akun || 'Pending';
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
-                const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
                 tableBody.innerHTML += `
@@ -217,17 +223,19 @@
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
                     <td>${ttl}</td> 
-                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
-                    <td>${contact}</td>
-                    <td><small>${keluarga}</small></td>
-                    <td>${alamatHtml}</td>
+                    <td style="text-align:center;"><strong>${d.darah || '-'}</strong></td> 
+                    <td>${d.whatsapp || d.hp || '-'}<br><small>${d.email || '-'}</small></td>
+                    <td><small>P: ${d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || '0'}</small></td>
+                    <td>${jalanDomisili}<br><small>${areaDetail}</small></td>
                     <td><small>${d.lokasi_berjemaat || '-'}<br>K: ${d.komsel || '-'}</small></td>
-                    <td><small>${d.jabatan || '-'}<br>F: ${d.sub_jabatan || d.fungsi_pelayanan || '-'}</small></td>
-                    <td style="text-align:center; font-size:18px;">${fileHtml}</td>
+                    <td><small>${d.jabatan || '-'}<br>F: ${d.sub_jabatan || '-'}</small></td>
+                    <td style="text-align:center;">
+                        ${(d.url_ktp || d.ktp) ? `<a href="${d.url_ktp || d.ktp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a>` : '-'}
+                    </td>
                     <td>
                         <span class="${statusBadge}">${status}</span>
                         <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${status}')">
-                            <i class="fas ${statusIcon}"></i>
+                            <i class="fas fa-sync-alt"></i>
                         </button>
                     </td>
                     <td>
@@ -240,13 +248,15 @@
         });
     }
 
-    // --- FUNGSI TOOLS ---
+    // --- FUNGSI PENDUKUNG LAINNYA ---
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
     }
     
-    function deleteUser(id) { if(confirm("Hapus data secara permanen?")) { db.collection("users").doc(id).delete(); } }
+    function deleteUser(id) { 
+        if(confirm("Hapus data secara permanen?")) { db.collection("users").doc(id).delete(); } 
+    }
     
     function bulkDelete() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
@@ -274,9 +284,9 @@
         const menu = document.getElementById('actionMenu');
         if(menu) {
             menu.style.display = count > 0 ? 'flex' : 'none';
-            document.getElementById('selectedCount').innerText = `${count} Terpilih`;
+            const countText = document.getElementById('selectedCount');
+            if(countText) countText.innerText = `${count} Terpilih`;
         }
     }
-</script>
-</body>
+</script></body>
 </html>
