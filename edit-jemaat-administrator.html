@@ -9,15 +9,12 @@
         :root { --primary: #003366; --accent: #007bff; --light: #f4f7f6; --gold: #D4AF37; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 20px; }
         .edit-container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; position: relative; } /* Ditambah relative untuk posisi ikon mata */
+        .form-group { margin-bottom: 15px; position: relative; } 
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: var(--primary); }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
         input[readonly] { background: #eee; cursor: not-allowed; }
-        
-        /* CSS KHUSUS PASSWORD & EYE ICON */
         .pass-wrapper { position: relative; }
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
-        
         .btn-save { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; font-size: 16px; transition: 0.3s; }
         .btn-save:hover { background: #002244; }
         .btn-back { display: inline-block; margin-bottom: 20px; color: var(--primary); text-decoration: none; font-weight: bold; }
@@ -41,6 +38,11 @@
         <div class="form-group">
             <label>NIJ (Nomor Induk Jemaat)</label>
             <input type="text" id="nij" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>Tanggal Lahir</label>
+            <input type="date" id="tanggal_lahir_murni">
         </div>
 
         <div class="form-group">
@@ -73,7 +75,24 @@
         </div>
 
         <div class="form-group">
-            <label>Alamat</label>
+            <label>Provinsi</label>
+            <select id="provinsi"><option value="">Pilih Provinsi</option></select>
+        </div>
+        <div class="form-group">
+            <label>Kota / Kabupaten</label>
+            <select id="kota"><option value="">Pilih Kota</option></select>
+        </div>
+        <div class="form-group">
+            <label>Kecamatan</label>
+            <select id="kecamatan"><option value="">Pilih Kecamatan</option></select>
+        </div>
+        <div class="form-group">
+            <label>Desa / Kelurahan</label>
+            <select id="desa"><option value="">Pilih Desa</option></select>
+        </div>
+
+        <div class="form-group">
+            <label>Alamat Detail (Jalan/RT/RW)</label>
             <textarea id="alamat" rows="2"></textarea>
         </div>
 
@@ -180,6 +199,75 @@
         window.location.href = 'admin.html';
     }
 
+    // VARIABEL PENAMPUNG TEKS WILAYAH
+    let txtProv = "", txtKota = "", txtKec = "", txtDesa = "";
+
+    // FUNGSI API WILAYAH OTOMATIS
+    async function loadProvinsi(selectedName = "") {
+        const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        const data = await res.json();
+        let options = '<option value="">Pilih Provinsi</option>';
+        data.forEach(p => {
+            const isSel = p.name === selectedName ? "selected" : "";
+            options += `<option value="${p.id}" data-nama="${p.name}" ${isSel}>${p.name}</option>`;
+        });
+        document.getElementById('provinsi').innerHTML = options;
+        if(selectedName) txtProv = selectedName;
+    }
+
+    async function loadKota(id, selectedName = "") {
+        const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`);
+        const data = await res.json();
+        let options = '<option value="">Pilih Kota</option>';
+        data.forEach(p => {
+            const isSel = p.name === selectedName ? "selected" : "";
+            options += `<option value="${p.id}" data-nama="${p.name}" ${isSel}>${p.name}</option>`;
+        });
+        document.getElementById('kota').innerHTML = options;
+        if(selectedName) txtKota = selectedName;
+    }
+
+    async function loadKecamatan(id, selectedName = "") {
+        const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`);
+        const data = await res.json();
+        let options = '<option value="">Pilih Kecamatan</option>';
+        data.forEach(p => {
+            const isSel = p.name === selectedName ? "selected" : "";
+            options += `<option value="${p.id}" data-nama="${p.name}" ${isSel}>${p.name}</option>`;
+        });
+        document.getElementById('kecamatan').innerHTML = options;
+        if(selectedName) txtKec = selectedName;
+    }
+
+    async function loadDesa(id, selectedName = "") {
+        const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`);
+        const data = await res.json();
+        let options = '<option value="">Pilih Desa</option>';
+        data.forEach(p => {
+            const isSel = p.name === selectedName ? "selected" : "";
+            options += `<option value="${p.id}" data-nama="${p.name}" ${isSel}>${p.name}</option>`;
+        });
+        document.getElementById('desa').innerHTML = options;
+        if(selectedName) txtDesa = selectedName;
+    }
+
+    // EVENT LISTENER WILAYAH
+    document.getElementById('provinsi').onchange = function() {
+        txtProv = this.options[this.selectedIndex].getAttribute('data-nama');
+        loadKota(this.value);
+    };
+    document.getElementById('kota').onchange = function() {
+        txtKota = this.options[this.selectedIndex].getAttribute('data-nama');
+        loadKecamatan(this.value);
+    };
+    document.getElementById('kecamatan').onchange = function() {
+        txtKec = this.options[this.selectedIndex].getAttribute('data-nama');
+        loadDesa(this.value);
+    };
+    document.getElementById('desa').onchange = function() {
+        txtDesa = this.options[this.selectedIndex].getAttribute('data-nama');
+    };
+
     // FUNGSI LIHAT PASSWORD
     document.getElementById('eyeIcon').addEventListener('click', function() {
         const passInput = document.getElementById('password_user');
@@ -192,7 +280,6 @@
         }
     });
 
-    // DATA DROPDOWN DINAMIS (KOMSEL & FUNGSI)
     const dataKomsel = {
         "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -229,7 +316,6 @@
         const sub = document.getElementById('sub_bidang').value;
         const container = document.getElementById('fungsi_container');
         const fungsiSelect = document.getElementById('fungsi_spesifik');
-        
         if(dataFungsi[sub]) {
             container.style.display = 'block';
             fungsiSelect.innerHTML = '<option value="">-- Pilih Fungsi --</option>';
@@ -239,11 +325,10 @@
             });
         } else {
             container.style.display = 'none';
-            fungsiSelect.innerHTML = '<option value="">-- Pilih Fungsi --</option>';
         }
     }
 
-    // LOAD DATA
+    // LOAD DATA UTAMA
     window.onload = async function() {
         try {
             const doc = await db.collection("users").doc(userId).get();
@@ -251,19 +336,35 @@
                 const data = doc.data();
                 document.getElementById('nama_lengkap').value = data.nama_lengkap || '';
                 document.getElementById('nij').value = data.nij || '';
-                document.getElementById('gol_darah').value = data.darah || '-'; // Load Gol Darah
+                document.getElementById('tanggal_lahir_murni').value = data.tanggal_lahir_murni || '';
+                document.getElementById('gol_darah').value = data.darah || '-';
                 document.getElementById('whatsapp').value = data.whatsapp || '';
                 document.getElementById('email').value = data.email || '';
-                document.getElementById('password_user').value = data.password || ''; // Load Password
+                document.getElementById('password_user').value = data.password || '';
                 document.getElementById('alamat').value = data.alamat || '';
                 document.getElementById('status_akun').value = data.status_akun || 'Pending';
                 
                 document.getElementById('wilayah').value = data.wilayah || '';
                 updateKomsel(data.komsel);
-                
                 document.getElementById('jabatan').value = data.jabatan || 'Anggota Jemaat';
                 document.getElementById('sub_bidang').value = data.sub_bidang || 'Anggota Jemaat Ordinari';
                 updateFungsiPelayanan(data.fungsi_spesifik);
+
+                // Load Wilayah API (Auto Select)
+                await loadProvinsi(data.provinsi);
+                // Jika data ada, load level di bawahnya
+                if(data.provinsi) {
+                    const provEl = Array.from(document.getElementById('provinsi').options).find(o => o.text === data.provinsi);
+                    if(provEl) {
+                        await loadKota(provEl.value, data.kota);
+                        const kotaEl = Array.from(document.getElementById('kota').options).find(o => o.text === data.kota);
+                        if(kotaEl) {
+                            await loadKecamatan(kotaEl.value, data.kecamatan);
+                            const kecEl = Array.from(document.getElementById('kecamatan').options).find(o => o.text === data.kecamatan);
+                            if(kecEl) await loadDesa(kecEl.value, data.desa);
+                        }
+                    }
+                }
 
                 document.getElementById('loading').style.display = 'none';
             } else {
@@ -286,10 +387,18 @@
         try {
             await db.collection("users").doc(userId).update({
                 nama_lengkap: document.getElementById('nama_lengkap').value,
-                darah: document.getElementById('gol_darah').value, // Simpan Gol Darah
+                tanggal_lahir_murni: document.getElementById('tanggal_lahir_murni').value,
+                darah: document.getElementById('gol_darah').value,
                 whatsapp: document.getElementById('whatsapp').value,
                 email: document.getElementById('email').value,
-                password: document.getElementById('password_user').value, // Simpan Password
+                password: document.getElementById('password_user').value,
+                
+                // Simpan Kolom Baru Wilayah
+                provinsi: txtProv,
+                kota: txtKota,
+                kecamatan: txtKec,
+                desa: txtDesa,
+
                 alamat: document.getElementById('alamat').value,
                 wilayah: document.getElementById('wilayah').value,
                 komsel: document.getElementById('komsel').value,
