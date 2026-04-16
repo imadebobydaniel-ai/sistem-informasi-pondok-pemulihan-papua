@@ -2,35 +2,74 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Kartu Jemaat</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>Cetak Kartu Jemaat - Pondok Pemulihan Papua</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <style>
-        body { font-family: Arial, sans-serif; background: #555; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-        .card { width: 350px; height: 210px; background: white; border-radius: 10px; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 1px solid #ccc; background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
-        .card-header { background: #003366; color: white; padding: 10px; text-align: center; font-size: 14px; font-weight: bold; border-bottom: 2px solid #D4AF37; }
-        .card-body { padding: 10px; display: flex; gap: 10px; }
-        .photo { width: 80px; height: 100px; border: 2px solid #003366; object-fit: cover; border-radius: 5px; background: #eee; }
-        .info { font-size: 11px; color: #333; line-height: 1.4; }
-        .info b { color: #003366; }
-        .card-footer { position: absolute; bottom: 0; width: 100%; background: rgba(0,51,102,0.1); padding: 5px; font-size: 9px; text-align: center; }
-        .no-print { position: fixed; bottom: 20px; right: 20px; z-index: 999; }
-        .btn-print { background: #28a745; color: white; border: none; padding: 15px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        @media print { .no-print { display: none; } body { background: white; padding: 0; } }
+        body { background: #333; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; }
+        
+        .card { 
+            width: 450px; height: 280px; background: white; border-radius: 12px; 
+            position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background-image: linear-gradient(to bottom right, #ffffff, #f0f7ff);
+            border: 1px solid #999;
+        }
+
+        /* Header dengan Outline Emas di Atas */
+        .card-header { 
+            background: #003366; color: white; padding: 12px 15px; 
+            display: flex; align-items: center; justify-content: space-between;
+            border-top: 5px solid #D4AF37; /* Garis Outline Emas Atas */
+            border-bottom: 2px solid #D4AF37;
+        }
+        
+        .header-logo { width: 50px; height: 50px; object-fit: contain; }
+        
+        .header-text { text-align: center; flex: 1; }
+        .header-text h2 { margin: 0; font-size: 15px; letter-spacing: 1px; font-weight: 800; }
+        .header-text p { margin: 2px 0 0 0; font-size: 11px; color: #D4AF37; font-weight: bold; text-transform: uppercase; }
+
+        .card-body { padding: 15px; display: flex; gap: 20px; align-items: flex-start; }
+
+        /* Sisi Kiri: Foto & Barcode */
+        .left-side { display: flex; flex-direction: column; align-items: center; width: 115px; }
+        .photo-frame { 
+            width: 105px; height: 130px; border: 2px solid #003366; 
+            object-fit: cover; border-radius: 5px; background: #fff; margin-bottom: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .barcode-svg { width: 115px; height: 45px; background: white; padding: 2px; border: 1px solid #ddd; }
+
+        /* Sisi Kanan: Detail Data */
+        .right-side { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        .info-row { display: flex; font-size: 10.5px; border-bottom: 1px solid #eee; padding-bottom: 3px; align-items: flex-start; }
+        .label { width: 85px; font-weight: bold; color: #003366; flex-shrink: 0; }
+        .value { flex: 1; color: #333; text-transform: uppercase; font-weight: 600; line-height: 1.2; }
+
+        .card-footer { 
+            position: absolute; bottom: 0; width: 100%; background: #003366; 
+            color: white; font-size: 9px; text-align: center; padding: 5px 0;
+            letter-spacing: 1px;
+        }
+
+        .no-print { position: fixed; bottom: 20px; right: 20px; z-index: 99; }
+        .btn-print { background: #28a745; color: white; border: none; padding: 15px 35px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
+        @media print { .no-print { display: none; } body { background: white; padding: 0; } .card { box-shadow: none; border: 1px solid #000; margin: 10px; page-break-inside: avoid; } }
     </style>
 </head>
 <body>
 
 <div class="no-print">
-    <button class="btn-print" onclick="window.print()">PRINT SEKARANG</button>
+    <button class="btn-print" onclick="window.print()">CETAK SEKARANG</button>
 </div>
 
-<div id="printArea" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-    </div>
+<div id="cardContainer" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;"></div>
 
 <script>
+    // Konfigurasi Firebase (Tetap)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -42,13 +81,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadSelectedCards() {
+    async function drawCards() {
         const urlParams = new URLSearchParams(window.location.search);
         const ids = urlParams.get('ids') ? urlParams.get('ids').split(',') : [];
-        const container = document.getElementById('printArea');
+        const container = document.getElementById('cardContainer');
 
         if (ids.length === 0) {
-            container.innerHTML = "<h2 style='color:white'>Tidak ada data yang dipilih.</h2>";
+            container.innerHTML = "<h2 style='color:white'>Data tidak ditemukan. Silakan pilih dari Dashboard.</h2>";
             return;
         }
 
@@ -56,28 +95,58 @@
             const doc = await db.collection("users").doc(id).get();
             if (doc.exists) {
                 const d = doc.data();
+                const nijValue = d.nij || "NO-NIJ";
+                
                 const cardHtml = `
                     <div class="card">
-                        <div class="card-header">KARTU ANGGOTA JEMAAT</div>
+                        <div class="card-header">
+                            <img src="logo_pondok.png" class="header-logo">
+                            <div class="header-text">
+                                <h2>PONDOK PEMULIHAN PAPUA</h2>
+                                <p>KARTU ANGGOTA JEMAAT</p>
+                            </div>
+                            <img src="gbi.png" class="header-logo">
+                        </div>
+                        
                         <div class="card-body">
-                            <img src="${d.url_foto || 'https://via.placeholder.com/80x100?text=FOTO'}" class="photo">
-                            <div class="info">
-                                <b>NIJ:</b> ${d.nij || '-'}<br>
-                                <b>NAMA:</b> ${d.nama_lengkap || d.nama || '-'}<br>
-                                <b>TTL:</b> ${d.kota || '-'}, ${d.tanggal_lahir || '-'}<br>
-                                <b>KOMSEL:</b> ${d.komsel || '-'}<br>
-                                <b>LOKASI:</b> ${d.lokasi_berjemaat || '-'}
+                            <div class="left-side">
+                                <img src="${d.url_foto || 'https://via.placeholder.com/105x130?text=FOTO'}" class="photo-frame">
+                                <svg class="barcode-svg" id="barcode-${id}"></svg>
+                            </div>
+                            
+                            <div class="right-side">
+                                <div class="info-row"><span class="label">NIJ</span><span class="value">: ${nijValue}</span></div>
+                                <div class="info-row"><span class="label">NAMA</span><span class="value">: ${d.nama_lengkap || d.nama || '-'}</span></div>
+                                <div class="info-row"><span class="label">TTL</span><span class="value">: ${d.kota || '-'}, ${d.tanggal_lahir || '-'}</span></div>
+                                <div class="info-row"><span class="label">ALAMAT</span><span class="value">: ${d.alamat || '-'}</span></div>
+                                <div class="info-row"><span class="label">JABATAN</span><span class="value">: ${d.jabatan || 'ANGGOTA'}</span></div>
+                                <div class="info-row"><span class="label">JEMAAT</span><span class="value">: ${d.lokasi_berjemaat || '-'}</span></div>
+                                <div class="info-row"><span class="label">KOMSEL</span><span class="value">: ${d.komsel || '-'}</span></div>
                             </div>
                         </div>
-                        <div class="card-footer">Pondok Pemulihan Papua - Unity In Diversity</div>
+                        
+                        <div class="card-footer">
+                            Pondok Pemulihan Papua - Unity In Diversity
+                        </div>
                     </div>
                 `;
                 container.innerHTML += cardHtml;
+
+                // Render Barcode
+                setTimeout(() => {
+                    JsBarcode(`#barcode-${id}`, nijValue, {
+                        format: "CODE128",
+                        width: 1.5,
+                        height: 35,
+                        displayValue: false,
+                        margin: 0
+                    });
+                }, 150);
             }
         }
     }
 
-    window.onload = loadSelectedCards;
+    window.onload = drawCards;
 </script>
 </body>
 </html>
