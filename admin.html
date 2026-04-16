@@ -175,6 +175,23 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
+    // --- FUNGSI UTAMA CETAK KARTU ---
+    // Fungsi ini yang tadinya hilang sehingga tombol freeze
+    function generateMemberCards() {
+        const selected = document.querySelectorAll('.user-checkbox:checked');
+        if (selected.length === 0) {
+            alert("Silakan pilih minimal satu jemaat untuk dicetak!");
+            return;
+        }
+
+        // Mengambil semua ID yang dicentang
+        const ids = Array.from(selected).map(cb => cb.value);
+        
+        // Mengarahkan ke halaman cetak dengan parameter ID (dipisahkan koma)
+        // Pastikan kamu memiliki file 'cetak-kartu.html'
+        window.location.href = `cetak-kartu.html?ids=${ids.join(',')}`;
+    }
+
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -186,8 +203,6 @@
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
-                // --- 1. LOGIKA TEMPAT TANGGAL LAHIR (KOLOM KOTA KELAHIRAN) ---
-                // Mengambil langsung dari root field sesuai data I Made Boby
                 const tempatLahir = d.kota || "-"; 
                 const tglLahir = d.tanggal_lahir_murni || d.tanggal_lahir || "-";
                 
@@ -198,11 +213,7 @@
                     ttl = tempatLahir !== "-" ? tempatLahir.toUpperCase() : tglLahir;
                 }
 
-                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH DARI DATA PALU) ---
                 const jalanDomisili = d.alamat || '-';
-                
-                // Prioritas: Jika ada objek 'wilayah', ambil isinya. 
-                // Jika tidak ada (seperti data Boby), ambil dari field 'wilayah' string (isinya "Abepura")
                 let areaDetail = "";
                 if (d.wilayah && typeof d.wilayah === 'object') {
                     areaDetail = `Kel. ${d.wilayah.desa || '-'}, Kec. ${d.wilayah.kec || '-'}`;
@@ -210,12 +221,8 @@
                     areaDetail = `Wilayah: ${d.wilayah || '-'}`;
                 }
 
-                const alamatHtml = `
-                    ${jalanDomisili}<br>
-                    <small>${areaDetail}</small>
-                `;
+                const alamatHtml = `${jalanDomisili}<br><small>${areaDetail}</small>`;
 
-                // --- DATA LAINNYA ---
                 const goldar = d.darah || d.golongan_darah || '-'; 
                 const whatsapp = d.whatsapp || d.WhatsApp || d.hp || '-';
                 const email = d.email || '-';
@@ -269,7 +276,6 @@
         });
     }
 
-    // Fungsi utilitas
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
@@ -299,7 +305,8 @@
         const menu = document.getElementById('actionMenu');
         if(menu) {
             menu.style.display = count > 0 ? 'flex' : 'none';
-            document.getElementById('selectedCount').innerText = `${count} Terpilih`;
+            const countText = document.getElementById('selectedCount');
+            if(countText) countText.innerText = `${count} Terpilih`;
         }
     }
 </script></body>
