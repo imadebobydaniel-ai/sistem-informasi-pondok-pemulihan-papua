@@ -76,10 +76,6 @@
             display: inline-block; margin-bottom: 5px; margin-right: 5px;
         }
         .file-link:hover { background: var(--accent); color: white !important; }
-
-        /* Modal Preview */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); overflow-y: auto; }
-        .modal-content { background: #fefefe; margin: 5% auto; padding: 20px; border-radius: 15px; width: 90%; max-width: 600px; text-align: center; }
     </style>
 </head>
 <body>
@@ -157,41 +153,26 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
-    // Jalankan saat halaman dibuka
-    window.onload = function() { 
-        loadMembersRealtime(); 
-    };
+    window.onload = function() { loadMembersRealtime(); };
 
-    // --- FUNGSI UTAMA: CETAK KARTU (Anti-Freeze) ---
+    // --- FUNGSI UTAMA: CETAK KARTU ---
     function generateMemberCards() {
         console.log("Tombol Cetak diklik..."); 
-        
-        // 1. Ambil semua jemaat yang dicentang
         const selected = document.querySelectorAll('.user-checkbox:checked');
         
-        // 2. Validasi jika tidak ada yang dipilih
         if (selected.length === 0) {
             alert("Pilih jemaat dulu! Centang kotak di sebelah kiri nama.");
             return;
         }
 
-        // 3. Kumpulkan ID dari checkbox yang dicentang
         const ids = Array.from(selected).map(cb => cb.value);
-        console.log("ID jemaat yang akan dicetak:", ids);
+        console.log("ID Terpilih:", ids);
 
-        // 4. Arahkan ke halaman cetak
-        // PASTIKAN: Nama file di GitHub adalah 'cetak-kartu.html'
-        const targetUrl = `cetak-kartu.html?ids=${ids.join(',')}`;
-        
-        try {
-            window.location.href = targetUrl;
-        } catch (err) {
-            console.error("Gagal pindah halaman:", err);
-            alert("Terjadi kesalahan saat mencoba membuka halaman cetak.");
-        }
+        // Arahkan ke halaman cetak dengan parameter IDs
+        window.location.href = `cetak-kartu.html?ids=${ids.join(',')}`;
     }
 
-    // --- LOAD DATA DARI FIREBASE ---
+    // --- LOAD DATA REALTIME ---
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -203,16 +184,13 @@
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
-                // Format Tempat Tanggal Lahir
                 const tempatLahir = d.kota || "-"; 
                 const tglLahir = d.tanggal_lahir_murni || d.tanggal_lahir || "-";
                 let ttl = (tempatLahir !== "-" && tglLahir !== "-") ? `${tempatLahir.toUpperCase()}, ${tglLahir}` : "-";
 
-                // Format Alamat
                 const jalanDomisili = d.alamat || '-';
                 let areaDetail = (d.wilayah && typeof d.wilayah === 'object') ? `Kel. ${d.wilayah.desa || '-'}, Kec. ${d.wilayah.kec || '-'}` : `Wilayah: ${d.wilayah || '-'}`;
 
-                // Status Akun
                 const status = d.status_akun || 'Pending';
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
@@ -248,7 +226,6 @@
         });
     }
 
-    // --- FUNGSI PENDUKUNG LAINNYA ---
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
@@ -288,5 +265,6 @@
             if(countText) countText.innerText = `${count} Terpilih`;
         }
     }
-</script></body>
+</script>
+</body>
 </html>
