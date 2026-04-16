@@ -159,7 +159,7 @@
         window.location.href = `cetak-kartu.html?ids=${ids.join(',')}`;
     }
 
-    // 3. FUNGSI LOAD DATA (Realtime)
+    // 3. FUNGSI LOAD DATA (Realtime & Robust)
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -169,23 +169,35 @@
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                // Fallback untuk Nama
-                const nama = d.nama_lengkap || d.nama || d.Nama || '-';
+                // --- PROTEKSI NAMA ---
+                const nama = d.nama_lengkap || d.nama || d.Nama || d.full_name || '-';
                 
-                // --- BAGIAN KRUSIAL: PENCARIAN TANGGAL LAHIR ---
-                // Kode ini akan mengecek semua kemungkinan nama field di Firebase Anda
-                const tanggalLahir = d.tanggal_lahir || d.tgl_lahir || d.tglLahir || d.lahir || '-';
+                // --- PROTEKSI TANGGAL LAHIR (Pengecekan Intensif) ---
+                let tglTampil = '-';
+                // Cek semua kemungkinan kunci field yang pernah Anda gunakan
+                const rawDate = d.tanggal_lahir || d.tgl_lahir || d.tglLahir || d.lahir || d.birth_date;
                 
+                if (rawDate) {
+                    // Jika data berupa Firebase Timestamp (Objek), ubah ke string
+                    if (typeof rawDate === 'object' && rawDate.toDate) {
+                        tglTampil = rawDate.toDate().toLocaleDateString('id-ID');
+                    } else {
+                        // Jika data sudah berupa String
+                        tglTampil = rawDate;
+                    }
+                }
+
                 const status = d.status_akun || 'Pending';
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const btnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
+                // Render baris tabel
                 tableBody.innerHTML += `
                 <tr>
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${d.nij || '-'}</td>
                     <td><strong>${nama}</strong></td>
-                    <td>${d.kota || '-'}<br><small style="color: blue; font-weight: bold;">${tanggalLahir}</small></td>
+                    <td>${d.kota || '-'}<br><small style="font-weight: bold; color: #003366;">${tglTampil}</small></td>
                     <td style="text-align:center;">${d.darah || '-'}</td>
                     <td>${d.whatsapp || '-'}<br><small>${d.email || '-'}</small></td>
                     <td><small>P: ${d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || '0'}</small></td>
@@ -228,11 +240,13 @@
 
     function toggleStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
-        db.collection("users").doc(id).update({ status_akun: next });
+        db.collection("users").doc(id).update({ status_akun: next }).catch(err => console.error("Error update status:", err));
     }
 
     function deleteUser(id) {
-        if(confirm("Hapus data ini?")) { db.collection("users").doc(id).delete(); }
+        if(confirm("Hapus data ini secara permanen?")) { 
+            db.collection("users").doc(id).delete().catch(err => alert("Gagal menghapus: " + err)); 
+        }
     }
 
     function bulkDelete() {
