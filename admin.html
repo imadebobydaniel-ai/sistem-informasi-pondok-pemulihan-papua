@@ -1,146 +1,4 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - Pondok Pemulihan Papua</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <style>
-        :root { 
-            --primary: #003366; --accent: #007bff; --dark: #333; 
-            --light: #f4f7f6; --success: #28a745; --emas: #D4AF37;
-            --danger: #dc3545; --purple: #6f42c1; --orange: #fd7e14; --cyan: #17a2b8;
-            --teal: #008080;
-        }
-
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); margin: 0; padding: 10px; }
-        .admin-container { max-width: 1450px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        
-        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas); padding-bottom: 15px; margin-bottom: 20px; }
-        .btn-logout { background: #dc3545; color: white; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 12px; }
-
-        .stats-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
-            gap: 12px; 
-            margin-bottom: 20px; 
-        }
-        .stats-grid a { text-decoration: none; color: inherit; }
-        .stat-card { 
-            padding: 20px 15px; 
-            border-radius: 10px; 
-            color: white; 
-            position: relative; 
-            min-height: 60px; 
-            cursor: pointer; 
-            transition: transform 0.2s; 
-            display: flex;
-            align-items: center;
-        }
-        .stat-card:hover { transform: translateY(-5px); filter: brightness(1.1); }
-        .stat-card h4 { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; padding-right: 30px; }
-        .stat-card i { position: absolute; right: 12px; font-size: 1.3rem; opacity: 0.4; }
-
-        #actionMenu { display: none; gap: 10px; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; align-items: center; }
-        .btn-action { border: none; padding: 8px 15px; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; transition: 0.3s; }
-        
-        .table-controls { display: flex; gap: 15px; margin-bottom: 15px; align-items: center; }
-        .search-box { position: relative; flex: 1; }
-        .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
-        
-        .btn-cetak-kartu-main { background: var(--teal); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
-        .btn-cetak-kartu-main:hover { background: #006666; transform: scale(1.02); }
-
-        .table-responsive { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; }
-        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
-        table th { background: var(--primary); color: white; padding: 12px; font-size: 11px; text-align: left; text-transform: uppercase; }
-        table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 11.5px; vertical-align: top; }
-        
-        .nij-col { color: var(--accent); font-weight: bold; font-family: monospace; font-size: 12px; }
-        .check-col { width: 40px; text-align: center; }
-        
-        .badge-pending { background: #ffc107; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
-        .badge-aktif { background: var(--success); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; display: inline-block; }
-        .btn-status-toggle { border: none; padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; cursor: pointer; margin-left: 5px; }
-
-        .file-link {
-            background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 10px; border: 1px solid #ddd;
-            transition: 0.3s; color: var(--accent) !important; text-decoration: none !important; font-weight: bold;
-            display: inline-block; margin-bottom: 5px; margin-right: 5px;
-        }
-        .file-link:hover { background: var(--accent); color: white !important; }
-    </style>
-</head>
-<body>
-
-<div class="admin-container">
-    <div class="header-section">
-        <h2 style="color:var(--primary); margin:0;">Dashboard Administrator</h2>
-        <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Keluar</a>
-    </div>
-
-    <div class="stats-grid">
-        <a href="admin-tiket.html"><div class="stat-card" style="background: #007bff;"><h4>Portal Tiket</h4><i class="fas fa-ticket-alt"></i></div></a>
-        <a href="#memberData"><div class="stat-card" style="background: #28a745;"><h4>Raport Jemaat</h4><i class="fas fa-check-circle"></i></div></a>
-        <a href="portal-media.html"><div class="stat-card" style="background: #6f42c1;"><h4>Portal Media</h4><i class="fas fa-icons"></i></div></a>
-        <a href="informasi-kegiatan.html"><div class="stat-card" style="background: #fd7e14;"><h4>Informasi Kegiatan</h4><i class="fas fa-calendar-alt"></i></div></a>
-        <a href="admin-bigdata.html"><div class="stat-card" style="background: #17a2b8;"><h4>Big Data</h4><i class="fas fa-chart-line"></i></div></a>
-        <a href="admin_agenda.html"><div class="stat-card" style="background: var(--teal);"><h4>Agenda Tahunan</h4><i class="fas fa-book-open"></i></div></a>
-        <a href="manajemen-user.html"><div class="stat-card" style="background: var(--emas); color: #333;"><h4 style="color: #333;">Manajemen User</h4><i class="fas fa-users-cog" style="color: #333; opacity: 0.6;"></i></div></a>
-    </div>
-
-    <div id="actionMenu">
-        <span style="font-size: 12px; font-weight: bold; margin-right: 10px;" id="selectedCount">0 Terpilih</span>
-        <button class="btn-action" style="background: var(--danger);" onclick="bulkDelete()"><i class="fas fa-trash"></i> Hapus Massal</button>
-        <button class="btn-action" style="background: var(--teal);" onclick="generateMemberCards()"><i class="fas fa-id-card"></i> Cetak Kartu Terpilih</button>
-    </div>
-
-    <div class="table-controls">
-        <div class="search-box">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari NIJ, nama, komsel, atau jabatan...">
-            <i class="fas fa-search"></i>
-        </div>
-        <button class="btn-cetak-kartu-main" onclick="generateMemberCards()">
-            <i class="fas fa-id-card"></i> CETAK KARTU
-        </button>
-    </div>
-
-    <div class="table-responsive">
-        <table id="memberTable">
-            <thead>
-                <tr>
-                    <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
-                    <th>NIJ</th>
-                    <th>Nama Lengkap</th>
-                    <th>Tempat Tanggal Lahir</th> 
-                    <th>G.D</th> 
-                    <th>WhatsApp / Email</th>
-                    <th>Detail Keluarga</th>
-                    <th>Alamat Domisili</th>
-                    <th>Lokasi & Komsel</th>
-                    <th>Jabatan & Pelayanan</th>
-                    <th>Lampiran</th>
-                    <th>Status Akun</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="memberData"></tbody>
-        </table>
-    </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <script>
-    // 1. Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -155,24 +13,6 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
-    // --- FUNGSI UTAMA: CETAK KARTU ---
-    function generateMemberCards() {
-        console.log("Tombol Cetak diklik..."); 
-        const selected = document.querySelectorAll('.user-checkbox:checked');
-        
-        if (selected.length === 0) {
-            alert("Pilih jemaat dulu! Centang kotak di sebelah kiri nama.");
-            return;
-        }
-
-        const ids = Array.from(selected).map(cb => cb.value);
-        console.log("ID Terpilih:", ids);
-
-        // Arahkan ke halaman cetak dengan parameter IDs
-        window.location.href = `cetak-kartu.html?ids=${ids.join(',')}`;
-    }
-
-    // --- LOAD DATA REALTIME ---
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
@@ -184,15 +24,58 @@
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
+                // --- 1. LOGIKA TEMPAT TANGGAL LAHIR (KOLOM KOTA KELAHIRAN) ---
+                // Mengambil langsung dari root field sesuai data I Made Boby
                 const tempatLahir = d.kota || "-"; 
                 const tglLahir = d.tanggal_lahir_murni || d.tanggal_lahir || "-";
-                let ttl = (tempatLahir !== "-" && tglLahir !== "-") ? `${tempatLahir.toUpperCase()}, ${tglLahir}` : "-";
+                
+                let ttl = "-";
+                if (tempatLahir !== "-" && tglLahir !== "-") {
+                    ttl = `${tempatLahir.toUpperCase()}, ${tglLahir}`;
+                } else {
+                    ttl = tempatLahir !== "-" ? tempatLahir.toUpperCase() : tglLahir;
+                }
 
+                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH DARI DATA PALU) ---
                 const jalanDomisili = d.alamat || '-';
-                let areaDetail = (d.wilayah && typeof d.wilayah === 'object') ? `Kel. ${d.wilayah.desa || '-'}, Kec. ${d.wilayah.kec || '-'}` : `Wilayah: ${d.wilayah || '-'}`;
+                
+                // Prioritas: Jika ada objek 'wilayah', ambil isinya. 
+                // Jika tidak ada (seperti data Boby), ambil dari field 'wilayah' string (isinya "Abepura")
+                let areaDetail = "";
+                if (d.wilayah && typeof d.wilayah === 'object') {
+                    areaDetail = `Kel. ${d.wilayah.desa || '-'}, Kec. ${d.wilayah.kec || '-'}`;
+                } else {
+                    areaDetail = `Wilayah: ${d.wilayah || '-'}`;
+                }
+
+                const alamatHtml = `
+                    ${jalanDomisili}<br>
+                    <small>${areaDetail}</small>
+                `;
+
+                // --- DATA LAINNYA ---
+                const goldar = d.darah || d.golongan_darah || '-'; 
+                const whatsapp = d.whatsapp || d.WhatsApp || d.hp || '-';
+                const email = d.email || '-';
+                const pasangan = d.nama_suami_istri || d.nama_pasangan || '-';
+                const anak = d.jumlah_anak || d.anak || '0';
+                
+                const wilayahGereja = d.lokasi_berjemaat || d.lokasi || '-';
+                const komsel = d.komsel || d.Komsel || '-';
+                const jabatan = d.jabatan || '-';
+                const fungsi = d.sub_jabatan || d.fungsi_pelayanan || '-';
+                
+                const linkKtp = d.url_ktp || d.ktp;
+                const linkBerkas = d.url_berkas || d.berkas;
+
+                let fileHtml = "";
+                if (linkKtp && linkKtp !== "-") fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a> `;
+                if (linkBerkas && linkBerkas !== "-") fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i></a>`;
+                if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
 
                 const status = d.status_akun || 'Pending';
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
+                const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
                 tableBody.innerHTML += `
@@ -201,19 +84,17 @@
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
                     <td>${ttl}</td> 
-                    <td style="text-align:center;"><strong>${d.darah || '-'}</strong></td> 
-                    <td>${d.whatsapp || d.hp || '-'}<br><small>${d.email || '-'}</small></td>
-                    <td><small>P: ${d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || '0'}</small></td>
-                    <td>${jalanDomisili}<br><small>${areaDetail}</small></td>
-                    <td><small>${d.lokasi_berjemaat || '-'}<br>K: ${d.komsel || '-'}</small></td>
-                    <td><small>${d.jabatan || '-'}<br>F: ${d.sub_jabatan || '-'}</small></td>
-                    <td style="text-align:center;">
-                        ${(d.url_ktp || d.ktp) ? `<a href="${d.url_ktp || d.ktp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a>` : '-'}
-                    </td>
+                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
+                    <td>${whatsapp}<br><small>${email}</small></td>
+                    <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
+                    <td>${alamatHtml}</td>
+                    <td><small>${wilayahGereja}<br>K: ${komsel}</small></td>
+                    <td><small>${jabatan}<br>F: ${fungsi}</small></td>
+                    <td style="text-align:center; font-size:18px;">${fileHtml}</td>
                     <td>
                         <span class="${statusBadge}">${status}</span>
                         <button class="btn-status-toggle" style="background:${statusBtnColor}" onclick="toggleUserStatus('${doc.id}', '${status}')">
-                            <i class="fas fa-sync-alt"></i>
+                            <i class="fas ${statusIcon}"></i>
                         </button>
                     </td>
                     <td>
@@ -226,29 +107,24 @@
         });
     }
 
+    // Fungsi utilitas
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
     }
     
-    function deleteUser(id) { 
-        if(confirm("Hapus data secara permanen?")) { db.collection("users").doc(id).delete(); } 
-    }
+    function deleteUser(id) { if(confirm("Hapus data secara permanen?")) { db.collection("users").doc(id).delete(); } }
     
     function bulkDelete() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
-        if(confirm(`Hapus ${selected.length} data?`)) { 
-            selected.forEach(cb => db.collection("users").doc(cb.value).delete()); 
-        }
+        if(confirm(`Hapus ${selected.length} data?`)) { selected.forEach(cb => db.collection("users").doc(cb.value).delete()); }
     }
     
     function openEditModal(uid) { window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; }
     
     function filterTable() {
         let val = document.getElementById("searchInput").value.toLowerCase();
-        document.querySelectorAll("#memberData tr").forEach(row => { 
-            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none"; 
-        });
+        document.querySelectorAll("#memberData tr").forEach(row => { row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none"; });
     }
     
     function toggleAll(source) {
@@ -261,10 +137,7 @@
         const menu = document.getElementById('actionMenu');
         if(menu) {
             menu.style.display = count > 0 ? 'flex' : 'none';
-            const countText = document.getElementById('selectedCount');
-            if(countText) countText.innerText = `${count} Terpilih`;
+            document.getElementById('selectedCount').innerText = `${count} Terpilih`;
         }
     }
 </script>
-</body>
-</html>
