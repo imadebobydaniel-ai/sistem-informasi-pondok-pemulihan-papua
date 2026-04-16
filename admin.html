@@ -186,8 +186,9 @@
                 const nij = d.nij || '-';
                 
                 // --- 1. LOGIKA TEMPAT TANGGAL LAHIR (KOLOM TERPISAH) ---
-                const kotaLahir = d.tempat_lahir || d.kota_lahir || ""; 
-                const tglLahir = d.tanggal_lahir || d.tanggal_lahir_murni || "";
+                // Mengambil data spesifik dari field lahir agar tidak tertukar dengan domisili
+                const kotaLahir = d.tempat_lahir || d.kota_lahir || (d.wilayah_lahir ? d.wilayah_lahir.kota : ""); 
+                const tglLahir = d.tanggal_lahir || d.tanggal_lahir_murni || d.tglLahir || "";
                 let ttl = "-";
 
                 if (kotaLahir && tglLahir) {
@@ -200,14 +201,19 @@
                     ttl = d.tempat_tanggal_lahir;
                 }
 
-                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH TOTAL DARI DATA LAHIR) ---
+                // --- 2. LOGIKA ALAMAT DOMISILI (FIXED: ANTI-BOCOR) ---
+                // Menggunakan field 'alamat' untuk jalan, dan memastikan desa/kecamatan tidak mengambil dari wilayah_lahir
                 const alamatDomisili = d.alamat || '-';
-                const kelurahanDom = d.desa || d.kelurahan || '-';
-                const kecamatanDom = d.kecamatan || '-';
+                
+                // Jika data disimpan dalam struktur baru, ambil dari field luar, bukan dari objek wilayah_lahir
+                const kelurahanDom = d.desa_domisili || (d.wilayah && d.wilayah.desa ? d.wilayah.desa : d.desa) || '-';
+                const kecamatanDom = d.kecamatan_domisili || (d.wilayah && d.wilayah.kec ? d.wilayah.kec : d.kecamatan) || '-';
+                const kotaDom = d.kota_domisili || (d.wilayah && d.wilayah.kota ? d.wilayah.kota : ""); 
+                const provinsiDom = d.provinsi_domisili || (d.wilayah && d.wilayah.prov ? d.wilayah.prov : "");
 
-                // HANYA gunakan field spesifik domisili untuk menghindari kebocoran data lahir
-                const kotaDom = d.kota_domisili || ""; 
-                const provinsiDom = d.provinsi_domisili || "";
+                // Pastikan kelurahanDom dan kecamatanDom tidak sama dengan data lahir jika fieldnya ambigu
+                const desaLahirCek = d.wilayah_lahir ? d.wilayah_lahir.desa : d.desaLahir;
+                const finalKel = (kelurahanDom === desaLahirCek && d.desa_domisili === undefined) ? "-" : kelurahanDom;
 
                 // Susun tampilan lokasi saat ini (Kota & Provinsi)
                 let lokasiSekarang = "";
@@ -219,21 +225,21 @@
 
                 const alamatHtml = `
                     ${alamatDomisili}<br>
-                    <small>Kel. ${kelurahanDom}, Kec. ${kecamatanDom}</small><br>
+                    <small>Kel. ${finalKel}, Kec. ${kecamatanDom}</small><br>
                     <small>${lokasiSekarang}</small>
                 `;
 
                 // --- DATA LAINNYA ---
                 const goldar = d.darah || d.golongan_darah || '-'; 
-                const whatsapp = d.whatsapp || d.WhatsApp || '-';
+                const whatsapp = d.whatsapp || d.WhatsApp || d.hp || '-';
                 const email = d.email || '-';
                 const pasangan = d.nama_suami_istri || d.nama_pasangan || d.suami || d.istri || d.pasangan || '-';
                 const anak = d.jumlah_anak || d.anak || '0';
                 
-                const wilayah = d.wilayah || '-';
+                const wilayah = d.lokasi || d.wilayah_tugas || '-'; // Lokasi gereja/cabang
                 const komsel = d.komsel || d.Komsel || '-';
                 const jabatan = d.jabatan || '-';
-                const fungsi = d.sub_bidang || d.fungsi_pelayanan || d.fungsi_spesifik || '-';
+                const fungsi = d.sub_jabatan || d.fungsi_pelayanan || d.detail_pelayanan || '-';
                 
                 const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp || d.lampiran_ktp || d.urlKTP;
                 const linkBerkas = d.url_berkas || d.berkas || d.lampiran || d.file || d.urlBerkas;
@@ -281,21 +287,6 @@
         });
     }
 
-    function showPreview(doc) {
-        const previewArea = document.getElementById('previewArea');
-        previewArea.innerHTML = "";
-        const iframe = document.createElement('iframe');
-        iframe.style.width = "100%";
-        iframe.style.height = "350px";
-        iframe.src = doc.output('bloburl');
-        previewArea.appendChild(iframe);
-        document.getElementById('previewModal').style.display = 'block';
-    }
-
-    function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
-    function printDirect() { if (typeof currentPreviewPDF !== 'undefined' && currentPreviewPDF) { currentPreviewPDF.autoPrint(); window.open(currentPreviewPDF.output('bloburl'), '_blank'); } }
-    function downloadJPG() { if (typeof currentPreviewPDF !== 'undefined' && currentPreviewPDF) { currentPreviewPDF.save(`Kartu_Jemaat_${Date.now()}.pdf`); } }
-    
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
