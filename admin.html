@@ -161,6 +161,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script>
+    // --- KONFIGURASI FIREBASE ---
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -170,24 +171,32 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    // Inisialisasi Firebase
+    if (!firebase.apps.length) { 
+        firebase.initializeApp(firebaseConfig); 
+    }
     const db = firebase.firestore();
 
-    window.onload = function() { loadMembersRealtime(); };
+    // Jalankan saat halaman dimuat
+    window.onload = function() { 
+        loadMembersRealtime(); 
+    };
 
+    // --- FUNGSI UTAMA: LOAD DATA REALTIME ---
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             if(!tableBody) return;
             tableBody.innerHTML = "";
+
             snapshot.forEach(doc => {
                 const d = doc.data();
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
-                // --- 1. LOGIKA TEMPAT TANGGAL LAHIR (KOLOM TERPISAH) ---
-                // Mengambil data spesifik dari field lahir agar tidak tertukar dengan domisili
-                const kotaLahir = d.tempat_lahir || d.kota_lahir || (d.wilayah_lahir ? d.wilayah_lahir.kota : ""); 
+                // --- 1. LOGIKA TEMPAT TANGGAL LAHIR (KUNCI KE wilayah_lahir) ---
+                // Mengambil data spesifik dari objek wilayah_lahir agar tidak tertukar dengan domisili
+                const kotaLahir = (d.wilayah_lahir && d.wilayah_lahir.kota) ? d.wilayah_lahir.kota : (d.tempat_lahir || ""); 
                 const tglLahir = d.tanggal_lahir || d.tanggal_lahir_murni || d.tglLahir || "";
                 let ttl = "-";
 
@@ -197,23 +206,18 @@
                     ttl = kotaLahir || tglLahir;
                 }
                 
+                // Bypass jika ada field manual tempat_tanggal_lahir
                 if(d.tempat_tanggal_lahir && d.tempat_tanggal_lahir !== "-") {
                     ttl = d.tempat_tanggal_lahir;
                 }
 
-                // --- 2. LOGIKA ALAMAT DOMISILI (FIXED: ANTI-BOCOR) ---
-                // Menggunakan field 'alamat' untuk jalan, dan memastikan desa/kecamatan tidak mengambil dari wilayah_lahir
+                // --- 2. LOGIKA ALAMAT DOMISILI (ANTI-BOCOR) ---
+                // Kita kunci pengambilan data ke objek 'wilayah' agar tidak mengambil data dari 'wilayah_lahir'
                 const alamatDomisili = d.alamat || '-';
-                
-                // Jika data disimpan dalam struktur baru, ambil dari field luar, bukan dari objek wilayah_lahir
-                const kelurahanDom = d.desa_domisili || (d.wilayah && d.wilayah.desa ? d.wilayah.desa : d.desa) || '-';
-                const kecamatanDom = d.kecamatan_domisili || (d.wilayah && d.wilayah.kec ? d.wilayah.kec : d.kecamatan) || '-';
-                const kotaDom = d.kota_domisili || (d.wilayah && d.wilayah.kota ? d.wilayah.kota : ""); 
-                const provinsiDom = d.provinsi_domisili || (d.wilayah && d.wilayah.prov ? d.wilayah.prov : "");
-
-                // Pastikan kelurahanDom dan kecamatanDom tidak sama dengan data lahir jika fieldnya ambigu
-                const desaLahirCek = d.wilayah_lahir ? d.wilayah_lahir.desa : d.desaLahir;
-                const finalKel = (kelurahanDom === desaLahirCek && d.desa_domisili === undefined) ? "-" : kelurahanDom;
+                const kelurahanDom = (d.wilayah && d.wilayah.desa) ? d.wilayah.desa : (d.desa_domisili || "-");
+                const kecamatanDom = (d.wilayah && d.wilayah.kec) ? d.wilayah.kec : (d.kecamatan_domisili || "-");
+                const kotaDom      = (d.wilayah && d.wilayah.kota) ? d.wilayah.kota : (d.kota_domisili || "");
+                const provinsiDom  = (d.wilayah && d.wilayah.prov) ? d.wilayah.prov : (d.provinsi_domisili || "");
 
                 // Susun tampilan lokasi saat ini (Kota & Provinsi)
                 let lokasiSekarang = "";
@@ -225,39 +229,42 @@
 
                 const alamatHtml = `
                     ${alamatDomisili}<br>
-                    <small>Kel. ${finalKel}, Kec. ${kecamatanDom}</small><br>
+                    <small>Kel. ${kelurahanDom}, Kec. ${kecamatanDom}</small><br>
                     <small>${lokasiSekarang}</small>
                 `;
 
-                // --- DATA LAINNYA ---
+                // --- 3. DATA PENDUKUNG LAINNYA ---
                 const goldar = d.darah || d.golongan_darah || '-'; 
                 const whatsapp = d.whatsapp || d.WhatsApp || d.hp || '-';
                 const email = d.email || '-';
-                const pasangan = d.nama_suami_istri || d.nama_pasangan || d.suami || d.istri || d.pasangan || '-';
+                const pasangan = d.nama_suami_istri || d.nama_pasangan || d.suami || d.istri || '-';
                 const anak = d.jumlah_anak || d.anak || '0';
                 
-                const wilayah = d.lokasi || d.wilayah_tugas || '-'; // Lokasi gereja/cabang
+                const wilayahGereja = d.lokasi || d.wilayah_tugas || '-'; 
                 const komsel = d.komsel || d.Komsel || '-';
                 const jabatan = d.jabatan || '-';
                 const fungsi = d.sub_jabatan || d.fungsi_pelayanan || d.detail_pelayanan || '-';
                 
-                const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp || d.lampiran_ktp || d.urlKTP;
-                const linkBerkas = d.url_berkas || d.berkas || d.lampiran || d.file || d.urlBerkas;
+                // Logika Berkas/File
+                const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp;
+                const linkBerkas = d.url_berkas || d.berkas || d.lampiran || d.file;
 
                 let fileHtml = "";
                 if (linkKtp && linkKtp !== "" && linkKtp !== "-") {
-                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a> `;
+                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link" title="KTP"><i class="fas fa-id-card"></i></a> `;
                 }
                 if (linkBerkas && linkBerkas !== "" && linkBerkas !== "-") {
-                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i></a>`;
+                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link" title="Berkas"><i class="fas fa-file-alt"></i></a>`;
                 }
                 if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
 
+                // Status Akun
                 const status = d.status_akun || 'Pending';
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
+                // --- 4. RENDER KE TABEL ---
                 tableBody.innerHTML += `
                 <tr>
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
@@ -268,7 +275,7 @@
                     <td>${whatsapp}<br><small>${email}</small></td>
                     <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
                     <td>${alamatHtml}</td>
-                    <td><small>${wilayah}<br>K: ${komsel}</small></td>
+                    <td><small>${wilayahGereja}<br>K: ${komsel}</small></td>
                     <td><small>${jabatan}<br>F: ${fungsi}</small></td>
                     <td style="text-align:center; font-size:18px;">${fileHtml}</td>
                     <td>
@@ -287,23 +294,34 @@
         });
     }
 
+    // --- FUNGSI MANAJEMEN DATA ---
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
     }
     
-    function deleteUser(id) { if(confirm("Hapus data secara permanen?")) { db.collection("users").doc(id).delete(); } }
+    function deleteUser(id) { 
+        if(confirm("Hapus data secara permanen?")) { 
+            db.collection("users").doc(id).delete(); 
+        } 
+    }
     
     function bulkDelete() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
-        if(confirm(`Hapus ${selected.length} data?`)) { selected.forEach(cb => db.collection("users").doc(cb.value).delete()); }
+        if(confirm(`Hapus ${selected.length} data terpilih?`)) { 
+            selected.forEach(cb => db.collection("users").doc(cb.value).delete()); 
+        }
     }
     
-    function openEditModal(uid) { window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; }
+    function openEditModal(uid) { 
+        window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; 
+    }
     
     function filterTable() {
         let val = document.getElementById("searchInput").value.toLowerCase();
-        document.querySelectorAll("#memberData tr").forEach(row => { row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none"; });
+        document.querySelectorAll("#memberData tr").forEach(row => { 
+            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none"; 
+        });
     }
     
     function toggleAll(source) {
