@@ -20,7 +20,6 @@
         .btn-back { display: inline-block; margin-bottom: 20px; color: var(--primary); text-decoration: none; font-weight: bold; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .section-title { color: var(--primary); border-bottom: 2px solid var(--gold); padding-bottom: 10px; margin-bottom: 20px; }
-        /* Style Tambahan untuk Info File */
         .file-info { font-size: 12px; color: #666; margin-top: 5px; display: block; }
         .file-info a { color: var(--accent); text-decoration: none; font-weight: bold; }
     </style>
@@ -42,12 +41,10 @@
             <label>NIJ (Nomor Induk Jemaat)</label>
             <input type="text" id="nij" readonly>
         </div>
-
         <div class="form-group">
             <label>Tanggal Lahir</label>
             <input type="date" id="tanggal_lahir_murni">
         </div>
-
         <div class="form-group">
             <label>Golongan Darah</label>
             <select id="gol_darah">
@@ -59,7 +56,6 @@
                 <option value="AB+">AB+</option>
             </select>
         </div>
-
         <div class="form-group">
             <label>WhatsApp</label>
             <input type="text" id="whatsapp">
@@ -68,15 +64,13 @@
             <label>Email</label>
             <input type="email" id="email">
         </div>
-
         <div class="form-group">
-            <label>Password Akun (Akses Jemaat)</label>
+            <label>Password Akun</label>
             <div class="pass-wrapper">
                 <input type="password" id="password_user" placeholder="Masukkan password baru jika ingin diubah">
                 <i class="fas fa-eye toggle-password" id="eyeIcon"></i>
             </div>
         </div>
-
         <div class="form-group">
             <label>Provinsi</label>
             <select id="provinsi"><option value="">Pilih Provinsi</option></select>
@@ -93,12 +87,10 @@
             <label>Desa / Kelurahan</label>
             <select id="desa"><option value="">Pilih Desa</option></select>
         </div>
-
         <div class="form-group">
-            <label>Alamat Domisili (Jalan/RT/RW)</label>
+            <label>Alamat Domisili</label>
             <textarea id="alamat" rows="2"></textarea>
         </div>
-
         <div class="form-group">
             <label>Wilayah Berjemaat</label>
             <select id="wilayah" onchange="updateKomsel()">
@@ -112,11 +104,8 @@
         </div>
         <div class="form-group">
             <label>Komsel / Jemaat Cell</label>
-            <select id="komsel">
-                <option value="">-- Pilih Wilayah Terlebih Dahulu --</option>
-            </select>
+            <select id="komsel"><option value="">-- Pilih Wilayah Terlebih Dahulu --</option></select>
         </div>
-
         <div class="form-group">
             <label>Jabatan Utama</label>
             <select id="jabatan">
@@ -127,7 +116,6 @@
                 <option value="Fulltimer">Fulltimer</option>
             </select>
         </div>
-
         <div class="form-group">
             <label>Sub Bidang Jabatan</label>
             <select id="sub_bidang" onchange="updateFungsiPelayanan()">
@@ -158,14 +146,10 @@
                 <option value="Fulltimer Gereja">Fulltimer Gereja</option>
             </select>
         </div>
-
         <div class="form-group" id="fungsi_container" style="display:none;">
             <label>Fungsi Spesifik Pelayanan</label>
-            <select id="fungsi_spesifik">
-                <option value="">-- Pilih Fungsi --</option>
-            </select>
+            <select id="fungsi_spesifik"><option value="">-- Pilih Fungsi --</option></select>
         </div>
-
         <div class="form-group">
             <label>Status Akun</label>
             <select id="status_akun">
@@ -173,13 +157,11 @@
                 <option value="Aktif">Aktif</option>
             </select>
         </div>
-
         <div class="form-group">
             <label>Upload Foto KTP (JPG/PNG)</label>
             <input type="file" id="upload_ktp" accept="image/jpeg, image/png">
             <span id="info_ktp" class="file-info"></span>
         </div>
-
         <div class="form-group">
             <label>Upload Berkas Pendukung (PDF/JPG)</label>
             <input type="file" id="upload_berkas" accept="application/pdf, image/jpeg">
@@ -216,8 +198,10 @@
         window.location.href = 'admin.html';
     }
 
+    // Variabel untuk menyimpan nama wilayah
     let txtProv = "", txtKota = "", txtKec = "", txtDesa = "";
 
+    // Fungsi Fetch API Wilayah tetap sama (loadProvinsi, loadKota, dll)
     async function loadProvinsi(selectedName = "") {
         const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         const data = await res.json();
@@ -382,7 +366,6 @@
                         }
                     }
                 }
-
                 document.getElementById('loading').style.display = 'none';
             } else {
                 alert("Data user tidak ditemukan!");
@@ -405,7 +388,6 @@
             const fileBerkas = document.getElementById('upload_berkas').files[0];
             const storageRef = firebase.storage().ref();
 
-            // Ambil data user saat ini untuk mendapatkan URL file lama
             const userDoc = await db.collection("users").doc(userId).get();
             const userData = userDoc.data();
 
@@ -430,13 +412,13 @@
                 last_update: new Date().toISOString()
             };
 
-            // Logika replace file KTP
+            // LOGIKA REPLACE FILE KTP AMAN
             if (fileKtp) {
-                if (userData.url_ktp) {
+                if (userData.url_ktp && userData.url_ktp.includes("firebasestorage")) {
                     try {
                         await firebase.storage().refFromURL(userData.url_ktp).delete();
                     } catch (err) {
-                        console.warn("File KTP lama tidak ditemukan atau gagal dihapus.");
+                        console.warn("File KTP lama tidak ditemukan atau masalah CORS:", err);
                     }
                 }
                 const ktpRef = storageRef.child(`ktp/${userId}_${Date.now()}_${fileKtp.name}`);
@@ -444,13 +426,13 @@
                 updateData.url_ktp = await ktpRef.getDownloadURL();
             }
 
-            // Logika replace file Berkas
+            // LOGIKA REPLACE FILE BERKAS AMAN
             if (fileBerkas) {
-                if (userData.url_berkas) {
+                if (userData.url_berkas && userData.url_berkas.includes("firebasestorage")) {
                     try {
                         await firebase.storage().refFromURL(userData.url_berkas).delete();
                     } catch (err) {
-                        console.warn("Berkas lama tidak ditemukan atau gagal dihapus.");
+                        console.warn("Berkas lama tidak ditemukan atau masalah CORS:", err);
                     }
                 }
                 const berkasRef = storageRef.child(`berkas/${userId}_${Date.now()}_${fileBerkas.name}`);
