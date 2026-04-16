@@ -180,39 +180,39 @@
             const tableBody = document.getElementById("memberData");
             if(!tableBody) return;
             tableBody.innerHTML = "";
+            
             snapshot.forEach(doc => {
                 const d = doc.data();
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
                 // --- 1. LOGIKA TEMPAT TANGGAL LAHIR (KOLOM KOTA KELAHIRAN) ---
-                // Pastikan mengambil dari objek wilayah_lahir agar tidak tertukar
-                const kotaLahir = (d.wilayah_lahir && d.wilayah_lahir.kota) ? d.wilayah_lahir.kota : (d.tempat_lahir || "");
-                const tglLahir = d.tanggal_lahir || d.tgl_lahir || "";
+                // Mengambil langsung dari root field sesuai data I Made Boby
+                const tempatLahir = d.kota || "-"; 
+                const tglLahir = d.tanggal_lahir_murni || d.tanggal_lahir || "-";
+                
                 let ttl = "-";
-
-                if (kotaLahir && tglLahir) {
-                    ttl = `${kotaLahir.toUpperCase()}, ${tglLahir}`;
-                } else if (kotaLahir || tglLahir) {
-                    ttl = (kotaLahir || tglLahir).toUpperCase();
+                if (tempatLahir !== "-" && tglLahir !== "-") {
+                    ttl = `${tempatLahir.toUpperCase()}, ${tglLahir}`;
+                } else {
+                    ttl = tempatLahir !== "-" ? tempatLahir.toUpperCase() : tglLahir;
                 }
 
-                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH TOTAL) ---
+                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH DARI DATA PALU) ---
                 const jalanDomisili = d.alamat || '-';
                 
-                // KUNCI MATI: Hanya ambil dari objek 'wilayah'. Jangan gunakan d.desa atau d.kecamatan langsung.
-                // Jika d.wilayah tidak ada, tampilkan "-" agar tidak mengambil data lahir secara tidak sengaja.
-                const kelDom = (d.wilayah && d.wilayah.desa) ? d.wilayah.desa : "-";
-                const kecDom = (d.wilayah && d.wilayah.kec) ? d.wilayah.kec : "-";
-                const kotaDom = (d.wilayah && d.wilayah.kota) ? d.wilayah.kota : "";
-                const provDom = (d.wilayah && d.wilayah.prov) ? d.wilayah.prov : "";
-
-                let lokasiSekarang = (kotaDom && provDom) ? `${kotaDom}, ${provDom}` : (kotaDom || provDom || "-");
+                // Prioritas: Jika ada objek 'wilayah', ambil isinya. 
+                // Jika tidak ada (seperti data Boby), ambil dari field 'wilayah' string (isinya "Abepura")
+                let areaDetail = "";
+                if (d.wilayah && typeof d.wilayah === 'object') {
+                    areaDetail = `Kel. ${d.wilayah.desa || '-'}, Kec. ${d.wilayah.kec || '-'}`;
+                } else {
+                    areaDetail = `Wilayah: ${d.wilayah || '-'}`;
+                }
 
                 const alamatHtml = `
                     ${jalanDomisili}<br>
-                    <small>Kel. ${kelDom}, Kec. ${kecDom}</small><br>
-                    <small>${lokasiSekarang}</small>
+                    <small>${areaDetail}</small>
                 `;
 
                 // --- DATA LAINNYA ---
@@ -222,7 +222,7 @@
                 const pasangan = d.nama_suami_istri || d.nama_pasangan || '-';
                 const anak = d.jumlah_anak || d.anak || '0';
                 
-                const wilayahGereja = d.lokasi || d.wilayah_tugas || '-';
+                const wilayahGereja = d.lokasi_berjemaat || d.lokasi || '-';
                 const komsel = d.komsel || d.Komsel || '-';
                 const jabatan = d.jabatan || '-';
                 const fungsi = d.sub_jabatan || d.fungsi_pelayanan || '-';
@@ -269,7 +269,7 @@
         });
     }
 
-    // Fungsi utilitas tetap sama
+    // Fungsi utilitas
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
