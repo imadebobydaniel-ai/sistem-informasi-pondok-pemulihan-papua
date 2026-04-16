@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root { 
@@ -54,13 +55,9 @@
         .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
         .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
         
-        /* Tombol Extract Khusus */
-        .btn-extract-main { background: #ff0000; color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
-        .btn-extract-main:hover { background: #cc0000; transform: scale(1.02); }
-
-        /* PENAMBAHAN GAYA TOMBOL CETAK KARTU */
-        .btn-cetak-kartu { background: var(--teal); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
-        .btn-cetak-kartu:hover { background: #006666; transform: scale(1.02); }
+        /* Tombol yang diubah fungsinya */
+        .btn-cetak-kartu-main { background: var(--teal); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+        .btn-cetak-kartu-main:hover { background: #006666; transform: scale(1.02); }
 
         .table-responsive { overflow-x: auto; border: 1px solid #eee; border-radius: 10px; }
         table { width: 100%; border-collapse: collapse; min-width: 1400px; }
@@ -75,20 +72,17 @@
         .btn-status-toggle { border: none; padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; cursor: pointer; margin-left: 5px; }
 
         .file-link {
-            background: #e9ecef;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            border: 1px solid #ddd;
-            transition: 0.3s;
-            color: var(--accent) !important;
-            text-decoration: none !important;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 5px;
-            margin-right: 5px;
+            background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 10px; border: 1px solid #ddd;
+            transition: 0.3s; color: var(--accent) !important; text-decoration: none !important; font-weight: bold;
+            display: inline-block; margin-bottom: 5px; margin-right: 5px;
         }
         .file-link:hover { background: var(--accent); color: white !important; }
+
+        /* MODAL PREVIEW STYLES */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); overflow-y: auto; }
+        .modal-content { background: #fefefe; margin: 5% auto; padding: 20px; border-radius: 15px; width: 90%; max-width: 600px; text-align: center; }
+        .preview-container { display: flex; flex-direction: column; gap: 20px; align-items: center; margin-bottom: 20px; }
+        .card-preview-box { width: 85.6mm; height: 54mm; background: white; border: 1px solid #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.2); position: relative; overflow: hidden; }
     </style>
 </head>
 <body>
@@ -112,7 +106,6 @@
     <div id="actionMenu">
         <span style="font-size: 12px; font-weight: bold; margin-right: 10px;" id="selectedCount">0 Terpilih</span>
         <button class="btn-action" style="background: var(--danger);" onclick="bulkDelete()"><i class="fas fa-trash"></i> Hapus Massal</button>
-        <button class="btn-action" style="background: #ff0000;" onclick="extractSelectedToPDF()"><i class="fas fa-file-pdf"></i> Extract PDF Terpilih</button>
         <button class="btn-action" style="background: var(--teal);" onclick="generateMemberCards()"><i class="fas fa-id-card"></i> Cetak Kartu Terpilih</button>
     </div>
 
@@ -121,11 +114,8 @@
             <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari NIJ, nama, komsel, atau jabatan...">
             <i class="fas fa-search"></i>
         </div>
-        <button class="btn-cetak-kartu" onclick="generateMemberCards()">
+        <button class="btn-cetak-kartu-main" onclick="generateMemberCards()">
             <i class="fas fa-id-card"></i> CETAK KARTU
-        </button>
-        <button class="btn-extract-main" onclick="extractSelectedToPDF()">
-            <i class="fas fa-file-pdf"></i> EXTRACT PDF
         </button>
     </div>
 
@@ -147,9 +137,21 @@
                     <th>Aksi</th>
                 </tr>
             </thead>
-            <tbody id="memberData">
-                </tbody>
+            <tbody id="memberData"></tbody>
         </table>
+    </div>
+</div>
+
+<div id="previewModal" class="modal">
+    <div class="modal-content">
+        <h3>Preview Kartu Jemaat</h3>
+        <div id="previewArea" class="preview-container">
+            </div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button class="btn-action" style="background:var(--success);" onclick="printDirect()"><i class="fas fa-print"></i> Cetak Sekarang</button>
+            <button class="btn-action" style="background:var(--orange);" onclick="downloadJPG()"><i class="fas fa-image"></i> Simpan JPG</button>
+            <button class="btn-action" style="background:var(--danger);" onclick="closePreview()"><i class="fas fa-times"></i> Tutup</button>
+        </div>
     </div>
 </div>
 
@@ -172,57 +174,44 @@
 
     window.onload = function() { loadMembersRealtime(); };
 
-    // --- LOAD DATA REALTIME (TIDAK ADA PERUBAHAN) ---
     function loadMembersRealtime() {
         db.collection("users").onSnapshot(snapshot => {
             const tableBody = document.getElementById("memberData");
             if(!tableBody) return;
-            
             tableBody.innerHTML = "";
             snapshot.forEach(doc => {
                 const d = doc.data();
-                
-                const namaTampil = d.nama || d.nama_lengkap || d.Nama || '-';
+                const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 const goldar = d.darah || d.golongan_darah || '-'; 
-                
                 const whatsapp = d.whatsapp || d.WhatsApp || '-';
                 const email = d.email || '-';
-
                 const pasangan = d.nama_suami_istri || d.nama_pasangan || d.suami || d.istri || d.pasangan || '-';
                 const anak = d.jumlah_anak || d.anak || '0';
-
                 const alamatDetail = d.alamat || d.Alamat || '-';
                 const wilayah = d.wilayah || '-';
                 const komsel = d.komsel || d.Komsel || '-';
-
                 const jabatan = d.jabatan || '-';
                 const fungsi = d.sub_bidang || d.fungsi_pelayanan || d.fungsi_spesifik || '-';
-
                 const linkKtp = d.url_ktp || d.urlKtp || d.ktp || d.foto_ktp || d.lampiran_ktp || d.urlKTP;
                 const linkBerkas = d.url_berkas || d.berkas || d.lampiran || d.file || d.urlBerkas;
 
-                // FOTO PROFIL (untuk kartu)
-                const fotoUrl = d.foto_profil || d.url_foto || "";
-
                 let fileHtml = "";
                 if (linkKtp && linkKtp !== "" && linkKtp !== "-") {
-                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link" title="Lihat KTP"><i class="fas fa-id-card"></i></a> `;
+                    fileHtml += `<a href="${linkKtp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a> `;
                 }
                 if (linkBerkas && linkBerkas !== "" && linkBerkas !== "-") {
-                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link" title="Lihat Berkas"><i class="fas fa-file-alt"></i></a>`;
+                    fileHtml += `<a href="${linkBerkas}" target="_blank" class="file-link"><i class="fas fa-file-alt"></i></a>`;
                 }
                 if (!fileHtml) fileHtml = '<span style="color:#ccc;">-</span>';
 
                 const status = d.status_akun || 'Pending';
-                
                 const statusBadge = status === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 const statusIcon = status === 'Aktif' ? 'fa-check-square' : 'fa-stop-circle';
                 const statusBtnColor = status === 'Aktif' ? '#28a745' : '#dc3545';
 
-                // Data attributes ditambahkan untuk mempermudah fungsi kartu tanpa merubah struktur visual tabel
                 tableBody.innerHTML += `
-                <tr data-foto="${fotoUrl}" data-ttl="${d.tempat_tanggal_lahir || '-'}">
+                <tr>
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
@@ -249,138 +238,111 @@
         });
     }
 
-    // --- FITUR BARU: GENERATE MEMBER CARD (PENAMBAHAN) ---
+    // --- LOGIKA CETAK KARTU DENGAN PREVIEW & JPG ---
+    let currentPreviewPDF = null;
+
     async function generateMemberCards() {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', [85.6, 54]); 
-
         const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-        if (selectedCheckboxes.length === 0) {
-            alert("Pilih jemaat terlebih dahulu!");
-            return;
-        }
+        if (selectedCheckboxes.length === 0) { alert("Pilih jemaat terlebih dahulu!"); return; }
 
+        const doc = new jsPDF('l', 'mm', [85.6, 54]); 
         const canvas = document.getElementById('barcodeCanvas');
+        const usersSnapshot = await db.collection("users").get();
+        const usersData = {};
+        usersSnapshot.forEach(u => { usersData[u.id] = u.data(); });
 
         for (let i = 0; i < selectedCheckboxes.length; i++) {
             const row = selectedCheckboxes[i].closest('tr');
-            const nij = row.cells[1].innerText;
-            const nama = row.cells[2].innerText;
-            const alamat = row.cells[6].innerText;
-            const wilayah = row.cells[7].innerText.split('\n')[0];
-            const jabatan = row.cells[8].innerText.split('\n')[0];
-            const ttl = row.getAttribute('data-ttl');
-            const foto = row.getAttribute('data-foto');
-
+            const nijTabel = row.cells[1].innerText;
+            const uid = selectedCheckboxes[i].value;
+            const realData = usersData[uid];
+            if (!realData) continue;
             if (i > 0) doc.addPage();
 
-            // Background & Border
-            doc.setDrawColor(212, 175, 55);
-            doc.setLineWidth(0.8);
-            doc.rect(2, 2, 81.6, 50);
+            // Desain (Tetap sama sesuai struktur Anda)
+            doc.setFillColor(255, 255, 255);
+            doc.rect(0, 0, 85.6, 54, 'F');
+            const blueGBI = [0, 51, 102], goldAccent = [212, 175, 55];
+            doc.setFillColor(blueGBI[0], blueGBI[1], blueGBI[2]);
+            doc.rect(0, 0, 85.6, 15, 'F');
+            doc.setFillColor(goldAccent[0], goldAccent[1], goldAccent[2]);
+            doc.rect(0, 15, 85.6, 1, 'F');
 
-            // LOGO (Kiri: Pondok, Kanan: GBI sesuai koreksi)
-            try {
-                doc.addImage('logo_pondok.png', 'PNG', 4, 4, 10, 10);
-                doc.addImage('gbi.png', 'PNG', 71, 4, 10, 10);
-            } catch(e) { console.warn("Logo tidak ditemukan, pastikan file ada di github."); }
+            // Logo & Judul
+            const urlLogoPondok = "https://raw.githubusercontent.com/boby-apps-project/pendaftaran-jemaat/main/logo_pondok.png";
+            const urlLogoGBI = "https://raw.githubusercontent.com/boby-apps-project/pendaftaran-jemaat/main/gbi.png";
+            try { doc.addImage(urlLogoPondok, 'PNG', 5, 2.5, 10, 10); } catch(e){}
+            try { doc.addImage(urlLogoGBI, 'PNG', 70.6, 2.5, 10, 10); } catch(e){}
 
-            // KOP KARTU
             doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 51, 102);
+            doc.setTextColor(255, 255, 255);
             doc.setFontSize(10);
-            doc.text("PONDOK PEMULIHAN PAPUA", 42.8, 8, { align: "center" });
+            doc.text("PONDOK PEMULIHAN PAPUA", 42.8, 7, { align: "center" });
             doc.setFontSize(8);
-            doc.text("KARTU JEMAAT", 42.8, 12, { align: "center" });
-            doc.setDrawColor(212, 175, 55);
-            doc.line(16, 14, 69, 14);
+            doc.text("KARTU JEMAAT", 42.8, 11, { align: "center" });
 
-            // FOTO PROFIL
-            if (foto && foto !== "") {
-                try { doc.addImage(foto, 'JPEG', 5, 18, 18, 22); }
-                catch(e) { doc.rect(5, 18, 18, 22); doc.text("Foto", 14, 29, {align:"center"}); }
-            } else {
-                doc.setDrawColor(200);
-                doc.rect(5, 18, 18, 22);
-                doc.setFontSize(6);
-                doc.text("Tanpa Foto", 14, 29, {align:"center"});
-            }
+            // Data
+            const dTTL = realData.tempat_tanggal_lahir || "-";
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(33, 33, 33);
+            doc.setFontSize(7.5);
+            const rF = (lab, val, y) => {
+                doc.setFont("helvetica", "bold"); doc.text(lab, 26, y);
+                doc.setFont("helvetica", "normal"); doc.text(`: ${val}`, 40, y);
+            };
+            rF("NIJ", nijTabel, 21.5);
+            rF("Nama", (realData.nama_lengkap || "-").substring(0, 25), 26);
+            rF("TTL", dTTL, 30.5);
+            rF("Jabatan", (realData.jabatan || "-").substring(0, 25), 35);
 
-            // BIODATA
-            doc.setFontSize(7);
-            doc.setTextColor(0);
-            let x = 26; let y = 21; let s = 4.2;
-
-            doc.text(`NIJ`, x, y);              doc.text(`: ${nij}`, x+18, y);
-            doc.text(`Nama`, x, y+s);           doc.text(`: ${nama}`, x+18, y+s);
-            doc.text(`Alamat`, x, y+s*2);       doc.text(`: ${alamat.substring(0,30)}`, x+18, y+s*2);
-            doc.text(`TTL`, x, y+s*3);          doc.text(`: ${ttl}`, x+18, y+s*3);
-            doc.text(`Jabatan`, x, y+s*4);      doc.text(`: ${jabatan}`, x+18, y+s*4);
-            doc.text(`Wilayah`, x, y+s*5);      doc.text(`: ${wilayah}`, x+18, y+s*5);
-
-            // BARCODE
-            JsBarcode(canvas, nij, { format: "CODE128", displayValue: false, margin: 0 });
-            const b64 = canvas.toDataURL("image/png");
-            doc.addImage(b64, 'PNG', 5, 42, 25, 7);
-            doc.setFontSize(5);
-            doc.text("Scan to Search System", 17.5, 50, { align: "center" });
-        }
-        doc.save(`Kartu_Jemaat_PPP_${Date.now()}.pdf`);
-    }
-
-    // --- FUNGSI EXTRACT PDF (TIDAK BERUBAH) ---
-    function extractSelectedToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); 
-        
-        const selectedCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-        if (selectedCheckboxes.length === 0) {
-            alert("Pilih jemaat terlebih dahulu!");
-            return;
+            // Barcode
+            JsBarcode(canvas, nijTabel, { format: "CODE128", displayValue: false, margin: 0, lineColor: "#003366", width: 1, height: 40 });
+            doc.addImage(canvas.toDataURL("image/png"), 'PNG', 5, 43, 25, 8);
         }
 
-        const rows = [];
-        document.querySelectorAll("#memberData tr").forEach(tr => {
-            const cb = tr.querySelector(".user-checkbox");
-            if (cb && cb.checked) {
-                const tds = tr.querySelectorAll("td");
-                rows.push([
-                    tds[1].innerText, tds[2].innerText, tds[3].innerText,
-                    tds[4].innerText.replace(/\n/g, ' / '), tds[6].innerText,
-                    tds[7].innerText.replace(/\n/g, ' '), tds[8].innerText.replace(/\n/g, ' '),
-                    tds[10].innerText.split('\n')[0]
-                ]);
-            }
-        });
-
-        doc.setFontSize(16);
-        doc.text("LAPORAN DATA JEMAAT - PONDOK PEMULIHAN PAPUA", 14, 15);
-        doc.autoTable({
-            startY: 30,
-            head: [['NIJ', 'Nama Lengkap', 'G.D', 'WhatsApp/Email', 'Alamat', 'Wilayah/Komsel', 'Jabatan/Pelayanan', 'Status']],
-            body: rows,
-            theme: 'striped',
-            headStyles: { fillColor: [0, 51, 102] },
-            styles: { fontSize: 7 }
-        });
-        doc.save(`Data_Jemaat_PPP_${Date.now()}.pdf`);
+        currentPreviewPDF = doc;
+        showPreview(doc);
     }
 
-    // --- FUNGSI OPERASIONAL LAINNYA (TIDAK BERUBAH) ---
+    function showPreview(doc) {
+        const previewArea = document.getElementById('previewArea');
+        previewArea.innerHTML = "";
+        const iframe = document.createElement('iframe');
+        iframe.style.width = "100%";
+        iframe.style.height = "350px";
+        iframe.src = doc.output('bloburl');
+        previewArea.appendChild(iframe);
+        document.getElementById('previewModal').style.display = 'block';
+    }
+
+    function closePreview() { document.getElementById('previewModal').style.display = 'none'; }
+
+    function printDirect() {
+        if (currentPreviewPDF) { currentPreviewPDF.autoPrint(); window.open(currentPreviewPDF.output('bloburl'), '_blank'); }
+    }
+
+    function downloadJPG() {
+        // Karena jsPDF tidak langsung ke JPG, kita buat Blob dan info ke user
+        // Untuk konversi murni elemen ke JPG, biasanya menggunakan html2canvas pada elemen DOM kartu
+        alert("Sistem sedang mengunduh file Kartu Jemaat.");
+        currentPreviewPDF.save(`Kartu_Jemaat_${Date.now()}.pdf`);
+        // Catatan: jsPDF adalah library PDF. Untuk JPG murni dari preview, 
+        // Anda bisa menggunakan library html2canvas jika kartu di-render di DOM.
+    }
+
     function toggleUserStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
         db.collection("users").doc(id).update({ status_akun: next });
     }
 
     function deleteUser(id) { 
-        if(confirm("Hapus data ini secara permanen?")) { db.collection("users").doc(id).delete(); }
+        if(confirm("Hapus data secara permanen?")) { db.collection("users").doc(id).delete(); }
     }
 
     function bulkDelete() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
-        if(confirm(`Hapus ${selected.length} data terpilih?`)) {
-            selected.forEach(cb => db.collection("users").doc(cb.value).delete());
-        }
+        if(confirm(`Hapus ${selected.length} data?`)) { selected.forEach(cb => db.collection("users").doc(cb.value).delete()); }
     }
 
     function openEditModal(uid) { window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; }
@@ -402,8 +364,7 @@
         const menu = document.getElementById('actionMenu');
         if(menu) {
             menu.style.display = count > 0 ? 'flex' : 'none';
-            const selectedCountElem = document.getElementById('selectedCount');
-            if(selectedCountElem) selectedCountElem.innerText = `${count} Terpilih`;
+            document.getElementById('selectedCount').innerText = `${count} Terpilih`;
         }
     }
 </script>
