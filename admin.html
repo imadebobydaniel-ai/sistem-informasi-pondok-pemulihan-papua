@@ -170,19 +170,20 @@
                 const d = doc.data();
                 
                 // --- PROTEKSI NAMA ---
-                const nama = d.nama_lengkap || d.nama || d.Nama || d.full_name || '-';
+                // Mengambil nama_lengkap dulu, jika kosong ambil field 'nama'
+                const nama = d.nama_lengkap || d.nama || d.Nama || '-';
                 
-                // --- PROTEKSI TANGGAL LAHIR (Pengecekan Intensif) ---
+                // --- PROTEKSI TANGGAL LAHIR (Berdasarkan Database Anda) ---
                 let tglTampil = '-';
-                // Cek semua kemungkinan kunci field yang pernah Anda gunakan
-                const rawDate = d.tanggal_lahir || d.tgl_lahir || d.tglLahir || d.lahir || d.birth_date;
+                // Menambahkan 'tanggal_lahir_murni' sebagai prioritas utama
+                const rawDate = d.tanggal_lahir_murni || d.tanggal_lahir || d.tgl_lahir || d.lahir;
                 
                 if (rawDate) {
-                    // Jika data berupa Firebase Timestamp (Objek), ubah ke string
                     if (typeof rawDate === 'object' && rawDate.toDate) {
+                        // Jika formatnya Timestamp
                         tglTampil = rawDate.toDate().toLocaleDateString('id-ID');
                     } else {
-                        // Jika data sudah berupa String
+                        // Jika formatnya String (misal: "1982-01-21")
                         tglTampil = rawDate;
                     }
                 }
@@ -205,7 +206,7 @@
                     <td><small>${d.lokasi_berjemaat || '-'}<br>K: ${d.komsel || '-'}</small></td>
                     <td><small>${d.jabatan || '-'}</small></td>
                     <td style="text-align:center;">
-                        ${(d.url_ktp) ? `<a href="${d.url_ktp}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a>` : '-'}
+                        ${(d.url_ktp || d.url_berkas) ? `<a href="${d.url_ktp || d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a>` : '-'}
                     </td>
                     <td>
                         <span class="${statusBadge}">${status}</span>
@@ -229,7 +230,8 @@
         const menu = document.getElementById('actionMenu');
         if(menu) {
             menu.style.display = count > 0 ? 'flex' : 'none';
-            document.getElementById('selectedCount').innerText = `${count} Terpilih`;
+            const selectedText = document.getElementById('selectedCount');
+            if(selectedText) selectedText.innerText = `${count} Terpilih`;
         }
     }
 
@@ -240,19 +242,23 @@
 
     function toggleStatus(id, current) {
         const next = current === 'Aktif' ? 'Pending' : 'Aktif';
-        db.collection("users").doc(id).update({ status_akun: next }).catch(err => console.error("Error update status:", err));
+        db.collection("users").doc(id).update({ status_akun: next })
+            .catch(err => console.error("Error update status:", err));
     }
 
     function deleteUser(id) {
         if(confirm("Hapus data ini secara permanen?")) { 
-            db.collection("users").doc(id).delete().catch(err => alert("Gagal menghapus: " + err)); 
+            db.collection("users").doc(id).delete()
+                .catch(err => alert("Gagal menghapus: " + err)); 
         }
     }
 
     function bulkDelete() {
         const selected = document.querySelectorAll('.user-checkbox:checked');
         if(confirm(`Hapus ${selected.length} data terpilih?`)) {
-            selected.forEach(cb => db.collection("users").doc(cb.value).delete());
+            selected.forEach(cb => {
+                db.collection("users").doc(cb.value).delete();
+            });
         }
     }
 
