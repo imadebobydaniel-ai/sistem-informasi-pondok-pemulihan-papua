@@ -55,7 +55,6 @@
         .search-box input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
         .search-box i { position: absolute; right: 15px; top: 13px; color: #aaa; }
         
-        /* Tombol yang diubah fungsinya */
         .btn-cetak-kartu-main { background: var(--teal); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
         .btn-cetak-kartu-main:hover { background: #006666; transform: scale(1.02); }
 
@@ -78,7 +77,6 @@
         }
         .file-link:hover { background: var(--accent); color: white !important; }
 
-        /* MODAL PREVIEW STYLES */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); overflow-y: auto; }
         .modal-content { background: #fefefe; margin: 5% auto; padding: 20px; border-radius: 15px; width: 90%; max-width: 600px; text-align: center; }
         .preview-container { display: flex; flex-direction: column; gap: 20px; align-items: center; margin-bottom: 20px; }
@@ -126,7 +124,7 @@
                     <th class="check-col"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
                     <th>NIJ</th>
                     <th>Nama Lengkap</th>
-                    <th>G.D</th> 
+                    <th>Tempat Tanggal Lahir</th> <th>G.D</th> 
                     <th>WhatsApp / Email</th>
                     <th>Detail Keluarga</th>
                     <th>Alamat</th>
@@ -145,8 +143,7 @@
 <div id="previewModal" class="modal">
     <div class="modal-content">
         <h3>Preview Kartu Jemaat</h3>
-        <div id="previewArea" class="preview-container">
-            </div>
+        <div id="previewArea" class="preview-container"></div>
         <div style="display:flex; gap:10px; justify-content:center;">
             <button class="btn-action" style="background:var(--success);" onclick="printDirect()"><i class="fas fa-print"></i> Cetak Sekarang</button>
             <button class="btn-action" style="background:var(--orange);" onclick="downloadJPG()"><i class="fas fa-image"></i> Simpan JPG</button>
@@ -183,6 +180,7 @@
                 const d = doc.data();
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
+                const ttl = d.tempat_tanggal_lahir || '-'; // Data Realtime TTL
                 const goldar = d.darah || d.golongan_darah || '-'; 
                 const whatsapp = d.whatsapp || d.WhatsApp || '-';
                 const email = d.email || '-';
@@ -215,7 +213,7 @@
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
-                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
+                    <td>${ttl}</td> <td style="text-align:center;"><strong>${goldar}</strong></td> 
                     <td>${whatsapp}<br><small>${email}</small></td>
                     <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
                     <td><small>${alamatDetail}</small></td>
@@ -238,7 +236,7 @@
         });
     }
 
-    // --- LOGIKA CETAK KARTU DENGAN PREVIEW & JPG ---
+    // --- LOGIKA CETAK KARTU TETAP TERJAGA ---
     let currentPreviewPDF = null;
 
     async function generateMemberCards() {
@@ -260,7 +258,6 @@
             if (!realData) continue;
             if (i > 0) doc.addPage();
 
-            // Desain (Tetap sama sesuai struktur Anda)
             doc.setFillColor(255, 255, 255);
             doc.rect(0, 0, 85.6, 54, 'F');
             const blueGBI = [0, 51, 102], goldAccent = [212, 175, 55];
@@ -269,7 +266,6 @@
             doc.setFillColor(goldAccent[0], goldAccent[1], goldAccent[2]);
             doc.rect(0, 15, 85.6, 1, 'F');
 
-            // Logo & Judul
             const urlLogoPondok = "https://raw.githubusercontent.com/boby-apps-project/pendaftaran-jemaat/main/logo_pondok.png";
             const urlLogoGBI = "https://raw.githubusercontent.com/boby-apps-project/pendaftaran-jemaat/main/gbi.png";
             try { doc.addImage(urlLogoPondok, 'PNG', 5, 2.5, 10, 10); } catch(e){}
@@ -282,7 +278,6 @@
             doc.setFontSize(8);
             doc.text("KARTU JEMAAT", 42.8, 11, { align: "center" });
 
-            // Data
             const dTTL = realData.tempat_tanggal_lahir || "-";
             doc.setFont("helvetica", "normal");
             doc.setTextColor(33, 33, 33);
@@ -296,7 +291,6 @@
             rF("TTL", dTTL, 30.5);
             rF("Jabatan", (realData.jabatan || "-").substring(0, 25), 35);
 
-            // Barcode
             JsBarcode(canvas, nijTabel, { format: "CODE128", displayValue: false, margin: 0, lineColor: "#003366", width: 1, height: 40 });
             doc.addImage(canvas.toDataURL("image/png"), 'PNG', 5, 43, 25, 8);
         }
@@ -323,12 +317,8 @@
     }
 
     function downloadJPG() {
-        // Karena jsPDF tidak langsung ke JPG, kita buat Blob dan info ke user
-        // Untuk konversi murni elemen ke JPG, biasanya menggunakan html2canvas pada elemen DOM kartu
         alert("Sistem sedang mengunduh file Kartu Jemaat.");
         currentPreviewPDF.save(`Kartu_Jemaat_${Date.now()}.pdf`);
-        // Catatan: jsPDF adalah library PDF. Untuk JPG murni dari preview, 
-        // Anda bisa menggunakan library html2canvas jika kartu di-render di DOM.
     }
 
     function toggleUserStatus(id, current) {
