@@ -185,8 +185,9 @@
                 const namaTampil = d.nama_lengkap || d.nama || d.Nama || '-';
                 const nij = d.nij || '-';
                 
-                // --- INTEGRASI TEMPAT TANGGAL LAHIR DENGAN KOTA (REALTIME) ---
-                const kotaLahir = d.tempat_lahir || d.kota || d.kota_lahir || "";
+                // --- LOGIKA TEMPAT TANGGAL LAHIR (KOLOM TERPISAH) ---
+                // Hanya mengambil field spesifik kelahiran
+                const kotaLahir = d.tempat_lahir || d.kota_lahir || "";
                 const tglLahir = d.tanggal_lahir || d.tanggal_lahir_murni || "";
                 let ttl = "-";
 
@@ -195,11 +196,18 @@
                 } else if (kotaLahir || tglLahir) {
                     ttl = kotaLahir || tglLahir;
                 }
-
-                // Tetap mendukung field gabungan jika sudah ada di database
+                // Override jika ada field gabungan manual
                 if(d.tempat_tanggal_lahir && d.tempat_tanggal_lahir !== "-") {
                     ttl = d.tempat_tanggal_lahir;
                 }
+
+                // --- LOGIKA ALAMAT DOMISILI (HANYA LOKASI TINGGAL) ---
+                // Data kelahiran (kotaLahir) tidak dimasukkan ke sini agar tidak rancu
+                const alamatHtml = `
+                    ${d.alamat || '-'}<br>
+                    <small>Kel. ${d.desa || '-'}, Kec. ${d.kecamatan || '-'}</small><br>
+                    <small>${d.kota || '-'}, ${d.provinsi || '-'}</small>
+                `;
 
                 const goldar = d.darah || d.golongan_darah || '-'; 
                 const whatsapp = d.whatsapp || d.WhatsApp || '-';
@@ -207,12 +215,6 @@
                 const pasangan = d.nama_suami_istri || d.nama_pasangan || d.suami || d.istri || d.pasangan || '-';
                 const anak = d.jumlah_anak || d.anak || '0';
                 
-                const alamatHtml = `
-                    ${d.alamat || '-'}<br>
-                    <small>Kel. ${d.desa || '-'}, Kec. ${d.kecamatan || '-'}</small><br>
-                    <small>${d.kota || '-'}, ${d.provinsi || '-'}</small>
-                `;
-
                 const wilayah = d.wilayah || '-';
                 const komsel = d.komsel || d.Komsel || '-';
                 const jabatan = d.jabatan || '-';
@@ -240,7 +242,8 @@
                     <td class="check-col"><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${nij}</td>
                     <td><strong>${namaTampil}</strong></td>
-                    <td>${ttl}</td> <td style="text-align:center;"><strong>${goldar}</strong></td> 
+                    <td>${ttl}</td> 
+                    <td style="text-align:center;"><strong>${goldar}</strong></td> 
                     <td>${whatsapp}<br><small>${email}</small></td>
                     <td><small>P: ${pasangan}<br>A: ${anak}</small></td>
                     <td>${alamatHtml}</td>
