@@ -200,18 +200,27 @@
                     ttl = d.tempat_tanggal_lahir;
                 }
 
-                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH DARI DATA LAHIR) ---
-                // Menghapus d.kabupaten dan d.provinsi karena sering berisi data lahir
+                // --- 2. LOGIKA ALAMAT DOMISILI (BERSIH TOTAL DARI DATA LAHIR) ---
                 const alamatDomisili = d.alamat || '-';
                 const kelurahanDom = d.desa || d.kelurahan || '-';
                 const kecamatanDom = d.kecamatan || '-';
-                const kotaDom = d.kota_domisili || '-'; 
-                const provinsiDom = d.provinsi_domisili || '-';
+
+                // HANYA gunakan field spesifik domisili untuk menghindari kebocoran data lahir
+                const kotaDom = d.kota_domisili || ""; 
+                const provinsiDom = d.provinsi_domisili || "";
+
+                // Susun tampilan lokasi saat ini (Kota & Provinsi)
+                let lokasiSekarang = "";
+                if (kotaDom && provinsiDom) {
+                    lokasiSekarang = `${kotaDom}, ${provinsiDom}`;
+                } else {
+                    lokasiSekarang = kotaDom || provinsiDom || "-";
+                }
 
                 const alamatHtml = `
                     ${alamatDomisili}<br>
                     <small>Kel. ${kelurahanDom}, Kec. ${kecamatanDom}</small><br>
-                    <small>${kotaDom}, ${provinsiDom}</small>
+                    <small>${lokasiSekarang}</small>
                 `;
 
                 // --- DATA LAINNYA ---
