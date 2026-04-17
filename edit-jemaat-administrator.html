@@ -3,254 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CMS & Visual Card Editor - Pondok Pemulihan</title>
+    <title>Visual Card Editor - Pondok Pemulihan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"> 
     <style>
         :root { --primary: #003366; --accent: #007bff; --light: #f4f7f6; --gold: #D4AF37; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 20px; }
         
-        /* CMS Form Style */
-        .edit-container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        /* Container Utama */
+        .main-wrapper { max-width: 900px; margin: auto; display: flex; gap: 20px; flex-wrap: wrap; }
+        
+        /* Form CMS */
+        .edit-container { flex: 1; min-width: 350px; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .form-group { margin-bottom: 15px; } 
         label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; color: var(--primary); }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
 
-        /* Modal / Popup Editor */
-        .modal-editor {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 2000;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        .modal-content {
-            background: white;
-            max-width: 500px;
-            margin: auto;
-            padding: 20px;
-            border-radius: 10px;
-            position: relative;
-        }
-
-        /* Preview Kartu di Dalam Modal */
-        .card-preview-area {
-            width: 350px; /* Ukuran Standar Kartu */
+        /* KARTU PREVIEW (LIVE EDITOR) */
+        .card-preview-container { flex: 1; min-width: 350px; display: flex; flex-direction: column; align-items: center; }
+        
+        .card-box {
+            width: 350px;
             height: 520px;
-            margin: 20px auto;
             background: white;
-            border: 1px solid #ccc;
+            border-radius: 15px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid #ddd;
         }
 
-        /* Header Biru Kartu */
         .card-header {
             background: var(--primary);
             color: white;
-            padding: 15px;
+            padding: 20px 10px;
             text-align: center;
             position: relative;
         }
 
-        /* Tombol Edit di Pojok Kanan Kartu */
-        .btn-edit-icon {
+        /* TOMBOL EDIT DI POJOK KANAN KARTU */
+        .btn-edit-trigger {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(255,255,255,0.2);
+            background: var(--gold);
             border: none;
             color: white;
-            padding: 5px 8px;
-            border-radius: 5px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
             cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        .btn-edit-trigger:hover { transform: scale(1.1); }
+
+        .card-body { padding: 15px; }
+        .photo-placeholder {
+            width: 110px; height: 140px;
+            background: #eee;
+            border: 2px solid var(--primary);
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 12px;
+            color: #999;
+            position: relative;
         }
 
-        /* Konten Kartu yang Bisa Diedit Visual */
-        .editable-content {
-            padding: 15px;
-            font-size: 11px;
-        }
-        [contenteditable="true"] {
-            border: 1px dashed #444;
-            padding: 2px;
+        .info-row { display: flex; margin-bottom: 5px; font-size: 12px; }
+        .label { width: 75px; font-weight: bold; color: var(--primary); flex-shrink: 0; }
+        .value { flex-grow: 1; border-bottom: 1px dashed transparent; }
+        
+        /* State saat mode edit aktif */
+        .editing .value {
+            border-bottom: 1px dashed var(--gold);
+            background: #fffde7;
             outline: none;
         }
-        [contenteditable="true"]:hover { background: #fffde7; }
 
-        .info-row { display: flex; margin-bottom: 4px; align-items: flex-start; }
-        .label { width: 70px; font-weight: bold; flex-shrink: 0; }
-        .value { flex-grow: 1; padding-left: 5px; cursor: text; }
-
-        .barcode-area {
+        .barcode-section {
             position: absolute;
-            bottom: 60px;
-            right: 15px;
-            text-align: center;
-            cursor: move; /* Indikasi bisa digeser */
+            bottom: 50px;
+            right: 20px;
+            text-align: right;
         }
 
-        .btn-action {
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            margin-top: 10px;
+        .card-footer {
+            position: absolute;
+            bottom: 0; width: 100%; height: 35px;
+            background: var(--primary);
         }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-gold { background: var(--gold); color: white; }
-        .btn-close { background: #666; color: white; margin-top: 5px; }
 
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 3000; display:none; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .instructions { font-size: 12px; color: #666; background: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 4px solid var(--accent); }
     </style>
 </head>
 <body>
 
-<div id="loading" class="loading-overlay"><p><i class="fas fa-spinner fa-spin"></i> Memproses...</p></div>
-
-<div class="edit-container">
-    <a href="admin.html" class="btn-back" style="text-decoration:none; color:var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
-    <h2 style="border-bottom: 2px solid var(--gold); padding-bottom:10px;">CMS Jemaat & Visual Editor</h2>
-    
-    <form id="editForm">
-        <div class="form-group">
-            <label>Nama Lengkap</label>
-            <input type="text" id="nama_lengkap" required>
-        </div>
-        <div class="form-group">
-            <label>NIJ</label>
-            <input type="text" id="nij" readonly>
-        </div>
-        <div class="form-group">
-            <label>Wilayah</label>
-            <select id="wilayah">
-                <option value="Abepura">Abepura</option>
-                <option value="Sentani">Sentani</option>
-                <option value="Doyo">Doyo</option>
-                <option value="Arso 1">Arso 1</option>
-                <option value="Arso 2">Arso 2</option>
-            </select>
-        </div>
-
-        <button type="submit" class="btn-action btn-primary"><i class="fas fa-save"></i> Simpan ke Database</button>
-        <button type="button" onclick="openVisualEditor()" class="btn-action btn-gold"><i class="fas fa-id-card"></i> Preview & Edit Layout Kartu</button>
-    </form>
-</div>
-
-<div id="visualEditor" class="modal-editor">
-    <div class="modal-content">
-        <h3 style="margin-top:0; color:var(--primary)">Visual Card Editor</h3>
-        <p style="font-size:12px; color:#666;">Klik pada teks kartu untuk mengubah isinya secara manual. Gunakan untuk merapikan nama yang terlalu panjang.</p>
+<div class="main-wrapper">
+    <div class="edit-container">
+        <a href="admin.html" style="text-decoration:none; color:var(--primary); font-weight:bold;"><i class="fas fa-arrow-left"></i> Kembali</a>
+        <h2 style="color:var(--primary); margin-top:15px;">Data Jemaat</h2>
         
-        <div class="card-preview-area" id="captureArea">
+        <form id="dbForm">
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" id="db_nama" required>
+            </div>
+            <div class="form-group">
+                <label>NIJ</label>
+                <input type="text" id="db_nij" readonly>
+            </div>
+            <div class="form-group">
+                <label>Wilayah</label>
+                <input type="text" id="db_wilayah">
+            </div>
+            <button type="submit" class="btn-save">Update Database</button>
+        </form>
+
+        <div class="instructions">
+            <strong>Cara Edit Visual:</strong><br>
+            Klik ikon pensil emas di pojok kanan kartu, lalu klik pada tulisan di kartu (seperti Nama atau TTL) untuk mengubahnya secara bebas sebelum dicetak.
+        </div>
+    </div>
+
+    <div class="card-preview-container">
+        <div class="card-box" id="cardElement">
+            <button class="btn-edit-trigger" onclick="toggleVisualEdit()" title="Edit Tulisan di Kartu">
+                <i class="fas fa-pencil-alt"></i>
+            </button>
+
             <div class="card-header">
-                <button class="btn-edit-icon"><i class="fas fa-pencil-alt"></i></button>
-                <div style="font-weight:bold; font-size:14px;">KARTU ANGGOTA JEMAAT</div>
-                <div style="font-size:10px;">PONDOK PEMULIHAN PAPUA</div>
+                <div style="font-weight:bold; font-size:16px; letter-spacing:1px;">KARTU ANGGOTA</div>
+                <div style="font-size:11px; opacity:0.9;">PONDOK PEMULIHAN PAPUA</div>
             </div>
 
-            <div class="editable-content">
-                <center>
-                    <div style="width:100px; height:120px; background:#eee; border:1px solid #ccc; margin-bottom:10px; display:flex; align-items:center; justify-content:center; font-size:10px;">FOTO</div>
-                </center>
+            <div class="card-body">
+                <div class="photo-placeholder" id="v_foto">FOTO</div>
 
                 <div class="info-row">
                     <span class="label">NIJ</span>
-                    <span class="value" contenteditable="true" id="v_nij">-</span>
+                    <span class="value" id="v_nij" contenteditable="false">00.000.000</span>
                 </div>
                 <div class="info-row">
                     <span class="label">NAMA</span>
-                    <span class="value" contenteditable="true" id="v_nama">-</span>
+                    <span class="value" id="v_nama" contenteditable="false">MEMUAT NAMA...</span>
                 </div>
                 <div class="info-row">
                     <span class="label">TTL</span>
-                    <span class="value" contenteditable="true" id="v_ttl">-</span>
+                    <span class="value" id="v_ttl" contenteditable="false">KOTA, 01 JANUARI 1990</span>
                 </div>
                 <div class="info-row">
                     <span class="label">JEMAAT</span>
-                    <span class="value" contenteditable="true" id="v_jemaat">-</span>
+                    <span class="value" id="v_jemaat" contenteditable="false">PUSAT</span>
                 </div>
             </div>
 
-            <div class="barcode-area" id="v_barcode_move">
-                <div style="width:120px; height:40px; border:1px solid #000; display:flex; align-items:center; justify-content:center; font-size:9px; background:white;">BARCODE</div>
-                <div id="v_nij_label" style="font-size:10px; font-weight:bold;">NIJ: -</div>
+            <div class="barcode-section">
+                <div style="width:120px; height:45px; background:#ddd; display:flex; align-items:center; justify-content:center; font-size:10px;">BARCODE</div>
+                <div id="v_nij_label" style="font-size:10px; font-weight:bold; margin-top:2px;">NIJ: 00.000</div>
             </div>
 
-            <div style="position:absolute; bottom:0; width:100%; height:30px; background:var(--primary);"></div>
+            <div class="card-footer"></div>
         </div>
-
-        <button onclick="window.print()" class="btn-action btn-primary"><i class="fas fa-print"></i> Cetak Sekarang</button>
-        <button onclick="closeVisualEditor()" class="btn-action btn-close">Tutup Editor</button>
+        
+        <button onclick="window.print()" class="btn-save" style="background:var(--gold); width:350px;">
+            <i class="fas fa-print"></i> Cetak Kartu Ini
+        </button>
     </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
 <script>
-    // Firebase Config (Tetap sama)
+    // Konfigurasi Firebase Anda
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
         projectId: "boby-apps-project",
         storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const userId = new URLSearchParams(window.location.search).get('edit');
 
-    // 1. Ambil Data Realtime untuk Form
-    async function loadData() {
+    let isEditing = false;
+
+    // Fungsi Mengaktifkan Mode Edit Visual
+    function toggleVisualEdit() {
+        isEditing = !isEditing;
+        const card = document.getElementById('cardElement');
+        const values = card.querySelectorAll('.value');
+        const btn = document.querySelector('.btn-edit-trigger i');
+
+        if(isEditing) {
+            card.classList.add('editing');
+            values.forEach(v => v.contentEditable = "true");
+            btn.className = "fas fa-check"; // Ubah jadi centang
+            alert("Mode Edit Visual Aktif! Silakan klik pada tulisan di kartu untuk mengubahnya.");
+        } else {
+            card.classList.remove('editing');
+            values.forEach(v => v.contentEditable = "false");
+            btn.className = "fas fa-pencil-alt"; // Balik ke pensil
+            alert("Perubahan visual selesai. Anda bisa mencetak kartu sekarang.");
+        }
+    }
+
+    // Load Data Jemaat
+    async function init() {
         if(!userId) return;
-        document.getElementById('loading').style.display='flex';
         const doc = await db.collection("users").doc(userId).get();
         if(doc.exists) {
             const d = doc.data();
-            document.getElementById('nama_lengkap').value = d.nama_lengkap;
-            document.getElementById('nij').value = d.nij;
-            document.getElementById('wilayah').value = d.wilayah;
-            
-            // Masukkan ke preview Visual Editor juga
-            document.getElementById('v_nama').innerText = d.nama_lengkap;
-            document.getElementById('v_nij').innerText = d.nij;
-            document.getElementById('v_nij_label').innerText = "NIJ: " + d.nij;
-            document.getElementById('v_jemaat').innerText = d.wilayah || "PONDOK PEMULIHAN";
-            document.getElementById('v_ttl').innerText = d.tempat_lahir + ", " + d.tanggal_lahir;
+            // Isi Form Kiri
+            document.getElementById('db_nama').value = d.nama_lengkap || "";
+            document.getElementById('db_nij').value = d.nij || "";
+            document.getElementById('db_wilayah').value = d.wilayah || "";
+
+            // Isi Kartu Kanan
+            document.getElementById('v_nama').innerText = d.nama_lengkap || "-";
+            document.getElementById('v_nij').innerText = d.nij || "-";
+            document.getElementById('v_nij_label').innerText = "NIJ: " + (d.nij || "-");
+            document.getElementById('v_jemaat').innerText = d.wilayah || "-";
+            document.getElementById('v_ttl').innerText = (d.tempat_lahir || "") + ", " + (d.tanggal_lahir || "");
         }
-        document.getElementById('loading').style.display='none';
     }
 
-    // 2. Fungsi Buka Modal
-    function openVisualEditor() {
-        document.getElementById('visualEditor').style.display = 'block';
-    }
-
-    function closeVisualEditor() {
-        document.getElementById('visualEditor').style.display = 'none';
-    }
-
-    // 3. Simpan Perubahan Form ke Database
-    document.getElementById('editForm').onsubmit = async (e) => {
+    // Simpan ke DB
+    document.getElementById('dbForm').onsubmit = async (e) => {
         e.preventDefault();
-        document.getElementById('loading').style.display='flex';
         await db.collection("users").doc(userId).update({
-            nama_lengkap: document.getElementById('nama_lengkap').value,
-            wilayah: document.getElementById('wilayah').value,
-            last_update: new Date().toISOString()
+            nama_lengkap: document.getElementById('db_nama').value,
+            wilayah: document.getElementById('db_wilayah').value
         });
-        alert("Data Database Berhasil Diperbarui!");
-        loadData();
+        alert("Database Berhasil Diupdate!");
+        location.reload();
     };
 
-    window.onload = loadData;
+    window.onload = init;
 </script>
 </body>
 </html>
