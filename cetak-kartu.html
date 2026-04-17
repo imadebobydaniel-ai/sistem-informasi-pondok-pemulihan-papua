@@ -3,39 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <title>Cetak Kartu Jemaat - Pondok Pemulihan Papua</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script> 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <style>
-        body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 20px; }
-        .print-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-        .card { width: 350px; height: 210px; background: white; border: 1px solid #ccc; border-radius: 10px; padding: 15px; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
-        .card-header { border-bottom: 2px solid #003366; padding-bottom: 5px; margin-bottom: 10px; }
-        .card-title { font-size: 14px; font-weight: bold; color: #003366; margin: 0; }
-        .card-body td { font-size: 11px; vertical-align: top; }
-        .label { font-weight: bold; width: 80px; }
-        @media print { 
-            body { background: white; padding: 0; }
-            .no-print { display: none; }
+        body { background: #333; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding: 20px; font-family: 'Arial', sans-serif; }
+        
+        .card { 
+            width: 480px; height: 305px; background: white; border-radius: 12px; 
+            position: relative; overflow: hidden; border: 1px solid #999;
+            background-image: linear-gradient(to bottom right, #ffffff, #f0f7ff);
         }
+
+        .card-header { 
+            background: #003366; color: white; padding: 5px 15px; 
+            display: flex; align-items: center; justify-content: space-between;
+            border-top: 4px solid #D4AF37; 
+            border-bottom: 8px solid #D4AF37;
+            height: 75px;
+        }
+        
+        .header-logo { width: 70px; height: 70px; object-fit: contain; }
+        
+        .header-text { text-align: center; flex: 1; }
+        .header-text h2 { margin: 0; font-size: 16px; letter-spacing: 1px; font-weight: 800; }
+        .header-text p { margin: 2px 0 0 0; font-size: 11px; color: #D4AF37; font-weight: bold; }
+
+        .card-body { padding: 12px 15px; display: flex; gap: 15px; align-items: flex-start; }
+
+        .left-side { display: flex; flex-direction: column; align-items: center; width: 125px; }
+        .photo-frame { 
+            width: 115px; height: 135px; border: 2px solid #003366; 
+            object-fit: cover; border-radius: 5px; background: #fff; margin-bottom: 3px;
+        }
+
+        /* Teks Berlaku Seumur Hidup di bawah foto */
+        .validity-text {
+            font-size: 8.5px;
+            font-weight: bold;
+            color: #003366;
+            text-align: center;
+            width: 100%;
+            margin-top: 2px;
+        }
+
+        .right-side { flex: 1; display: flex; flex-direction: column; gap: 4px; position: relative; }
+        .info-row { display: flex; font-size: 10.5px; border-bottom: 1px solid #eee; padding-bottom: 2px; }
+        .label { width: 85px; font-weight: bold; color: #003366; }
+        .value { flex: 1; color: #333; text-transform: uppercase; font-weight: 600; line-height: 1.2; }
+
+        /* Container Barcode dipindah ke kanan bawah jemaat */
+        .barcode-container { 
+            width: 220px; 
+            height: 45px; 
+            background: white; 
+            padding: 2px; 
+            border: 1px solid #ccc; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            overflow: hidden;
+            margin-top: 8px; /* Jarak dari baris data terakhir */
+            align-self: flex-start;
+        }
+        .barcode-svg { width: 100%; height: 100%; }
+
+        .card-footer { 
+            position: absolute; bottom: 0; width: 100%; background: #003366; 
+            color: white; font-size: 10px; text-align: center; padding: 4px 0;
+        }
+
+        .no-print { position: fixed; bottom: 20px; right: 20px; z-index: 99; }
+        .btn-print { background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+
+        @media print { .no-print { display: none; } body { background: white; padding: 0; } .card { box-shadow: none; border: 1px solid #000; margin: 10px; page-break-inside: avoid; } }
     </style>
 </head>
 <body>
 
-<div class="no-print" style="margin-bottom: 20px;">
-    <button onclick="window.print()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-        CETAK SEKARANG
-    </button>
-    <button onclick="window.history.back()" style="padding: 10px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer;">
-        KEMBALI
-    </button>
+<div class="no-print">
+    <button class="btn-print" onclick="window.print()">PRINT KARTU</button>
 </div>
 
-<div id="printArea" class="print-container">
-    <p id="status">Mengambil data jemaat...</p>
-</div>
+<div id="cardContainer"></div>
 
 <script>
-    // Konfigurasi Firebase (Harus sama dengan admin.html)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -44,52 +97,82 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function loadCards() {
+    async function drawCards() {
         const urlParams = new URLSearchParams(window.location.search);
-        const ids = urlParams.get('ids');
-
-        if (!ids) {
-            document.getElementById('status').innerText = "Tidak ada jemaat yang dipilih.";
+        const ids = urlParams.get('ids') ? urlParams.get('ids').split(',') : [];
+        const container = document.getElementById('cardContainer');
+        
+        if (ids.length === 0) {
+            container.innerHTML = "<h2 style='color:white'>Silakan pilih jemaat di Admin Dashboard.</h2>";
             return;
         }
 
-        const idArray = ids.split(',');
-        const printArea = document.getElementById('printArea');
-        printArea.innerHTML = "";
-
-        for (let id of idArray) {
-            try {
-                const doc = await db.collection("users").doc(id).get();
-                if (doc.exists) {
-                    const d = doc.data();
-                    const html = `
-                        <div class="card">
-                            <div class="card-header">
-                                <p class="card-title">KARTU JEMAAT PONDOK PEMULIHAN</p>
+        for (const id of ids) {
+            const doc = await db.collection("users").doc(id).get();
+            if (doc.exists) {
+                const d = doc.data();
+                const nijValue = d.nij || "NO-NIJ";
+                const fotoFinal = d.foto_profil || d.url_foto || d.url_berkas || 'https://via.placeholder.com/115x140?text=FOTO';
+                const tglLahir = d.tanggal_lahir || d.tgl_lahir || "-";
+                const tempatLahir = d.kota || d.tempat_lahir || "-";
+                
+                const cardHtml = `
+                    <div class="card">
+                        <div class="card-header">
+                            <img src="logo_pondok.png" class="header-logo" onerror="this.src='https://via.placeholder.com/70?text=LOGO'">
+                            <div class="header-text">
+                                <h2>PONDOK PEMULIHAN PAPUA</h2>
+                                <p>KARTU ANGGOTA JEMAAT</p>
                             </div>
-                            <table class="card-body">
-                                <tr><td class="label">NIJ</td><td>: ${d.nij || '-'}</td></tr>
-                                <tr><td class="label">NAMA</td><td>: ${(d.nama_lengkap || d.nama || '-').toUpperCase()}</td></tr>
-                                <tr><td class="label">GEREJA</td><td>: ${(d.lokasi_berjemaat || '-').toUpperCase()}</td></tr>
-                                <tr><td class="label">JABATAN</td><td>: ${d.jabatan || 'Anggota'}</td></tr>
-                                <tr><td class="label">ALAMAT</td><td>: ${d.alamat || d.alamat_domisili || '-'}</td></tr>
-                            </table>
+                            <img src="gbi.png" class="header-logo" onerror="this.src='https://via.placeholder.com/70?text=GBI'">
                         </div>
-                    `;
-                    printArea.innerHTML += html;
-                }
-            } catch (error) {
-                console.error("Error fetching jemaat:", error);
+                        
+                        <div class="card-body">
+                            <div class="left-side">
+                                <img src="${fotoFinal}" class="photo-frame">
+                                <div class="validity-text">BERLAKU SEUMUR HIDUP</div>
+                            </div>
+                            
+                            <div class="right-side">
+                                <div class="info-row"><span class="label">NIJ</span><span class="value">: ${nijValue}</span></div>
+                                <div class="info-row"><span class="label">NAMA</span><span class="value">: ${d.nama_lengkap || d.nama || '-'}</span></div>
+                                <div class="info-row"><span class="label">TTL</span><span class="value">: ${tempatLahir}, ${tglLahir}</span></div>
+                                <div class="info-row"><span class="label">ALAMAT</span><span class="value">: ${d.alamat || '-'}</span></div>
+                                <div class="info-row"><span class="label">JABATAN</span><span class="value">: ${d.jabatan || 'ANGGOTA JEMAAT'}</span></div>
+                                <div class="info-row"><span class="label">JEMAAT</span><span class="value">: ${d.lokasi_berjemaat || '-'}</span></div>
+                                <div class="info-row"><span class="label">KOMSEL</span><span class="value">: ${d.komsel || '-'}</span></div>
+                                
+                                <div class="barcode-container">
+                                    <svg class="barcode-svg" id="barcode-${id}"></svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            Pondok Pemulihan Papua - Blessing To The Nations
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+
+                setTimeout(() => {
+                    JsBarcode(`#barcode-${id}`, nijValue, {
+                        format: "CODE128",
+                        width: 2.0,
+                        height: 40,
+                        displayValue: false,
+                        lineColor: "#000",
+                        margin: 0
+                    });
+                }, 300);
             }
         }
-        document.getElementById('status').style.display = "none";
     }
 
-    window.onload = loadCards;
+    window.onload = drawCards;
 </script>
 </body>
 </html>
