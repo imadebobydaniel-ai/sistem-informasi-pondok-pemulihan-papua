@@ -17,13 +17,34 @@
         input[readonly] { background: #eee; cursor: not-allowed; }
         .pass-wrapper { position: relative; }
         .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
+        
+        /* Perbaikan Jarak Kiri-Kanan Tulisan agar tidak turun ke bawah */
+        .info-row { display: flex; margin-bottom: 2px; align-items: flex-start; }
+        .label { 
+            width: 65px; /* Lebar label diperkecil agar value punya ruang luas */
+            font-weight: bold; 
+            flex-shrink: 0; 
+            color: var(--primary);
+        }
+        .value { 
+            flex-grow: 1; 
+            padding-left: 5px; 
+            word-break: normal; 
+            text-transform: uppercase;
+        }
+
+        /* Posisi Barcode dinaikkan agar tidak mepet bawah */
+        .barcode-container {
+            margin-top: 10px;
+            margin-bottom: 15px; /* Memberi jarak aman dari footer biru */
+            text-align: right;
+        }
+
         .btn-save { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 20px; font-size: 16px; transition: 0.3s; }
         .btn-save:hover { background: #002244; }
         .btn-back { display: inline-block; margin-bottom: 20px; color: var(--primary); text-decoration: none; font-weight: bold; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .section-title { color: var(--primary); border-bottom: 2px solid var(--gold); padding-bottom: 10px; margin-bottom: 20px; }
-        .file-info { font-size: 12px; color: #666; margin-top: 5px; display: block; }
-        .file-info a { color: var(--accent); text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -127,14 +148,13 @@
             </select>
         </div>
 
-        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Simpan Perubahan Data</button>
+        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Simpan Perubahan & Sinkronisasi Kartu</button>
     </form>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script>
-    // 1. CONFIGURATION
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -149,7 +169,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('edit'); 
 
-    // 2. MAPPING DATA
     const dataKomsel = { 
         "Abepura": ["Lansia Abepura", "Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Komsel Mahasiswa Abe", "Komsel Profesi Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu"],
         "Sentani": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Komsel 5", "Siloam 6", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Remaja Sentani", "Komsel Sekolah Minggu Sentani"],
@@ -170,7 +189,7 @@
         }
     }
 
-    // 3. GEOLOCATION (API Wilayah)
+    // API Wilayah Indonesia
     async function loadProvinsi(selectedName = "") {
         const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         const data = await res.json();
@@ -224,7 +243,7 @@
         document.getElementById('desa').innerHTML = options;
     }
 
-    // 4. LOAD DATA FROM FIREBASE
+    // Load Real-time Data dari Firebase
     window.onload = async function() {
         if (!userId) return;
         try {
@@ -254,13 +273,12 @@
                         if(kecId) await loadDesa(kecId, data.desa);
                     }
                 }
-
                 document.getElementById('loading').style.display = 'none';
             }
         } catch (e) { console.error(e); }
     };
 
-    // 5. SAVE ACTION
+    // Update Data & Pastikan Real-time ke Server
     document.getElementById('editForm').onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button');
@@ -283,13 +301,15 @@
             wilayah: document.getElementById('wilayah').value,
             komsel: document.getElementById('komsel').value,
             jabatan: document.getElementById('jabatan').value,
+            // Menambahkan deteksi lokasi berjemaat secara otomatis untuk kartu
+            lokasi_berjemaat: document.getElementById('wilayah').value || "PONDOK PEMULIHAN",
             status_akun: document.getElementById('status_akun').value,
             last_update: new Date().toISOString()
         };
 
         try {
             await db.collection("users").doc(userId).update(updateData);
-            alert("Berhasil! Data telah diperbarui.");
+            alert("Berhasil! Database & Kartu telah disinkronkan.");
             window.location.reload();
         } catch (err) {
             alert("Error: " + err.message);
@@ -297,7 +317,6 @@
         }
     };
 
-    // Toggle Password
     document.getElementById('eyeIcon').onclick = function() {
         const passInput = document.getElementById('password_user');
         passInput.type = passInput.type === "password" ? "text" : "password";
