@@ -211,59 +211,68 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     
-    // VARIABEL GLOBAL
     const userEmail = localStorage.getItem("userEmail");
     const statusAdmin = localStorage.getItem("isAdmin");
 
     // --- 2. LOGIKA RUNNING TEXT (REAL-TIME) ---
     function listenRunningText() {
-        console.log("📡 Memulai listener Running Text...");
         db.collection("config").doc("running_text").onSnapshot((doc) => {
             if (doc.exists) {
-                const data = doc.data();
-                console.log("✅ RT Baru Diterima:", data.pesan);
-                
                 const rtElement = document.getElementById('rt_display'); 
-                if (rtElement) {
-                    rtElement.innerText = data.pesan;
-                }
+                if (rtElement) rtElement.innerText = doc.data().pesan;
             }
-        }, (error) => {
-            console.error("❌ Gagal sinkron RT:", error);
         });
     }
 
-    // --- 3. YOUTUBE MEDIA PLAYER LOGIC ---
+    // --- 3. YOUTUBE MEDIA PLAYER LOGIC (REAL-TIME CONFIG) ---
     let player;
     function onYouTubeIframeAPIReady() {
-        console.log("🎥 Menyiapkan YouTube Player...");
-        // Perbaikan: Menyelaraskan koleksi ke 'config' agar konsisten dengan Running Text
-        db.collection("config").doc("video_promo").get().then(doc => {
-            let videoId = "V9p1k5wH3ZE"; 
-            if(doc.exists && doc.data().url) {
+        // Inisialisasi player dengan ID default terlebih dahulu
+        player = new YT.Player('player', {
+            height: '100%',
+            width: '100%',
+            videoId: 'V9p1k5wH3ZE', 
+            playerVars: { 
+                'autoplay': 1, 
+                'mute': 1, 
+                'loop': 1, 
+                'playlist': 'V9p1k5wH3ZE',
+                'origin': window.location.origin, 
+                'enablejsapi': 1
+            },
+            events: { 
+                'onReady': (event) => {
+                    event.target.playVideo();
+                    listenVideoPromo(); // Mulai mendengarkan perubahan link setelah player siap
+                } 
+            }
+        });
+    }
+
+    // Fungsi khusus untuk memantau perubahan Link Video di Portal Media secara Real-time
+    function listenVideoPromo() {
+        console.log("📡 Memantau perubahan Video Promo...");
+        db.collection("config").doc("video_promo").onSnapshot((doc) => {
+            if (doc.exists && doc.data().url) {
                 const url = doc.data().url;
                 const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                 const match = url.match(regExp);
-                if (match && match[2].length == 11) videoId = match[2];
+                
+                if (match && match[2].length == 11) {
+                    const newVideoId = match[2];
+                    console.log("🎥 Video baru terdeteksi:", newVideoId);
+                    
+                    // Jika player sudah ada, ganti videonya secara halus tanpa reload halaman
+                    if (player && player.loadVideoById) {
+                        player.loadVideoById({
+                            videoId: newVideoId,
+                            startSeconds: 0
+                        });
+                    }
+                }
             }
-            
-            player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                videoId: videoId,
-                playerVars: { 
-                    'autoplay': 1, 
-                    'mute': 1, 
-                    'loop': 1, 
-                    'playlist': videoId,
-                    'origin': window.location.origin, 
-                    'enablejsapi': 1
-                },
-                events: { 'onReady': onPlayerReady }
-            });
-        }).catch(e => console.error("Gagal muat video:", e));
+        });
     }
-    function onPlayerReady(event) { event.target.playVideo(); }
 
     // --- 4. FUNGSI UI & MODAL ---
     function bukaKartuDigital() {
@@ -334,7 +343,7 @@
         if(elClock) elClock.innerText = now.toLocaleTimeString('id-ID') + " WIT";
     }
 
-    // --- 6. INISIALISASI SAAT HALAMAN DIBUKA ---
+    // --- 6. INISIALISASI ---
     window.onload = () => { 
         updateTime(); 
         setInterval(updateTime, 1000); 
