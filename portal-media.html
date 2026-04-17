@@ -270,11 +270,16 @@
     let runningItems = [];
     let playlistData = [];
 
-    // --- FUNGSI TAMBAHAN: EKSTRAK ID YOUTUBE ---
+    // --- FUNGSI EKSTRAK ID YOUTUBE (MODERN) ---
     function extractVideoID(url) {
         const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : url;
+        if (match && match[2].length === 11) {
+            const videoId = match[2];
+            // Menambahkan parameter yang dibutuhkan oleh API YouTube agar tidak Error 150
+            return `${videoId}?enablejsapi=1&origin=${window.location.origin}&rel=0&autoplay=1&mute=1`;
+        }
+        return url;
     }
 
     // --- LOGIKA RUNNING TEXT ---
@@ -336,7 +341,6 @@
 
         if(!judul) return alert("Judul wajib diisi!");
 
-        // Jika tipe video_youtube, bersihkan URL menjadi ID saja
         if(tipe === 'video_youtube' && url !== "") {
             url = extractVideoID(url);
         }
