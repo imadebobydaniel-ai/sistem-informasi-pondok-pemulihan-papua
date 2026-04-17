@@ -211,11 +211,10 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     
-    // VARIABEL GLOBAL (Hanya dideklarasikan SATU KALI di sini)
     const userEmail = localStorage.getItem("userEmail");
     const statusAdmin = localStorage.getItem("isAdmin");
 
-    // --- 2. LOGIKA RUNNING TEXT (REAL-TIME) ---
+    // --- 2. LOGIKA RUNNING TEXT ---
     function listenRunningText() {
         db.collection("config").doc("running_text").onSnapshot((doc) => {
             if (doc.exists) {
@@ -231,11 +230,10 @@
     let pendingVideoId = null;
 
     function onYouTubeIframeAPIReady() {
-        console.log("🎥 Inisialisasi Player...");
         player = new YT.Player('player', {
             height: '100%',
             width: '100%',
-            videoId: 'aqz-KE-bpKQ', // ID video default
+            videoId: 'aqz-KE-bpKQ', 
             playerVars: { 
                 'autoplay': 1, 
                 'mute': 1, 
@@ -246,62 +244,39 @@
             },
             events: { 
                 'onReady': onPlayerReady,
-                'onError': (e) => {
-                    console.error("❌ YouTube Error:", e.data);
-                    if(e.data == 150 || e.data == 101) {
-                        console.warn("Video ini tidak bisa diputar di luar domain YouTube.");
-                    }
-                }
+                'onError': (e) => console.error("❌ YouTube Error:", e.data)
             }
         });
     }
 
     function onPlayerReady(event) {
-        console.log("✅ YouTube Player Siap!");
         isPlayerReady = true;
         event.target.playVideo();
-        
-        // Cek jika ada video dari Firestore yang sudah menunggu
         if (pendingVideoId) {
-            console.log("🔄 Memutar video tertunda:", pendingVideoId);
             player.loadVideoById(pendingVideoId);
             pendingVideoId = null;
         }
-        
         listenVideoPromo(); 
     }
 
-    // FUNGSI SINKRONISASI VIDEO (PORTAL MEDIA -> MEDIA PLAYER)
+    // Sinkronisasi berdasarkan Dokumen: playlist & Field: activeContentId
     function listenVideoPromo() {
-        console.log("📡 Memantau perubahan Video Promo...");
-        db.collection("config").doc("video_promo").onSnapshot((doc) => {
+        db.collection("config").doc("playlist").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                console.log("📥 Data Firestore diterima:", data);
+                const newVideoId = data.activeContentId;
 
-                if (data.url) {
-                    const url = data.url;
-                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                    const match = url.match(regExp);
-                    const newVideoId = (match && match[2].length == 11) ? match[2] : null;
-
-                    if (newVideoId) {
-                        console.log("🎥 Mengganti video ke ID:", newVideoId);
-                        if (isPlayerReady && player && player.loadVideoById) {
-                            player.loadVideoById(newVideoId);
-                        } else {
-                            pendingVideoId = newVideoId;
-                        }
+                if (newVideoId) {
+                    if (isPlayerReady && player && player.loadVideoById) {
+                        player.loadVideoById(newVideoId);
                     } else {
-                        console.warn("⚠️ Link YouTube tidak valid:", url);
+                        pendingVideoId = newVideoId;
                     }
                 }
             } else {
-                console.error("❌ Dokumen 'config/video_promo' tidak ditemukan!");
+                console.error("❌ Dokumen 'config/playlist' tidak ditemukan di Firestore!");
             }
-        }, (err) => {
-            console.error("❌ Error Firestore Listener:", err);
-        });
+        }, (err) => console.error("❌ Error Firestore:", err));
     }
 
     // --- 4. FUNGSI UI & MODAL ---
@@ -389,5 +364,5 @@
             });
         }
     };
-</script></body>
+</script>></body>
 </html>
