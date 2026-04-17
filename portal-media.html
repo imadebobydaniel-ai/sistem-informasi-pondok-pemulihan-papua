@@ -270,6 +270,13 @@
     let runningItems = [];
     let playlistData = [];
 
+    // --- FUNGSI TAMBAHAN: EKSTRAK ID YOUTUBE ---
+    function extractVideoID(url) {
+        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : url;
+    }
+
     // --- LOGIKA RUNNING TEXT ---
     async function saveRunningTextToCollection() {
         const text = document.getElementById('rt_input').value;
@@ -324,11 +331,20 @@
 
     async function uploadKePortal() {
         const judul = document.getElementById('judul').value;
+        const tipe = document.getElementById('tipe_media').value;
+        let url = document.getElementById('url_media').value || "";
+
         if(!judul) return alert("Judul wajib diisi!");
+
+        // Jika tipe video_youtube, bersihkan URL menjadi ID saja
+        if(tipe === 'video_youtube' && url !== "") {
+            url = extractVideoID(url);
+        }
+
         await db.collection("portal_media").add({
             judul: judul,
-            tipe: document.getElementById('tipe_media').value,
-            url: document.getElementById('url_media').value || "",
+            tipe: tipe,
+            url: url,
             isi_artikel: document.getElementById('isi_artikel').value || "",
             urutan: Date.now(),
             durasi: 10,
