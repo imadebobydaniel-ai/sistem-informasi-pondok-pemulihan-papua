@@ -38,7 +38,6 @@
             object-fit: cover; border-radius: 5px; background: #fff; margin-bottom: 3px;
         }
 
-        /* Teks Berlaku Seumur Hidup di bawah foto */
         .validity-text {
             font-size: 8.5px;
             font-weight: bold;
@@ -53,21 +52,21 @@
         .label { width: 85px; font-weight: bold; color: #003366; }
         .value { flex: 1; color: #333; text-transform: uppercase; font-weight: 600; line-height: 1.2; }
 
-        /* Container Barcode dipindah ke kanan bawah jemaat */
+        /* PERBAIKAN PRESISI BARCODE */
         .barcode-container { 
             width: 220px; 
-            height: 45px; 
+            height: 55px; 
             background: white; 
-            padding: 2px; 
+            padding: 5px; 
             border: 1px solid #ccc; 
             display: flex; 
             align-items: center; 
             justify-content: center;
             overflow: hidden;
-            margin-top: 8px; /* Jarak dari baris data terakhir */
+            margin-top: 5px;
             align-self: flex-start;
         }
-        .barcode-svg { width: 100%; height: 100%; }
+        .barcode-svg { width: 100%; height: auto; }
 
         .card-footer { 
             position: absolute; bottom: 0; width: 100%; background: #003366; 
@@ -100,6 +99,28 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // Fungsi Pembantu Format Tanggal Indonesia (DD-MM-YYYY)
+    function formatTanggalIndo(dateObj) {
+        if (!dateObj) return "-";
+        
+        let d = dateObj;
+        // Jika formatnya Firebase Timestamp, ubah ke JS Date
+        if (typeof dateObj === 'object' && dateObj.toDate) {
+            d = dateObj.toDate();
+        } else {
+            d = new Date(dateObj);
+        }
+
+        // Cek jika tanggal valid
+        if (isNaN(d.getTime())) return dateObj; 
+
+        const tgl = String(d.getDate()).padStart(2, '0');
+        const bulan = String(d.getMonth() + 1).padStart(2, '0');
+        const tahun = d.getFullYear();
+        
+        return `${tgl}-${bulan}-${tahun}`;
+    }
+
     async function drawCards() {
         const urlParams = new URLSearchParams(window.location.search);
         const ids = urlParams.get('ids') ? urlParams.get('ids').split(',') : [];
@@ -117,27 +138,13 @@
             if (doc.exists) {
                 const d = doc.data();
                 
-                // --- BAGIAN DEBUG INSPECT (Cek di Console F12) ---
+                // --- DEBUG INSPECT ---
                 console.log(`User: ${d.nama_lengkap || d.nama}`);
-                console.log(`Raw Field 'tanggal_lahir':`, d.tanggal_lahir);
-                console.log(`Raw Field 'tgl_lahir':`, d.tgl_lahir);
-                console.log(`Raw Field 'tanggal_lahir_murni':`, d.tanggal_lahir_murni);
+                console.log(`Raw Date:`, d.tanggal_lahir || d.tgl_lahir || d.tanggal_lahir_murni);
 
-                // --- LOGIKA PERBAIKAN TANGGAL ---
-                let tglLahir = "-";
-                // Cek berbagai kemungkinan nama field
+                // Ambil tanggal lahir dari berbagai kemungkinan nama field
                 const rawDate = d.tanggal_lahir_murni || d.tanggal_lahir || d.tgl_lahir;
-
-                if (rawDate) {
-                    // Jika formatnya adalah Firebase Timestamp Object
-                    if (typeof rawDate === 'object' && rawDate.toDate) {
-                        tglLahir = rawDate.toDate().toLocaleDateString('id-ID');
-                    } 
-                    // Jika formatnya sudah string (misal: "1982-01-21")
-                    else {
-                        tglLahir = rawDate;
-                    }
-                }
+                const tglLahirFormatted = formatTanggalIndo(rawDate);
 
                 const nijValue = d.nij || "NO-NIJ";
                 const fotoFinal = d.foto_profil || d.url_foto || d.url_berkas || 'https://via.placeholder.com/115x140?text=FOTO';
@@ -163,7 +170,7 @@
                             <div class="right-side">
                                 <div class="info-row"><span class="label">NIJ</span><span class="value">: ${nijValue}</span></div>
                                 <div class="info-row"><span class="label">NAMA</span><span class="value">: ${d.nama_lengkap || d.nama || '-'}</span></div>
-                                <div class="info-row"><span class="label">TTL</span><span class="value">: ${tempatLahir}, ${tglLahir}</span></div>
+                                <div class="info-row"><span class="label">TTL</span><span class="value">: ${tempatLahir}, ${tglLahirFormatted}</span></div>
                                 <div class="info-row"><span class="label">ALAMAT</span><span class="value">: ${d.alamat || '-'}</span></div>
                                 <div class="info-row"><span class="label">JABATAN</span><span class="value">: ${d.jabatan || 'ANGGOTA JEMAAT'}</span></div>
                                 <div class="info-row"><span class="label">JEMAAT</span><span class="value">: ${d.lokasi_berjemaat || '-'}</span></div>
@@ -182,11 +189,12 @@
                 `;
                 container.innerHTML += cardHtml;
 
+                // EKSEKUSI BARCODE DENGAN TINGGI YANG DISESUAIKAN
                 setTimeout(() => {
                     JsBarcode(`#barcode-${id}`, nijValue, {
                         format: "CODE128",
-                        width: 2.0,
-                        height: 40,
+                        width: 1.8,
+                        height: 35, // Dikecilkan agar presisi di tengah kotak
                         displayValue: false,
                         lineColor: "#000",
                         margin: 0
