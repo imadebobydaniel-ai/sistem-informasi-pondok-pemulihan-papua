@@ -285,7 +285,7 @@
                 isActive: false
             });
             document.getElementById('rt_input').value = "";
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Error RT:", e); }
     }
 
     function loadRTCollection() {
@@ -307,27 +307,34 @@
                         </td>
                     </tr>`;
             });
-        });
+        }, error => console.error("Snapshot Error RT:", error));
     }
 
     async function playRTManual(id) {
-        const batch = db.batch();
-        const selected = runningItems.find(i => i.id === id);
-        
-        runningItems.forEach(item => {
-            batch.update(db.collection("rt_collection").doc(item.id), { isActive: false });
-        });
-        
-        batch.update(db.collection("rt_collection").doc(id), { isActive: true });
-        
-        // Distribusi ke config global yang dibaca monitor
-        batch.set(db.collection("config").doc("running_text"), { 
-            pesan: selected.text,
-            durasi: selected.durasi,
-            lastUpdate: Date.now() 
-        }, { merge: true });
+        try {
+            const batch = db.batch();
+            const selected = runningItems.find(i => i.id === id);
+            
+            if(!selected) return;
 
-        await batch.commit();
+            runningItems.forEach(item => {
+                batch.update(db.collection("rt_collection").doc(item.id), { isActive: false });
+            });
+            
+            batch.update(db.collection("rt_collection").doc(id), { isActive: true });
+            
+            // Gunakan .set dengan merge:true agar tidak freeze jika dokumen belum ada
+            batch.set(db.collection("config").doc("running_text"), { 
+                pesan: selected.text,
+                durasi: selected.durasi,
+                lastUpdate: Date.now() 
+            }, { merge: true });
+
+            await batch.commit();
+        } catch (e) {
+            console.error("Play RT Error:", e);
+            alert("Gagal memutar Running Text. Cek koneksi.");
+        }
     }
 
     async function deleteRT(id) { if(confirm("Hapus teks?")) await db.collection("rt_collection").doc(id).delete(); }
@@ -339,6 +346,7 @@
         if (match && match[2].length === 11) {
             const videoId = match[2];
             const currentOrigin = window.location.origin;
+            // Penambahan origin untuk fix 'postMessage' error pada YouTube API
             return `${videoId}?enablejsapi=1&origin=${encodeURIComponent(currentOrigin)}&rel=0&autoplay=1&mute=1`;
         }
         return url;
@@ -371,7 +379,7 @@
             alert("Konten Berhasil Terbit!");
             document.getElementById('judul').value = "";
             document.getElementById('url_media').value = "";
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Upload Error:", e); }
     }
 
     function loadMedia() {
@@ -397,7 +405,7 @@
                         </td>
                     </tr>`;
             });
-        });
+        }, error => console.error("Snapshot Error Media:", error));
     }
 
     async function moveItem(id, direction) {
@@ -412,11 +420,17 @@
     }
 
     async function playSekarang(id) {
-        await db.collection("config").doc("playlist").update({ 
-            activeContentId: id, 
-            triggerChange: Date.now() 
-        });
-        alert("Konten dikirim ke monitor!");
+        try {
+            // Gunakan .set dengan merge:true untuk menghindari error jika doc playlist belum ada
+            await db.collection("config").doc("playlist").set({ 
+                activeContentId: id, 
+                triggerChange: Date.now() 
+            }, { merge: true });
+            alert("Konten dikirim ke monitor!");
+        } catch (e) {
+            console.error("Play Media Error:", e);
+            alert("Gagal memutar konten.");
+        }
     }
 
     async function deleteMedia(id) { if(confirm("Hapus konten?")) await db.collection("portal_media").doc(id).delete(); }
@@ -437,15 +451,19 @@
     }
 
     async function updatePlayMode() {
-        const mode = document.getElementById('play_mode').value;
-        await db.collection("config").doc("playlist_settings").set({ mode: mode, updatedAt: Date.now() }, { merge: true });
-        document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
+        try {
+            const mode = document.getElementById('play_mode').value;
+            await db.collection("config").doc("playlist_settings").set({ 
+                mode: mode, 
+                updatedAt: Date.now() 
+            }, { merge: true });
+            document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
+        } catch (e) { console.error("Update Mode Error:", e); }
     }
 
     window.onload = () => {
         loadRTCollection();
         loadMedia();
     };
-</script>
-</body>
+</script></body>
 </html>
