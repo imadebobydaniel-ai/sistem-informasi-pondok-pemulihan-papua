@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Jemaat - Kartu Digital</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* CSS UNTUK ICON DI MENU / HEADER */
+        .menu-icons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #fff;
+            padding: 10px;
+        }
+
+        .icon-btn {
+            font-size: 24px;
+            color: #555;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .icon-btn:hover { color: #003366; }
+
+        /* MODAL POPUP */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* DESAIN KARTU DIGITAL (RASIO ATM) */
+        .digital-card {
+            width: 380px;
+            height: 230px;
+            background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%);
+            border-radius: 15px;
+            position: relative;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            color: #fff;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* Tekstur kartu agar terlihat mewah */
+        .digital-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/cubes.png');
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .card-logo {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            color: #003366; /* Warna kontras untuk teks judul */
+        }
+
+        .card-info {
+            margin-top: 10px;
+        }
+
+        .info-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: -2px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        }
+
+        /* NOMOR NIJ GAYA ATM */
+        .card-nij {
+            position: absolute;
+            bottom: 25px;
+            left: 20px;
+            font-family: 'Courier Prime', monospace;
+            font-size: 22px;
+            letter-spacing: 3px;
+            color: #fff;
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+        }
+
+        /* QR CODE POSISI KANAN BAWAH */
+        .card-qr {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="menu-icons">
+        <div class="icon-btn" onclick="showDigitalCard()">
+            <i class="fas fa-id-card"></i> </div>
+        <div class="icon-btn">
+            <i class="fas fa-envelope"></i> </div>
+    </div>
+
+    <div id="cardModal" class="modal-overlay">
+        <div style="position: relative;">
+            <div class="close-modal" onclick="closeDigitalCard()">
+                <i class="fas fa-times"></i> Tutup
+            </div>
+            
+            <div class="digital-card" id="digitalCardArea">
+                <img src="logo_pondok.png" class="card-logo" onerror="this.src='https://via.placeholder.com/50'">
+                
+                <div class="card-title">KARTU DIGITAL ANGGOTA</div>
+                
+                <div class="card-info">
+                    <div class="info-label">Nama Lengkap</div>
+                    <div class="info-value" id="d-nama">MEMUAT...</div>
+                    
+                    <div class="info-label">Jemaat</div>
+                    <div class="info-value" id="d-jemaat">-</div>
+                    
+                    <div class="info-label">Komsel</div>
+                    <div class="info-value" id="d-komsel">-</div>
+                </div>
+
+                <div class="card-nij" id="d-nij">0000 0000 0000</div>
+
+                <div class="card-qr" id="qrcode"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Logika untuk menampilkan data (Integrasikan dengan Firebase Anda)
+        // Saya asumsikan data jemaat sudah tersedia setelah login
+        
+        function showDigitalCard() {
+            document.getElementById('cardModal').style.display = 'flex';
+            
+            // Contoh pengisian data (Nanti arahkan ke variabel dataFirebase Anda)
+            const dataJemaat = {
+                nama: "Jhon Doe",
+                jemaat: "PP Papua Pusat",
+                komsel: "Bethel",
+                nij: "221005001" // NIJ Jemaat
+            };
+
+            document.getElementById('d-nama').innerText = dataJemaat.nama;
+            document.getElementById('d-jemaat').innerText = dataJemaat.jemaat;
+            document.getElementById('d-komsel').innerText = dataJemaat.komsel;
+            
+            // Format NIJ agar seperti nomor ATM (Berjarak setiap 4 digit jika perlu)
+            document.getElementById('d-nij').innerText = dataJemaat.nij;
+
+            // Generate QR Code mengarah ke profil.html dengan parameter ID
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = ""; // Bersihkan QR sebelumnya
+            new QRCode(qrContainer, {
+                text: "https://domainanda.com/profil.html?id=" + dataJemaat.nij,
+                width: 60,
+                height: 60,
+                colorDark : "#003366",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        function closeDigitalCard() {
+            document.getElementById('cardModal').style.display = 'none';
+        }
+
+        // Menutup modal jika klik area luar kartu
+        window.onclick = function(event) {
+            const modal = document.getElementById('cardModal');
+            if (event.target == modal) {
+                closeDigitalCard();
+            }
+        }
+    </script>
+
+</body>
+</html>
