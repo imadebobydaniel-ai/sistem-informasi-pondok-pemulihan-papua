@@ -129,25 +129,27 @@
             if(!tableBody) return;
             tableBody.innerHTML = "";
             
-            console.log("--- DEBUG DATA FIREBASE ---");
-
             snapshot.forEach(doc => {
                 const d = doc.data();
                 
-                // DIAGNOSA: Mencetak data asli ke console untuk dicek di Inspect
-                console.log(`Data Jemaat: ${d.nama_lengkap || d.nama}`, d);
-
+                // --- LOGIKA DETEKSI OTOMATIS (Mencegah Data Kosong) ---
                 const nama = d.nama_lengkap || d.nama || "Tanpa Nama";
-                const golonganDarah = d.darah || "-";
-                const gereja = d.lokasi_berjemaat || d.wilayah || d.jemaat || "-";
-                const komsel = d.komsel || "-";
-                const alamatDomisili = d.alamat || d.alamat_domisili || "-";
-                const kotaTinggal = d.kota || d.kabupaten || "-";
+                
+                // Deteksi Pasangan: Cek semua kemungkinan field
+                const namaPasangan = d.nama_pasangan || d.pasangan || d.istri || d.suami || d.nama_istri || d.nama_suami || d.couple || "-";
+                
+                // Deteksi Anak: Cek semua kemungkinan field (angka atau string)
+                const jumlahAnak = d.jumlah_anak || d.anak || d.total_anak || d.jml_anak || "0";
 
-                // Deteksi Info Keluarga
-                const namaPasangan = d.nama_pasangan || d.pasangan || d.nama_suami || d.nama_istri || d.suami_istri || "-";
-                const jumlahAnak = d.jumlah_anak || d.anak || d.total_anak || "0";
+                // Deteksi Gereja & Komsel
+                const gereja = d.lokasi_berjemaat || d.wilayah || d.jemaat || d.cabang || "-";
+                const komsel = d.komsel || d.kelompok || "-";
+                
+                // Deteksi Alamat & Kota
+                const alamatDomisili = d.alamat || d.alamat_domisili || d.tempat_tinggal || "-";
+                const kotaTinggal = d.kota || d.kabupaten || d.city || "-";
 
+                // Format Tanggal Lahir
                 let tglLahir = "-";
                 const rawDate = d.tanggal_lahir_murni || d.tanggal_lahir;
                 if (rawDate) {
@@ -167,7 +169,7 @@
                     <td class="nij-col">${d.nij || '-'}</td>
                     <td>
                         <strong>${nama.toUpperCase()}</strong><br>
-                        <small style="color:#888;">Darah: ${golonganDarah}</small>
+                        <small style="color:#888;">Darah: ${d.darah || '-'}</small>
                     </td>
                     <td>
                         <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> ${kotaTinggal}<br>
@@ -196,11 +198,9 @@
                     </td>
                 </tr>`;
             });
-            console.log("--- AKHIR DEBUG ---");
         });
     }
 
-    // Fungsi pendukung lainnya (updateActionMenu, toggleAll, filterTable, deleteUser) tetap sama...
     function updateActionMenu() {
         const count = document.querySelectorAll('.user-checkbox:checked').length;
         const menu = document.getElementById('actionMenu');
@@ -208,19 +208,23 @@
         const selectedLabel = document.getElementById('selectedCount');
         if(selectedLabel) selectedLabel.innerText = `${count} Terpilih`;
     }
+
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateActionMenu();
     }
+
     function filterTable() {
         const query = document.getElementById("searchInput").value.toLowerCase();
         document.querySelectorAll("#memberData tr").forEach(row => {
             row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
         });
     }
+
     function openEditModal(uid) { window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; }
+    
     function deleteUser(id) { 
-        if(confirm("Hapus data jemaat ini secara permanen?")) {
+        if(confirm("Hapus data jemaat ini?")) {
             db.collection("users").doc(id).delete(); 
         }
     }
