@@ -91,6 +91,7 @@
                     <th>Identitas Jemaat</th>
                     <th>TTL / Alamat</th> 
                     <th>Kontak</th>
+                     <th>Alamat Domisili</th>
                     <th>Info Keluarga</th>
                     <th>Gereja / Komsel</th>
                     <th>Jabatan</th>
@@ -130,17 +131,28 @@
             
             snapshot.forEach(doc => {
                 const d = doc.data();
-                const nama = d.nama_lengkap || d.nama || "Tanpa Nama";
                 
-                // Perbaikan: Menampilkan Lokasi Gereja (Abepura, dll)
-                const gereja = d.lokasi_berjemaat || d.jemaat || "-";
+                // 1. Perbaikan Identitas
+                const nama = d.nama_lengkap || d.nama || "Tanpa Nama";
+                const golonganDarah = d.darah || "-";
+                
+                // 2. Perbaikan Gereja & Komsel (Menangani field 'lokasi_berjemaat')
+                const gereja = d.lokasi_berjemaat || d.wilayah || d.jemaat || "-";
                 const komsel = d.komsel || "-";
+
+                // 3. Perbaikan Alamat & TTL
+                // Mengambil field 'alamat' sesuai data JSON yang Anda kirim
+                const alamatDomisili = d.alamat || d.alamat_domisili || "-";
+                const kotaTinggal = d.kota || d.kabupaten || "-";
 
                 let tglLahir = "-";
                 const rawDate = d.tanggal_lahir_murni || d.tanggal_lahir;
                 if (rawDate) {
-                    tglLahir = (typeof rawDate === 'object' && rawDate.toDate) ? 
-                                rawDate.toDate().toLocaleDateString('id-ID') : rawDate;
+                    if (typeof rawDate === 'object' && rawDate.toDate) {
+                        tglLahir = rawDate.toDate().toLocaleDateString('id-ID');
+                    } else {
+                        tglLahir = rawDate; // Jika formatnya string "1982-01-21"
+                    }
                 }
 
                 const status = d.status_akun || 'Pending';
@@ -150,17 +162,24 @@
                 <tr>
                     <td><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${d.nij || '-'}</td>
-                    <td><strong>${nama.toUpperCase()}</strong><br><small>Darah: ${d.darah || '-'}</small></td>
-                    <td>${d.kota || '-'}<br><small>${tglLahir}</small><br><small>${d.alamat || '-'}</small></td>
+                    <td>
+                        <strong>${nama.toUpperCase()}</strong><br>
+                        <small style="color:#888;">Darah: ${golonganDarah}</small>
+                    </td>
+                    <td>
+                        <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> ${kotaTinggal}<br>
+                        <small>${tglLahir}</small><br>
+                        <small style="color: var(--primary); font-weight: 500;">${alamatDomisili}</small>
+                    </td>
                     <td>${d.whatsapp || '-'}<br><small>${d.email || '-'}</small></td>
                     <td><small>P: ${d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || '0'}</small></td>
                     <td>
-                        <strong style="color: var(--primary);">${gereja}</strong><br>
+                        <strong style="color: var(--primary);"><i class="fas fa-church"></i> ${gereja.toUpperCase()}</strong><br>
                         <small>Komsel: ${komsel}</small>
                     </td>
                     <td>${d.jabatan || 'Anggota'}</td>
                     <td style="text-align:center;">
-                        ${(d.url_ktp || d.url_berkas) ? `<a href="${d.url_ktp || d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-id-card"></i></a>` : '-'}
+                        ${(d.url_ktp || d.url_berkas) ? `<a href="${d.url_ktp || d.url_berkas}" target="_blank" class="file-link"><i class="fas fa-id-card fa-lg"></i></a>` : '-'}
                     </td>
                     <td><span class="${statusClass}">${status}</span></td>
                     <td>
@@ -172,7 +191,7 @@
         });
     }
 
-    // Fungsi pendukung lainnya (updateActionMenu, filterTable, dll tetap sama)
+    // Fungsi pendukung lainnya (tetap sama)
     function updateActionMenu() {
         const count = document.querySelectorAll('.user-checkbox:checked').length;
         const menu = document.getElementById('actionMenu');
