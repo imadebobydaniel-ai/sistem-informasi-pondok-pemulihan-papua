@@ -2,331 +2,396 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com https://www.youtube.com https://s.ytimg.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval' blob:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Menu Utama - Pondok Pemulihan Papua</title>
-</head>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <script>
-        const isMember = localStorage.getItem("userEmail");
-        const isAdmin = localStorage.getItem("adminLoggedIn");
-        if (!isMember && isAdmin !== "true") {
-            window.location.href = "login.html"; 
-        }
-    </script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Media - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        :root { 
-            --biru-tua: #003366; 
-            --biru-safir: #0056b3; 
-            --biru-muda: #00e6e6; 
-            --hijau-zamrud: #2ecc71; 
-            --emas-lux: #D4AF37; 
-            --putih-bg: #f4f7fa; 
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1e3a8a;
+            --secondary: #6366f1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-body: #f8fafc;
+            --glass: rgba(255, 255, 255, 0.9);
         }
 
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--putih-bg); margin: 0; padding: 0; color: #333; overflow-x: hidden; }
-        @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
-        .top-info-bar { background: var(--biru-tua); display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; font-weight: bold; font-size: 11px; border-bottom: 2px solid var(--emas-lux); color: white; }
-        header { background: var(--biru-tua); border-bottom: 3px solid var(--hijau-zamrud); padding: 12px 0; overflow: hidden; white-space: nowrap; display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .running-content { display: inline-block; padding-left: 100%; animation: marqueeTop 30s linear infinite; font-weight: 900; font-size: 13px; color: white; text-transform: uppercase; }
-        .container { padding: 20px; max-width: 450px; margin: auto; text-align: center; }
-        .top-section-container { position: relative; width: 100%; max-width: 500px; margin: 0 auto 30px auto; height: 220px; overflow: hidden; border-radius: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
-        .profile-card { position: absolute; width: 100%; height: 100%; background: linear-gradient(145deg, #ffffff, #e6e6e6); border-radius: 25px; z-index: 5; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 4px solid var(--biru-safir); }
-        .profile-card.closed { transform: translateX(-100%); }
-        .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; opacity: 0.8; }
-        .ultah-active { position: relative; animation: gold-glow 2s infinite alternate; border: 4px solid var(--emas-lux) !important; }
-        @keyframes gold-glow { from { box-shadow: 0 0 5px #D4AF37; } to { box-shadow: 0 0 20px #FFD700, inset 0 0 10px #D4AF37; } }
-        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; perspective: 1000px; }
-        .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid transparent; }
-        .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .email-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; z-index: 20; display: flex; gap: 15px; }
-        .email-icon { font-size: 22px; color: var(--biru-tua); transition: 0.3s; position: relative; }
-        #email-badge { position: absolute; top: -8px; right: -8px; background: red; color: white; font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none; }
-        .popup-inbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; }
-        .inbox-content { background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; }
-        .modal-detail { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5000; justify-content: center; align-items: center; padding: 20px; }
-        .btn-logout { background: var(--biru-tua); color: #fff; padding: 14px 40px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block; margin-top: 30px; border: 2px solid var(--emas-lux); }
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background-color: var(--bg-body);
+            background-image: radial-gradient(circle at top right, #e0e7ff, transparent), radial-gradient(circle at bottom left, #f1f5f9, transparent);
+            margin: 0;
+            padding: 20px;
+            color: #1e293b;
+            min-height: 100vh;
+        }
 
-        .modal-card-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 10px; }
-        .digital-card-box { width: 280px; height: 460px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%); border-radius: 15px; position: relative; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); color: #fff; font-family: 'Arial', sans-serif; border: 1px solid rgba(255,255,255,0.4); display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .card-logo-top { width: 110px; height: 110px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
-        .card-header-title { font-size: 12px; font-weight: 800; color: #003366; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
-        .card-data-group { width: 100%; margin-bottom: 12px; }
-        .card-data-label { font-size: 8px; opacity: 0.9; text-transform: uppercase; color: #fdfdfd; margin-bottom: 2px; }
-        .card-data-value { font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); text-transform: uppercase; }
-        .card-qrcode-box { background: white; padding: 8px; border-radius: 8px; margin: 15px 0; display: inline-block; }
-        .card-nij-bottom { margin-top: auto; width: 100%; background: rgba(0,0,0,0.15); padding: 8px 0; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; letter-spacing: 2px; }
-        #media-display-area { width: 100%; height: 100%; }
+        .container { max-width: 1100px; margin: auto; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: #64748b;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-back:hover { color: var(--primary); transform: translateX(-5px); }
+
+        .card-modern {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .card-header-gradient {
+            background: linear-gradient(45deg, var(--primary-dark), var(--primary));
+            color: white;
+            padding: 18px 25px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-body { padding: 25px; }
+
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #475569; }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-sizing: border-box;
+            background: #fff;
+            transition: 0.3s;
+        }
+
+        .btn-submit {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .table-responsive { border-radius: 15px; overflow: hidden; background: white; border: 1px solid #f1f5f9; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; color: #64748b; padding: 15px; text-align: left; font-size: 13px; }
+        td { padding: 15px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+
+        .btn-action {
+            width: 32px; height: 32px; border-radius: 8px; border: none; 
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 0 2px;
+        }
+        .btn-play-sm { background: #eff6ff; color: var(--primary); }
+        .btn-up { background: #f0fdf4; color: #16a34a; }
+        .btn-down { background: #fff7ed; color: #ea580c; }
+        .btn-del-sm { background: #fef2f2; color: var(--danger); }
+
+        .status-dot { height: 8px; width: 8px; background-color: #cbd5e1; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-dot.active { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+
+        .playlist-controls {
+            display: flex; gap: 10px; align-items: center; background: #f1f5f9; padding: 15px; border-radius: 15px; margin-bottom: 20px;
+        }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .divider-modern { border: 0; height: 1px; background: linear-gradient(to right, transparent, #e2e8f0, transparent); margin: 25px 0; }
     </style>
-
+</head>
 <body>
 
-    <div id="modal-logout" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 4000; justify-content: center; align-items: center; padding: 20px;">
-        <div style="background: white; width: 100%; max-width: 320px; border-radius: 15px; text-align: center; padding: 20px;">
-            <i class="fa-solid fa-right-from-bracket" style="font-size: 40px; color: #dc3545; margin-bottom: 15px;"></i>
-            <h3 style="margin: 0;">Konfirmasi Keluar</h3>
-            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Apakah Anda yakin ingin keluar?</p>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="closeLogoutModal()" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; background: white;">Batal</button>
-                <button onclick="executeLogout()" style="flex: 1; padding: 12px; border-radius: 8px; border: none; background: #dc3545; color: white; font-weight: bold;">Keluar</button>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1 style="margin:0; font-size: 26px; font-weight: 800; background: linear-gradient(to right, #1e3a8a, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Portal Media</h1>
+            <p style="margin:5px 0 0; color:#64748b; font-size: 14px;"><i class="fa-solid fa-layer-group"></i> Smart CMS</p>
+        </div>
+        <a href="admin.html" class="btn-back"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    </div>
+
+    <div class="card-modern">
+        <div class="card-header-gradient" style="background: linear-gradient(45deg, #f59e0b, #fbbf24);">
+            <span><i class="fas fa-bullhorn"></i> Fitur Koleksi & Otomasi Running Text</span>
+        </div>
+        <div class="card-body">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 300px;">
+                    <label>Input Teks Baru & Koleksi</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="rt_input" placeholder="Tulis pengumuman baru...">
+                        <input type="number" id="rt_durasi" placeholder="Detik" style="max-width: 90px;" value="15">
+                        <button onclick="saveRunningTextToCollection()" class="btn-submit" style="width: auto;">
+                            <i class="fas fa-plus"></i> Simpan
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <hr class="divider-modern">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">Status</th>
+                            <th>Isi Pesan</th>
+                            <th style="width: 80px;">Durasi</th>
+                            <th style="width: 100px; text-align: center;">Kontrol</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rt_history_list"></tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <div id="popup-inbox" class="popup-inbox">
-        <div class="inbox-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--emas-lux); padding-bottom: 10px; margin-bottom: 10px;">
-                <h3 style="margin:0; color:var(--biru-tua);"><i class="fas fa-envelope-open"></i> Inbox JC</h3>
-                <i class="fas fa-times" onclick="tutupInbox()" style="cursor:pointer; font-size:20px; color:red;"></i>
-            </div>
-            <div id="list-pesan"></div>
+    <div class="card-modern">
+        <div class="card-header-gradient">
+            <span><i class="fa-solid fa-circle-plus"></i> Tambah Konten Monitor Utama</span>
         </div>
-    </div>
-
-    <div id="modalKartuDigital" class="modal-card-overlay">
-        <div style="position: relative;">
-            <div onclick="tutupKartuDigital()" style="position:absolute; top:-35px; right:0; color:white; cursor:pointer; font-weight:bold;"><i class="fas fa-times"></i> Tutup</div>
-            <div class="digital-card-box">
-                <img src="logo_pondok.png" class="card-logo-top" onerror="this.src='https://via.placeholder.com/110'">
-                <div class="card-header-title">Kartu Digital Jemaat</div>
-                <div class="card-data-group">
-                    <div class="card-data-label">Nama Lengkap</div>
-                    <div class="card-data-value" id="dnama">Memuat...</div>
+        <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label>Judul Konten</label>
+                    <input type="text" id="judul" placeholder="Contoh: Ibadah Minggu">
                 </div>
-                <div class="card-qrcode-box" id="qrbox"></div>
-                <div style="display: flex; width: 100%; justify-content: space-around; margin-top: 5px;">
-                    <div>
-                        <div class="card-data-label">Jemaat</div>
-                        <div class="card-data-value" style="font-size: 11px;" id="djemaat">-</div>
-                    </div>
-                    <div>
-                        <div class="card-data-label">Komsel</div>
-                        <div class="card-data-value" style="font-size: 11px;" id="dkomsel">-</div>
-                    </div>
+                <div>
+                    <label>Tipe Media</label>
+                    <select id="tipe_media" onchange="toggleInputFields()">
+                        <option value="gambar">Gambar (Poster/Foto)</option>
+                        <option value="video_youtube">Video (YouTube)</option>
+                        <option value="video_player">Video MP4 (Direct)</option>
+                        <option value="audio_player">Audio (MP3)</option>
+                        <option value="teks">Text World (Artikel)</option>
+                    </select>
                 </div>
-                <div class="card-nij-bottom" id="dnij">0000 0000 0000</div>
             </div>
-        </div>
-    </div>
-
-    <div class="top-info-bar">
-        <div id="display-tanggal"></div>
-        <div id="digital-clock"></div>
-    </div>
-
-    <header>
-        <div id="running-text" class="running-content">Selamat Datang di Portal Pondok Pemulihan Papua</div>
-    </header>
-
-    <div class="container">
-        <h3 style="text-transform: uppercase; color: var(--biru-tua); margin-bottom: 20px;">Portal Jemaat Pondok Pemulihan Papua</h3>
-
-        <div class="top-section-container">
-            <div id="profileCard" class="profile-card">
-                <div class="email-btn">
-                    <i class="fas fa-id-card email-icon" onclick="bukaKartuDigital()" style="color: var(--emas-lux); font-size: 24px;"></i>
-                    <div style="position: relative;" onclick="bukaInbox()">
-                        <i class="fas fa-envelope email-icon" id="icon-mail"></i>
-                        <span id="email-badge">0</span>
-                    </div>
-                </div>
-                <div id="photo-frame" style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--emas-lux); background: white; display: flex; align-items: center; justify-content: center; position: relative;">
-                    <i class="fa-solid fa-circle-user" id="default-icon" style="font-size: 70px; color: var(--biru-safir);"></i>
-                    <img id="user-photo" src="" style="display: none; width:100%; height:100%; object-fit:cover;">
-                </div>
-                <h2 id="disp_nama" style="margin: 5px 0 0 0; font-size: 18px;">Memuat...</h2>
-                <div id="admin-badge" style="display:none; font-size: 10px; color: var(--emas-lux); font-weight: bold; margin-top: 3px;">ADMIN ACCESS</div>
-                <div id="disp_email" style="font-size: 11px; color: #666;">...</div>
-                <p id="disp_komsel" style="color: var(--hijau-zamrud); font-weight: bold; font-size: 12px;">KOMSEL JC</p>
+            <div id="input_url_container" style="margin-bottom: 20px;">
+                <label>Link / URL Media</label>
+                <input type="text" id="url_media" placeholder="https://...">
             </div>
-
-            <button id="toggleProfile" class="btn-toggle-side">
-                <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
+            <div id="input_teks_container" style="display:none; margin-bottom: 20px;">
+                <label>Isi Artikel Lengkap</label>
+                <textarea id="isi_artikel" rows="4"></textarea>
+            </div>
+            <button onclick="uploadKePortal()" id="btnPublish" class="btn-submit" style="width: 100%;">
+                <i class="fa-solid fa-paper-plane"></i> Publikasikan Konten
             </button>
-
-            <div id="media-display-area">
-                <div id="player"></div> 
-            </div>
-            <canvas id="birthday-canvas"></canvas>
         </div>
-
-        <div class="menu-grid">
-            <a href="profil.html" class="menu-box"><i class="fa-solid fa-user-shield"></i>Profil Saya</a>
-            <a href="kehadiran.html" class="menu-box"><i class="fa-solid fa-calendar-check"></i>Kehadiran</a>
-            <a href="baca-alkitab.html" class="menu-box"><i class="fa-solid fa-book-bible"></i>Laporan Baca</a>
-            <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>Statistik</a>
-            <a href="rapor.html" class="menu-box"><i class="fa-solid fa-file-invoice"></i>Rapor Anda</a>
-            <a href="agenda.html" class="menu-box"><i class="fa-solid fa-calendar-days"></i>Agenda Tahunan</a>
-            <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>Peringkat</a>
-            <a href="laporan-pelayanan.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>Laporan Pelayanan</a>
-            <a href="games.html" class="menu-box"><i class="fa-solid fa-lightbulb"></i>Who Is Smartest</a>
-            <a href="pope-shelter.html" class="menu-box"><i class="fa-solid fa-dove"></i>Pope Shelter</a>
-            <a href="javascript:location.reload()" class="menu-box" style="color: #28a745;"><i class="fa-solid fa-arrows-rotate"></i>Refresh</a>
-            <a href="halo-pope.html" class="menu-box"><i class="fa-solid fa-laptop-code"></i>Halo Pope</a>
-        </div>
-
-        <a href="javascript:void(0)" onclick="confirmLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Keluar</a>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
+    <div class="card-modern">
+        <div class="card-header-gradient" style="background: #1e293b;">
+            <span><i class="fas fa-list-ul"></i> Playlist Konten Aktif</span>
+            <div style="font-size: 12px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px;">
+                Mode: <span id="currentModeDisplay">LOOPING</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="playlist-controls">
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; color: #64748b;">MODE PEMUTARAN</label>
+                    <select id="play_mode" onchange="updatePlayMode()" style="padding: 8px;">
+                        <option value="looping">Play Looping (Berurutan)</option>
+                        <option value="shuffle">Play Shuffle (Acak)</option>
+                        <option value="custom">Play Custom (Pilihan)</option>
+                    </select>
+                </div>
+                <button onclick="deleteSelected()" class="btn-submit" style="background: var(--danger); padding: 10px 15px; font-size: 13px;">
+                    <i class="fas fa-trash"></i> Hapus Terpilih
+                </button>
+            </div>
 
-    <script>
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-            authDomain: "boby-apps-project.firebaseapp.com", 
-            projectId: "boby-apps-project", 
-            storageBucket: "boby-apps-project.appspot.com", 
-            messagingSenderId: "125984859692", 
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
-        };
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="checkAll" onclick="toggleSelectAll()"></th>
+                            <th style="width: 60px; text-align: center;">No</th>
+                            <th>Judul Konten</th>
+                            <th>Tipe</th>
+                            <th style="text-align: center; width: 180px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mediaList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const userEmail = localStorage.getItem("userEmail");
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-        // --- DEBUG & PLAYER LOGIC ---
-        let player;
-        console.log("DEBUG: Script dimuat, menunggu YouTube API Ready...");
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
 
-        function onYouTubeIframeAPIReady() {
-            console.log("DEBUG: YouTube API Ready terdeteksi.");
-            
-            // Gunakan setTimeout agar inisialisasi tidak memblokir fungsi utama (mencegah freeze)
-            setTimeout(() => {
-                db.collection("settings").doc("video_promo").get().then(doc => {
-                    let videoId = "M7lc1UVf-VE"; // Default Video
-                    if(doc.exists && doc.data().url) {
-                        const url = doc.data().url;
-                        console.log("DEBUG: URL Video ditemukan di Firebase:", url);
-                        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                        const match = url.match(regExp);
-                        if (match && match[2].length == 11) videoId = match[2];
-                    }
-                    
-                    try {
-                        player = new YT.Player('player', {
-                            height: '100%',
-                            width: '100%',
-                            videoId: videoId,
-                            host: 'https://www.youtube.com',
-                            playerVars: { 
-                                'autoplay': 1, 
-                                'mute': 1, 
-                                'loop': 1, 
-                                'playlist': videoId,
-                                'origin': window.location.origin 
-                            },
-                            events: { 
-                                'onReady': (event) => {
-                                    console.log("DEBUG: Player Siap (onReady).");
-                                    event.target.playVideo();
-                                },
-                                'onError': (error) => {
-                                    console.error("DEBUG: Terjadi Error pada Player:", error.data);
-                                }
-                            }
-                        });
-                    } catch (e) {
-                        console.error("DEBUG: Gagal inisialisasi Player objek:", e);
-                    }
-                }).catch(err => {
-                    console.error("DEBUG: Gagal mengambil data dari Firebase:", err);
-                });
-            }, 500);
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.firestore();
+    let runningItems = [];
+    let playlistData = [];
+
+    // --- FUNGSI EKSTRAK ID YOUTUBE (MODERN) ---
+    function extractVideoID(url) {
+        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        if (match && match[2].length === 11) {
+            const videoId = match[2];
+            // Menambahkan parameter yang dibutuhkan oleh API YouTube agar tidak Error 150
+            return `${videoId}?enablejsapi=1&origin=${window.location.origin}&rel=0&autoplay=1&mute=1`;
+        }
+        return url;
+    }
+
+    // --- LOGIKA RUNNING TEXT ---
+    async function saveRunningTextToCollection() {
+        const text = document.getElementById('rt_input').value;
+        const durasi = document.getElementById('rt_durasi').value;
+        if(!text) return alert("Teks kosong!");
+        await db.collection("rt_collection").add({
+            text: text, durasi: parseInt(durasi),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            isActive: false
+        });
+        document.getElementById('rt_input').value = "";
+    }
+
+    function loadRTCollection() {
+        db.collection("rt_collection").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            const list = document.getElementById('rt_history_list');
+            list.innerHTML = ""; runningItems = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                runningItems.push({ id: doc.id, ...data });
+                list.innerHTML += `
+                    <tr>
+                        <td><span class="status-dot ${data.isActive ? 'active' : ''}"></span> ${data.isActive ? 'Active' : 'Queue'}</td>
+                        <td>${data.text}</td>
+                        <td>${data.durasi}s</td>
+                        <td style="text-align:center;">
+                            <button onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
+                            <button onclick="deleteRT('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        });
+    }
+
+    async function playRTManual(id) {
+        const batch = db.batch();
+        runningItems.forEach(item => batch.update(db.collection("rt_collection").doc(item.id), { isActive: false }));
+        batch.update(db.collection("rt_collection").doc(id), { isActive: true });
+        const selected = runningItems.find(i => i.id === id);
+        batch.set(db.collection("config").doc("running_text"), { pesan: selected.text }, { merge: true });
+        await batch.commit();
+    }
+
+    async function deleteRT(id) { if(confirm("Hapus teks?")) await db.collection("rt_collection").doc(id).delete(); }
+
+    // --- LOGIKA MEDIA & PLAYLIST ---
+    function toggleInputFields() {
+        const tipe = document.getElementById('tipe_media').value;
+        document.getElementById('input_url_container').style.display = tipe === 'teks' ? "none" : "block";
+        document.getElementById('input_teks_container').style.display = tipe === 'teks' ? "block" : "none";
+    }
+
+    async function uploadKePortal() {
+        const judul = document.getElementById('judul').value;
+        const tipe = document.getElementById('tipe_media').value;
+        let url = document.getElementById('url_media').value || "";
+
+        if(!judul) return alert("Judul wajib diisi!");
+
+        if(tipe === 'video_youtube' && url !== "") {
+            url = extractVideoID(url);
         }
 
-        function bukaKartuDigital() {
-            try {
-                db.collection("users").where("email", "==", userEmail).get().then(s => {
-                    if(!s.empty) {
-                        const d = s.docs[0].data();
-                        document.getElementById('dnama').innerText = d.nama || "User";
-                        document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
-                        document.getElementById('dkomsel').innerText = d.komsel || "-";
-                        document.getElementById('dnij').innerText = d.nij || "0000 0000";
-                        
-                        const qrBox = document.getElementById("qrbox");
-                        qrBox.innerHTML = "";
-                        
-                        const loc = window.location.href;
-                        const profileLink = loc.substring(0, loc.lastIndexOf("/")) + "/profil.html";
+        await db.collection("portal_media").add({
+            judul: judul,
+            tipe: tipe,
+            url: url,
+            isi_artikel: document.getElementById('isi_artikel').value || "",
+            urutan: Date.now(),
+            durasi: 10,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("Konten Terbit!");
+        location.reload();
+    }
 
-                        if (typeof QRCode !== 'undefined') {
-                            new QRCode(qrBox, { 
-                                text: profileLink, 
-                                width: 140, 
-                                height: 140,
-                                correctLevel : QRCode.CorrectLevel.H
-                            });
-                        }
-                        document.getElementById('modalKartuDigital').style.display = 'flex';
-                    }
-                }).catch(err => console.error("Firebase Error:", err));
-            } catch (e) { console.error("Critical Error:", e); }
+    function loadMedia() {
+        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
+            const list = document.getElementById('mediaList');
+            list.innerHTML = ""; playlistData = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                playlistData.push({ id: doc.id, ...data });
+                list.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="item-checkbox" value="${doc.id}"></td>
+                        <td style="text-align:center;">${playlistData.length}</td>
+                        <td style="font-weight:600;">${data.judul}</td>
+                        <td><span style="font-size:11px; background:#e0e7ff; color:#4338ca; padding:4px 8px; border-radius:10px;">${data.tipe}</span></td>
+                        <td style="text-align:center;">
+                            <button onclick="moveItem('${doc.id}', -1)" class="btn-action btn-up"><i class="fas fa-chevron-up"></i></button>
+                            <button onclick="moveItem('${doc.id}', 1)" class="btn-action btn-down"><i class="fas fa-chevron-down"></i></button>
+                            <button onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-desktop"></i></button>
+                            <button onclick="deleteMedia('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        });
+    }
+
+    async function moveItem(id, direction) {
+        const index = playlistData.findIndex(item => item.id === id);
+        const newIndex = index + direction;
+        if (newIndex >= 0 && newIndex < playlistData.length) {
+            const batch = db.batch();
+            batch.update(db.collection("portal_media").doc(playlistData[index].id), { urutan: playlistData[newIndex].urutan });
+            batch.update(db.collection("portal_media").doc(playlistData[newIndex].id), { urutan: playlistData[index].urutan });
+            await batch.commit();
         }
+    }
 
-        function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
-        function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.replace("index.html"); }); }
-        
-        function syncUser() {
-            if (userEmail) {
-                db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
-                    if (!s.empty) {
-                        const d = s.docs[0].data();
-                        document.getElementById('disp_nama').innerText = d.nama || "User";
-                        document.getElementById('disp_email').innerText = userEmail;
-                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                        if (d.foto_profil) { 
-                            document.getElementById('user-photo').src = d.foto_profil; 
-                            document.getElementById('user-photo').style.display = "block";
-                            document.getElementById('default-icon').style.display = "none"; 
-                        }
-                        if(typeof isAdmin !== 'undefined' && isAdmin === "true") document.getElementById('admin-badge').style.display = "block";
-                    }
-                });
-            }
-        }
-
-        function updateTime() {
-            const now = new Date();
-            const elTgl = document.getElementById('display-tanggal');
-            const elClock = document.getElementById('digital-clock');
-            if(elTgl) elTgl.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            if(elClock) elClock.innerText = now.toLocaleTimeString('id-ID') + " WIT";
-        }
-
-        window.onload = () => { 
-            updateTime(); 
-            setInterval(updateTime, 1000); 
-            syncUser(); 
-
-            const btnToggle = document.getElementById('toggleProfile');
-            const profileCard = document.getElementById('profileCard');
-            const toggleIcon = document.getElementById('toggleIcon');
-
-            if(btnToggle && profileCard) {
-                btnToggle.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    profileCard.classList.toggle('closed');
-                    if(toggleIcon) {
-                        toggleIcon.className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
-                    }
-                });
-            }
-        };
-
-        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
-        function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
-        function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
-        function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-    </script>
-</body>
-</html>
+    async function playSekarang(id) {
+        await db.collection("config").doc("playlist").update({ activeContentId: id, triggerChange: Date.now() });
