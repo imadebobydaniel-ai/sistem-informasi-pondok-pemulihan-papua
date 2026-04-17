@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
         :root { 
@@ -28,7 +29,6 @@
 
         #actionMenu { display: none; gap: 10px; margin-bottom: 15px; padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 10px; align-items: center; }
 
-        /* --- PERBAIKAN SEARCH BOX --- */
         .table-controls { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
         
         .search-container { position: relative; flex: 1; min-width: 300px; display: flex; align-items: center; }
@@ -49,6 +49,28 @@
         .badge-pending { background: #ffefc1; color: #856404; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
         
         .btn-action { padding: 8px; border: none; border-radius: 6px; color: white; cursor: pointer; margin-right: 5px; }
+
+        /* --- CSS KARTU DIGITAL POPUP --- */
+        .modal-card-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .digital-card-box {
+            width: 380px; height: 230px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%);
+            border-radius: 15px; position: relative; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            color: #fff; font-family: 'Arial', sans-serif; border: 1px solid rgba(255,255,255,0.4); overflow: hidden;
+        }
+        .card-logo-right { position: absolute; top: 15px; right: 15px; width: 55px; height: 55px; object-fit: contain; }
+        .card-header-title { font-size: 13px; font-weight: 800; color: #003366; margin-bottom: 20px; text-transform: uppercase; }
+        .card-data-row { margin-bottom: 8px; }
+        .card-data-label { font-size: 8px; opacity: 0.9; text-transform: uppercase; color: #fdfdfd; }
+        .card-data-value { font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); text-transform: uppercase; }
+        .card-nij-atm {
+            position: absolute; bottom: 25px; left: 20px; font-family: 'Courier New', Courier, monospace;
+            font-size: 22px; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 3px rgba(0,0,0,0.6);
+        }
+        .card-qrcode-box { position: absolute; bottom: 15px; right: 20px; background: white; padding: 4px; border-radius: 5px; }
+        .btn-close-card { position: absolute; top: -40px; right: 0; color: white; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -59,7 +81,12 @@
             <h2 style="color:var(--primary); margin:0;">Dashboard Administrator</h2>
             <small style="color: #666;">Manajemen Data Jemaat Real-time</small>
         </div>
-        <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> KELUAR SISTEM</a>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div onclick="bukaKartuDigitalDinamis()" style="cursor:pointer; color: var(--emas); font-size: 24px;" title="Cek Kartu Digital">
+                <i class="fas fa-id-card"></i>
+            </div>
+            <a href="login.html" class="btn-logout"><i class="fas fa-sign-out-alt"></i> KELUAR SISTEM</a>
+        </div>
     </div>
 
     <div class="stats-grid">
@@ -115,11 +142,37 @@
     </div>
 </div>
 
+<div id="modalKartuDigital" class="modal-card-overlay">
+    <div style="position: relative;">
+        <div class="btn-close-card" onclick="tutupKartuDigital()"><i class="fas fa-times"></i> Tutup</div>
+        <div class="digital-card-box">
+            <img src="logo_pondok.png" class="card-logo-right" onerror="this.src='https://via.placeholder.com/60'">
+            <div class="card-header-title">Kartu Digital Jemaat</div>
+            <div class="card-data-row">
+                <div class="card-data-label">Nama Lengkap</div>
+                <div class="card-data-value" id="dnama">Memuat...</div>
+            </div>
+            <div style="display: flex; gap: 40px;">
+                <div class="card-data-row">
+                    <div class="card-data-label">Jemaat</div>
+                    <div class="card-data-value" id="djemaat">-</div>
+                </div>
+                <div class="card-data-row">
+                    <div class="card-data-label">Komsel</div>
+                    <div class="card-data-value" id="dkomsel">-</div>
+                </div>
+            </div>
+            <div class="card-nij-atm" id="dnij">0000 0000 0000</div>
+            <div class="card-qrcode-box" id="qrbox"></div>
+        </div>
+    </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -139,147 +192,80 @@
             if(!tableBody) return;
             tableBody.innerHTML = "";
             
-            const allUsers = [];
             snapshot.forEach(doc => {
-                allUsers.push({ id: doc.id, ...doc.data() });
-            });
-
-            allUsers.forEach(d => {
+                const d = doc.data();
+                const id = doc.id;
                 const namaUser = (d.nama_lengkap || d.nama || "Tanpa Nama").toUpperCase();
-                
-                let pasangan = d.nama_pasangan || d.pasangan || d.istri || d.suami || d.nama_istri || d.nama_suami;
-                
-                if (!pasangan || pasangan === "-") {
-                    const match = allUsers.find(u => 
-                        (u.nama_pasangan === d.nama_lengkap || u.pasangan === d.nama_lengkap || u.nama_pasangan === d.nama) && 
-                        (d.nama_lengkap || d.nama)
-                    );
-                    pasangan = match ? (match.nama_lengkap || match.nama) : "-";
-                }
-
-                const anak = d.jumlah_anak || d.anak || d.total_anak || "0";
-                const gereja = (d.lokasi_berjemaat || d.wilayah || d.jemaat || "-").toUpperCase();
-                const alamat = d.alamat || d.alamat_domisili || "-";
+                const gereja = (d.lokasi_berjemaat || d.jemaat || "-").toUpperCase();
+                const statusClass = d.status_akun === 'Aktif' ? 'badge-aktif' : 'badge-pending';
                 
                 let tglLahir = "-";
-                const rawDate = d.tanggal_lahir_murni || d.tanggal_lahir;
+                const rawDate = d.tanggal_lahir;
                 if (rawDate) {
-                    if (typeof rawDate === 'object' && rawDate.toDate) {
-                        tglLahir = rawDate.toDate().toLocaleDateString('id-ID');
-                    } else { tglLahir = rawDate; }
+                    tglLahir = (typeof rawDate === 'object' && rawDate.toDate) ? rawDate.toDate().toLocaleDateString('id-ID') : rawDate;
                 }
-
-                const statusClass = d.status_akun === 'Aktif' ? 'badge-aktif' : 'badge-pending';
 
                 tableBody.innerHTML += `
                 <tr>
-                    <td><input type="checkbox" class="user-checkbox" value="${d.id}" onclick="updateActionMenu()"></td>
+                    <td><input type="checkbox" class="user-checkbox" value="${id}" onclick="updateActionMenu()"></td>
                     <td class="nij-col">${d.nij || '-'}</td>
-                    <td><strong>${namaUser}</strong><br><small>Darah: ${d.darah || '-'}</small></td>
-                    <td><i class="fas fa-map-marker-alt"></i> ${d.kota || '-'}<br><small>${tglLahir}</small></td>
-                    <td>${d.whatsapp || '-'}<br><small>${d.email || '-'}</small></td>
-                    <td><small style="font-size:11px;">${alamat}</small></td>
-                    <td>
-                        <div style="line-height: 1.4; min-width:120px;">
-                            <span style="color:#e74c3c"><i class="fas fa-heart"></i> P: ${pasangan}</span><br>
-                            <span style="color:#3498db"><i class="fas fa-child"></i> A: ${anak}</span>
-                        </div>
-                    </td>
-                    <td><strong><i class="fas fa-church"></i> ${gereja}</strong><br><small>Komsel: ${d.komsel || '-'}</small></td>
+                    <td><strong>${namaUser}</strong></td>
+                    <td>${d.kota || '-'}<br><small>${tglLahir}</small></td>
+                    <td>${d.whatsapp || '-'}</td>
+                    <td><small>${d.alamat || '-'}</small></td>
+                    <td><small>P: ${d.nama_pasangan || '-'}<br>A: ${d.jumlah_anak || '0'}</small></td>
+                    <td><strong>${gereja}</strong><br><small>${d.komsel || '-'}</small></td>
                     <td>${d.jabatan || 'Anggota'}</td>
                     <td style="text-align:center;">
-                        ${(d.url_ktp || d.url_berkas) ? `<a href="${d.url_ktp || d.url_berkas}" target="_blank"><i class="fas fa-id-card fa-lg"></i></a>` : '-'}
+                        ${(d.url_ktp) ? `<a href="${d.url_ktp}" target="_blank"><i class="fas fa-id-card"></i></a>` : '-'}
                     </td>
                     <td><span class="${statusClass}">${d.status_akun || 'Pending'}</span></td>
                     <td>
-                        <button onclick="openEditModal('${d.id}')" class="btn-action" style="background:var(--accent)"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteUser('${d.id}')" class="btn-action" style="background:var(--danger)"><i class="fas fa-trash"></i></button>
+                        <button onclick="lihatKartuIndividu('${id}')" class="btn-action" style="background:var(--emas); color:#333"><i class="fas fa-eye"></i></button>
+                        <button onclick="openEditModal('${id}')" class="btn-action" style="background:var(--accent)"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${id}')" class="btn-action" style="background:var(--danger)"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>`;
             });
         });
     }
 
-    // FUNGSI BARU UNTUK CETAK KARTU (DENGAN PERBAIKAN URL)
-    function generateMemberCards() {
-        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
-        if (checkboxes.length === 0) {
-            alert("Pilih jemaat terlebih dahulu!");
-            return;
+    /* LOGIK KARTU DIGITAL */
+    async function lihatKartuIndividu(uid) {
+        const res = await db.collection("users").doc(uid).get();
+        if(res.exists) {
+            const d = res.data();
+            document.getElementById('dnama').innerText = d.nama_lengkap || d.nama || "-";
+            document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
+            document.getElementById('dkomsel').innerText = d.komsel || "-";
+            document.getElementById('dnij').innerText = d.nij || "0000 0000";
+            
+            const qrBox = document.getElementById("qrbox");
+            qrBox.innerHTML = "";
+            new QRCode(qrBox, {
+                text: window.location.origin + "/profil.html?id=" + (d.nij || uid),
+                width: 60, height: 60, colorDark : "#003366"
+            });
+            document.getElementById('modalKartuDigital').style.display = 'flex';
         }
-
-        const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-        
-        // Mengarah ke cetak-kartu.html sesuai file yang ada di repo Anda
-        const url = `cetak-kartu.html?ids=${selectedIds.join(',')}`;
-        
-        // Membuka di tab baru agar dashboard tetap terbuka
-        window.open(url, '_blank');
     }
 
-    async function extractToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4'); 
+    function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
+
+    // Fungsi placeholder jika klik icon kartu di header tanpa pilih user (melihat kartu admin sendiri atau info)
+    function bukaKartuDigitalDinamis() { alert("Silakan klik icon Mata (Kuning) di baris tabel untuk melihat Kartu Digital jemaat tersebut."); }
+
+    function generateMemberCards() {
         const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        if (checkboxes.length === 0) { alert("Pilih jemaat terlebih dahulu!"); return; }
         const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-
-        if (selectedIds.length === 0) {
-            alert("Silakan pilih minimal satu jemaat untuk di-extract!");
-            return;
-        }
-
-        const head = [['NIJ', 'Nama Jemaat', 'TTL', 'Kontak', 'Alamat', 'Gereja / Komsel', 'Jabatan']];
-        const body = [];
-
-        for (let id of selectedIds) {
-            const res = await db.collection("users").doc(id).get();
-            if (res.exists) {
-                const d = res.data();
-                const rawDate = d.tanggal_lahir_murni || d.tanggal_lahir;
-                let tglLahir = "-";
-                if (rawDate && rawDate.toDate) tglLahir = rawDate.toDate().toLocaleDateString('id-ID');
-                else if (rawDate) tglLahir = rawDate;
-
-                body.push([
-                    d.nij || '-',
-                    (d.nama_lengkap || d.nama || "Tanpa Nama").toUpperCase(),
-                    `${d.kota || '-'}\n${tglLahir}`,
-                    `${d.whatsapp || '-'}\n${d.email || '-'}`,
-                    d.alamat || d.alamat_domisili || "-",
-                    `${(d.lokasi_berjemaat || '-').toUpperCase()}\nKomsel: ${d.komsel || '-'}`,
-                    d.jabatan || 'Anggota'
-                ]);
-            }
-        }
-
-        doc.setFontSize(16);
-        doc.text("DATA JEMAAT - PONDOK PEMULIHAN PAPUA", 14, 15);
-        doc.setFontSize(10);
-        doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 22);
-
-        doc.autoTable({
-            head: head,
-            body: body,
-            startY: 28,
-            theme: 'grid',
-            headStyles: { fillColor: [0, 51, 102] }, 
-            styles: { fontSize: 8, cellPadding: 3 },
-            columnStyles: {
-                0: { cellWidth: 30 }, 
-                1: { cellWidth: 40 }, 
-                4: { cellWidth: 50 }  
-            }
-        });
-
-        doc.save(`Data_Jemaat_Extract_${Date.now()}.pdf`);
+        window.open(`cetak-kartu.html?ids=${selectedIds.join(',')}`, '_blank');
     }
 
     function updateActionMenu() {
         const count = document.querySelectorAll('.user-checkbox:checked').length;
-        const menu = document.getElementById('actionMenu');
-        if(menu) menu.style.display = count > 0 ? 'flex' : 'none';
-        const label = document.getElementById('selectedCount');
-        if(label) label.innerText = `${count} Terpilih`;
+        document.getElementById('actionMenu').style.display = count > 0 ? 'flex' : 'none';
+        document.getElementById('selectedCount').innerText = `${count} Terpilih`;
     }
 
     function toggleAll(source) {
