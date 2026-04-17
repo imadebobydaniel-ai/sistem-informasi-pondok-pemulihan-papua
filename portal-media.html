@@ -266,13 +266,17 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    if (!firebase.apps.length) { 
+        firebase.initializeApp(firebaseConfig); 
+        console.log("✅ Firebase Initialized");
+    }
     const db = firebase.firestore();
     let runningItems = [];
     let playlistData = [];
 
     // --- 1. LOGIKA RUNNING TEXT ---
     async function saveRunningTextToCollection() {
+        console.log("📝 Mencoba menyimpan Running Text...");
         const text = document.getElementById('rt_input').value;
         const durasi = document.getElementById('rt_durasi').value;
         if(!text) return alert("Teks kosong!");
@@ -284,12 +288,14 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 isActive: false
             });
+            console.log("✅ RT tersimpan ke Firestore");
             document.getElementById('rt_input').value = "";
-        } catch (e) { console.error("Error RT:", e); }
+        } catch (e) { console.error("❌ Error RT Add:", e); }
     }
 
     function loadRTCollection() {
         db.collection("rt_collection").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+            console.log(`📡 Snapshot RT diterima (${snapshot.size} item)`);
             const list = document.getElementById('rt_history_list');
             if(!list) return;
             list.innerHTML = ""; runningItems = [];
@@ -302,20 +308,27 @@
                         <td>${data.text}</td>
                         <td>${data.durasi}s</td>
                         <td style="text-align:center;">
-                            <button onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
+                            <button id="btn-rt-${doc.id}" onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
                             <button onclick="deleteRT('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
             });
-        }, error => console.error("Snapshot Error RT:", error));
+        }, error => console.error("❌ Snapshot Error RT:", error));
     }
 
     async function playRTManual(id) {
+        console.log(`🔘 Tombol Play RT diklik. ID: ${id}`);
+        const btn = document.getElementById(`btn-rt-${id}`);
+        if(btn) btn.style.opacity = "0.5"; // Feedback visual
+
         try {
             const batch = db.batch();
             const selected = runningItems.find(i => i.id === id);
             
-            if(!selected) return;
+            if(!selected) {
+                console.warn("⚠️ Data RT tidak ditemukan di local array");
+                return;
+            }
 
             runningItems.forEach(item => {
                 batch.update(db.collection("rt_collection").doc(item.id), { isActive: false });
@@ -323,7 +336,6 @@
             
             batch.update(db.collection("rt_collection").doc(id), { isActive: true });
             
-            // Gunakan .set dengan merge:true agar tidak freeze jika dokumen belum ada
             batch.set(db.collection("config").doc("running_text"), { 
                 pesan: selected.text,
                 durasi: selected.durasi,
@@ -331,31 +343,29 @@
             }, { merge: true });
 
             await batch.commit();
+            console.log("🚀 Batch Commit Berhasil: RT Aktif di Monitor");
         } catch (e) {
-            console.error("Play RT Error:", e);
-            alert("Gagal memutar Running Text. Cek koneksi.");
+            console.error("❌ Play RT Error:", e);
+            alert("Gagal memutar. Cek Console.");
+        } finally {
+            if(btn) btn.style.opacity = "1";
         }
     }
 
-    async function deleteRT(id) { if(confirm("Hapus teks?")) await db.collection("rt_collection").doc(id).delete(); }
-
     // --- 2. LOGIKA MEDIA ---
     function extractVideoID(url) {
+        console.log("🔗 Parsing URL YouTube...");
         const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
         if (match && match[2].length === 11) {
             const videoId = match[2];
             const currentOrigin = window.location.origin;
-            // Penambahan origin untuk fix 'postMessage' error pada YouTube API
-            return `${videoId}?enablejsapi=1&origin=${encodeURIComponent(currentOrigin)}&rel=0&autoplay=1&mute=1`;
+            const finalUrl = `${videoId}?enablejsapi=1&origin=${encodeURIComponent(currentOrigin)}&rel=0&autoplay=1&mute=1`;
+            console.log("✅ Video ID extracted:", videoId);
+            return finalUrl;
         }
+        console.warn("⚠️ URL tidak valid atau bukan format standar YouTube");
         return url;
-    }
-
-    function toggleInputFields() {
-        const tipe = document.getElementById('tipe_media').value;
-        document.getElementById('input_url_container').style.display = tipe === 'teks' ? "none" : "block";
-        document.getElementById('input_teks_container').style.display = tipe === 'teks' ? "block" : "none";
     }
 
     async function uploadKePortal() {
@@ -363,7 +373,8 @@
         const tipe = document.getElementById('tipe_media').value;
         let url = document.getElementById('url_media').value || "";
 
-        if(!judul) return alert("Judul wajib diisi!");
+        console.log(`📤 Mengunggah ${tipe}: ${judul}`);
+
         if(tipe === 'video_youtube' && url !== "") url = extractVideoID(url);
 
         try {
@@ -376,14 +387,14 @@
                 durasi: 10,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+            console.log("✅ Media terbit!");
             alert("Konten Berhasil Terbit!");
-            document.getElementById('judul').value = "";
-            document.getElementById('url_media').value = "";
-        } catch (e) { console.error("Upload Error:", e); }
+        } catch (e) { console.error("❌ Upload Error:", e); }
     }
 
     function loadMedia() {
         db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
+            console.log(`📡 Snapshot Media diterima (${snapshot.size} item)`);
             const list = document.getElementById('mediaList');
             if(!list) return;
             list.innerHTML = ""; playlistData = [];
@@ -400,68 +411,35 @@
                         <td style="text-align:center;">
                             <button onclick="moveItem('${doc.id}', -1)" class="btn-action btn-up"><i class="fas fa-chevron-up"></i></button>
                             <button onclick="moveItem('${doc.id}', 1)" class="btn-action btn-down"><i class="fas fa-chevron-down"></i></button>
-                            <button onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-desktop"></i></button>
+                            <button id="btn-play-${doc.id}" onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-desktop"></i></button>
                             <button onclick="deleteMedia('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
             });
-        }, error => console.error("Snapshot Error Media:", error));
-    }
-
-    async function moveItem(id, direction) {
-        const index = playlistData.findIndex(item => item.id === id);
-        const newIndex = index + direction;
-        if (newIndex >= 0 && newIndex < playlistData.length) {
-            const batch = db.batch();
-            batch.update(db.collection("portal_media").doc(playlistData[index].id), { urutan: playlistData[newIndex].urutan });
-            batch.update(db.collection("portal_media").doc(playlistData[newIndex].id), { urutan: playlistData[index].urutan });
-            await batch.commit();
-        }
+        }, error => console.error("❌ Snapshot Error Media:", error));
     }
 
     async function playSekarang(id) {
+        console.log(`📺 Memaksa Putar Media ID: ${id}`);
+        const btn = document.getElementById(`btn-play-${id}`);
+        if(btn) btn.innerHTML = '<i class="fas fa-sync fa-spin"></i>';
+
         try {
-            // Gunakan .set dengan merge:true untuk menghindari error jika doc playlist belum ada
             await db.collection("config").doc("playlist").set({ 
                 activeContentId: id, 
                 triggerChange: Date.now() 
             }, { merge: true });
+            console.log("✅ Config Playlist Terupdate");
             alert("Konten dikirim ke monitor!");
         } catch (e) {
-            console.error("Play Media Error:", e);
-            alert("Gagal memutar konten.");
+            console.error("❌ Play Media Error:", e);
+        } finally {
+            if(btn) btn.innerHTML = '<i class="fas fa-desktop"></i>';
         }
-    }
-
-    async function deleteMedia(id) { if(confirm("Hapus konten?")) await db.collection("portal_media").doc(id).delete(); }
-
-    function toggleSelectAll() {
-        const isChecked = document.getElementById('checkAll').checked;
-        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = isChecked);
-    }
-
-    async function deleteSelected() {
-        const selected = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
-        if (selected.length === 0) return alert("Pilih konten!");
-        if (confirm(`Hapus ${selected.length} konten?`)) {
-            const batch = db.batch();
-            selected.forEach(id => batch.delete(db.collection("portal_media").doc(id)));
-            await batch.commit();
-        }
-    }
-
-    async function updatePlayMode() {
-        try {
-            const mode = document.getElementById('play_mode').value;
-            await db.collection("config").doc("playlist_settings").set({ 
-                mode: mode, 
-                updatedAt: Date.now() 
-            }, { merge: true });
-            document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
-        } catch (e) { console.error("Update Mode Error:", e); }
     }
 
     window.onload = () => {
+        console.log("🚀 App Started. Loading Data...");
         loadRTCollection();
         loadMedia();
     };
