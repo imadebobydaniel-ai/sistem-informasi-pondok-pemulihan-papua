@@ -211,13 +211,35 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const userEmail = localStorage.getItem("userEmail");
+        const isAdmin = localStorage.getItem("isAdmin");
 
-        // --- YOUTUBE MEDIA PLAYER LOGIC ---
+        // --- 1. LOGIKA RUNNING TEXT (REAL-TIME SYNC) ---
+        function listenRunningText() {
+            console.log("📡 Memulai listener Running Text...");
+            // Mengambil data dari doc yang sama dengan yang diupdate Admin
+            db.collection("config").doc("running_text").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    console.log("✅ RT Baru Diterima:", data.pesan);
+                    
+                    // Update elemen di layar menu
+                    const rtElement = document.getElementById('rt_display'); 
+                    if (rtElement) {
+                        rtElement.innerText = data.pesan;
+                    }
+                } else {
+                    console.warn("⚠️ Dokumen running_text tidak ditemukan");
+                }
+            }, (error) => {
+                console.error("❌ Gagal sinkron RT:", error);
+            });
+        }
+
+        // --- 2. YOUTUBE MEDIA PLAYER LOGIC ---
         let player;
         function onYouTubeIframeAPIReady() {
-            // Ambil data video dari Firestore
             db.collection("settings").doc("video_promo").get().then(doc => {
-                let videoId = "V9p1k5wH3ZE"; // Default video
+                let videoId = "V9p1k5wH3ZE"; 
                 if(doc.exists && doc.data().url) {
                     const url = doc.data().url;
                     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -225,18 +247,26 @@
                     if (match && match[2].length == 11) videoId = match[2];
                 }
                 
+                const currentOrigin = window.location.origin;
                 player = new YT.Player('player', {
                     height: '100%',
                     width: '100%',
                     videoId: videoId,
-                    playerVars: { 'autoplay': 1, 'mute': 1, 'loop': 1, 'playlist': videoId },
+                    playerVars: { 
+                        'autoplay': 1, 
+                        'mute': 1, 
+                        'loop': 1, 
+                        'playlist': videoId,
+                        'origin': currentOrigin,
+                        'enablejsapi': 1
+                    },
                     events: { 'onReady': onPlayerReady }
                 });
             });
         }
         function onPlayerReady(event) { event.target.playVideo(); }
 
-        // --- KARTU DIGITAL VERTIKAL LOGIC ---
+        // --- 3. KARTU DIGITAL & AUTH LOGIC ---
         function bukaKartuDigital() {
             try {
                 db.collection("users").where("email", "==", userEmail).get().then(s => {
@@ -249,13 +279,12 @@
                         
                         const qrBox = document.getElementById("qrbox");
                         qrBox.innerHTML = "";
-                        
                         const profileLink = window.location.origin + window.location.pathname.replace("index.html", "") + "profil.html";
 
                         if (typeof QRCode !== 'undefined') {
                             new QRCode(qrBox, { 
                                 text: profileLink, 
-                                width: 110, // Ukuran ideal untuk posisi tengah vertikal
+                                width: 110, 
                                 height: 110,
                                 correctLevel : QRCode.CorrectLevel.H
                             });
@@ -267,7 +296,13 @@
         }
 
         function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
-        function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.replace("index.html"); }); }
+        
+        function executeLogout() { 
+            auth.signOut().then(() => { 
+                localStorage.clear(); 
+                window.location.replace("index.html"); 
+            }); 
+        }
         
         function syncUser() {
             if (userEmail) {
@@ -278,11 +313,15 @@
                         document.getElementById('disp_email').innerText = userEmail;
                         document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                         if (d.foto_profil) { 
-                            document.getElementById('user-photo').src = d.foto_profil; 
-                            document.getElementById('user-photo').style.display = "block";
+                            const img = document.getElementById('user-photo');
+                            img.src = d.foto_profil; 
+                            img.style.display = "block";
                             document.getElementById('default-icon').style.display = "none"; 
                         }
-                        if(isAdmin === "true") document.getElementById('admin-badge').style.display = "block";
+                        if(isAdmin === "true") {
+                            const badge = document.getElementById('admin-badge');
+                            if(badge) badge.style.display = "block";
+                        }
                     }
                 });
             }
@@ -296,10 +335,13 @@
             if(elClock) elClock.innerText = now.toLocaleTimeString('id-ID') + " WIT";
         }
 
+        // --- INITIALIZATION ---
         window.onload = () => { 
+            console.log("🚀 Menu Dashboard Started");
             updateTime(); 
             setInterval(updateTime, 1000); 
             syncUser(); 
+            listenRunningText(); // Aktifkan sinkronisasi RT
 
             const btnToggle = document.getElementById('toggleProfile');
             const profileCard = document.getElementById('profileCard');
