@@ -211,6 +211,7 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     
+    // VARIABEL GLOBAL (Hanya dideklarasikan SATU KALI di sini)
     const userEmail = localStorage.getItem("userEmail");
     const statusAdmin = localStorage.getItem("isAdmin");
 
@@ -234,18 +235,21 @@
         player = new YT.Player('player', {
             height: '100%',
             width: '100%',
-            videoId: 'V9p1k5wH3ZE', // ID Cadangan
+            videoId: 'aqz-KE-bpKQ', // Menggunakan ID video tes yang aman di-embed
             playerVars: { 
-                'autoplay': 1, 
-                'mute': 1, 
-                'loop': 1, 
-                'playlist': 'V9p1k5wH3ZE',
+                'autoplay': 1, 'mute': 1, 'loop': 1, 
+                'playlist': 'aqz-KE-bpKQ',
                 'origin': window.location.origin, 
                 'enablejsapi': 1
             },
             events: { 
                 'onReady': onPlayerReady,
-                'onError': (e) => console.error("YouTube Error:", e.data)
+                'onError': (e) => {
+                    console.error("YouTube Error:", e.data);
+                    if(e.data == 150 || e.data == 101) {
+                        alert("Video ini tidak mengizinkan pemutaran di luar YouTube. Silakan ganti URL di Portal Media.");
+                    }
+                }
             }
         });
     }
@@ -254,14 +258,11 @@
         console.log("✅ YouTube Player Siap!");
         isPlayerReady = true;
         event.target.playVideo();
-        
-        // Jika ada video yang sudah antri saat player belum siap, putar sekarang
         if (pendingVideoId) {
             player.loadVideoById(pendingVideoId);
             pendingVideoId = null;
         }
-        
-        listenVideoPromo(); // Mulai memantau Firestore setelah player siap
+        listenVideoPromo(); 
     }
 
     function listenVideoPromo() {
@@ -278,11 +279,11 @@
                     if (isPlayerReady && player && player.loadVideoById) {
                         player.loadVideoById(newVideoId);
                     } else {
-                        pendingVideoId = newVideoId; // Simpan di antrian jika player belum siap
+                        pendingVideoId = newVideoId; 
                     }
                 }
             }
-        }, (err) => console.error("Firestore Video Error:", err));
+        });
     }
 
     // --- 4. FUNGSI UI & MODAL ---
@@ -298,9 +299,8 @@
                 
                 const qrBox = document.getElementById("qrbox");
                 qrBox.innerHTML = "";
-                const profileLink = window.location.origin + window.location.pathname.replace("menu.html", "profil.html");
-
                 if (typeof QRCode !== 'undefined') {
+                    const profileLink = window.location.origin + window.location.pathname.replace("menu.html", "profil.html");
                     new QRCode(qrBox, { text: profileLink, width: 110, height: 110 });
                 }
                 document.getElementById('modalKartuDigital').style.display = 'flex';
@@ -327,24 +327,18 @@
             db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
                 if (!s.empty) {
                     const d = s.docs[0].data();
-                    const dispNama = document.getElementById('disp_nama');
-                    const dispEmail = document.getElementById('disp_email');
-                    const dispKomsel = document.getElementById('disp_komsel');
-                    
-                    if(dispNama) dispNama.innerText = d.nama || "User";
-                    if(dispEmail) dispEmail.innerText = userEmail;
-                    if(dispKomsel) dispKomsel.innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                    if(document.getElementById('disp_nama')) document.getElementById('disp_nama').innerText = d.nama || "User";
+                    if(document.getElementById('disp_email')) document.getElementById('disp_email').innerText = userEmail;
+                    if(document.getElementById('disp_komsel')) document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                     
                     const img = document.getElementById('user-photo');
                     if (d.foto_profil && img) { 
                         img.src = d.foto_profil; 
                         img.style.display = "block";
-                        const defIcon = document.getElementById('default-icon');
-                        if(defIcon) defIcon.style.display = "none"; 
+                        if(document.getElementById('default-icon')) document.getElementById('default-icon').style.display = "none"; 
                     }
-                    if(statusAdmin === "true") {
-                        const badge = document.getElementById('admin-badge');
-                        if(badge) badge.style.display = "block";
+                    if(statusAdmin === "true" && document.getElementById('admin-badge')) {
+                        document.getElementById('admin-badge').style.display = "block";
                     }
                 }
             });
@@ -375,6 +369,5 @@
             });
         }
     };
-</script>
-</body>
+</script></body>
 </html>
