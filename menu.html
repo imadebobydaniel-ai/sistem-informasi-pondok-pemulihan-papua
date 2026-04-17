@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com https://www.youtube.com https://s.ytimg.com 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https://www.youtube.com">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com https://www.youtube.com https://s.ytimg.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https://www.youtube.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Menu Utama - Pondok Pemulihan Papua</title>
     
@@ -199,27 +199,38 @@
         const auth = firebase.auth();
         const userEmail = localStorage.getItem("userEmail");
 
-        // --- KARTU DIGITAL LOGIC ---
+        // --- KARTU DIGITAL LOGIC (DIPERBARUI DENGAN TRY-CATCH) ---
         function bukaKartuDigital() {
-            db.collection("users").where("email", "==", userEmail).get().then(s => {
-                if(!s.empty) {
-                    const d = s.docs[0].data();
-                    document.getElementById('dnama').innerText = d.nama || "User";
-                    document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
-                    document.getElementById('dkomsel').innerText = d.komsel || "-";
-                    document.getElementById('dnij').innerText = d.nij || "0000 0000";
-                    
-                    const qrBox = document.getElementById("qrbox");
-                    qrBox.innerHTML = "";
-                    new QRCode(qrBox, { text: userEmail, width: 60, height: 60 });
-                    document.getElementById('modalKartuDigital').style.display = 'flex';
-                }
-            });
+            try {
+                db.collection("users").where("email", "==", userEmail).get().then(s => {
+                    if(!s.empty) {
+                        const d = s.docs[0].data();
+                        document.getElementById('dnama').innerText = d.nama || "User";
+                        document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
+                        document.getElementById('dkomsel').innerText = d.komsel || "-";
+                        document.getElementById('dnij').innerText = d.nij || "0000 0000";
+                        
+                        const qrBox = document.getElementById("qrbox");
+                        qrBox.innerHTML = "";
+                        
+                        if (typeof QRCode !== 'undefined') {
+                            new QRCode(qrBox, { text: userEmail, width: 60, height: 60 });
+                        } else {
+                            qrBox.innerHTML = "<small style='color:black'>QR Error</small>";
+                        }
+                        
+                        document.getElementById('modalKartuDigital').style.display = 'flex';
+                    }
+                }).catch(err => console.error("Firebase Error:", err));
+            } catch (e) {
+                console.error("Critical Error:", e);
+            }
         }
+
         function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
 
-        // --- FUNGSI ASLI TETAP DIBAWAH ---
         function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.replace("index.html"); }); }
+        
         function syncUser() {
             if (userEmail) {
                 db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
@@ -238,17 +249,33 @@
             }
         }
 
-        // Initialize lainnya (Monitor Inbox, Media Player, Clock, dll tetap berjalan)
         function updateTime() {
             const now = new Date();
-            document.getElementById('display-tanggal').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
+            const elTgl = document.getElementById('display-tanggal');
+            const elClock = document.getElementById('digital-clock');
+            if(elTgl) elTgl.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            if(elClock) elClock.innerText = now.toLocaleTimeString('id-ID') + " WIT";
         }
 
+        // --- WINDOW ONLOAD (DIPERBARUI UNTUK FIX SLIDE TOMBOL) ---
         window.onload = () => { 
-            updateTime(); setInterval(updateTime, 1000); 
+            updateTime(); 
+            setInterval(updateTime, 1000); 
             syncUser(); 
-            // Sisanya tetap dipanggil otomatis sesuai kebutuhan sistem Anda
+
+            const btnToggle = document.getElementById('toggleProfile');
+            const profileCard = document.getElementById('profileCard');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            if(btnToggle && profileCard) {
+                btnToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    profileCard.classList.toggle('closed');
+                    if(toggleIcon) {
+                        toggleIcon.className = profileCard.classList.contains('closed') ? "fa-solid fa-chevron-right" : "fa-solid fa-chevron-left";
+                    }
+                });
+            }
         };
 
         function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
