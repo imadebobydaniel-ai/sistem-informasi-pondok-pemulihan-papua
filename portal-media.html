@@ -271,68 +271,21 @@
     let runningItems = [];
     let playlistData = [];
 
-    // --- 1. FUNGSI EKSTRAK ID YOUTUBE DENGAN ORIGIN FIX ---
-    function extractVideoID(url) {
-        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        if (match && match[2].length === 11) {
-            const videoId = match[2];
-            // Mengambil domain aktif secara otomatis (misal: imadebobydaniel-ai.github.io)
-            const currentOrigin = window.location.origin;
-            
-            // Menambahkan parameter wajib agar API YouTube tidak memblokir handshake
-            // rel=0 (tidak tampilkan video lain), enablejsapi=1 (aktifkan API), origin (domain Anda)
-            return `${videoId}?enablejsapi=1&origin=${encodeURIComponent(currentOrigin)}&rel=0&autoplay=1&mute=1`;
-        }
-        return url;
-    }
-
-    // --- 2. LOGIKA UPLOAD (DIPERBAIKI DENGAN TRY-CATCH) ---
-    async function uploadKePortal() {
-        const judul = document.getElementById('judul').value;
-        const tipe = document.getElementById('tipe_media').value;
-        let url = document.getElementById('url_media').value || "";
-
-        if(!judul) return alert("Judul wajib diisi!");
-
-        // Jika tipe adalah YouTube, bersihkan URL-nya menggunakan origin fix
-        if(tipe === 'video_youtube' && url !== "") {
-            url = extractVideoID(url);
-        }
-
-        try {
-            await db.collection("portal_media").add({
-                judul: judul,
-                tipe: tipe,
-                url: url,
-                isi_artikel: document.getElementById('isi_artikel').value || "",
-                urutan: Date.now(),
-                durasi: 10,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            alert("Konten Berhasil Terbit!");
-            
-            // Reset form tanpa reload halaman agar lebih efisien
-            document.getElementById('judul').value = "";
-            document.getElementById('url_media').value = "";
-            if(document.getElementById('isi_artikel')) document.getElementById('isi_artikel').value = "";
-        } catch (error) {
-            console.error("Error adding document: ", error);
-            alert("Gagal menyimpan ke Firebase.");
-        }
-    }
-
-    // --- LOGIKA RUNNING TEXT ---
+    // --- 1. LOGIKA RUNNING TEXT ---
     async function saveRunningTextToCollection() {
         const text = document.getElementById('rt_input').value;
         const durasi = document.getElementById('rt_durasi').value;
         if(!text) return alert("Teks kosong!");
-        await db.collection("rt_collection").add({
-            text: text, durasi: parseInt(durasi),
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            isActive: false
-        });
-        document.getElementById('rt_input').value = "";
+
+        try {
+            await db.collection("rt_collection").add({
+                text: text, 
+                durasi: parseInt(durasi),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                isActive: false
+            });
+            document.getElementById('rt_input').value = "";
+        } catch (e) { console.error(e); }
     }
 
     function loadRTCollection() {
@@ -359,23 +312,66 @@
 
     async function playRTManual(id) {
         const batch = db.batch();
-        runningItems.forEach(item => batch.update(db.collection("rt_collection").doc(item.id), { isActive: false }));
-        batch.update(db.collection("rt_collection").doc(id), { isActive: true });
         const selected = runningItems.find(i => i.id === id);
-        batch.set(db.collection("config").doc("running_text"), { pesan: selected.text }, { merge: true });
+        
+        runningItems.forEach(item => {
+            batch.update(db.collection("rt_collection").doc(item.id), { isActive: false });
+        });
+        
+        batch.update(db.collection("rt_collection").doc(id), { isActive: true });
+        
+        // Distribusi ke config global yang dibaca monitor
+        batch.set(db.collection("config").doc("running_text"), { 
+            pesan: selected.text,
+            durasi: selected.durasi,
+            lastUpdate: Date.now() 
+        }, { merge: true });
+
         await batch.commit();
     }
 
     async function deleteRT(id) { if(confirm("Hapus teks?")) await db.collection("rt_collection").doc(id).delete(); }
 
-    // --- LOGIKA MEDIA & PLAYLIST ---
+    // --- 2. LOGIKA MEDIA ---
+    function extractVideoID(url) {
+        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        if (match && match[2].length === 11) {
+            const videoId = match[2];
+            const currentOrigin = window.location.origin;
+            return `${videoId}?enablejsapi=1&origin=${encodeURIComponent(currentOrigin)}&rel=0&autoplay=1&mute=1`;
+        }
+        return url;
+    }
+
     function toggleInputFields() {
         const tipe = document.getElementById('tipe_media').value;
-        const urlContainer = document.getElementById('input_url_container');
-        const teksContainer = document.getElementById('input_teks_container');
-        
-        if(urlContainer) urlContainer.style.display = tipe === 'teks' ? "none" : "block";
-        if(teksContainer) teksContainer.style.display = tipe === 'teks' ? "block" : "none";
+        document.getElementById('input_url_container').style.display = tipe === 'teks' ? "none" : "block";
+        document.getElementById('input_teks_container').style.display = tipe === 'teks' ? "block" : "none";
+    }
+
+    async function uploadKePortal() {
+        const judul = document.getElementById('judul').value;
+        const tipe = document.getElementById('tipe_media').value;
+        let url = document.getElementById('url_media').value || "";
+
+        if(!judul) return alert("Judul wajib diisi!");
+        if(tipe === 'video_youtube' && url !== "") url = extractVideoID(url);
+
+        try {
+            await db.collection("portal_media").add({
+                judul: judul,
+                tipe: tipe,
+                url: url,
+                isi_artikel: document.getElementById('isi_artikel').value || "",
+                urutan: Date.now(),
+                durasi: 10,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("Konten Berhasil Terbit!");
+            document.getElementById('judul').value = "";
+            document.getElementById('url_media').value = "";
+        } catch (e) { console.error(e); }
     }
 
     function loadMedia() {
@@ -383,13 +379,14 @@
             const list = document.getElementById('mediaList');
             if(!list) return;
             list.innerHTML = ""; playlistData = [];
+            let count = 1;
             snapshot.forEach(doc => {
                 const data = doc.data();
                 playlistData.push({ id: doc.id, ...data });
                 list.innerHTML += `
                     <tr>
                         <td><input type="checkbox" class="item-checkbox" value="${doc.id}"></td>
-                        <td style="text-align:center;">${playlistData.length}</td>
+                        <td style="text-align:center;">${count++}</td>
                         <td style="font-weight:600;">${data.judul}</td>
                         <td><span style="font-size:11px; background:#e0e7ff; color:#4338ca; padding:4px 8px; border-radius:10px;">${data.tipe}</span></td>
                         <td style="text-align:center;">
@@ -415,11 +412,14 @@
     }
 
     async function playSekarang(id) {
-        await db.collection("config").doc("playlist").update({ activeContentId: id, triggerChange: Date.now() });
-        alert("Diputar di monitor!");
+        await db.collection("config").doc("playlist").update({ 
+            activeContentId: id, 
+            triggerChange: Date.now() 
+        });
+        alert("Konten dikirim ke monitor!");
     }
 
-    async function deleteMedia(id) { if(confirm("Hapus?")) await db.collection("portal_media").doc(id).delete(); }
+    async function deleteMedia(id) { if(confirm("Hapus konten?")) await db.collection("portal_media").doc(id).delete(); }
 
     function toggleSelectAll() {
         const isChecked = document.getElementById('checkAll').checked;
@@ -439,14 +439,13 @@
     async function updatePlayMode() {
         const mode = document.getElementById('play_mode').value;
         await db.collection("config").doc("playlist_settings").set({ mode: mode, updatedAt: Date.now() }, { merge: true });
-        const display = document.getElementById('currentModeDisplay');
-        if(display) display.innerText = mode.toUpperCase();
+        document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
     }
 
-    // Inisialisasi saat halaman dimuat
-    window.onload = () => { 
-        loadRTCollection(); 
-        loadMedia(); 
+    window.onload = () => {
+        loadRTCollection();
+        loadMedia();
     };
-</script></body>
+</script>
+</body>
 </html>
