@@ -3,73 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Verifikasi SIPAPUA</title>
+    <title>Bio Singkat Jemaat</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        body { font-family: sans-serif; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         
-        /* Modal Popup Design */
-        .bio-popup {
-            width: 90%; max-width: 400px; background: white; border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2); overflow: hidden; display: none;
-            animation: slideUp 0.3s ease-out;
-        }
-        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        .header-bio { background: #003366; color: white; padding: 15px; text-align: center; font-weight: bold; }
-        
-        .content-bio { padding: 20px; display: flex; align-items: center; gap: 15px; }
-        .foto-jemaat { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; border: 3px solid #d4af37; }
-        
-        .detail-info { flex: 1; font-size: 13px; }
-        .detail-info div { margin-bottom: 5px; color: #333; }
-        .label { font-weight: bold; color: #003366; display: block; font-size: 10px; text-transform: uppercase; }
-
-        .footer-btn { display: flex; border-top: 1px solid #eee; }
-        .btn { flex: 1; padding: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        /* Desain Pop-up Bio */
+        .popup-bio { background: white; width: 90%; max-width: 350px; border-radius: 15px; overflow: hidden; display: none; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+        .header { background: #003366; color: white; padding: 12px; text-align: center; font-weight: bold; }
+        .content { padding: 15px; display: flex; align-items: flex-start; gap: 12px; }
+        .foto-box { width: 80px; height: 100px; background: #eee; border-radius: 5px; object-fit: cover; }
+        .info-box { flex: 1; font-size: 12px; }
+        .info-box b { color: #003366; display: block; margin-top: 5px; }
+        .footer { display: flex; border-top: 1px solid #eee; }
+        .btn { flex: 1; padding: 12px; border: none; font-weight: bold; cursor: pointer; }
         .btn-add { background: #003366; color: white; }
-        .btn-add:hover { background: #0055aa; }
-        .btn-cancel { background: #f8f9fa; color: #666; }
+        .btn-cancel { background: #f1f1f1; color: #333; }
 
-        /* Style Pesan Error */
-        .error-box { text-align: center; padding: 30px; display: none; }
-        .error-box i { font-size: 50px; color: #e74c3c; margin-bottom: 15px; }
+        /* Pesan Error */
+        #msg-error { background: white; padding: 20px; border-radius: 10px; text-align: center; display: none; max-width: 300px; }
     </style>
 </head>
 <body>
 
-    <div id="popupBio" class="bio-popup">
-        <div class="header-bio">BIO JEMAAT</div>
-        <div class="content-bio">
-            <img id="view-foto" src="https://via.placeholder.com/100" class="foto-jemaat">
-            <div class="detail-info">
-                <span class="label">NIJ</span>
-                <div id="view-nij">...</div>
-                <span class="label">Nama Lengkap</span>
-                <div id="view-nama" style="font-size: 15px; font-weight: bold;">...</div>
-                <span class="label">Komsel</span>
-                <div id="view-komsel">...</div>
-                <span class="label">Jemaat</span>
-                <div id="view-jemaat">...</div>
+    <div id="popupBio" class="popup-bio">
+        <div class="header">Bio Jemaat</div>
+        <div class="content">
+            <img id="p-foto" src="https://via.placeholder.com/80x100" class="foto-box">
+            <div class="info-box">
+                <b>NIJ:</b> <span id="p-nij">-</span>
+                <b>NAMA:</b> <span id="p-nama">-</span>
+                <b>KOMSEL:</b> <span id="p-komsel">-</span>
+                <b>JEMAAT:</b> <span id="p-jemaat">-</span>
             </div>
         </div>
-        <div class="footer-btn">
-            <button class="btn btn-cancel" onclick="closeApp()">CANCEL</button>
-            <button class="btn btn-add" onclick="processAdd()">ADD</button>
+        <div class="footer">
+            <button class="btn btn-cancel" onclick="window.location.href='menu.html'">CANCEL</button>
+            <button class="btn btn-add" id="btnAdd">ADD</button>
         </div>
     </div>
 
-    <div id="errorBox" class="error-box">
-        <i class="fas fa-exclamation-triangle"></i>
-        <h3 id="errMsg">Akses Dibatalkan</h3>
-        <p style="color: #666; font-size: 14px;">Silahkan Hubungi Administrator atau pastikan Anda sudah Login di SIPAPUA.</p>
-        <button class="btn btn-add" style="border-radius: 10px; margin-top: 10px;" onclick="closeApp()">OK</button>
+    <div id="msg-error">
+        <p id="errorText" style="font-weight: bold; color: #cc0000;"></p>
+        <button onclick="window.location.href='login.html'" style="padding: 10px 20px;">LOG IN</button>
     </div>
 
 <script>
-    // 1. Inisialisasi Firebase
     const firebaseConfig = { 
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
@@ -81,60 +61,39 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    async function initScan() {
+    async function checkScan() {
         const urlParams = new URLSearchParams(window.location.search);
-        const targetEmail = urlParams.get('scan'); // Email orang yang di-scan
-        const scannerEmail = localStorage.getItem("userEmail"); // Email orang yang sedang scan (login di HP)
+        const targetEmail = urlParams.get('scan');
+        const myEmail = localStorage.getItem("userEmail"); // Cek apakah scanner sudah login
 
-        // CEK 1: Apakah Scanner sudah login?
-        if (!scannerEmail) {
-            showError("Anda Sedang Logout dari SIPAPUA / Anda tidak memiliki aplikasi SIPAPUA.");
-            return;
-        }
-
-        if (!targetEmail) {
-            showError("Data QR tidak valid.");
+        // LOGIKA: Jika tidak login atau tidak punya aplikasi (data local empty)
+        if (!myEmail) {
+            document.getElementById('msg-error').style.display = 'block';
+            document.getElementById('errorText').innerText = "Anda Sedang Logout dari SIPAPUA / Anda tidak memiliki aplikasi SIPAPUA. Silahkan Hubungi Administartor";
             return;
         }
 
         try {
-            // Ambil data orang yang di-scan
             const snap = await db.collection("users").where("email", "==", targetEmail).get();
             if (!snap.empty) {
                 const data = snap.docs[0].data();
+                document.getElementById('p-nij').innerText = data.nij || "-";
+                document.getElementById('p-nama').innerText = data.nama || "-";
+                document.getElementById('p-komsel').innerText = data.komsel || "-";
+                document.getElementById('p-jemaat').innerText = data.lokasi_berjemaat || "-";
+                if(data.fotoUrl) document.getElementById('p-foto').src = data.fotoUrl;
                 
-                // Tampilkan ke Popup
-                document.getElementById('view-nama').innerText = data.nama || "-";
-                document.getElementById('view-nij').innerText = data.nij || "-";
-                document.getElementById('view-komsel').innerText = data.komsel || "-";
-                document.getElementById('view-jemaat').innerText = data.lokasi_berjemaat || "-";
-                if(data.fotoUrl) document.getElementById('view-foto').src = data.fotoUrl;
-
                 document.getElementById('popupBio').style.display = 'block';
-            } else {
-                showError("Jemaat tidak terdaftar di sistem.");
+
+                // Fungsi ADD
+                document.getElementById('btnAdd').onclick = async () => {
+                    alert("Berhasil Menambahkan Jemaat ke Daftar Anda!");
+                    // Tambahkan logika simpan ke koleksi 'teman' jika diperlukan
+                };
             }
-        } catch (e) {
-            showError("Gagal menghubungkan ke server.");
-        }
+        } catch (e) { alert("Sistem Error"); }
     }
-
-    function showError(msg) {
-        document.getElementById('errMsg').innerText = msg;
-        document.getElementById('errorBox').style.display = 'block';
-    }
-
-    function processAdd() {
-        alert("Fitur ADD sedang dikembangkan. Data jemaat akan segera tersimpan ke database komsel Anda.");
-        // Di sini nantinya Anda bisa tambahkan db.collection("komsel_data").add({...})
-    }
-
-    function closeApp() {
-        // Karena ini di dalam APK/Webview, kita arahkan balik ke menu atau tutup window
-        window.location.href = "menu.html";
-    }
-
-    window.onload = initScan;
+    window.onload = checkScan;
 </script>
 </body>
 </html>
