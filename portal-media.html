@@ -6,6 +6,8 @@
     <title>Portal Media - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+
     <style>
         :root {
             --primary: #3b82f6;
@@ -190,22 +192,33 @@
                 <div>
                     <label>Tipe Media</label>
                     <select id="tipe_media" onchange="toggleInputFields()">
-                        <option value="gambar">Gambar (Poster/Foto)</option>
-                        <option value="video_youtube">Video (YouTube)</option>
-                        <option value="video_player">Video MP4 (Direct)</option>
-                        <option value="audio_player">Audio (MP3)</option>
+                        <option value="gambar">Gambar (Cloudinary)</option>
+                        <option value="video_player">Video MP4 (Cloudinary)</option>
+                        <option value="audio_player">Audio MP3 (Cloudinary)</option>
+                        <option value="video_youtube">Video (YouTube ID)</option>
                         <option value="teks">Text World (Artikel)</option>
                     </select>
                 </div>
             </div>
+
             <div id="input_url_container" style="margin-bottom: 20px;">
-                <label>Link / URL Media</label>
-                <input type="text" id="url_media" placeholder="https://...">
+                <label id="label_media">File Media / URL</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="url_media" placeholder="Pilih file atau masukkan ID YouTube..." style="background: #f8fafc;">
+                    <button type="button" id="btn_upload_cloudinary" onclick="bukaWidgetUpload()" class="btn-submit" style="width: auto; background: #6366f1;">
+                        <i class="fas fa-upload"></i> Upload File
+                    </button>
+                </div>
+                <small style="color: #64748b; font-size: 11px; margin-top: 5px; display: block;">
+                    *Gunakan tombol Upload untuk Gambar/Video/Audio. Masukkan ID Manual khusus YouTube.
+                </small>
             </div>
+
             <div id="input_teks_container" style="display:none; margin-bottom: 20px;">
                 <label>Isi Artikel Lengkap</label>
                 <textarea id="isi_artikel" rows="4"></textarea>
             </div>
+
             <button onclick="uploadKePortal()" id="btnPublish" class="btn-submit" style="width: 100%;">
                 <i class="fa-solid fa-paper-plane"></i> Publikasikan Konten
             </button>
@@ -274,11 +287,43 @@
     let runningItems = [];
     let playlistData = [];
 
-    // --- 2. FUNGSI UI (PENTING: Memperbaiki ReferenceError) ---
+    // --- 2. KONFIGURASI CLOUDINARY ---
+    const cloudName = "dxzllsbgi";
+    const uploadPreset = "sipapua_preset";
+
+    function bukaWidgetUpload() {
+        const tipeMedia = document.getElementById('tipe_media').value;
+        
+        // Sesuaikan resource type Cloudinary
+        let resourceType = "auto";
+        if (tipeMedia === "gambar") resourceType = "image";
+        if (tipeMedia === "video_player" || tipeMedia === "audio_player") resourceType = "video";
+
+        if (tipeMedia === "video_youtube") {
+            return alert("Untuk YouTube, silakan masukkan ID Video secara manual di kotak input.");
+        }
+
+        cloudinary.openUploadWidget({
+            cloudName: cloudName,
+            uploadPreset: uploadPreset,
+            sources: ['local', 'url', 'camera'],
+            resourceType: resourceType,
+            multiple: false,
+            clientAllowedFormats: tipeMedia === "gambar" ? ["png", "jpg", "jpeg", "webp"] : ["mp4", "mp3", "mov"]
+        }, (error, result) => {
+            if (!error && result && result.event === "success") {
+                document.getElementById('url_media').value = result.info.secure_url;
+                alert("File berhasil diupload!");
+            }
+        });
+    }
+
+    // --- 3. FUNGSI UI ---
     function toggleInputFields() {
         const tipe = document.getElementById('tipe_media').value;
         const urlContainer = document.getElementById('input_url_container');
         const teksContainer = document.getElementById('input_teks_container');
+        const btnCloudinary = document.getElementById('btn_upload_cloudinary');
 
         if (tipe === 'teks') {
             urlContainer.style.display = 'none';
@@ -286,6 +331,8 @@
         } else {
             urlContainer.style.display = 'block';
             teksContainer.style.display = 'none';
+            // Sembunyikan tombol upload jika tipenya YouTube
+            btnCloudinary.style.display = (tipe === 'video_youtube') ? 'none' : 'block';
         }
     }
 
@@ -295,7 +342,7 @@
         checkboxes.forEach(cb => cb.checked = checkAll.checked);
     }
 
-    // --- 3. LOGIKA RUNNING TEXT ---
+    // --- 4. LOGIKA RUNNING TEXT ---
     async function saveRunningTextToCollection() {
         const text = document.getElementById('rt_input').value;
         const durasi = document.getElementById('rt_durasi').value;
@@ -326,7 +373,7 @@
                         <td>${data.text}</td>
                         <td>${data.durasi}s</td>
                         <td style="text-align:center;">
-                            <button id="btn-rt-${doc.id}" onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
+                            <button onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
                             <button onclick="deleteRT('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
@@ -337,28 +384,22 @@
     async function playRTManual(id) {
         const selected = runningItems.find(i => i.id === id);
         if(!selected) return;
-
         const batch = db.batch();
-        runningItems.forEach(item => {
-            batch.update(db.collection("rt_collection").doc(item.id), { isActive: false });
-        });
+        runningItems.forEach(item => batch.update(db.collection("rt_collection").doc(item.id), { isActive: false }));
         batch.update(db.collection("rt_collection").doc(id), { isActive: true });
         batch.set(db.collection("config").doc("running_text"), { 
             pesan: selected.text,
             durasi: selected.durasi,
             lastUpdate: Date.now() 
         }, { merge: true });
-
         await batch.commit();
     }
 
     async function deleteRT(id) {
-        if(confirm("Hapus teks ini dari koleksi?")) {
-            await db.collection("rt_collection").doc(id).delete();
-        }
+        if(confirm("Hapus teks ini?")) await db.collection("rt_collection").doc(id).delete();
     }
 
-    // --- 4. LOGIKA MEDIA & PLAYLIST ---
+    // --- 5. LOGIKA MEDIA & PLAYLIST ---
     function extractVideoID(url) {
         const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
         const match = url.match(regExp);
@@ -385,6 +426,7 @@
             alert("Konten Berhasil Terbit!");
             document.getElementById('judul').value = "";
             document.getElementById('url_media').value = "";
+            document.getElementById('isi_artikel').value = "";
         } catch (e) { console.error("❌ Upload Error:", e); }
     }
 
@@ -406,7 +448,7 @@
                         <td style="text-align:center;">
                             <button onclick="moveItem('${doc.id}', -1)" class="btn-action btn-up"><i class="fas fa-chevron-up"></i></button>
                             <button onclick="moveItem('${doc.id}', 1)" class="btn-action btn-down"><i class="fas fa-chevron-down"></i></button>
-                            <button id="btn-play-${doc.id}" onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-desktop"></i></button>
+                            <button onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-desktop"></i></button>
                             <button onclick="deleteMedia('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
@@ -415,19 +457,15 @@
     }
 
     async function playSekarang(id) {
-        try {
-            await db.collection("config").doc("playlist").set({ 
-                activeContentId: id, 
-                triggerChange: Date.now() 
-            }, { merge: true });
-            alert("Konten dikirim ke monitor!");
-        } catch (e) { console.error(e); }
+        await db.collection("config").doc("playlist").set({ 
+            activeContentId: id, 
+            triggerChange: Date.now() 
+        }, { merge: true });
+        alert("Konten dikirim ke monitor!");
     }
 
     async function deleteMedia(id) {
-        if(confirm("Hapus konten ini?")) {
-            await db.collection("portal_media").doc(id).delete();
-        }
+        if(confirm("Hapus konten ini?")) await db.collection("portal_media").doc(id).delete();
     }
 
     async function moveItem(id, direction) {
@@ -461,11 +499,10 @@
         document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
     }
 
-    // --- 5. INISIALISASI ---
     window.onload = () => {
-        console.log("🚀 App Started");
         loadRTCollection();
         loadMedia();
     };
-</script></body>
+</script>
+</body>
 </html>
