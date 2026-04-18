@@ -195,7 +195,7 @@
                         <option value="gambar">Gambar (Cloudinary)</option>
                         <option value="video_player">Video MP4 (Cloudinary)</option>
                         <option value="audio_player">Audio MP3 (Cloudinary)</option>
-                        <option value="video_youtube">Video (YouTube ID/URL)</option>
+                        <option value="video_youtube">Video (YouTube ID)</option>
                         <option value="teks">Text World (Artikel)</option>
                     </select>
                 </div>
@@ -204,11 +204,14 @@
             <div id="input_url_container" style="margin-bottom: 20px;">
                 <label id="label_media">File Media / URL</label>
                 <div style="display: flex; gap: 10px;">
-                    <input type="text" id="url_media" placeholder="Pilih file atau masukkan link YouTube..." style="background: #f8fafc;">
+                    <input type="text" id="url_media" placeholder="Pilih file atau masukkan ID YouTube..." style="background: #f8fafc;">
                     <button type="button" id="btn_upload_cloudinary" onclick="bukaWidgetUpload()" class="btn-submit" style="width: auto; background: #6366f1;">
                         <i class="fas fa-upload"></i> Upload File
                     </button>
                 </div>
+                <small style="color: #64748b; font-size: 11px; margin-top: 5px; display: block;">
+                    *Gunakan tombol Upload untuk Gambar/Video/Audio. Masukkan ID Manual khusus YouTube.
+                </small>
             </div>
 
             <div id="input_teks_container" style="display:none; margin-bottom: 20px;">
@@ -278,7 +281,7 @@
 
     if (!firebase.apps.length) { 
         firebase.initializeApp(firebaseConfig); 
-        console.log("✅ Firebase Berhasil Diinisialisasi");
+        console.log("✅ Firebase Initialized");
     }
     const db = firebase.firestore();
     let runningItems = [];
@@ -290,20 +293,26 @@
 
     function bukaWidgetUpload() {
         const tipeMedia = document.getElementById('tipe_media').value;
+        
         let resourceType = "auto";
         if (tipeMedia === "gambar") resourceType = "image";
         if (tipeMedia === "video_player" || tipeMedia === "audio_player") resourceType = "video";
 
+        if (tipeMedia === "video_youtube") {
+            return alert("Untuk YouTube, silakan masukkan ID Video secara manual di kotak input.");
+        }
+
         cloudinary.openUploadWidget({
             cloudName: cloudName,
             uploadPreset: uploadPreset,
-            sources: ['local', 'url'],
+            sources: ['local', 'url', 'camera'],
             resourceType: resourceType,
-            multiple: false
+            multiple: false,
+            clientAllowedFormats: tipeMedia === "gambar" ? ["png", "jpg", "jpeg", "webp"] : ["mp4", "mp3", "mov"]
         }, (error, result) => {
             if (!error && result && result.event === "success") {
                 document.getElementById('url_media').value = result.info.secure_url;
-                console.log("✅ File Berhasil diupload ke Cloudinary:", result.info.secure_url);
+                alert("File berhasil diupload!");
             }
         });
     }
@@ -311,14 +320,24 @@
     // --- 3. FUNGSI UI ---
     function toggleInputFields() {
         const tipe = document.getElementById('tipe_media').value;
-        document.getElementById('input_url_container').style.display = (tipe === 'teks') ? 'none' : 'block';
-        document.getElementById('input_teks_container').style.display = (tipe === 'teks') ? 'block' : 'none';
-        document.getElementById('btn_upload_cloudinary').style.display = (tipe === 'video_youtube') ? 'none' : 'block';
+        const urlContainer = document.getElementById('input_url_container');
+        const teksContainer = document.getElementById('input_teks_container');
+        const btnCloudinary = document.getElementById('btn_upload_cloudinary');
+
+        if (tipe === 'teks') {
+            urlContainer.style.display = 'none';
+            teksContainer.style.display = 'block';
+        } else {
+            urlContainer.style.display = 'block';
+            teksContainer.style.display = 'none';
+            btnCloudinary.style.display = (tipe === 'video_youtube') ? 'none' : 'block';
+        }
     }
 
     function toggleSelectAll() {
         const checkAll = document.getElementById('checkAll');
-        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = checkAll.checked);
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkAll.checked);
     }
 
     // --- 4. LOGIKA RUNNING TEXT ---
@@ -326,39 +345,179 @@
         const text = document.getElementById('rt_input').value;
         const durasi = document.getElementById('rt_durasi').value;
         if(!text) return alert("Teks kosong!");
+
         try {
             await db.collection("rt_collection").add({
-                text: text, durasi: parseInt(durasi),
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(), isActive: false
+                text: text, 
+                durasi: parseInt(durasi),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                isActive: false
             });
-            console.log("✅ Running Text disimpan");
             document.getElementById('rt_input').value = "";
-        } catch (e) { console.error("❌ Gagal simpan RT:", e); }
+        } catch (e) { console.error("❌ Error RT Add:", e); }
     }
 
     function loadRTCollection() {
-        db.collection("rt_collection").orderBy("timestamp", "desc").onSnapshot(s => {
+        db.collection("rt_collection").orderBy("timestamp", "desc").onSnapshot(snapshot => {
             const list = document.getElementById('rt_history_list');
+            if(!list) return;
             list.innerHTML = ""; runningItems = [];
-            s.forEach(doc => {
+            snapshot.forEach(doc => {
                 const data = doc.data();
                 runningItems.push({ id: doc.id, ...data });
-                list.innerHTML += `<tr>
-                    <td><span class="status-dot ${data.isActive ? 'active' : ''}"></span> ${data.isActive ? 'Active' : 'Queue'}</td>
-                    <td>${data.text}</td><td>${data.durasi}s</td>
-                    <td style="text-align:center;">
-                        <button onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
-                        <button onclick="deleteRT('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
-                    </td></tr>`;
+                list.innerHTML += `
+                    <tr>
+                        <td><span class="status-dot ${data.isActive ? 'active' : ''}"></span> ${data.isActive ? 'Active' : 'Queue'}</td>
+                        <td>${data.text}</td>
+                        <td>${data.durasi}s</td>
+                        <td style="text-align:center;">
+                            <button onclick="playRTManual('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-play"></i></button>
+                            <button onclick="deleteRT('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
             });
         });
     }
 
     async function playRTManual(id) {
         const selected = runningItems.find(i => i.id === id);
+        if(!selected) return;
         const batch = db.batch();
         runningItems.forEach(item => batch.update(db.collection("rt_collection").doc(item.id), { isActive: false }));
         batch.update(db.collection("rt_collection").doc(id), { isActive: true });
-        batch.set(db.collection("config").doc("running_text"), { pesan: selected.text, durasi: selected.durasi, lastUpdate:
+        batch.set(db.collection("config").doc("running_text"), { 
+            pesan: selected.text,
+            durasi: selected.durasi,
+            lastUpdate: Date.now() 
+        }, { merge: true });
+        await batch.commit();
+    }
+
+    async function deleteRT(id) {
+        if(confirm("Hapus teks ini?")) await db.collection("rt_collection").doc(id).delete();
+    }
+
+    // --- 5. LOGIKA MEDIA & PLAYLIST ---
+    function extractVideoID(url) {
+        const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : url;
+    }
+
+    // --- PERBAIKAN FUNGSI UPLOAD ---
+    async function uploadKePortal() {
+        const judul = document.getElementById('judul').value;
+        const tipe = document.getElementById('tipe_media').value;
+        let url = document.getElementById('url_media').value || "";
+
+        if(!judul) return alert("Judul wajib diisi!");
+        
+        // Jika YouTube, ambil ID-nya. Jika Cloudinary/MP4, simpan URL lengkap.
+        if(tipe === 'video_youtube' && url.includes("http")) {
+            url = extractVideoID(url);
+        }
+
+        try {
+            await db.collection("portal_media").add({
+                judul: judul,
+                tipe: tipe,
+                url: url, 
+                isi_artikel: document.getElementById('isi_artikel').value || "",
+                urutan: Date.now(),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert("Konten Berhasil Terbit!");
+            document.getElementById('judul').value = "";
+            document.getElementById('url_media').value = "";
+            document.getElementById('isi_artikel').value = "";
+        } catch (e) { console.error("❌ Upload Error:", e); }
+    }
+
+    function loadMedia() {
+        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(snapshot => {
+            const list = document.getElementById('mediaList');
+            if(!list) return;
+            list.innerHTML = ""; playlistData = [];
+            let count = 1;
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                playlistData.push({ id: doc.id, ...data });
+                list.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" class="item-checkbox" value="${doc.id}"></td>
+                        <td style="text-align:center;">${count++}</td>
+                        <td style="font-weight:600;">${data.judul}</td>
+                        <td><span style="font-size:11px; background:#e0e7ff; color:#4338ca; padding:4px 8px; border-radius:10px;">${data.tipe}</span></td>
+                        <td style="text-align:center;">
+                            <button onclick="moveItem('${doc.id}', -1)" class="btn-action btn-up"><i class="fas fa-chevron-up"></i></button>
+                            <button onclick="moveItem('${doc.id}', 1)" class="btn-action btn-down"><i class="fas fa-chevron-down"></i></button>
+                            <button onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm"><i class="fas fa-desktop"></i></button>
+                            <button onclick="deleteMedia('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        });
+    }
+
+    // --- PERBAIKAN FUNGSI PLAY SEKARANG ---
+    async function playSekarang(id) {
+        const selectedMedia = playlistData.find(item => item.id === id);
+        if (!selectedMedia) return alert("Data tidak ditemukan!");
+
+        const contentToPlay = selectedMedia.url;
+
+        try {
+            await db.collection("config").doc("playlist").set({ 
+                activeContentId: contentToPlay, 
+                triggerChange: Date.now() 
+            }, { merge: true });
+            
+            alert("Konten '" + selectedMedia.judul + "' dikirim ke monitor!");
+        } catch (e) {
+            console.error("❌ Error Play:", e);
+            alert("Gagal mengirim ke monitor.");
+        }
+    }
+
+    async function deleteMedia(id) {
+        if(confirm("Hapus konten ini?")) await db.collection("portal_media").doc(id).delete();
+    }
+
+    async function moveItem(id, direction) {
+        const index = playlistData.findIndex(item => item.id === id);
+        if (index < 0) return;
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= playlistData.length) return;
+
+        const itemA = playlistData[index];
+        const itemB = playlistData[newIndex];
+
+        const batch = db.batch();
+        batch.update(db.collection("portal_media").doc(itemA.id), { urutan: itemB.urutan });
+        batch.update(db.collection("portal_media").doc(itemB.id), { urutan: itemA.urutan });
+        await batch.commit();
+    }
+
+    async function deleteSelected() {
+        const selected = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+        if(selected.length === 0) return alert("Pilih konten yang akan dihapus!");
+        if(confirm(`Hapus ${selected.length} konten terpilih?`)) {
+            const batch = db.batch();
+            selected.forEach(id => batch.delete(db.collection("portal_media").doc(id)));
+            await batch.commit();
+        }
+    }
+
+    async function updatePlayMode() {
+        const mode = document.getElementById('play_mode').value;
+        await db.collection("config").doc("playlist").update({ mode: mode });
+        document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
+    }
+
+    window.onload = () => {
+        loadRTCollection();
+        loadMedia();
+    };
+</script>
 </body>
 </html>
