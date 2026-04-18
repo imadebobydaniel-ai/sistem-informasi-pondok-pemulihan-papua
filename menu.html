@@ -237,12 +237,16 @@
         });
     }
 
-    // --- 3. YOUTUBE MEDIA PLAYER LOGIC ---
+    // --- 3. MEDIA PLAYER LOGIC (DETEKSI OTOMATIS) ---
     let player;
     let isPlayerReady = false;
     let pendingVideoId = null;
 
+    // Fungsi Inisialisasi YouTube API
     function onYouTubeIframeAPIReady() {
+        const playerDiv = document.getElementById('player');
+        if (!playerDiv) return; // Pastikan elemen ada sebelum inisialisasi
+
         player = new YT.Player('player', {
             height: '100%',
             width: '100%',
@@ -271,22 +275,48 @@
             player.loadVideoById(pendingVideoId);
             pendingVideoId = null;
         }
-        listenPlaylist(); 
     }
 
-    // SINKRONISASI PLAYLIST (MENDENGARKAN INPUT DARI PORTAL MEDIA)
+    // SINKRONISASI PLAYLIST (Mampu mendeteksi YouTube vs Video File)
     function listenPlaylist() {
         db.collection("config").doc("playlist").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                const rawId = data.activeContentId; 
+                const rawPath = data.activeContentId; 
 
-                if (rawId) {
-                    const cleanId = extractVideoID(rawId);
-                    if (isPlayerReady && player && player.loadVideoById) {
-                        player.loadVideoById(cleanId);
-                    } else {
-                        pendingVideoId = cleanId;
+                if (rawPath) {
+                    const mediaArea = document.getElementById('media-display-area');
+                    
+                    // --- KONDISI A: Jika Media adalah Link Video (Cloudinary / Direct MP4) ---
+                    if (rawPath.includes('cloudinary.com') || rawPath.endsWith('.mp4')) {
+                        console.log("📂 Memutar File Video Direct:", rawPath);
+                        
+                        // Render Tag Video HTML5
+                        mediaArea.innerHTML = `
+                            <video id="videoPlayer" width="100%" height="100%" autoplay muted loop playsinline 
+                                style="object-fit: cover; border-radius: 0px; background: black;">
+                                <source src="${rawPath}" type="video/mp4">
+                                Browser Anda tidak mendukung tag video.
+                            </video>`;
+                        
+                        isPlayerReady = false; // Reset status YouTube player
+                    } 
+                    // --- KONDISI B: Jika Media adalah YouTube ID / URL ---
+                    else {
+                        const cleanId = extractVideoID(rawPath);
+                        console.log("📺 Memutar YouTube Player:", cleanId);
+                        
+                        // Kembalikan kontainer ke div player jika sebelumnya adalah video tag
+                        if (!document.getElementById('player')) {
+                            mediaArea.innerHTML = `<div id="player"></div>`;
+                            onYouTubeIframeAPIReady(); // Re-init YouTube
+                        }
+                        
+                        if (isPlayerReady && player && player.loadVideoById) {
+                            player.loadVideoById(cleanId);
+                        } else {
+                            pendingVideoId = cleanId;
+                        }
                     }
                 }
             }
@@ -370,6 +400,7 @@
         setInterval(updateTime, 1000); 
         syncUser(); 
         listenRunningText(); 
+        listenPlaylist(); // Panggil sinkronisasi media di sini
 
         const btnToggle = document.getElementById('toggleProfile');
         const profileCard = document.getElementById('profileCard');
