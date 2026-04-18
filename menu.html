@@ -334,89 +334,123 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        const firebaseConfig = { 
-            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-            authDomain: "boby-apps-project.firebaseapp.com", 
-            projectId: "boby-apps-project", 
-            storageBucket: "boby-apps-project.appspot.com", 
-            messagingSenderId: "125984859692", 
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
-        };
+    // 1. Firebase Configuration
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+        authDomain: "boby-apps-project.firebaseapp.com", 
+        projectId: "boby-apps-project", 
+        storageBucket: "boby-apps-project.appspot.com", 
+        messagingSenderId: "125984859692", 
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    };
 
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const userEmail = localStorage.getItem("userEmail");
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const userEmail = localStorage.getItem("userEmail");
 
-        let ytPlayer;
-        let isYtReady = false;
-        let pendingYtId = null;
+    // 2. YouTube Player Settings
+    let ytPlayer;
+    let isYtReady = false;
+    let pendingYtId = null;
+    const VIDEO_ID = 'aqz-KE-bpKQ'; // Ubah ID ini jika ingin ganti video default
 
-        function onYouTubeIframeAPIReady() {
-            ytPlayer = new YT.Player('player', {
-                height: '100%', width: '100%',
-                videoId: 'aqz-KE-bpKQ', 
-                playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 1, 'rel': 0, 'loop': 1, 'playlist': 'aqz-KE-bpKQ' },
-                events: { 'onReady': () => { isYtReady = true; if (pendingYtId) { ytPlayer.loadVideoById(pendingYtId); pendingYtId = null; } } }
-            });
-        }
-
-        function listenData() {
-            db.collection("config").doc("running_text").onSnapshot(doc => {
-                if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
-            });
-            if (userEmail) {
-                db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
-                    if (!s.empty) {
-                        const d = s.docs[0].data();
-                        document.getElementById('disp_nama').innerText = d.nama || "User";
-                        document.getElementById('disp_email').innerText = userEmail;
-                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                        if (d.foto_profil) {
-                            document.getElementById('user-photo').src = d.foto_profil;
-                            document.getElementById('user-photo').style.display = "block";
-                            document.getElementById('default-icon').style.display = "none";
-                        }
-                    }
-                });
+    function onYouTubeIframeAPIReady() {
+        ytPlayer = new YT.Player('player', {
+            height: '100%', 
+            width: '100%',
+            videoId: VIDEO_ID, 
+            playerVars: { 
+                'autoplay': 1, 
+                'mute': 1, 
+                'controls': 1, 
+                'rel': 0, 
+                'loop': 1, 
+                'playlist': VIDEO_ID // Wajib ada agar loop berfungsi
+            },
+            events: { 
+                'onReady': (event) => { 
+                    isYtReady = true; 
+                    event.target.playVideo(); // Auto-play saat siap
+                    if (pendingYtId) { 
+                        ytPlayer.loadVideoById(pendingYtId); 
+                        pendingYtId = null; 
+                    } 
+                } 
             }
-        }
+        });
+    }
 
-        function bukaKartuDigital() {
-            db.collection("users").where("email", "==", userEmail).get().then(s => {
-                if(!s.empty) {
+    // 3. Data Listeners (Firestore)
+    function listenData() {
+        db.collection("config").doc("running_text").onSnapshot(doc => {
+            if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
+        });
+        if (userEmail) {
+            db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
+                if (!s.empty) {
                     const d = s.docs[0].data();
-                    document.getElementById('dnama').innerText = d.nama;
-                    document.getElementById('dnij').innerText = d.nij || "0000 0000";
-                    const qrBox = document.getElementById("qrbox");
-                    qrBox.innerHTML = "";
-                    new QRCode(qrBox, { text: userEmail, width: 110, height: 110 });
-                    document.getElementById('modalKartuDigital').style.display = 'flex';
+                    document.getElementById('disp_nama').innerText = d.nama || "User";
+                    document.getElementById('disp_email').innerText = userEmail;
+                    document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                    if (d.foto_profil) {
+                        const img = document.getElementById('user-photo');
+                        img.src = d.foto_profil;
+                        img.style.display = "block";
+                        document.getElementById('default-icon').style.display = "none";
+                    }
                 }
             });
         }
-        function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
-        function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
-        function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-        function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.href = "login.html"; }); }
+    }
 
-        window.onload = () => {
-            listenData();
-            document.getElementById('toggleProfile').addEventListener('click', () => {
+    // 4. UI Functions
+    function bukaKartuDigital() {
+        db.collection("users").where("email", "==", userEmail).get().then(s => {
+            if(!s.empty) {
+                const d = s.docs[0].data();
+                document.getElementById('dnama').innerText = d.nama;
+                document.getElementById('dnij').innerText = d.nij || "0000 0000";
+                const qrBox = document.getElementById("qrbox");
+                qrBox.innerHTML = "";
+                new QRCode(qrBox, { text: userEmail, width: 110, height: 110 });
+                document.getElementById('modalKartuDigital').style.display = 'flex';
+            }
+        });
+    }
+
+    function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
+    function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
+    function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
+    function executeLogout() { 
+        auth.signOut().then(() => { 
+            localStorage.clear(); 
+            window.location.href = "login.html"; 
+        }); 
+    }
+
+    // 5. Window Init
+    window.onload = () => {
+        listenData();
+        
+        // Profile Toggle Logic
+        const toggleBtn = document.getElementById('toggleProfile');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
                 document.getElementById('profileCard').classList.toggle('closed');
                 const icon = document.getElementById('toggleIcon');
                 icon.classList.toggle('fa-chevron-left');
                 icon.classList.toggle('fa-chevron-right');
             });
+        }
 
-            // Reset visual menu grid & nav item setelah disentuh (untuk Mobile)
-            const activeElements = document.querySelectorAll('.menu-box, .nav-item');
-            activeElements.forEach(el => {
-                el.addEventListener('touchend', () => {
-                    setTimeout(() => { el.blur(); }, 200);
-                });
+        // Mobile Touch Cleanup
+        const activeElements = document.querySelectorAll('.menu-box, .nav-item');
+        activeElements.forEach(el => {
+            el.addEventListener('touchend', () => {
+                setTimeout(() => { el.blur(); }, 200);
             });
-        };
-    </script>
-</body>
+        });
+    };
+</script></body>
 </html>
