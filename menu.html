@@ -69,6 +69,11 @@
         #audioPlayer { width: 90%; margin: 80px auto; display: none; }
         #imageDisplay { width: 100%; height: 100%; object-fit: contain; display: none; }
         #textDisplay { width: 100%; height: 100%; background: white; color: black; padding: 15px; overflow-y: auto; display: none; font-size: 13px; text-align: left; box-sizing: border-box; }
+        
+        /* CSS Tambahan untuk List Pesan */
+        .pesan-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .pesan-item:hover { background: #f9f9f9; }
+        .pesan-item.unread { background: #eef7ff; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -94,7 +99,7 @@
                 </div>
             </div>
 
-            <button onclick="sendFriendRequest()" class="menu-box" style="width: 85%; margin-top: 25px; background: white; flex-direction: row; justify-content: center; gap: 10px; padding: 15px; border: none;">
+            <button id="btn-add-networking" class="menu-box" style="width: 85%; margin-top: 25px; background: white; flex-direction: row; justify-content: center; gap: 10px; padding: 15px; border: none;">
                 <i class="fas fa-user-plus" style="font-size: 18px; margin-bottom: 0;"></i>
                 <span style="font-size: 14px; color: var(--biru-tua);">ADD NETWORKING</span>
             </button>
@@ -231,30 +236,90 @@
         const auth = firebase.auth();
         const userEmail = localStorage.getItem("userEmail");
 
-        // --- FUNGSI BARU UNTUK SCAN NETWORKING ---
-        function openScanModal(data) {
-            // Fungsi ini dipanggil saat scanner berhasil membaca barcode
-            if(data) {
-                document.getElementById('scan-foto').src = data.foto || 'https://via.placeholder.com/100';
-                document.getElementById('scan-nama').innerText = data.nama || 'Nama Tidak Diketahui';
-                document.getElementById('scan-nij').innerText = 'NIJ: ' + (data.nij || '0000 0000');
-                document.getElementById('scan-jemaat').innerText = data.jemaat || '-';
-                document.getElementById('scan-komsel').innerText = data.komsel || '-';
-            }
-            document.getElementById('scan-result-modal').style.display = 'flex';
+        // --- FUNGSI SCAN & NETWORKING ---
+        function openScanModal(targetEmail) {
+            db.collection("users").where("email", "==", targetEmail).get().then(s => {
+                if(!s.empty) {
+                    const data = s.docs[0].data();
+                    document.getElementById('scan-foto').src = data.foto_profil || 'https://via.placeholder.com/100';
+                    document.getElementById('scan-nama').innerText = data.nama || 'Nama Tidak Diketahui';
+                    document.getElementById('scan-nij').innerText = 'NIJ: ' + (data.nij || '0000 0000');
+                    document.getElementById('scan-jemaat').innerText = data.lokasi_berjemaat || '-';
+                    document.getElementById('scan-komsel').innerText = data.komsel || '-';
+                    
+                    document.getElementById('btn-add-networking').onclick = () => sendFriendRequest(targetEmail, data.nama);
+                    document.getElementById('scan-result-modal').style.display = 'flex';
+                }
+            });
         }
 
         function closeScanModal() {
             document.getElementById('scan-result-modal').style.display = 'none';
         }
 
-        function sendFriendRequest() {
-            // Logic networking Anda di sini (misal simpan ke Firestore)
-            alert("Permintaan Networking Berhasil Dikirim!");
-            closeScanModal();
+        function sendFriendRequest(targetEmail, targetNama) {
+            if (targetEmail === userEmail) return alert("Ini adalah email Anda sendiri.");
+            
+            db.collection("inbox").add({
+                to: targetEmail,
+                from: userEmail,
+                nama_pengirim: document.getElementById('disp_nama').innerText,
+                pesan: `Permintaan Networking dari ${document.getElementById('disp_nama').innerText}`,
+                type: "friend_request",
+                status: "unread",
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Permintaan Networking Berhasil Dikirim ke " + targetNama);
+                closeScanModal();
+            });
         }
-        // ----------------------------------------
 
+        // --- FUNGSI INBOX & BADGE ---
+        function bukaInbox() {
+            document.getElementById('popup-inbox').style.display = 'flex';
+            const listPesan = document.getElementById('list-pesan');
+            listPesan.innerHTML = "Memuat pesan...";
+
+            db.collection("inbox").where("to", "==", userEmail).orderBy("timestamp", "desc").get().then(s => {
+                listPesan.innerHTML = "";
+                if (s.empty) {
+                    listPesan.innerHTML = "<p style='text-align:center; color:#999;'>Tidak ada pesan.</p>";
+                } else {
+                    s.forEach(doc => {
+                        const d = doc.data();
+                        const item = document.createElement('div');
+                        item.className = `pesan-item ${d.status === 'unread' ? 'unread' : ''}`;
+                        item.innerHTML = `
+                            <div style="font-size:12px; color:var(--biru-safir)">${d.nama_pengirim}</div>
+                            <div style="font-size:13px">${d.pesan}</div>
+                        `;
+                        item.onclick = () => {
+                            if(d.status === 'unread') {
+                                db.collection("inbox").doc(doc.id).update({ status: "read" });
+                            }
+                            alert(d.pesan);
+                        };
+                        listPesan.appendChild(item);
+                    });
+                }
+            });
+        }
+
+        function listenInboxBadge() {
+            if (!userEmail) return;
+            db.collection("inbox").where("to", "==", userEmail).where("status", "==", "unread")
+                .onSnapshot(s => {
+                    const badge = document.getElementById('email-badge');
+                    if (s.size > 0) {
+                        badge.innerText = s.size;
+                        badge.style.display = "block";
+                    } else {
+                        badge.style.display = "none";
+                    }
+                });
+        }
+
+        // --- LOGIKA MEDIA & DATA ASLI ---
         let ytPlayer;
         let isYtReady = false;
         let pendingYtId = null;
@@ -356,14 +421,13 @@
                     document.getElementById('dnij').innerText = d.nij || "0000 0000";
                     const qrBox = document.getElementById("qrbox");
                     qrBox.innerHTML = "";
-                    new QRCode(qrBox, { text: userEmail, width: 110, height: 110 }); // Menggunakan email sebagai data QR
+                    new QRCode(qrBox, { text: userEmail, width: 110, height: 110 });
                     document.getElementById('modalKartuDigital').style.display = 'flex';
                 }
             });
         }
 
         function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
-        function bukaInbox() { document.getElementById('popup-inbox').style.display = 'flex'; }
         function tutupInbox() { document.getElementById('popup-inbox').style.display = 'none'; }
         function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
         function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
@@ -373,6 +437,7 @@
             setInterval(updateTime, 1000);
             updateTime();
             listenData();
+            listenInboxBadge();
             document.getElementById('toggleProfile').addEventListener('click', () => {
                 document.getElementById('profileCard').classList.toggle('closed');
             });
