@@ -294,7 +294,6 @@
     function bukaWidgetUpload() {
         const tipeMedia = document.getElementById('tipe_media').value;
         
-        // Sesuaikan resource type Cloudinary
         let resourceType = "auto";
         if (tipeMedia === "gambar") resourceType = "image";
         if (tipeMedia === "video_player" || tipeMedia === "audio_player") resourceType = "video";
@@ -331,7 +330,6 @@
         } else {
             urlContainer.style.display = 'block';
             teksContainer.style.display = 'none';
-            // Sembunyikan tombol upload jika tipenya YouTube
             btnCloudinary.style.display = (tipe === 'video_youtube') ? 'none' : 'block';
         }
     }
@@ -406,19 +404,24 @@
         return (match && match[2].length === 11) ? match[2] : url;
     }
 
+    // --- PERBAIKAN FUNGSI UPLOAD ---
     async function uploadKePortal() {
         const judul = document.getElementById('judul').value;
         const tipe = document.getElementById('tipe_media').value;
         let url = document.getElementById('url_media').value || "";
 
         if(!judul) return alert("Judul wajib diisi!");
-        if(tipe === 'video_youtube' && url !== "") url = extractVideoID(url);
+        
+        // Jika YouTube, ambil ID-nya. Jika Cloudinary/MP4, simpan URL lengkap.
+        if(tipe === 'video_youtube' && url.includes("http")) {
+            url = extractVideoID(url);
+        }
 
         try {
             await db.collection("portal_media").add({
                 judul: judul,
                 tipe: tipe,
-                url: url,
+                url: url, 
                 isi_artikel: document.getElementById('isi_artikel').value || "",
                 urutan: Date.now(),
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -456,12 +459,24 @@
         });
     }
 
+    // --- PERBAIKAN FUNGSI PLAY SEKARANG ---
     async function playSekarang(id) {
-        await db.collection("config").doc("playlist").set({ 
-            activeContentId: id, 
-            triggerChange: Date.now() 
-        }, { merge: true });
-        alert("Konten dikirim ke monitor!");
+        const selectedMedia = playlistData.find(item => item.id === id);
+        if (!selectedMedia) return alert("Data tidak ditemukan!");
+
+        const contentToPlay = selectedMedia.url;
+
+        try {
+            await db.collection("config").doc("playlist").set({ 
+                activeContentId: contentToPlay, 
+                triggerChange: Date.now() 
+            }, { merge: true });
+            
+            alert("Konten '" + selectedMedia.judul + "' dikirim ke monitor!");
+        } catch (e) {
+            console.error("❌ Error Play:", e);
+            alert("Gagal mengirim ke monitor.");
+        }
     }
 
     async function deleteMedia(id) {
