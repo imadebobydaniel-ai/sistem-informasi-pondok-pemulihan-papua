@@ -221,7 +221,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 
- <script>
+<script>
     const firebaseConfig = { 
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
@@ -267,13 +267,12 @@
 
     function closeScanModal() {
         document.getElementById('scan-result-modal').style.display = 'none';
-        // Membersihkan URL dari parameter scan setelah modal ditutup
         const newURL = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, newURL);
     }
 
     function sendFriendRequest(targetEmail, targetNama) {
-        if(!userEmail) return alert("Silahkan login terlebih dahulu untuk menambah networking.");
+        if(!userEmail) return alert("Silahkan login terlebih dahulu.");
         
         db.collection("inbox").add({
             to: targetEmail,
@@ -404,7 +403,7 @@
         document.getElementById('digital-clock').innerText = now.toLocaleTimeString('id-ID') + " WIT";
     }
 
-    // --- 4. LOGIKA KARTU DIGITAL (QR LINK UPDATE) ---
+    // --- 4. LOGIKA KARTU DIGITAL (PERBAIKAN ERROR 404) ---
     function bukaKartuDigital() {
         db.collection("users").where("email", "==", userEmail).get().then(s => {
             if(!s.empty) {
@@ -417,9 +416,16 @@
                 const qrBox = document.getElementById("qrbox");
                 qrBox.innerHTML = "";
                 
-                // Membuat Link URL agar bisa di-scan kamera HP biasa
-                const scanUrl = window.location.origin + window.location.pathname + "?scan=" + encodeURIComponent(userEmail);
-                new QRCode(qrBox, { text: scanUrl, width: 110, height: 110 });
+                // Perbaikan Link: Mengambil URL lengkap saat ini (termasuk dashboard.html jika ada)
+                let currentUrl = window.location.href.split('?')[0]; 
+                const scanUrl = currentUrl + "?scan=" + encodeURIComponent(userEmail);
+                
+                new QRCode(qrBox, { 
+                    text: scanUrl, 
+                    width: 110, 
+                    height: 110,
+                    correctLevel : QRCode.CorrectLevel.H 
+                });
                 
                 document.getElementById('modalKartuDigital').style.display = 'flex';
             }
@@ -439,11 +445,10 @@
         listenData();
         listenInboxBadge();
 
-        // Cek apakah ada parameter ?scan= di URL
         const urlParams = new URLSearchParams(window.location.search);
         const targetScan = urlParams.get('scan');
         if (targetScan) {
-            // Tunggu 1.5 detik agar data Firebase siap lalu buka profil
+            // Delay 1.5 detik agar koneksi Firestore stabil sebelum load profil
             setTimeout(() => { openScanModal(targetScan); }, 1500);
         }
 
