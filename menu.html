@@ -207,29 +207,34 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
     };
 
-    // Inisialisasi Firebase hanya jika belum ada
     if (!firebase.apps.length) { 
         firebase.initializeApp(firebaseConfig); 
     }
     const db = firebase.firestore();
     const auth = firebase.auth();
     
-    // VARIABEL GLOBAL (Dideklarasikan hanya satu kali agar tidak error)
     const userEmail = localStorage.getItem("userEmail");
     const statusAdmin = localStorage.getItem("isAdmin");
 
+    // --- FUNGSI HELPER: Ekstrak ID YouTube ---
+    // Fungsi ini memastikan jika Anda memasukkan link lengkap, sistem tetap hanya mengambil ID-nya saja.
+    function extractVideoID(url) {
+        if (!url) return 'aqz-KE-bpKQ'; // Default jika kosong
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : url;
+    }
+
     // --- 2. LOGIKA RUNNING TEXT ---
     function listenRunningText() {
-        console.log("📡 Memulai listener Running Text...");
         db.collection("config").doc("running_text").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                console.log("✅ RT Baru Diterima:", data.pesan);
                 const rtElement = document.getElementById('rt_display'); 
                 if (rtElement) rtElement.innerText = data.pesan;
             }
         }, (error) => {
-            console.error("❌ Gagal sinkron RT:", error);
+            console.error("❌ Firestore RT Error:", error);
         });
     }
 
@@ -239,7 +244,7 @@
     let pendingVideoId = null;
 
     function onYouTubeIframeAPIReady() {
-        console.log("🎥 Menyiapkan YouTube Player...");
+        console.log("🎥 Inisialisasi Player...");
         player = new YT.Player('player', {
             height: '100%',
             width: '100%',
@@ -249,73 +254,65 @@
                 'mute': 1, 
                 'loop': 1, 
                 'playlist': 'aqz-KE-bpKQ',
-                'origin': window.location.origin, 
-                'enablejsapi': 1
+                'origin': window.location.origin, // Otomatis menyesuaikan (localhost/github)
+                'enablejsapi': 1,
+                'rel': 0
             },
             events: { 
                 'onReady': onPlayerReady,
                 'onError': (e) => {
-                    console.error("❌ YouTube Error:", e.data);
-                    // Error 150/101 biasanya karena video tersebut dilarang diputar di luar YouTube oleh pemiliknya
-                    if(e.data == 150 || e.data == 101) {
-                        console.warn("Peringatan: Video ini tidak bisa diputar secara embed.");
-                    }
+                    console.error("❌ YouTube API Error:", e.data);
                 }
             }
         });
     }
 
     function onPlayerReady(event) {
-        console.log("✅ YouTube Player Siap!");
         isPlayerReady = true;
         event.target.playVideo();
         
-        // Putar video yang sudah menunggu dari Firestore
+        // Cek apakah ada video yang sudah antre di Firestore
         if (pendingVideoId) {
             player.loadVideoById(pendingVideoId);
             pendingVideoId = null;
         }
-        
         listenPlaylist(); 
     }
 
-    // SINKRONISASI PLAYLIST (config/playlist -> activeContentId)
+    // SINKRONISASI PLAYLIST
     function listenPlaylist() {
-        console.log("📡 Memantau perubahan Playlist...");
         db.collection("config").doc("playlist").onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                console.log("📥 Data Playlist diterima:", data);
-                
-                const newVideoId = data.activeContentId;
+                // Kita asumsikan activeContentId berisi ID atau URL Video
+                const rawId = data.activeContentId; 
 
-                if (newVideoId) {
-                    console.log("🎥 Mengganti video ke ID:", newVideoId);
+                if (rawId) {
+                    const cleanId = extractVideoID(rawId);
+                    console.log("📺 Memutar Video:", cleanId);
+                    
                     if (isPlayerReady && player && player.loadVideoById) {
-                        player.loadVideoById(newVideoId);
+                        player.loadVideoById(cleanId);
                     } else {
-                        pendingVideoId = newVideoId;
+                        pendingVideoId = cleanId;
                     }
                 }
-            } else {
-                console.error("❌ Dokumen 'config/playlist' tidak ditemukan!");
             }
         }, (err) => {
-            console.error("❌ Error Firestore Playlist:", err);
+            console.error("❌ Firestore Playlist Error:", err);
         });
     }
 
     // --- 4. FUNGSI UI & MODAL ---
     function bukaKartuDigital() {
-        console.log("🪪 Membuka Kartu Digital...");
         if (!userEmail) return;
         db.collection("users").where("email", "==", userEmail).get().then(s => {
             if(!s.empty) {
                 const d = s.docs[0].data();
-                if(document.getElementById('dnama')) document.getElementById('dnama').innerText = d.nama || "User";
-                if(document.getElementById('djemaat')) document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
-                if(document.getElementById('dkomsel')) document.getElementById('dkomsel').innerText = d.komsel || "-";
-                if(document.getElementById('dnij')) document.getElementById('dnij').innerText = d.nij || "0000 0000";
+                document.getElementById('dnama').innerText = d.nama || "User";
+                document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
+                document.getElementById('dkomsel').innerText = d.komsel || "-";
+                document.getElementById('dnij').innerText = d.nij || "0000 0000";
                 
                 const qrBox = document.getElementById("qrbox");
                 if (qrBox) {
@@ -377,7 +374,6 @@
 
     // --- 6. INISIALISASI ---
     window.onload = () => { 
-        console.log("🚀 System Initialized");
         updateTime(); 
         setInterval(updateTime, 1000); 
         syncUser(); 
