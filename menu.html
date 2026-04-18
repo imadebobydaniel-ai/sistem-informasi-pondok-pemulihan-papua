@@ -67,7 +67,7 @@
             width: 100%;
             box-sizing: border-box;
             scrollbar-width: none; 
-            padding-bottom: 120px !important; /* Ruang lebih untuk animasi menu */
+            padding-bottom: 120px !important; 
         }
         .container::-webkit-scrollbar { display: none; }
 
@@ -89,12 +89,59 @@
         .profile-card.closed { transform: translateX(-100%); }
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; opacity: 0.8; }
         
-        /* --- Menu Grid --- */
+        /* --- MENU GRID DENGAN EFEK HIDUP --- */
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; }
-        .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
-        .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .menu-box { 
+            background: white; 
+            padding: 20px 10px; 
+            border-radius: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            text-decoration: none; 
+            color: var(--biru-tua); 
+            font-weight: 800; 
+            font-size: 12px; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.05); 
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            position: relative;
+            overflow: hidden;
+            border: 1px solid transparent;
+        }
 
-        /* --- MODERN BOTTOM NAVIGATION WITH POP-OUT EFFECT --- */
+        /* Perbaikan: Menggunakan active state agar kembali saat dilepas */
+        .menu-box:hover, .menu-box:active {
+            transform: translateY(-8px);
+            border-color: var(--emas-lux);
+            box-shadow: 0 12px 25px rgba(0, 51, 102, 0.15);
+        }
+
+        .menu-box i { 
+            font-size: 32px; 
+            margin-bottom: 12px; 
+            background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            transition: transform 0.3s ease;
+        }
+
+        .menu-box:hover i, .menu-box:active i {
+            transform: scale(1.2) rotate(5deg);
+        }
+
+        .menu-box::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(214, 175, 55, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .menu-box:hover::after, .menu-box:active::after { opacity: 1; }
+
+        /* --- MODERN BOTTOM NAVIGATION DENGAN LINGKARAN EMAS --- */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -110,7 +157,7 @@
             border-top-right-radius: 25px;
             z-index: 9999;
             padding-bottom: env(safe-area-inset-bottom);
-            overflow: visible; /* Penting agar menu bisa keluar dari padding */
+            overflow: visible;
         }
 
         .nav-item {
@@ -124,7 +171,6 @@
             position: relative;
         }
 
-        /* Lingkaran Ikon (Gaya Default) */
         .icon-circle {
             width: 50px;
             height: 50px;
@@ -136,26 +182,21 @@
             color: white;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             margin-bottom: 4px;
-            border: 4px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            /* Efek Lingkaran Emas */
+            border: 3px solid var(--emas-lux); 
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.5), inset 0 0 5px rgba(212, 175, 55, 0.3);
         }
 
-        .icon-circle i {
-            font-size: 20px;
-        }
+        .icon-circle i { font-size: 20px; }
 
-        /* Menu Scan QR Defaultnya sudah menonjol sedikit */
-        .nav-item.active .icon-circle {
-            transform: translateY(-15px);
-            background: linear-gradient(135deg, var(--biru-tua), var(--hijau-zamrud));
-        }
-
-        /* Efek Seolah-olah Keluar saat Disentuh/Hover */
+        /* Hover & Active State - Perbaikan: Fokus pada :active agar kembali normal */
         .nav-item:hover .icon-circle,
-        .nav-item:active .icon-circle {
-            transform: translateY(-35px); /* Keluar dari padding */
+        .nav-item:active .icon-circle,
+        .nav-item.is-active .icon-circle {
+            transform: translateY(-25px) scale(1.1);
             background: var(--biru-safir);
-            box-shadow: 0 12px 20px rgba(0, 51, 102, 0.3);
+            border-color: #fff;
+            box-shadow: 0 15px 25px rgba(212, 175, 55, 0.4);
         }
 
         .nav-item span {
@@ -164,20 +205,13 @@
             transition: 0.3s;
         }
 
-        /* Warna teks saat aktif/hover */
-        .nav-item:hover span, .nav-item.active span {
-            color: var(--biru-tua);
-        }
+        .nav-item:hover span, .nav-item:active span, .nav-item.is-active span { color: var(--biru-tua); }
 
-        /* Khusus tombol keluar warna merah */
-        .nav-item.logout-btn .icon-circle {
-            background: #dc3545;
-        }
-        .nav-item.logout-btn:hover span {
-            color: #dc3545;
-        }
+        /* Logout khusus */
+        .nav-item.logout-btn .icon-circle { border-color: #ff9999; background: #dc3545; }
+        .nav-item.logout-btn:hover span { color: #dc3545; }
 
-        /* --- Modals & Sisanya --- */
+        /* --- Modals --- */
         .modal-card-overlay, .popup-inbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; }
         .digital-card-box { width: 260px; height: 400px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%); border-radius: 15px; padding: 20px; color: #fff; text-align: center; display: flex; flex-direction: column; align-items: center; border: 1px solid rgba(255,255,255,0.4); }
         .card-logo-top { width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px; }
@@ -269,7 +303,7 @@
             <span>REFRESH</span>
         </a>
 
-        <a href="scan-qr.html" class="nav-item active">
+        <a href="scan-qr.html" class="nav-item">
             <div class="icon-circle">
                 <i class="fa-solid fa-qrcode"></i>
             </div>
@@ -386,6 +420,17 @@
                 const icon = document.getElementById('toggleIcon');
                 icon.classList.toggle('fa-chevron-left');
                 icon.classList.toggle('fa-chevron-right');
+            });
+
+            // Tambahan: Reset visual menu grid & nav item setelah disentuh (untuk Mobile)
+            const activeElements = document.querySelectorAll('.menu-box, .nav-item');
+            activeElements.forEach(el => {
+                el.addEventListener('touchend', () => {
+                    // Memberi jeda sedikit agar efek sentuhan terasa sebelum kembali normal
+                    setTimeout(() => {
+                        el.blur(); 
+                    }, 200);
+                });
             });
         };
     </script>
