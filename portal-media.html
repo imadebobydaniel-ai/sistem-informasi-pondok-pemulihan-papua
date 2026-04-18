@@ -404,7 +404,6 @@
         return (match && match[2].length === 11) ? match[2] : url;
     }
 
-    // --- PERBAIKAN FUNGSI UPLOAD ---
     async function uploadKePortal() {
         const judul = document.getElementById('judul').value;
         const tipe = document.getElementById('tipe_media').value;
@@ -412,7 +411,6 @@
 
         if(!judul) return alert("Judul wajib diisi!");
         
-        // Jika YouTube, ambil ID-nya. Jika Cloudinary/MP4, simpan URL lengkap.
         if(tipe === 'video_youtube' && url.includes("http")) {
             url = extractVideoID(url);
         }
@@ -459,21 +457,20 @@
         });
     }
 
-    // --- PERBAIKAN FUNGSI PLAY SEKARANG ---
+    // --- FUNGSI PLAY SEKARANG (SUDAH DIPERBAIKI UNTUK CLOUDINARY) ---
     async function playSekarang(id) {
         const selectedMedia = playlistData.find(item => item.id === id);
         if (!selectedMedia) return alert("Data tidak ditemukan!");
 
-        const contentToPlay = selectedMedia.url;
-
         try {
             await db.collection("config").doc("playlist").set({ 
-                activeContentId: contentToPlay, 
+                activeContentId: selectedMedia.url, // URL Cloudinary atau ID YouTube
+                tipeAktif: selectedMedia.tipe,      // Memberitahu Monitor ini tipe apa (PENTING!)
                 triggerChange: Date.now() 
             }, { merge: true });
             
-            alert("Konten '" + selectedMedia.judul + "' dikirim ke monitor!");
-        } catch (e) {
+            alert("Sent to Monitor: " + selectedMedia.judul);
+        } catch (e) { 
             console.error("❌ Error Play:", e);
             alert("Gagal mengirim ke monitor.");
         }
@@ -518,6 +515,5 @@
         loadRTCollection();
         loadMedia();
     };
-</script>
-</body>
+</script></body>
 </html>
