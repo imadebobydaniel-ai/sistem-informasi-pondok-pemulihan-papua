@@ -67,7 +67,7 @@
             width: 100%;
             box-sizing: border-box;
             scrollbar-width: none; 
-            padding-bottom: 100px !important; /* Ruang agar menu bawah tidak menutupi konten */
+            padding-bottom: 120px !important; /* Ruang lebih untuk animasi menu */
         }
         .container::-webkit-scrollbar { display: none; }
 
@@ -94,7 +94,7 @@
         .menu-box { background: white; padding: 20px 10px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: var(--biru-tua); font-weight: 800; font-size: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.05); transition: 0.3s; }
         .menu-box i { font-size: 28px; margin-bottom: 10px; background: linear-gradient(135deg, var(--biru-safir), var(--hijau-zamrud)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        /* --- NEW BOTTOM NAVIGATION (MODERN & DINAMIS) --- */
+        /* --- MODERN BOTTOM NAVIGATION WITH POP-OUT EFFECT --- */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -105,11 +105,12 @@
             display: flex;
             justify-content: space-around;
             align-items: center;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.08);
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
             border-top-left-radius: 25px;
             border-top-right-radius: 25px;
             z-index: 9999;
-            padding-bottom: env(safe-area-inset-bottom); /* Support iPhone notch */
+            padding-bottom: env(safe-area-inset-bottom);
+            overflow: visible; /* Penting agar menu bisa keluar dari padding */
         }
 
         .nav-item {
@@ -118,63 +119,71 @@
             flex-direction: column;
             align-items: center;
             color: #888;
-            font-size: 10px;
-            font-weight: 700;
             transition: all 0.3s ease;
             flex: 1;
-        }
-
-        /* State Aktif/Tekan menggunakan warna Default Biru Tua */
-        .nav-item:active, .nav-item.active {
-            color: var(--biru-tua);
-        }
-
-        .nav-item i {
-            font-size: 20px;
-            margin-bottom: 4px;
-        }
-
-        /* Floating Scan Button (Realistis & Dinamis) */
-        .scan-btn-container {
             position: relative;
-            top: -20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
 
-        .scan-wrapper {
-            background: linear-gradient(135deg, var(--biru-tua), var(--hijau-zamrud));
-            width: 55px;
-            height: 55px;
+        /* Lingkaran Ikon (Gaya Default) */
+        .icon-circle {
+            width: 50px;
+            height: 50px;
+            background: var(--biru-tua);
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 5px 12px rgba(0, 51, 102, 0.3);
+            color: white;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-bottom: 4px;
             border: 4px solid #fff;
-            margin-bottom: 2px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .icon-circle i {
+            font-size: 20px;
+        }
+
+        /* Menu Scan QR Defaultnya sudah menonjol sedikit */
+        .nav-item.active .icon-circle {
+            transform: translateY(-15px);
+            background: linear-gradient(135deg, var(--biru-tua), var(--hijau-zamrud));
+        }
+
+        /* Efek Seolah-olah Keluar saat Disentuh/Hover */
+        .nav-item:hover .icon-circle,
+        .nav-item:active .icon-circle {
+            transform: translateY(-35px); /* Keluar dari padding */
+            background: var(--biru-safir);
+            box-shadow: 0 12px 20px rgba(0, 51, 102, 0.3);
+        }
+
+        .nav-item span {
+            font-size: 9px;
+            font-weight: 800;
             transition: 0.3s;
         }
 
-        .scan-wrapper i {
-            color: #fff;
-            font-size: 24px;
-            margin-bottom: 0;
+        /* Warna teks saat aktif/hover */
+        .nav-item:hover span, .nav-item.active span {
+            color: var(--biru-tua);
         }
 
-        .scan-wrapper:active {
-            transform: scale(0.9) translateY(5px);
+        /* Khusus tombol keluar warna merah */
+        .nav-item.logout-btn .icon-circle {
+            background: #dc3545;
+        }
+        .nav-item.logout-btn:hover span {
+            color: #dc3545;
         }
 
-        /* --- Modals --- */
+        /* --- Modals & Sisanya --- */
         .modal-card-overlay, .popup-inbox { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; }
         .digital-card-box { width: 260px; height: 400px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%); border-radius: 15px; padding: 20px; color: #fff; text-align: center; display: flex; flex-direction: column; align-items: center; border: 1px solid rgba(255,255,255,0.4); }
         .card-logo-top { width: 60px; height: 60px; object-fit: contain; margin-bottom: 10px; }
         .card-qrcode-box { background: white; padding: 8px; border-radius: 8px; margin: 15px 0; }
         .card-nij-bottom { margin-top: auto; width: 100%; background: rgba(0,0,0,0.15); padding: 8px 0; border-radius: 5px; font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 2px; }
 
-        /* --- Media Area Styles --- */
         #media-display-area { width: 100%; height: 100%; background: #000; }
         #videoPlayer { width: 100%; height: 100%; object-fit: cover; display: none; }
         #audioPlayer { width: 90%; margin: 80px auto; display: none; }
@@ -254,26 +263,30 @@
 
     <nav class="bottom-nav">
         <a href="javascript:location.reload()" class="nav-item">
-            <i class="fa-solid fa-arrows-rotate"></i>
+            <div class="icon-circle">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </div>
             <span>REFRESH</span>
         </a>
 
-        <a href="scan-qr.html" class="nav-item">
-            <div class="scan-btn-container">
-                <div class="scan-wrapper">
-                    <i class="fa-solid fa-qrcode"></i>
-                </div>
-                <span>SCAN QR</span>
+        <a href="scan-qr.html" class="nav-item active">
+            <div class="icon-circle">
+                <i class="fa-solid fa-qrcode"></i>
             </div>
+            <span>SCAN QR</span>
         </a>
 
         <a href="kontak.html" class="nav-item">
-            <i class="fa-solid fa-address-book"></i>
+            <div class="icon-circle">
+                <i class="fa-solid fa-address-book"></i>
+            </div>
             <span>KONTAK</span>
         </a>
 
-        <a href="javascript:void(0)" onclick="confirmLogout()" class="nav-item" style="color: #dc3545;">
-            <i class="fa-solid fa-power-off"></i>
+        <a href="javascript:void(0)" onclick="confirmLogout()" class="nav-item logout-btn">
+            <div class="icon-circle">
+                <i class="fa-solid fa-power-off"></i>
+            </div>
             <span>KELUAR</span>
         </a>
     </nav>
@@ -300,7 +313,6 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // Konfigurasi Firebase (Gunakan milik Anda)
         const firebaseConfig = { 
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
             authDomain: "boby-apps-project.firebaseapp.com", 
@@ -315,7 +327,6 @@
         const auth = firebase.auth();
         const userEmail = localStorage.getItem("userEmail");
 
-        // Logic YouTube & Media (Sama seperti sebelumnya)
         let ytPlayer;
         let isYtReady = false;
         let pendingYtId = null;
@@ -350,7 +361,6 @@
             }
         }
 
-        // Functions
         function bukaKartuDigital() {
             db.collection("users").where("email", "==", userEmail).get().then(s => {
                 if(!s.empty) {
