@@ -56,9 +56,12 @@
         .card-qrcode-box { background: white; padding: 8px; border-radius: 8px; margin: 15px 0; }
         .card-nij-bottom { margin-top: auto; width: 100%; background: rgba(0,0,0,0.15); padding: 8px 0; border-radius: 5px; font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 2px; }
 
-        /* Media Area */
+        /* Media Area - Tetap menjaga struktur asli Anda */
         #media-display-area { width: 100%; height: 100%; background: #000; }
         #videoPlayer { width: 100%; height: 100%; object-fit: cover; display: none; }
+        #audioPlayer { width: 90%; margin: 80px auto; display: none; }
+        #imageDisplay { width: 100%; height: 100%; object-fit: contain; display: none; }
+        #textDisplay { width: 100%; height: 100%; background: white; color: black; padding: 15px; overflow-y: auto; display: none; font-size: 13px; text-align: left; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -147,7 +150,12 @@
             </button>
 
             <div id="media-display-area">
-                <div id="player"></div> <video id="videoPlayer" autoplay muted loop playsinline></video> </div>
+                <div id="player"></div> 
+                <video id="videoPlayer" autoplay muted loop playsinline></video>
+                <audio id="audioPlayer" controls></audio>
+                <img id="imageDisplay">
+                <div id="textDisplay"></div>
+            </div>
         </div>
 
         <div class="menu-grid">
@@ -189,12 +197,11 @@
         const auth = firebase.auth();
         const userEmail = localStorage.getItem("userEmail");
 
-        // --- 2. MEDIA PLAYER LOGIC ---
+        // --- 2. MEDIA PLAYER LOGIC (DITINGKATKAN) ---
         let ytPlayer;
         let isYtReady = false;
         let pendingYtId = null;
 
-        // Fungsi inisialisasi YouTube
         function onYouTubeIframeAPIReady() {
             ytPlayer = new YT.Player('player', {
                 height: '100%',
@@ -213,37 +220,52 @@
             });
         }
 
-        // Fungsi Utama Update Player (Cloudinary vs YouTube)
         function updateMedia(rawPath) {
             const vPlayer = document.getElementById('videoPlayer');
+            const aPlayer = document.getElementById('audioPlayer');
+            const iDisplay = document.getElementById('imageDisplay');
+            const tDisplay = document.getElementById('textDisplay');
             const ytContainer = document.getElementById('player');
             
             if (!rawPath) return;
 
-            // Deteksi link video langsung (Cloudinary/MP4)
-            if (rawPath.includes('cloudinary.com') || rawPath.toLowerCase().endsWith('.mp4')) {
-                console.log("📂 Memutar Link Video Direct");
-                
-                // Switch Tampilan
-                ytContainer.style.display = 'none';
-                vPlayer.style.display = 'block';
+            // Sembunyikan semua elemen pendukung
+            [vPlayer, aPlayer, iDisplay, tDisplay, ytContainer].forEach(el => el.style.display = 'none');
+            if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+            vPlayer.pause();
+            if(aPlayer.src) aPlayer.pause();
 
-                if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
-                
+            const ext = rawPath.split('.').pop().toLowerCase();
+
+            // LOGIC PENDUKUNG FORMAT BARU
+            // 1. VIDEO (MP4, MOV, AVI)
+            if (rawPath.includes('cloudinary.com') || ['mp4', 'mov', 'avi'].includes(ext)) {
+                vPlayer.style.display = 'block';
                 if (vPlayer.src !== rawPath) {
                     vPlayer.src = rawPath;
                     vPlayer.load();
                     vPlayer.play().catch(e => console.log("Autoplay blocked"));
                 }
             } 
-            // Deteksi ID YouTube
+            // 2. AUDIO (MP3, OGG, WAV)
+            else if (['mp3', 'ogg', 'wav'].includes(ext)) {
+                aPlayer.style.display = 'block';
+                aPlayer.src = rawPath;
+                aPlayer.play().catch(e => console.log("Audio autoplay blocked"));
+            }
+            // 3. GAMBAR (JPG, PNG)
+            else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                iDisplay.style.display = 'block';
+                iDisplay.src = rawPath;
+            }
+            // 4. TEXT (.TEXT / .TXT)
+            else if (ext === 'text' || ext === 'txt') {
+                tDisplay.style.display = 'block';
+                fetch(rawPath).then(r => r.text()).then(t => tDisplay.innerText = t).catch(() => tDisplay.innerText = "Gagal memuat teks.");
+            }
+            // 5. YOUTUBE (DEFAULT)
             else {
-                console.log("📺 Memutar YouTube ID");
-                
-                vPlayer.style.display = 'none';
-                vPlayer.pause();
                 ytContainer.style.display = 'block';
-
                 const ytId = extractId(rawPath);
                 if (isYtReady && ytPlayer && ytPlayer.loadVideoById) {
                     ytPlayer.loadVideoById(ytId);
@@ -261,17 +283,14 @@
 
         // --- 3. FIRESTORE LISTENERS ---
         function listenData() {
-            // Running Text
             db.collection("config").doc("running_text").onSnapshot(doc => {
                 if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
             });
 
-            // Playlist Media
             db.collection("config").doc("playlist").onSnapshot(doc => {
                 if (doc.exists) updateMedia(doc.data().activeContentId);
             });
 
-            // User Profile Sync
             if (userEmail) {
                 db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
                     if (!s.empty) {
