@@ -49,12 +49,6 @@
         .card-nij { position: absolute; bottom: 25px; left: 20px; font-family: 'Courier Prime', monospace; font-size: 22px; letter-spacing: 3px; text-shadow: 2px 2px 2px rgba(0,0,0,0.5); }
         .card-qr { position: absolute; bottom: 20px; right: 20px; background: white; padding: 5px; border-radius: 5px; }
         .close-modal { position: absolute; top: -40px; right: 0; color: white; cursor: pointer; }
-
-        /* MODAL UNTUK HASIL SCAN (BIO SINGKAT) */
-        #scan-result-modal {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
-            z-index: 10000; justify-content: center; align-items: center;
-        }
     </style>
 </head>
 <body>
@@ -62,9 +56,6 @@
     <div class="menu-icons">
         <div class="icon-btn" onclick="showDigitalCard()">
             <i class="fas fa-id-card"></i> 
-        </div>
-        <div class="icon-btn">
-            <i class="fas fa-envelope"></i> 
         </div>
     </div>
 
@@ -104,7 +95,7 @@
         const db = firebase.firestore();
         const userEmail = localStorage.getItem("userEmail");
 
-        // --- 2. FUNGSI TAMPILKAN KARTU (INTEGRASI DATABASE) ---
+        // --- 2. FUNGSI TAMPILKAN KARTU ---
         function showDigitalCard() {
             if(!userEmail) return alert("Silahkan login ulang.");
 
@@ -112,13 +103,11 @@
                 if(!s.empty) {
                     const d = s.docs[0].data();
                     
-                    // Isi data ke kartu ATM
                     document.getElementById('d-nama').innerText = d.nama || "No Name";
                     document.getElementById('d-jemaat').innerText = d.lokasi_berjemaat || "-";
                     document.getElementById('d-komsel').innerText = d.komsel || "-";
                     document.getElementById('d-nij').innerText = d.nij || "0000 0000 0000";
 
-                    // Generate QR responsif ke bio-singkat-jemaat.html
                     const qrContainer = document.getElementById("qrcode");
                     qrContainer.innerHTML = "";
                     
@@ -133,8 +122,13 @@
                         correctLevel : QRCode.Level.H
                     });
 
+                    // Tampilkan modal
                     document.getElementById('cardModal').style.display = 'flex';
+                } else {
+                    alert("Data jemaat tidak ditemukan.");
                 }
+            }).catch(err => {
+                console.error("Error fetching data:", err);
             });
         }
 
@@ -142,14 +136,15 @@
             document.getElementById('cardModal').style.display = 'none';
         }
 
-        // --- 3. LOGIKA DETEKSI SCAN DARI KAMERA HP ---
-        // Jika file ini diakses dari hasil scan seseorang
+        // --- 3. LOGIKA OTOMATIS & DETEKSI SCAN ---
         window.onload = () => {
+            // Langsung panggil fungsi tampil kartu saat halaman dibuka
+            showDigitalCard(); 
+
             const urlParams = new URLSearchParams(window.location.search);
             const targetScan = urlParams.get('scan');
 
             if (targetScan) {
-                // Langsung lempar ke file bio-singkat-jemaat.html agar konsisten
                 window.location.href = "bio-singkat-jemaat.html?scan=" + targetScan;
             }
         };
