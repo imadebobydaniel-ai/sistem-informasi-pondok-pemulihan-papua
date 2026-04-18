@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Utama - SIPAPUA</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #000; overflow: hidden; font-family: sans-serif;
+        }
+        #container { position: relative; width: 100%; height: 100%; }
+        
+        /* Area Video/Media Utama */
+        #media-display { width: 100%; height: calc(100% - 60px); background: #000; }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Area Running Text */
+        #rt-bar {
+            position: absolute; bottom: 0; width: 100%; height: 60px;
+            background: rgba(0, 0, 0, 0.8); border-top: 3px solid #3b82f6;
+            color: white; display: flex; align-items: center; overflow: hidden;
+        }
+        .marquee {
+            white-space: nowrap; font-size: 28px; font-weight: bold;
+            padding-left: 100%; animation: scroll-text 20s linear infinite;
+        }
+        @keyframes scroll-text {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="media-display">
+        <div id="player"></div>
+    </div>
+
+    <div id="rt-bar">
+        <div id="rt_display" class="marquee">Selamat Datang di Pondok Pemulihan Papua...</div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+        authDomain: "boby-apps-project.firebaseapp.com", 
+        projectId: "boby-apps-project", 
+        storageBucket: "boby-apps-project.appspot.com", 
+        messagingSenderId: "125984859692", 
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    };
+
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.firestore();
+
+    let player;
+    let isReady = false;
+
+    // 1. Inisialisasi YouTube Player
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            videoId: '9bZkp7q19f0', // Video default (Gangnam Style untuk tes)
+            playerVars: { 'autoplay': 1, 'mute': 1, 'controls': 0, 'rel': 0 },
+            events: { 'onReady': () => { isReady = true; listenToPlaylist(); } }
+        });
+    }
+
+    // 2. Mendengarkan Perubahan Playlist (dari Tombol Desktop di Portal)
+    function listenToPlaylist() {
+        db.collection("config").doc("playlist").onSnapshot((doc) => {
+            if (doc.exists) {
+                const activeId = doc.data().activeContentId;
+                // Ambil data detail dari portal_media
+                db.collection("portal_media").doc(activeId).get().then((m) => {
+                    if (m.exists && m.data().tipe === "video_youtube") {
+                        player.loadVideoById(m.data().url);
+                    }
+                });
+            }
+        });
+    }
+
+    // 3. Mendengarkan Perubahan Running Text
+    db.collection("config").doc("running_text").onSnapshot((doc) => {
+        if (doc.exists) {
+            const rtElement = document.getElementById('rt_display');
+            rtElement.innerText = doc.data().pesan;
+            // Reset animasi agar teks baru mulai dari kanan lagi
+            rtElement.style.animation = 'none';
+            rtElement.offsetHeight; 
+            rtElement.style.animation = `scroll-text ${doc.data().durasi || 20}s linear infinite`;
+        }
+    });
+</script>
+</body>
+</html>
