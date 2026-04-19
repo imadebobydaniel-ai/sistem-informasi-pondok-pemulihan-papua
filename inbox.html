@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f8f9fa;
+        }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            padding: 0; 
+        }
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h1 { margin: 0; font-size: 1.2rem; }
+        
+        .container { padding: 15px; max-width: 600px; margin: auto; }
+
+        /* Style untuk Kartu Pesan */
+        .inbox-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 5px solid #ccc;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .inbox-card:active { transform: scale(0.98); }
+        
+        /* Warna berdasarkan kategori */
+        .cat-Penting { border-left-color: #e74c3c; }
+        .cat-Kegiatan { border-left-color: #f1c40f; }
+        .cat-Umum { border-left-color: #2ecc71; }
+
+        .inbox-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        .badge {
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .inbox-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .inbox-preview {
+            font-size: 14px;
+            color: #666;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Modal Detail */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: var(--primary); }
+        .modal-body { font-size: 15px; line-height: 1.6; color: #444; white-space: pre-wrap; }
+        .btn-close {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <a href="menu.html" style="color:white; position:absolute; left:20px; text-decoration:none;">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+    <h1>Inbox Pesan</h1>
+</div>
+
+<div class="container" id="inboxList">
+    <div style="text-align:center; margin-top:50px; color:#aaa;">
+        <i class="fas fa-spinner fa-spin fa-2x"></i>
+        <p>Memuat pesan...</p>
+    </div>
+</div>
+
+<div id="modalPesan" class="modal">
+    <div class="modal-content">
+        <div id="mKategori" class="badge" style="display:inline-block; margin-bottom:10px;"></div>
+        <div id="mJudul" class="modal-title"></div>
+        <div id="mIsi" class="modal-body"></div>
+        <button class="btn-close" onclick="tutupPesan()">Tutup</button>
+    </div>
+</div>
+
+<script>
+    // Konfigurasi Firebase (Gunakan milik Anda)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Ambil data JC user (misal disimpan di localStorage saat login)
+    const userKomsel = localStorage.getItem("userKomsel") || "Semua JC"; 
+
+    function loadInbox() {
+        db.collection("pengumuman_komsel")
+        .orderBy("timestamp", "desc")
+        .onSnapshot((snapshot) => {
+            const listContainer = document.getElementById('inboxList');
+            listContainer.innerHTML = "";
+
+            if (snapshot.empty) {
+                listContainer.innerHTML = "<p style='text-align:center; color:#888;'>Tidak ada pesan.</p>";
+                return;
+            }
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                
+                // Filter pesan berdasarkan Target JC
+                if (data.target_jc === "Semua JC" || data.target_jc === userKomsel) {
+                    const date = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('id-ID') : '';
+                    
+                    const card = document.createElement('div');
+                    card.className = `inbox-card cat-${data.kategori}`;
+                    card.onclick = () => bukaPesan(data.judul, data.isi, data.kategori);
+                    
+                    card.innerHTML = `
+                        <div class="inbox-header">
+                            <span class="badge">${data.kategori}</span>
+                            <span>${date}</span>
+                        </div>
+                        <div class="inbox-title">${data.judul}</div>
+                        <div class="inbox-preview">${data.isi}</div>
+                    `;
+                    listContainer.appendChild(card);
+                }
+            });
+        });
+    }
+
+    function bukaPesan(judul, isi, kategori) {
+        document.getElementById('mJudul').innerText = judul;
+        document.getElementById('mIsi').innerText = isi;
+        document.getElementById('mKategori').innerText = kategori;
+        document.getElementById('modalPesan').style.display = 'flex';
+    }
+
+    function tutupPesan() {
+        document.getElementById('modalPesan').style.display = 'none';
+    }
+
+    // Jalankan saat load
+    window.onload = loadInbox;
+</script>
+
+</body>
+</html>
