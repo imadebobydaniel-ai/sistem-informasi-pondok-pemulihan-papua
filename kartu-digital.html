@@ -7,7 +7,6 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@700&display=swap" rel="stylesheet">
@@ -26,18 +25,51 @@
             border-radius: 15px; position: relative; padding: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); color: #fff;
             overflow: hidden; border: 1px solid rgba(255,255,255,0.3);
+            box-sizing: border-box;
         }
         .digital-card::before {
             content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: url('https://www.transparenttextures.com/patterns/cubes.png');
             opacity: 0.1; pointer-events: none;
         }
-        .card-logo { position: absolute; top: 15px; right: 15px; width: 50px; height: 50px; object-fit: contain; }
-        .card-title { font-size: 14px; font-weight: bold; margin-bottom: 20px; color: #003366; }
-        .info-label { font-size: 9px; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: -2px; }
-        .info-value { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
-        .card-nij { position: absolute; bottom: 25px; left: 20px; font-family: 'Courier Prime', monospace; font-size: 22px; letter-spacing: 3px; text-shadow: 2px 2px 2px rgba(0,0,0,0.5); }
-        .card-qr { position: absolute; bottom: 20px; right: 20px; background: white; padding: 5px; border-radius: 5px; }
+        
+        /* Ukuran Logo Diperbesar */
+        .card-logo { position: absolute; top: 10px; right: 15px; width: 75px; height: 75px; object-fit: contain; }
+        
+        /* Judul Kartu Diperbesar */
+        .card-title { font-size: 18px; font-weight: 900; margin-bottom: 25px; color: #003366; text-transform: uppercase; }
+        
+        /* Nama Lengkap Diperbesar */
+        .info-label { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.9); margin-bottom: 2px; font-weight: bold; }
+        .info-value-name { font-size: 22px; font-weight: 900; margin-bottom: 15px; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        
+        /* Posisi Jemaat dikanan & Komsel dikiri bawah */
+        .bottom-info-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 110px; /* Memberi ruang untuk QR */
+        }
+        .bottom-group { display: flex; flex-direction: column; }
+        .info-value-small { font-size: 14px; font-weight: bold; color: #fff; }
+
+        .card-nij { 
+            position: absolute; 
+            bottom: 60px; 
+            left: 20px; 
+            font-family: 'Courier Prime', monospace; 
+            font-size: 20px; 
+            letter-spacing: 2px; 
+            text-shadow: 2px 2px 2px rgba(0,0,0,0.5); 
+            background: rgba(0,0,0,0.1);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        
+        .card-qr { position: absolute; bottom: 15px; right: 15px; background: white; padding: 5px; border-radius: 8px; }
         .close-modal { position: absolute; top: -40px; right: 0; color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
@@ -50,24 +82,33 @@
             </div>
             
             <div class="digital-card">
-                <img src="logo_pondok.png" class="card-logo" onerror="this.src='https://via.placeholder.com/50'">
-                <div class="card-title">KARTU DIGITAL ANGGOTA</div>
+                <img src="logo_pondok.png" class="card-logo" onerror="this.src='https://via.placeholder.com/75'">
+                <div class="card-title">KARTU DIGITAL JEMAAT</div>
+                
                 <div class="card-info">
                     <div class="info-label">Nama Lengkap</div>
-                    <div class="info-value" id="d-nama">MEMUAT...</div>
-                    <div class="info-label">Jemaat</div>
-                    <div class="info-value" id="d-jemaat">-</div>
-                    <div class="info-label">Komsel</div>
-                    <div class="info-value" id="d-komsel">-</div>
+                    <div class="info-value-name" id="d-nama">MEMUAT...</div>
                 </div>
+
                 <div class="card-nij" id="d-nij">0000 0000 0000</div>
+
+                <div class="bottom-info-container">
+                    <div class="bottom-group">
+                        <div class="info-label">Komsel</div>
+                        <div class="info-value-small" id="d-komsel">-</div>
+                    </div>
+                    <div class="bottom-group" style="text-align: right;">
+                        <div class="info-label">Jemaat</div>
+                        <div class="info-value-small" id="d-jemaat">-</div>
+                    </div>
+                </div>
+
                 <div id="qrcode" class="card-qr"></div>
             </div>
         </div>
     </div>
 
-  <script>
-    // 1. CONFIG FIREBASE
+<script>
     const firebaseConfig = { 
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
@@ -79,35 +120,33 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
+    function closeDigitalCard() {
+        document.getElementById('cardModal').style.display = 'none';
+    }
+
     async function showDigitalCard() {
         const userEmail = localStorage.getItem("userEmail");
-        if(!userEmail) {
-            alert("Silahkan login terlebih dahulu.");
-            return;
-        }
+        if(!userEmail) return;
 
         try {
             const snapshot = await db.collection("users").where("email", "==", userEmail).get();
             if(!snapshot.empty) {
                 const data = snapshot.docs[0].data();
 
-                // Isi data kartu
-                document.getElementById('d-nama').innerText = data.nama || "-";
+                document.getElementById('d-nama').innerText = data.nama_lengkap || data.nama || "-";
                 document.getElementById('d-jemaat').innerText = data.lokasi_berjemaat || "-";
                 document.getElementById('d-komsel').innerText = data.komsel || "-";
                 document.getElementById('d-nij').innerText = data.nij || "0000 0000 0000";
 
-                // --- GENERATE QR KE BIO SINGKAT ---
                 const qrContainer = document.getElementById("qrcode");
                 qrContainer.innerHTML = ""; 
 
-                // LINK BARU (PASTIKAN TIDAK ADA PROFIL.HTML DI SINI)
                 const targetUrl = "https://imadebobydaniel-ai.github.io/sistem-informasi-pondok-pemulihan-papua/bio-singkat-jemaat.html?scan=" + encodeURIComponent(userEmail);
 
                 new QRCode(qrContainer, {
                     text: targetUrl,
-                    width: 75,
-                    height: 75,
+                    width: 70,
+                    height: 70,
                     colorDark : "#003366",
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
