@@ -2,11 +2,13 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com https://www.youtube.com https://s.ytimg.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https://www.youtube.com">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com https://www.youtube.com https://s.ytimg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https://www.youtube.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Menu Utama - Pondok Pemulihan Papua</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
         const isMember = localStorage.getItem("userEmail");
@@ -289,6 +291,12 @@
         .btn-back-inbox { border: none; background: none; color: #555; font-size: 14px; cursor: pointer; font-weight: bold; }
         .header-actions { display: flex; align-items: center; gap: 10px; }
         .btn-delete-mass { border: none; background: none; color: #ff4757; font-size: 16px; cursor: pointer; }
+
+        /* Custom SweetAlert Style */
+        .swal2-popup {
+            border-radius: 25px !important;
+            font-family: 'Segoe UI', Roboto, sans-serif !important;
+        }
     </style>
 </head>
 <body>
@@ -448,7 +456,7 @@
 
     let ytPlayer;
     let isYtReady = false;
-    let totalPesanLama = 0; // Untuk memantau perubahan jumlah pesan
+    let totalPesanLama = 0; 
 
     function onYouTubeIframeAPIReady() {
         ytPlayer = new YT.Player('player', {
@@ -501,7 +509,6 @@
             });
         }
 
-        // Listener Media
         db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(s => {
             if (!s.empty) {
                 const videoIds = [];
@@ -526,12 +533,10 @@
             }
         });
 
-        // Listener Running Text
         db.collection("config").doc("running_text").onSnapshot(doc => {
             if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
         });
 
-        // LISTENER UNTUK BADGE INBOX DAN EFEK MELOMPAT
         const userKomsel = localStorage.getItem("userKomsel") || "Semua JC";
         db.collection("pengumuman_komsel").onSnapshot(s => {
             let count = 0;
@@ -543,16 +548,14 @@
             });
 
             const badge = document.getElementById('email-badge');
-            const badgeIcon = document.getElementById('email-badge'); // Mengacu pada elemen yang sama untuk animasi
 
             if (count > 0) {
                 badge.innerText = count;
                 badge.style.display = 'block';
                 
-                // Jika jumlah pesan bertambah, picu animasi melompat
                 if (count > totalPesanLama) {
                     badge.classList.remove('jump-animation');
-                    void badge.offsetWidth; // Trigger reflow
+                    void badge.offsetWidth; 
                     badge.classList.add('jump-animation');
                 }
             } else {
@@ -569,6 +572,24 @@
 
     function tutupInbox() {
         document.getElementById('modalInbox').style.display = 'none';
+    }
+
+    // FUNGSI BARU: POPUP EFEK MENGHAYAL (SWEETALERT2)
+    function tampilkanDetailPesan(judul, isi) {
+        Swal.fire({
+            title: judul,
+            text: isi,
+            icon: 'info',
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#003366',
+            background: '#ffffff',
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp'
+            }
+        });
     }
 
     function muatPesanInbox() {
@@ -588,10 +609,11 @@
                 if (d.target_jc === "Semua JC" || d.target_jc === userKomsel) {
                     const div = document.createElement('div');
                     div.className = 'pesan-item';
-                    // Menambahkan event click pada item pesan (kecuali checkbox)
+                    
+                    // Mengganti alert browser dengan SweetAlert2 kustom
                     div.onclick = (e) => {
                         if(e.target.type !== 'checkbox') {
-                            alert("DETAIL PESAN\n\nJudul: " + d.judul + "\nIsi: " + d.isi);
+                            tampilkanDetailPesan(d.judul, d.isi);
                         }
                     };
 
@@ -616,16 +638,30 @@
 
     async function hapusTerpilih() {
         const checkboxes = document.querySelectorAll('.pilih-pesan:checked');
-        if (checkboxes.length === 0) return alert("Pilih pesan!");
-
-        if (confirm(`Hapus ${checkboxes.length} pesan?`)) {
-            const batch = db.batch();
-            checkboxes.forEach(cb => {
-                batch.delete(db.collection("pengumuman_komsel").doc(cb.value));
-            });
-            await batch.commit();
-            document.getElementById('selectAll').checked = false;
+        if (checkboxes.length === 0) {
+            Swal.fire('Peringatan', 'Pilih pesan yang ingin dihapus', 'warning');
+            return;
         }
+
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Hapus ${checkboxes.length} pesan terpilih?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#888',
+            confirmButtonText: 'Ya, Hapus!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const batch = db.batch();
+                checkboxes.forEach(cb => {
+                    batch.delete(db.collection("pengumuman_komsel").doc(cb.value));
+                });
+                await batch.commit();
+                document.getElementById('selectAll').checked = false;
+                Swal.fire('Terhapus!', 'Pesan berhasil dibersihkan.', 'success');
+            }
+        });
     }
 
     function bukaKartuDigital() {
