@@ -501,6 +501,9 @@
                     document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                     
                     localStorage.setItem("userKomsel", d.komsel ? "JC" + d.komsel : "Semua JC");
+                    // Simpan nama untuk keperluan kirim request pertemanan
+                    localStorage.setItem("userName", d.nama || "User SIPAPUA");
+                    localStorage.setItem("userFoto", d.foto_profil || "");
 
                     if (d.foto_profil) {
                         const img = document.getElementById('user-photo');
@@ -510,6 +513,9 @@
                     }
                 }
             });
+            
+            // Jalankan Listener Pertemanan
+            listenForRequests();
         }
 
         db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(s => {
@@ -567,6 +573,60 @@
             totalPesanLama = count;
         });
     }
+
+    // --- FITUR PERTEMANAN (REAL-TIME NOTIFIKASI) ---
+    function listenForRequests() {
+        if (!userEmail) return;
+
+        db.collection("friend_requests")
+            .where("to_email", "==", userEmail)
+            .where("status", "==", "pending")
+            .onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        const data = change.doc.data();
+                        const requestId = change.doc.id;
+
+                        Swal.fire({
+                            title: 'Permintaan Pertemanan',
+                            text: `Domba ${data.from_name} ingin menjadi koneksi pertemanan dengan anda, apakah anda mau menerimanya?`,
+                            imageUrl: data.from_photo || 'https://via.placeholder.com/100',
+                            imageWidth: 80,
+                            imageHeight: 80,
+                            showCancelButton: true,
+                            confirmButtonText: 'Yes',
+                            cancelButtonText: 'No',
+                            confirmButtonColor: '#2ecc71',
+                            cancelButtonColor: '#dc2626',
+                            heightAuto: false
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                terimaPertemanan(requestId, data);
+                            } else {
+                                tolakPertemanan(requestId);
+                            }
+                        });
+                    }
+                });
+            });
+    }
+
+    async function terimaPertemanan(requestId, data) {
+        try {
+            await db.collection("friend_requests").doc(requestId).update({ status: "accepted" });
+            await db.collection("friends").add({
+                user_a: data.from_email,
+                user_b: userEmail,
+                connected_at: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            Swal.fire({ title: "Diterima!", text: "Sekarang kalian berteman.", icon: "success", heightAuto: false });
+        } catch (e) { console.error(e); }
+    }
+
+    async function tolakPertemanan(requestId) {
+        await db.collection("friend_requests").doc(requestId).update({ status: "rejected" });
+    }
+    // --- END FITUR PERTEMANAN ---
 
     function bukaInbox() {
         document.getElementById('modalInbox').style.display = 'flex';
