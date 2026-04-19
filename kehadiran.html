@@ -116,6 +116,8 @@
         lock.style.display = 'flex';
         document.getElementById('lock-title').innerText = title;
         document.getElementById('lock-msg').innerText = msg;
+        
+        // Pengaturan Icon dan Warna (Termasuk Silang Merah untuk Error/Ditolak)
         icon.className = (type === 'success') ? 'fa-solid fa-circle-check' : (type === 'loading' ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-circle-xmark');
         icon.style.color = (type === 'success') ? '#00c853' : (type === 'loading' ? '#007bff' : '#d81b60');
     }
@@ -127,7 +129,6 @@
 
     function cekJenisMenu() {
         const menu = document.getElementById("jenis-kegiatan").value;
-        // Reset tampilan
         document.getElementById("extention-container").style.display = (menu === "Absen Extention") ? "block" : "none";
         document.getElementById("gabungan-container").style.display = (menu === "Absen Komsel Gabungan") ? "block" : "none";
     }
@@ -142,11 +143,12 @@
         document.getElementById("reason-container").style.display = "none"; 
     }
 
+    // --- FUNGSI PROSES UTAMA (REVERSE GEOCODING & GLOBAL LOCK) ---
     async function handleProses(tipe) {
         const menu = document.getElementById("jenis-kegiatan").value;
         const today = new Date().toISOString().split('T')[0];
 
-        // Validasi input tambahan
+        // 1. Validasi Input Tambahan (Extension & Gabungan)
         if(menu === "Absen Extention") {
             if(!document.getElementById("ext-nama-kegiatan").value || !document.getElementById("ext-tanggal").value) {
                 alert("Mohon lengkapi data Kegiatan Extension!");
@@ -159,38 +161,73 @@
             }
         }
 
-        let targetColl = "kehadiran_jemaat";
-        if (menu === "Absen Komsel Reguler" || menu === "Absen Komsel Gabungan") targetColl = "laporan_komsel_umum";
+        showLockDisplay('loading', 'Memverifikasi...', 'Memeriksa status laporan harian Anda...');
 
-        // Cek Double Submit
-        const check = await db.collection(targetColl).where("nama", "==", userName).where("tanggal", "==", today).where("kegiatan", "==", menu).get();
-        if (!check.empty) {
-            showLockDisplay('error', 'Ditolak', 'Laporan sudah dikirim hari ini.');
-            return;
-        }
+        try {
+            // 2. CEK DOUBLE SUBMIT GLOBAL (Satu laporan saja per 24 jam untuk semua jenis)
+            const checkA = await db.collection("kehadiran_jemaat")
+                            .where("nama", "==", userName)
+                            .where("tanggal", "==", today).get();
+            
+            const checkB = await db.collection("laporan_komsel_umum")
+                            .where("nama", "==", userName)
+                            .where("tanggal", "==", today).get();
 
-        if (navigator.geolocation) {
-            showLockDisplay('loading', 'Verifikasi...', 'Mencari lokasi presisi...');
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const loc = `${pos.coords.latitude}, ${pos.coords.longitude}`;
-                saveData(tipe, loc, targetColl);
-            }, () => saveData(tipe, "GPS Off", targetColl));
-        } else {
-            saveData(tipe, "No GPS", targetColl);
+            if (!checkA.empty || !checkB.empty) {
+                showLockDisplay('error', 'Akses Terkunci', 'Anda sudah melakukan pelaporan hari ini. Laporan (Hadir/Tidak Hadir) hanya diizinkan satu kali dalam 24 jam.');
+                return;
+            }
+
+            // 3. JIKA LOLOS, AMBIL LOKASI & ALAMAT
+            if (navigator.geolocation) {
+                showLockDisplay('loading', 'Melacak Lokasi...', 'Sedang mengambil alamat posisi Anda...');
+                
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    const koordinat = `${lat}, ${lon}`;
+
+                    // REVERSE GEOCODING (Mendapatkan Nama Jalan)
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                        const data = await response.json();
+                        const alamatLengkap = data.display_name || "Alamat tidak ditemukan";
+                        
+                        saveData(tipe, koordinat, alamatLengkap);
+                    } catch (err) {
+                        saveData(tipe, koordinat, "Lokasi terdeteksi (Gagal memuat nama jalan)");
+                    }
+                }, () => {
+                    showLockDisplay('error', 'GPS Mati', 'Mohon aktifkan GPS Anda untuk melakukan laporan.');
+                });
+            } else {
+                showLockDisplay('error', 'Browser Tidak Support', 'Browser Anda tidak mendukung pelacakan lokasi.');
+            }
+
+        } catch (e) {
+            showLockDisplay('error', 'Sistem Error', e.message);
         }
     }
 
-    async function saveData(tipe, koordinat, collection) {
+    async function saveData(tipe, koordinat, alamat) {
         const menu = document.getElementById("jenis-kegiatan").value;
         const now = new Date();
+        const tglHariIni = now.toISOString().split('T')[0];
         
+        // Tentukan koleksi tujuan
+        let targetColl = "kehadiran_jemaat";
+        if (menu === "Absen Komsel Reguler" || menu === "Absen Komsel Gabungan") {
+            targetColl = "laporan_komsel_umum";
+        }
+
         let payload = {
             status: tipe,
             nama: userName,
-            tanggal: now.toISOString().split('T')[0],
+            tanggal: tglHariIni,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             kegiatan: menu,
             lokasi_koordinat: koordinat,
+            alamat_fisik: alamat, // Menyimpan alamat hasil pelacakan
             keterangan: (tipe === 'TIDAK HADIR') ? document.getElementById("alasan").value : "Hadir di Lokasi"
         };
 
@@ -209,13 +246,18 @@
         }
 
         try {
-            await db.collection(collection).add(payload);
+            await db.collection(targetColl).add(payload);
             await db.collection("statistik_jemaat_pusat").add({...payload, type: "Umum_Entry"});
-            showLockDisplay('success', 'Terimakasih', 'Laporan berhasil terkirim ke sistem.');
+            
+            // Tampilan Notifikasi Sesuai Permintaan
+            const pesanSukses = (tipe === 'HADIR') 
+                ? `Terimakasih sudah melakukan laporan kehadiran.\n\nAlamat Anda:\n${alamat}`
+                : `Terimakasih sudah melakukan laporan ketidak hadiran.\n\nAlamat Anda:\n${alamat}`;
+
+            showLockDisplay('success', 'Terimakasih', pesanSukses);
         } catch (err) {
-            showLockDisplay('error', 'Gagal', err.message);
+            showLockDisplay('error', 'Gagal Simpan', err.message);
         }
     }
-</script>
-</body>
+</script></body>
 </html>
