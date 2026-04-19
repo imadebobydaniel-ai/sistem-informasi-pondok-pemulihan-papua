@@ -286,6 +286,36 @@
     let playlistData = [];
 
     // --- 2. LOGIKA RUNNING TEXT ---
+    
+    // Fungsi Validasi & Render Baris Running Text
+    function renderRunningTextRow(docId, data) {
+        // Pengecekan Validitas Data (Pesan & Durasi)
+        const isiPesan = data.pesan || "Pesan Kosong";
+        const durasiPesan = data.durasi || 15;
+        
+        // Escape petik tunggal untuk keamanan fungsi onclick
+        const escapedPesan = isiPesan.replace(/'/g, "\\'");
+
+        return `
+            <tr>
+                <td><span class="status-dot active"></span> Arsip</td>
+                <td>${isiPesan}</td>
+                <td>${durasiPesan}s</td>
+                <td style="text-align:center;">
+                    <button onclick="setRTActive('${escapedPesan}', ${durasiPesan})" class="btn-action btn-play-sm" title="Kirim ke Monitor">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <button onclick="editRT('${docId}', '${escapedPesan}', ${durasiPesan})" class="btn-action btn-up" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteRT('${docId}')" class="btn-action btn-del-sm" title="Hapus">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
     async function saveRunningTextToCollection() {
         const pesan = document.getElementById('rt_input').value;
         const durasi = document.getElementById('rt_durasi').value;
@@ -293,21 +323,19 @@
         if(!pesan) return alert("Pesan tidak boleh kosong!");
 
         try {
-            // Update Konfig Aktif
             await db.collection("config").doc("running_text").set({
                 pesan: pesan,
-                durasi: parseInt(durasi),
+                durasi: parseInt(durasi) || 15,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            // Simpan ke Riwayat
             await db.collection("running_text_history").add({
                 pesan: pesan,
-                durasi: parseInt(durasi),
+                durasi: parseInt(durasi) || 15,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            alert("Running Text Berhasil Dikirim ke Monitor!");
+            alert("Running Text Berhasil Dikirim!");
             document.getElementById('rt_input').value = "";
         } catch (e) {
             alert("Gagal menyimpan: " + e.message);
@@ -321,22 +349,33 @@
             list.innerHTML = "";
             snap.forEach(doc => {
                 const data = doc.data();
-                list.innerHTML += `
-                    <tr>
-                        <td><span class="status-dot"></span> Arsip</td>
-                        <td>${data.pesan}</td>
-                        <td>${data.durasi}s</td>
-                        <td style="text-align:center;">
-                            <button onclick="setRTActive('${data.pesan.replace(/'/g, "\\'")}', ${data.durasi})" class="btn-action btn-play-sm" title="Kirim Ulang"><i class="fas fa-paper-plane"></i></button>
-                        </td>
-                    </tr>`;
+                // Menggunakan fungsi render dengan proteksi data
+                list.innerHTML += renderRunningTextRow(doc.id, data);
             });
         });
     }
 
+    async function deleteRT(id) {
+        if(confirm("Hapus pesan ini dari riwayat?")) {
+            try {
+                await db.collection("running_text_history").doc(id).delete();
+            } catch(e) { alert("Gagal menghapus"); }
+        }
+    }
+
+    function editRT(id, pesan, durasi) {
+        document.getElementById('rt_input').value = pesan;
+        document.getElementById('rt_durasi').value = durasi;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     async function setRTActive(pesan, durasi) {
-        await db.collection("config").doc("running_text").set({ pesan, durasi, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        alert("Running text diaktifkan kembali!");
+        await db.collection("config").doc("running_text").set({ 
+            pesan, 
+            durasi: parseInt(durasi), 
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+        });
+        alert("Pesan diaktifkan di Monitor!");
     }
 
     // --- 3. LOGIKA MANAJEMEN PLAYLIST & MEDIA ---
@@ -386,7 +425,6 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             alert("Konten Berhasil Ditambahkan!");
-            // Reset Form
             document.getElementById('judul').value = "";
             document.getElementById('url_media').value = "";
             document.getElementById('isi_artikel').value = "";
@@ -407,12 +445,12 @@
                     <tr>
                         <td><input type="checkbox" class="item-checkbox" value="${doc.id}"></td>
                         <td style="text-align:center;">${count++}</td>
-                        <td style="font-weight:600;">${data.judul}</td>
+                        <td style="font-weight:600;">${data.judul || 'Tanpa Judul'}</td>
                         <td><span style="font-size:11px; background:#e0e7ff; color:#4338ca; padding:4px 8px; border-radius:10px;">${data.tipe}</span></td>
                         <td style="text-align:center;">
                             <button onclick="moveItem('${doc.id}', -1)" class="btn-action btn-up"><i class="fas fa-chevron-up"></i></button>
                             <button onclick="moveItem('${doc.id}', 1)" class="btn-action btn-down"><i class="fas fa-chevron-down"></i></button>
-                            <button onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm" title="Putar Paksa Sekarang"><i class="fas fa-desktop"></i></button>
+                            <button onclick="playSekarang('${doc.id}')" class="btn-action btn-play-sm" title="Putar Sekarang"><i class="fas fa-desktop"></i></button>
                             <button onclick="deleteMedia('${doc.id}')" class="btn-action btn-del-sm"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
@@ -420,7 +458,7 @@
         });
     }
 
-    // --- 4. LOGIKA REORDERING & MODE ---
+    // --- 4. LOGIKA URUTAN & MODE ---
     async function moveItem(id, direction) {
         const index = playlistData.findIndex(item => item.id === id);
         if (index < 0) return;
@@ -443,7 +481,7 @@
             triggerChange: Date.now()
         }, { merge: true });
         document.getElementById('currentModeDisplay').innerText = mode.toUpperCase();
-        alert("Mode Pemutaran: " + mode.toUpperCase());
+        alert("Mode Pemutaran Diperbarui!");
     }
 
     async function playSekarang(id) {
@@ -455,20 +493,20 @@
             activeTitle: item.judul,
             triggerChange: Date.now()
         }, { merge: true });
-        alert("Monitor diinstruksikan memutar: " + item.judul);
+        alert("Monitor memutar: " + item.judul);
     }
 
-    // --- 5. HAPUS DATA ---
+    // --- 5. CLEANUP ---
     async function deleteMedia(id) {
-        if(confirm("Hapus konten ini?")) {
+        if(confirm("Hapus konten dari playlist?")) {
             await db.collection("portal_media").doc(id).delete();
         }
     }
 
     async function deleteSelected() {
         const checked = document.querySelectorAll('.item-checkbox:checked');
-        if(checked.length === 0) return alert("Pilih item yang ingin dihapus!");
-        if(confirm(`Hapus ${checked.length} item pilihan?`)) {
+        if(checked.length === 0) return alert("Pilih item dahulu!");
+        if(confirm(`Hapus ${checked.length} item?`)) {
             const batch = db.batch();
             checked.forEach(box => batch.delete(db.collection("portal_media").doc(box.value)));
             await batch.commit();
@@ -480,11 +518,9 @@
         document.querySelectorAll('.item-checkbox').forEach(box => box.checked = master.checked);
     }
 
-    // --- INITIALIZE ---
     window.onload = () => {
         loadRTCollection();
         loadMedia();
-        // Load Current Play Mode from DB
         db.collection("config").doc("playlist").get().then(doc => {
             if(doc.exists && doc.data().mode) {
                 document.getElementById('play_mode').value = doc.data().mode;
