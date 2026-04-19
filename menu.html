@@ -41,6 +41,11 @@
             flex-direction: column;
         }
 
+        /* Memaksa SweetAlert2 berada di lapisan paling atas */
+        .swal2-container {
+            z-index: 99999 !important;
+        }
+
         /* --- Animations --- */
         @keyframes marqueeTop { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
         
@@ -582,6 +587,8 @@
             icon: 'info',
             confirmButtonText: 'Tutup',
             confirmButtonColor: '#003366',
+            heightAuto: false, // Penting untuk aplikasi mobile/APK
+            scrollbarPadding: false,
             background: '#ffffff',
             showClass: {
                 popup: 'animate__animated animate__fadeInDown'
@@ -639,7 +646,12 @@
     async function hapusTerpilih() {
         const checkboxes = document.querySelectorAll('.pilih-pesan:checked');
         if (checkboxes.length === 0) {
-            Swal.fire('Peringatan', 'Pilih pesan yang ingin dihapus', 'warning');
+            Swal.fire({
+                title: 'Peringatan',
+                text: 'Pilih pesan yang ingin dihapus',
+                icon: 'warning',
+                heightAuto: false
+            });
             return;
         }
 
@@ -650,7 +662,8 @@
             showCancelButton: true,
             confirmButtonColor: '#dc3545',
             cancelButtonColor: '#888',
-            confirmButtonText: 'Ya, Hapus!'
+            confirmButtonText: 'Ya, Hapus!',
+            heightAuto: false
         }).then(async (result) => {
             if (result.isConfirmed) {
                 const batch = db.batch();
@@ -659,7 +672,12 @@
                 });
                 await batch.commit();
                 document.getElementById('selectAll').checked = false;
-                Swal.fire('Terhapus!', 'Pesan berhasil dibersihkan.', 'success');
+                Swal.fire({
+                    title: 'Terhapus!',
+                    text: 'Pesan berhasil dibersihkan.',
+                    icon: 'success',
+                    heightAuto: false
+                });
             }
         });
     }
