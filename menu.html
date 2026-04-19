@@ -210,6 +210,74 @@
         #audioPlayer { width: 90%; margin: 80px auto; display: none; }
         #imageDisplay { width: 100%; height: 100%; object-fit: contain; display: none; }
         #textDisplay { width: 100%; height: 100%; background: white; color: black; padding: 15px; overflow-y: auto; display: none; font-size: 13px; text-align: left; box-sizing: border-box; }
+
+        /* --- STYLES BARU UNTUK INBOX DREAMY --- */
+        .modal-dreamy {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 10002;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content-inbox {
+            background: rgba(255, 255, 255, 0.85);
+            width: 90%;
+            max-width: 400px;
+            height: 65vh;
+            border-radius: 25px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: munculMimpi 0.6s ease-out;
+        }
+
+        @keyframes munculMimpi {
+            0% { opacity: 0; transform: scale(0.8) translateY(30px); filter: blur(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+        }
+
+        .inbox-header {
+            padding: 15px 20px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+        }
+
+        .inbox-header h3 { margin: 0; font-size: 16px; color: var(--biru-tua); }
+
+        .inbox-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            scrollbar-width: none;
+        }
+        .inbox-body::-webkit-scrollbar { display: none; }
+
+        .pesan-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+
+        .pesan-content { margin-left: 12px; flex: 1; text-align: left; }
+        .pesan-title { font-weight: bold; font-size: 13px; color: #333; }
+        .pesan-text { font-size: 11px; color: #666; }
+
+        .btn-back-inbox { border: none; background: none; color: #555; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-delete-mass { border: none; background: none; color: #ff4757; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -223,6 +291,26 @@
                 <button onclick="closeLogoutModal()" style="flex: 1; padding: 14px; border-radius: 12px; border: 1px solid #ddd; background: #f8f9fa; font-weight: bold;">Batal</button>
                 <button onclick="executeLogout()" style="flex: 1; padding: 14px; border-radius: 12px; border: none; background: #dc3545; color: white; font-weight: bold;">Keluar</button>
             </div>
+        </div>
+    </div>
+
+    <div id="modalInbox" class="modal-dreamy">
+        <div class="modal-content-inbox">
+            <div class="inbox-header">
+                <button onclick="tutupInbox()" class="btn-back-inbox">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <h3>Inbox</h3>
+                <div class="header-actions">
+                    <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                    <button onclick="hapusTerpilih()" class="btn-delete-mass">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="daftarPesan" class="inbox-body">
+                </div>
         </div>
     </div>
 
@@ -386,7 +474,6 @@
 
     // 3. Data Listeners (Firestore)
     function listenData() {
-        // Listener Profil
         if (userEmail) {
             db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
                 if (!s.empty) {
@@ -395,6 +482,9 @@
                     document.getElementById('disp_email').innerText = userEmail;
                     document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                     
+                    // Simpan komsel ke localStorage untuk filter inbox
+                    localStorage.setItem("userKomsel", d.komsel ? "JC" + d.komsel : "Semua JC");
+
                     if (d.foto_profil) {
                         const img = document.getElementById('user-photo');
                         img.src = d.foto_profil;
@@ -405,7 +495,6 @@
             });
         }
 
-        // Listener Playlist Dinamis
         db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(s => {
             if (!s.empty) {
                 const videoIds = [];
@@ -418,7 +507,6 @@
                     const newPlaylistString = videoIds.join(',');
                     if (ytPlayer.lastPlaylist !== newPlaylistString) {
                         ytPlayer.lastPlaylist = newPlaylistString;
-                        
                         ytPlayer.loadPlaylist({
                             playlist: videoIds,
                             listType: 'playlist',
@@ -431,16 +519,71 @@
             }
         });
 
-        // Listener Running Text
         db.collection("config").doc("running_text").onSnapshot(doc => {
             if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
         });
     }
 
-    // 4. UI Functions
+    // --- FUNGSI INBOX BARU ---
     function bukaInbox() {
-        window.location.href = "inbox.html"; 
+        document.getElementById('modalInbox').style.display = 'flex';
+        muatPesanInbox();
     }
+
+    function tutupInbox() {
+        document.getElementById('modalInbox').style.display = 'none';
+    }
+
+    function muatPesanInbox() {
+        const userKomsel = localStorage.getItem("userKomsel") || "Semua JC";
+        const daftarPesan = document.getElementById('daftarPesan');
+        daftarPesan.innerHTML = "<p style='text-align:center; font-size:12px;'>Mencari pesan...</p>";
+
+        db.collection("pengumuman_komsel").orderBy("timestamp", "desc").onSnapshot(s => {
+            daftarPesan.innerHTML = "";
+            if(s.empty) {
+                daftarPesan.innerHTML = "<p style='text-align:center; color:#aaa; font-size:12px; margin-top:30px;'>Inbox Kosong</p>";
+                return;
+            }
+
+            s.forEach(doc => {
+                const d = doc.data();
+                if (d.target_jc === "Semua JC" || d.target_jc === userKomsel) {
+                    const item = `
+                        <div class="pesan-item">
+                            <input type="checkbox" class="pilih-pesan" value="${doc.id}">
+                            <div class="pesan-content">
+                                <div class="pesan-title">${d.judul}</div>
+                                <div class="pesan-text">${d.isi.substring(0, 45)}...</div>
+                            </div>
+                        </div>
+                    `;
+                    daftarPesan.innerHTML += item;
+                }
+            });
+        });
+    }
+
+    function toggleSelectAll() {
+        const isChecked = document.getElementById('selectAll').checked;
+        const checkboxes = document.querySelectorAll('.pilih-pesan');
+        checkboxes.forEach(cb => cb.checked = isChecked);
+    }
+
+    async function hapusTerpilih() {
+        const checkboxes = document.querySelectorAll('.pilih-pesan:checked');
+        if (checkboxes.length === 0) return alert("Pilih pesan!");
+
+        if (confirm(`Hapus ${checkboxes.length} pesan?`)) {
+            const batch = db.batch();
+            checkboxes.forEach(cb => {
+                batch.delete(db.collection("pengumuman_komsel").doc(cb.value));
+            });
+            await batch.commit();
+            document.getElementById('selectAll').checked = false;
+        }
+    }
+    // --- AKHIR FUNGSI INBOX ---
 
     function bukaKartuDigital() {
         db.collection("users").where("email", "==", userEmail).get().then(s => {
@@ -449,7 +592,6 @@
                 document.getElementById('dnama').innerText = d.nama;
                 document.getElementById('dnij').innerText = d.nij || "0000 0000";
                 
-                // Sinkronisasi data tambahan pada modal kartu jika elemen tersedia
                 if(document.getElementById('dkomsel')) {
                     document.getElementById('dkomsel').innerText = d.komsel || "-";
                 }
@@ -473,7 +615,6 @@
         }); 
     }
 
-    // 5. Window Init
     window.onload = () => {
         const toggleBtn = document.getElementById('toggleProfile');
         if (toggleBtn) {
