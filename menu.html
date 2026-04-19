@@ -89,7 +89,7 @@
         .profile-card.closed { transform: translateX(-100%); }
         .btn-toggle-side { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 10; background: #ff0000; color: white; border: none; width: 30px; height: 60px; border-radius: 0 15px 15px 0; cursor: pointer; transition: 0.3s; opacity: 0.8; }
 
-        /* --- MENU GRID DENGAN EFEK REALISTIS --- */
+        /* --- MENU GRID --- */
         .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px; }
 
         .menu-box { 
@@ -136,7 +136,7 @@
             transition: transform 0.3s ease;
         }
 
-        /* --- MODERN BOTTOM NAVIGATION --- */
+        /* --- BOTTOM NAVIGATION --- */
         .bottom-nav {
             position: fixed;
             bottom: 0; left: 0; right: 0;
@@ -333,178 +333,148 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 
-<script>
-    // 1. Firebase Configuration
-    const firebaseConfig = { 
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-        authDomain: "boby-apps-project.firebaseapp.com", 
-        projectId: "boby-apps-project", 
-        storageBucket: "boby-apps-project.appspot.com", 
-        messagingSenderId: "125984859692", 
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
-    };
+    <script>
+        // 1. Firebase Configuration
+        const firebaseConfig = { 
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+            authDomain: "boby-apps-project.firebaseapp.com", 
+            projectId: "boby-apps-project", 
+            storageBucket: "boby-apps-project.appspot.com", 
+            messagingSenderId: "125984859692", 
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+        };
 
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const userEmail = localStorage.getItem("userEmail");
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const userEmail = localStorage.getItem("userEmail");
 
-    // 2. YouTube Player Settings
-    let ytPlayer;
-    let isYtReady = false;
-    let currentVideoId = ''; // Kosongkan agar menunggu data Firestore
+        // 2. YouTube Player Settings
+        let ytPlayer;
+        let isYtReady = false;
 
-    function onYouTubeIframeAPIReady() {
-        ytPlayer = new YT.Player('player', {
-            height: '100%', 
-            width: '100%',
-            playerVars: { 
-                'autoplay': 1, 
-                'mute': 1, 
-                'controls': 1, 
-                'rel': 0, 
-                'showinfo': 0,
-                'modestbranding': 1,
-                'enablejsapi': 1,
-                'origin': window.location.origin
-            },
-            events: { 
-                'onReady': (event) => { 
-                    isYtReady = true; 
-                    // Jalankan listener data HANYA setelah player siap
-                    listenData();
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('player', {
+                height: '100%', 
+                width: '100%',
+                playerVars: { 
+                    'autoplay': 1, 
+                    'mute': 1, 
+                    'controls': 1, 
+                    'rel': 0, 
+                    'showinfo': 0,
+                    'modestbranding': 1,
+                    'enablejsapi': 1,
+                    'origin': window.location.origin
                 },
-                'onStateChange': onPlayerStateChange,
-                'onError': (e) => { console.error("YouTube Error:", e.data); }
-            }
-        });
-    }
-
-    // Penanganan loop playlist manual jika sistem YouTube Playlist API delay
-    function onPlayerStateChange(event) {
-        if (event.data === YT.PlayerState.ENDED) {
-            ytPlayer.nextVideo();
-        }
-    }
-
-    // 3. Data Listeners (Firestore)
-    function listenData() {
-        // Listener Profil
-        if (userEmail) {
-            db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
-                if (!s.empty) {
-                    const d = s.docs[0].data();
-                    document.getElementById('disp_nama').innerText = d.nama || "User";
-                    document.getElementById('disp_email').innerText = userEmail;
-                    document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
-                    
-                    if (d.foto_profil) {
-                        const img = document.getElementById('user-photo');
-                        img.src = d.foto_profil;
-                        img.style.display = "block";
-                        document.getElementById('default-icon').style.display = "none";
-                    }
-                } else {
-                    document.getElementById('disp_nama').innerText = "User Tidak Ditemukan";
+                events: { 
+                    'onReady': (event) => { 
+                        isYtReady = true; 
+                        listenData();
+                    },
+                    'onStateChange': onPlayerStateChange,
+                    'onError': (e) => { console.error("YouTube Error:", e.data); }
                 }
-            }, (error) => {
-                console.error("Firestore Profil Error:", error);
             });
-        } else {
-            window.location.href = "index.html"; 
         }
 
-        // PERBAIKAN UTAMA: Listener Playlist Dinamis
-        db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(s => {
-            if (!s.empty) {
-                const videoIds = [];
-                s.forEach(doc => {
-                    const data = doc.data();
-                    if (data.url) {
-                        const cleanId = data.url.trim();
-                        videoIds.push(cleanId);
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED) {
+                ytPlayer.nextVideo();
+            }
+        }
+
+        // 3. Data Listeners (Firestore)
+        function listenData() {
+            if (userEmail) {
+                db.collection("users").where("email", "==", userEmail).onSnapshot(s => {
+                    if (!s.empty) {
+                        const d = s.docs[0].data();
+                        document.getElementById('disp_nama').innerText = d.nama || "User";
+                        document.getElementById('disp_email').innerText = userEmail;
+                        document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
+                        
+                        if (d.foto_profil) {
+                            const img = document.getElementById('user-photo');
+                            img.src = d.foto_profil;
+                            img.style.display = "block";
+                            document.getElementById('default-icon').style.display = "none";
+                        }
                     }
                 });
+            }
 
-                if (isYtReady && ytPlayer && videoIds.length > 0) {
-                    const newPlaylistString = videoIds.join(',');
-                    
-                    // Verifikasi apakah daftar video benar-benar berubah
-                    if (ytPlayer.lastPlaylist !== newPlaylistString) {
-                        ytPlayer.lastPlaylist = newPlaylistString;
-                        
-                        // Gunakan cuePlaylist untuk buffering data agar tidak crash
-                        ytPlayer.cuePlaylist({
-                            playlist: videoIds,
-                            listType: 'playlist',
-                            index: 0,
-                            startSeconds: 0
-                        });
+            db.collection("portal_media").orderBy("urutan", "asc").onSnapshot(s => {
+                if (!s.empty) {
+                    const videoIds = [];
+                    s.forEach(doc => {
+                        const data = doc.data();
+                        if (data.url) videoIds.push(data.url.trim());
+                    });
 
-                        // Jeda 1 detik sebelum mulai putar untuk stabilitas API
-                        setTimeout(() => {
-                            ytPlayer.playVideo();
-                            ytPlayer.setLoop(true);
-                        }, 1000);
+                    if (isYtReady && ytPlayer && videoIds.length > 0) {
+                        const newPlaylistString = videoIds.join(',');
+                        if (ytPlayer.lastPlaylist !== newPlaylistString) {
+                            ytPlayer.lastPlaylist = newPlaylistString;
+                            ytPlayer.cuePlaylist({
+                                playlist: videoIds,
+                                listType: 'playlist',
+                                index: 0,
+                                startSeconds: 0
+                            });
+                            setTimeout(() => {
+                                ytPlayer.playVideo();
+                                ytPlayer.setLoop(true);
+                            }, 1000);
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        // Listener Running Text
-        db.collection("config").doc("running_text").onSnapshot(doc => {
-            if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
-        });
-    }
+            db.collection("config").doc("running_text").onSnapshot(doc => {
+                if (doc.exists) document.getElementById('rt_display').innerText = doc.data().pesan;
+            });
+        }
 
-    // 4. UI Functions
-    function bukaKartuDigital() {
-        db.collection("users").where("email", "==", userEmail).get().then(s => {
-            if(!s.empty) {
-                const d = s.docs[0].data();
-                document.getElementById('dnama').innerText = d.nama;
-                document.getElementById('dnij').innerText = d.nij || "0000 0000";
-                const qrBox = document.getElementById("qrbox");
-                qrBox.innerHTML = "";
-                new QRCode(qrBox, { text: userEmail, width: 110, height: 110 });
-                document.getElementById('modalKartuDigital').style.display = 'flex';
-            }
-        });
-    }
-
-    function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
-    function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
-    function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-    
-    function executeLogout() { 
-        auth.signOut().then(() => { 
-            localStorage.clear(); 
-            window.location.href = "index.html"; 
-        }); 
-    }
-
-    // 5. Window Init
-    window.onload = () => {
-        // listenData dipanggil di dalam onYouTubeIframeAPIReady -> onReady
-        
-        const toggleBtn = document.getElementById('toggleProfile');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => {
-                document.getElementById('profileCard').classList.toggle('closed');
-                const icon = document.getElementById('toggleIcon');
-                if (icon) {
-                    icon.classList.toggle('fa-chevron-left');
-                    icon.classList.toggle('fa-chevron-right');
+        // 4. UI Functions
+        function bukaKartuDigital() {
+            db.collection("users").where("email", "==", userEmail).get().then(s => {
+                if(!s.empty) {
+                    const d = s.docs[0].data();
+                    document.getElementById('dnama').innerText = d.nama;
+                    document.getElementById('dnij').innerText = d.nij || "0000 0000";
+                    const qrBox = document.getElementById("qrbox");
+                    qrBox.innerHTML = "";
+                    new QRCode(qrBox, { text: userEmail, width: 110, height: 110 });
+                    document.getElementById('modalKartuDigital').style.display = 'flex';
                 }
             });
         }
 
-        const activeElements = document.querySelectorAll('.menu-box, .nav-item');
-        activeElements.forEach(el => {
-            el.addEventListener('touchend', () => {
-                setTimeout(() => { el.blur(); }, 200);
-            });
-        });
-    };
-</script></body>
+        function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
+        function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
+        function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
+        
+        function executeLogout() { 
+            auth.signOut().then(() => { 
+                localStorage.clear(); 
+                window.location.href = "index.html"; 
+            }); 
+        }
+
+        window.onload = () => {
+            const toggleBtn = document.getElementById('toggleProfile');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    document.getElementById('profileCard').classList.toggle('closed');
+                    const icon = document.getElementById('toggleIcon');
+                    if (icon) {
+                        icon.classList.toggle('fa-chevron-left');
+                        icon.classList.toggle('fa-chevron-right');
+                    }
+                });
+            }
+        };
+    </script>
+</body>
 </html>
