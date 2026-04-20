@@ -6,21 +6,71 @@
     <title>Rubrik Kegiatan Event - SIPAPUA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
-        .header { background: var(--primary); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--accent); }
-        .nav-admin { position: relative; }
+        
+        /* HEADER: Jarak atas ditambah agar tidak mepet frame HP */
+        .header { 
+            background: var(--primary); 
+            color: white; 
+            padding: 35px 15px 15px 15px; 
+            display: flex; 
+            justify-content: center; /* Judul di tengah */
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+            border-bottom: 3px solid var(--accent); 
+        }
+
+        .nav-admin { position: absolute; right: 15px; bottom: 15px; }
+
         .btn-toggle-login { background: var(--accent); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* SLIDER LOGIN */
+        .login-dropdown { 
+            display: none; 
+            position: absolute; 
+            top: 50px; 
+            right: 0; 
+            width: 240px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25); 
+            z-index: 2000; 
+            border: 1px solid #eee; 
+        }
         
-        .login-dropdown { display: none; position: absolute; top: 50px; right: 0; width: 240px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid #eee; }
-        .login-logo { display: block; margin: 0 auto 15px auto; max-width: 80px; height: auto; }
+        .login-logo { display: block; margin: 0 auto 5px auto; max-width: 80px; height: auto; }
+        
+        /* Teks di bawah Logo */
+        .login-label { 
+            text-align: center; 
+            font-size: 12px; 
+            font-weight: bold; 
+            color: var(--primary); 
+            margin-bottom: 15px; 
+            display: block;
+        }
+
         .login-dropdown input { width: 100%; height: 42px; margin-bottom: 12px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+        /* WRAPPER PASSWORD & MATA */
+        .pass-container { position: relative; width: 100%; }
+        .toggle-pass { 
+            position: absolute; 
+            right: 12px; 
+            top: 13px; 
+            color: #888; 
+            cursor: pointer; 
+            z-index: 10;
+        }
+
         .btn-masuk-dropdown { width: 100%; height: 42px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        
+
         .container { padding: 15px; max-width: 800px; margin: auto; }
         .event-item { background: white; border-radius: 12px; overflow: hidden; display: flex; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
         .event-thumb { width: 100px; height: 100px; object-fit: cover; }
@@ -28,23 +78,26 @@
         .btn-delete-news { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; display: none; }
         
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
-        input, textarea { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
-        .preview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
-        .preview-grid img { width: 100%; height: 60px; object-fit: cover; border-radius: 5px; }
         .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1 style="font-size: 1rem; margin: 0;">EVENT</h1>
+    <h1 style="font-size: 1.1rem; margin: 0; letter-spacing: 1px;">EVENT JEMAAT</h1>
     <div class="nav-admin">
         <button id="btnToggle" class="btn-toggle-login" onclick="toggleLoginSlider()"><i class="fas fa-user-shield"></i></button>
         <div id="loginBox" class="login-dropdown">
             <img src="logo_pondok.png" alt="Logo" class="login-logo">
-            <h4>Admin Login</h4>
+            <span class="login-label">LOGIN EVENT JEMAAT</span>
+            
             <input type="text" id="userAdmin" placeholder="Username">
-            <input type="password" id="passAdmin" placeholder="Password">
+            
+            <div class="pass-container">
+                <input type="password" id="passAdmin" placeholder="Password">
+                <i class="fas fa-eye toggle-pass" id="eyeIcon" onclick="togglePassword()"></i>
+            </div>
+            
             <button class="btn-masuk-dropdown" onclick="loginEvent()">MASUK</button>
         </div>
         <button id="btnLogout" style="display:none; background:#e74c3c; border:none; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold;" onclick="logout()">LOGOUT</button>
@@ -54,15 +107,14 @@
 <div class="container">
     <div id="adminSection">
         <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
-        <input type="text" id="namaEvent" placeholder="Nama Kegiatan">
-        <input type="text" id="lokasiEvent" placeholder="Lokasi">
-        <input type="date" id="tglEvent">
-        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4"></textarea>
+        <input type="text" id="namaEvent" placeholder="Nama Kegiatan" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <input type="text" id="lokasiEvent" placeholder="Lokasi" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <input type="date" id="tglEvent" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;"></textarea>
         
-        <p style="font-size: 12px; margin: 0;">Upload Foto ke Cloudinary (Maks 4):</p>
+        <p style="font-size: 12px; margin: 0;">Upload Foto ke Cloudinary:</p>
         <input type="file" id="fotoEvent" accept="image/*" multiple onchange="uploadToCloudinary(event)">
-        <div id="imagePreviewGrid" class="preview-grid"></div>
-        <div id="uploadStatus" style="font-size: 11px; color: var(--primary); margin-bottom: 10px;"></div>
+        <div id="uploadStatus" style="font-size: 11px; color: var(--primary); margin: 5px 0;"></div>
 
         <button class="btn-action" style="background:var(--accent)" id="btnSimpan" onclick="simpanData()">SIMPAN & PUBLIKASIKAN</button>
     </div>
@@ -82,6 +134,19 @@
         box.style.display = (box.style.display === "block") ? "none" : "block";
     }
 
+    // Fungsi Toggle Mata Password
+    function togglePassword() {
+        const pInput = document.getElementById('passAdmin');
+        const icon = document.getElementById('eyeIcon');
+        if (pInput.type === "password") {
+            pInput.type = "text";
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            pInput.type = "password";
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
     function loginEvent() {
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
@@ -99,19 +164,8 @@
 
     async function uploadToCloudinary(e) {
         const files = Array.from(e.target.files);
-        if (files.length > 4) {
-            Swal.fire('Peringatan', 'Maximal 4 Foto', 'warning');
-            e.target.value = "";
-            return;
-        }
-
         const statusLabel = document.getElementById('uploadStatus');
-        const previewGrid = document.getElementById('imagePreviewGrid');
-        const btnSimpan = document.getElementById('btnSimpan');
-        
-        previewGrid.innerHTML = "";
         cloudinaryImages = [];
-        btnSimpan.disabled = true; // Kunci tombol selama proses upload
 
         for (let file of files) {
             statusLabel.innerText = `Mengunggah ${file.name}...`;
@@ -121,35 +175,16 @@
 
             try {
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-                
-                // Antisipasi Server Cloudinary Penuh atau Error lainnya
-                if (!res.ok) {
-                    throw new Error("Cloudinary Full");
-                }
-
+                if (!res.ok) throw new Error();
                 const data = await res.json();
                 cloudinaryImages.push(data.secure_url);
-                
-                const img = document.createElement('img');
-                img.src = data.secure_url;
-                previewGrid.appendChild(img);
             } catch (err) {
-                console.error("Upload gagal", err);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Upload Gagal',
-                    text: 'Tampungan Server Penuh atau Koneksi Terputus!',
-                    confirmButtonColor: '#d33'
-                });
-                statusLabel.innerText = "Error: Tampungan Server Penuh.";
-                e.target.value = "";
-                cloudinaryImages = [];
-                btnSimpan.disabled = false;
-                return; // Berhenti jika ada error
+                Swal.fire('Error', 'Tampungan Server Penuh!', 'error');
+                statusLabel.innerText = "Gagal unggah.";
+                return;
             }
         }
         statusLabel.innerText = "Selesai Mengunggah.";
-        btnSimpan.disabled = false;
     }
 
     function simpanData() {
@@ -158,19 +193,13 @@
         const tgl = document.getElementById('tglEvent').value;
         const isi = document.getElementById('isiEvent').value;
 
-        if(!nama || cloudinaryImages.length === 0) return Swal.fire('Gagal', 'Lengkapi data dan foto', 'warning');
+        if(!nama || cloudinaryImages.length === 0) return Swal.fire('Gagal', 'Lengkapi data', 'warning');
 
-        const newEntry = { 
-            id: Date.now(), 
-            nama, lokasi, tgl, isi, 
-            fotos: cloudinaryImages 
-        };
-        
+        const newEntry = { id: Date.now(), nama, lokasi, tgl, isi, fotos: cloudinaryImages };
         let list = JSON.parse(localStorage.getItem('eventList')) || [];
         list.unshift(newEntry);
         localStorage.setItem('eventList', JSON.stringify(list));
-        
-        Swal.fire('Berhasil', 'Kegiatan telah dipublikasikan', 'success').then(() => location.reload());
+        location.reload();
     }
 
     function renderList() {
@@ -183,9 +212,9 @@
             container.innerHTML += `
                 <div class="event-item">
                     <img src="${item.fotos[0]}" class="event-thumb">
-                    <div class="event-content" onclick="showPopup(${item.id})">
+                    <div class="event-content">
                         <h3 style="margin:0; font-size:16px; color:var(--primary);">${item.nama}</h3>
-                        <p style="font-size:11px; color:#666; margin:5px 0 0 0;">${item.tgl} | ${item.lokasi}</p>
+                        <p style="font-size:11px; color:#666;">${item.tgl} | ${item.lokasi}</p>
                     </div>
                     ${deleteBtn}
                 </div>
@@ -196,19 +225,17 @@
     async function hapusBerita(id) {
         const { value: password } = await Swal.fire({
             title: 'Hapus Berita?',
-            text: 'Data yang dihapus tidak bisa dikembalikan.',
             input: 'password',
             inputLabel: 'Masukkan Password Administrator',
             inputPlaceholder: 'Password',
-            showCancelButton: true,
-            confirmButtonColor: '#e74c3c'
+            showCancelButton: true
         });
 
         if (password === 'admin123') {
             let list = JSON.parse(localStorage.getItem('eventList'));
             list = list.filter(x => x.id !== id);
             localStorage.setItem('eventList', JSON.stringify(list));
-            Swal.fire('Dihapus!', 'Berita berhasil dihapus.', 'success').then(() => renderList());
+            renderList();
         } else if (password) {
             Swal.fire('Gagal', 'Password Salah!', 'error');
         }
