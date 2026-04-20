@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
@@ -79,13 +80,18 @@
 
         .btn-header-back { border:none; background:#555; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold; cursor:pointer; font-size: 12px; display: flex; align-items: center; }
 
-        /* Perbaikan tampilan input password agar simetris di HP */
         .swal2-input-custom {
             width: 80% !important;
             margin: 10px auto !important;
             display: block !important;
             text-align: center;
             border-radius: 8px !important;
+        }
+
+        /* Desain Tombol Tutup Kamera */
+        #btnStopScanner {
+            display: none; width: 100%; background: #d33; color: white; border: none; 
+            padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 5px;
         }
     </style>
 </head>
@@ -142,8 +148,9 @@
                 <span style="font-weight:bold; font-size:13px;"><i class="fas fa-qrcode"></i> ABSENSI</span>
                 <span class="total-counter">Total: <span id="totalAbsen">0</span></span>
             </div>
-            <button class="btn-action" style="background: var(--primary);" onclick="window.startScanner()">SCAN QR</button>
+            <button id="btnStartScanner" class="btn-action" style="background: var(--primary);" onclick="window.startScanner()">SCAN QR</button>
             <div id="reader"></div>
+            <button id="btnStopScanner" onclick="window.stopScanner()"><i class="fas fa-times"></i> TUTUP KAMERA</button>
         </div>
 
         <div class="log-activity-box">
@@ -161,12 +168,10 @@
     window.cloudinaryImages = [];
     let html5QrCode;
 
-    // Pastikan DOM sudah siap sebelum menjalankan fungsi
     document.addEventListener("DOMContentLoaded", function() {
         console.log("DOM Ready - SIPAPUA System Active");
     });
 
-    // 1. FUNGSI TOGGLE PASSWORD (Lihat/Sembunyikan Password)
     window.togglePassword = function() {
         const p = document.getElementById('passAdmin');
         const eye = document.getElementById('eyeIcon');
@@ -181,27 +186,20 @@
         }
     };
 
-    // 2. FUNGSI BUKA/TUTUP LOGIN BOX
     window.toggleLoginSlider = function() {
         const box = document.getElementById('loginBox');
         if (box) {
             if (box.style.display === "none" || box.style.display === "") {
                 box.style.display = "block";
-                console.log("Login Box Opened");
             } else {
                 box.style.display = "none";
-                console.log("Login Box Closed");
             }
-        } else {
-            alert("Error: Elemen loginBox tidak ditemukan di HTML");
         }
     };
 
-    // 3. FUNGSI PROSES LOGIN ADMIN
     window.loginEvent = function() {
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
-        
         if(u === "admin" && p === "admin123") {
             document.getElementById('adminSection').style.display = 'block';
             document.getElementById('newsList').style.display = 'none';
@@ -213,7 +211,6 @@
         }
     };
 
-    // 4. FUNGSI UPLOAD KE CLOUDINARY
     const fotoInput = document.getElementById('fotoEvent');
     if(fotoInput) {
         fotoInput.onchange = async function(e) {
@@ -221,7 +218,6 @@
             if (files.length === 0) return;
             const statusLabel = document.getElementById('uploadStatus');
             statusLabel.innerText = "⏳ Memproses...";
-            
             try {
                 for (let file of files) {
                     const formData = new FormData();
@@ -232,14 +228,10 @@
                     if (data.secure_url) window.cloudinaryImages.push(data.secure_url);
                 }
                 statusLabel.innerText = "✅ Selesai. " + window.cloudinaryImages.length + " foto siap.";
-            } catch (err) { 
-                statusLabel.innerText = "❌ Upload Gagal";
-                console.error(err);
-            }
+            } catch (err) { statusLabel.innerText = "❌ Upload Gagal"; }
         };
     }
 
-    // 5. FUNGSI TAMPILKAN DAFTAR BERITA/EVENT
     window.renderList = function(list) {
         const container = document.getElementById('newsList');
         if (!container) return;
@@ -253,7 +245,6 @@
             </div>`).join('');
     };
 
-    // 6. FUNGSI DETAIL EVENT (Popup Swal)
     window.detailEvent = function(id) {
         const item = window.currentEvents.find(x => x.id === id);
         if(!item) return;
@@ -269,21 +260,78 @@
         });
     };
 
-    // 7. FUNGSI SCANNER QR
+    // --- FITUR TAMBAHAN SESUAI PERMINTAAN ---
+
+    // 8. SHARE WHATSAPP (Optimasi APK)
+    window.shareWhatsApp = function() {
+        const nama = document.getElementById('namaEvent').value;
+        const lokasi = document.getElementById('lokasiEvent').value;
+        const tgl = document.getElementById('tglEvent').value;
+        if(!nama) return Swal.fire('Info', 'Isi nama kegiatan dulu', 'info');
+        
+        const pesan = encodeURIComponent(`*INFO KEGIATAN JEMAAT*\n\nKegiatan: ${nama}\nLokasi: ${lokasi}\nTanggal: ${tgl}\n\n_Diposting melalui Aplikasi SIPAPUA_`);
+        window.open(`whatsapp://send?text=${pesan}`, '_blank');
+    };
+
+    // 9. GENERATE PDF (Menggunakan html2canvas + jspdf)
+    window.generatePDF = function() {
+        const el = document.getElementById('adminSection');
+        const btn = document.querySelector('.btn-tool i.fa-file-pdf');
+        btn.className = "fas fa-spinner fa-spin"; // Efek loading
+
+        html2canvas(el, { scale: 2 }).then(canvas => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgData = canvas.toDataURL('image/png');
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Event_${new Date().getTime()}.pdf`);
+            btn.className = "fas fa-file-pdf";
+            Swal.fire('Berhasil', 'PDF telah dibuat', 'success');
+        });
+    };
+
+    // 10. SCANNER QR (Optimasi Sensitivitas Kartu Digital + Tombol Tutup)
     window.startScanner = function() {
         const reader = document.getElementById('reader');
-        if (reader) reader.style.display = 'block';
+        const btnStop = document.getElementById('btnStopScanner');
+        const btnStart = document.getElementById('btnStartScanner');
+        
+        reader.style.display = 'block';
+        btnStop.style.display = 'block';
+        btnStart.style.display = 'none';
         
         html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-            html5QrCode.stop();
-            document.getElementById('reader').style.display = 'none';
-            if (window.prosesAbsenDigital) {
-                window.prosesAbsenDigital(decodedText); 
+        const config = { 
+            fps: 20, // Lebih cepat untuk kartu digital
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0 
+        };
+
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            (decodedText) => {
+                window.stopScanner();
+                if (window.prosesAbsenDigital) window.prosesAbsenDigital(decodedText); 
             }
-        }).catch(err => {
-            Swal.fire('Kamera Error', 'Izin kamera ditolak atau sedang digunakan aplikasi lain', 'error');
+        ).catch(err => {
+            Swal.fire('Kamera Error', 'Cek izin kamera HP anda', 'error');
+            window.stopScanner();
         });
+    };
+
+    window.stopScanner = function() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('btnStopScanner').style.display = 'none';
+                document.getElementById('btnStartScanner').style.display = 'block';
+            }).catch(err => console.log("Stop error", err));
+        }
     };
 </script>
 </body>
