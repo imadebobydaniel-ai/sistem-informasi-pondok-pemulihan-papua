@@ -3,336 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Event Jemaat - SIPAPUA</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>Scan QR Jemaat - SIPAPUA</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        input, textarea, select {
-            box-sizing: border-box; width: 100% !important; max-width: 100%;
-            margin-bottom: 12px; padding: 12px; border-radius: 8px;
-            border: 1px solid #ddd; font-size: 16px;
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .header { 
-            background: var(--primary); color: white; padding: 35px 15px 15px 15px; 
-            display: flex; justify-content: center; align-items: center; 
-            position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--accent); 
+        .header {
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,51,102,1), rgba(0,0,0,0));
+            display: flex;
+            align-items: center;
+            z-index: 10;
         }
 
-        .nav-left { position: absolute; left: 15px; bottom: 15px; display: flex; gap: 10px; }
-        .nav-admin { position: absolute; right: 15px; bottom: 15px; }
-        .btn-toggle-login { background: var(--accent); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-        .login-dropdown { 
-            display: none; position: absolute; top: 50px; right: 0; width: 240px; 
-            background: white; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid #eee; 
-        }
-        
-        .login-logo { display: block; margin: 0 auto 5px auto; max-width: 80px; height: auto; }
-        .login-label { text-align: center; font-size: 12px; font-weight: bold; color: var(--primary); margin-bottom: 15px; display: block; }
-        .pass-container { position: relative; width: 100%; }
-        .toggle-pass { position: absolute; right: 12px; top: 13px; color: #888; cursor: pointer; z-index: 10; }
-        .btn-masuk-dropdown { width: 100%; height: 42px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        .container { padding: 15px; max-width: 800px; margin: auto; }
-
-        .event-item { 
-            background: white; border-radius: 16px; overflow: hidden; display: flex; margin-bottom: 20px; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05); position: relative; cursor: pointer; 
-            transition: all 0.3s ease; border: 1px solid rgba(0,0,0,0.03);
-        }
-        .event-item:hover { transform: translateY(-5px); }
-        .event-thumb { width: 120px; height: 120px; object-fit: cover; }
-        .event-content { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .event-content h3 { margin: 0; font-size: 1.15rem; color: var(--primary); line-height: 1.3; font-weight: 800; }
-        
-        .date-badge {
-            display: inline-block; background: #e8f4fd; color: #0055aa; padding: 4px 10px; 
-            border-radius: 6px; font-size: 11px; font-weight: bold; margin-top: 8px; align-self: flex-start;
+        .btn-back {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 15px;
         }
 
-        #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
-        .btn-action { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; font-size: 14px; }
-        
-        .extra-tools { display: flex; gap: 10px; margin: 10px 0; }
-        .btn-tool { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        
-        .absensi-box, .log-activity-box { background: white; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-top: 15px; }
-        .absensi-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
-        .total-counter { background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; }
-        
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; margin: 10px 0; display: none; border: 2px dashed var(--accent); }
-        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f1f1; font-size: 13px; }
+        .scanner-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
 
-        .image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
-        .image-grid img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; }
-        .single-image { width: 100%; border-radius: 10px; margin-bottom: 10px; }
-        
-        .news-text-large { font-size: 18px !important; line-height: 1.7; white-space: pre-line; margin-bottom: 25px; color: #333; }
+        #reader {
+            width: 100% !important;
+            border: none !important;
+        }
 
-        .btn-header-back { border:none; background:#555; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold; cursor:pointer; font-size: 12px; display: flex; align-items: center; }
+        #reader__scan_region {
+            background: rgba(0,0,0,0.3);
+        }
 
-        .swal2-input-custom {
-            width: 80% !important;
-            margin: 10px auto !important;
-            display: block !important;
+        .instruction {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
             text-align: center;
-            border-radius: 8px !important;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
         }
 
-        /* Desain Tombol Tutup Kamera */
-        #btnStopScanner {
-            display: none; width: 100%; background: #d33; color: white; border: none; 
-            padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 5px;
+        .instruction p {
+            background: rgba(0, 0, 0, 0.7);
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid rgba(255,255,255,0.1);
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="nav-left">
-        <button id="btnPortalBack" class="btn-header-back" onclick="window.history.back()">
-            <i class="fas fa-chevron-left"></i> &nbsp;KEMBALI
+    <div class="header">
+        <button class="btn-back" onclick="window.location.href='menu.html'">
+            <i class="fas fa-arrow-left"></i>
         </button>
-        <button id="btnBack" onclick="window.location.reload()" style="display:none; border:none; background:#d33; color:white; height: 38px; padding:0 20px; border-radius:19px; font-weight:bold; cursor:pointer;">LOGOUT</button>
+        <h3 style="margin: 0; font-size: 18px;">Scan QR Koneksi</h3>
     </div>
 
-    <h1 style="font-size: 1.1rem; margin: 0; letter-spacing: 1px;">EVENT JEMAAT</h1>
-
-    <div class="nav-admin">
-        <button id="btnToggle" class="btn-toggle-login" onclick="window.toggleLoginSlider()">
-            <i class="fas fa-user-shield"></i>
-        </button>
-
-        <div id="loginBox" class="login-dropdown" style="display: none;">
-            <span class="login-label">LOGIN ADMIN</span>
-            <input type="text" id="userAdmin" placeholder="Username">
-            <div class="pass-container">
-                <input type="password" id="passAdmin" placeholder="Password">
-                <i class="fas fa-eye toggle-pass" id="eyeIcon" onclick="window.togglePassword()"></i>
-            </div>
-            <button class="btn-masuk-dropdown" onclick="window.loginEvent()">MASUK</button>
-        </div>
+    <div class="scanner-container">
+        <div id="reader"></div>
+        <div class="overlay"></div>
     </div>
-</div>
 
-<div class="container">
-    <div id="adminSection" style="display: none;">
-        <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
-        <input type="text" id="namaEvent" placeholder="Nama Kegiatan">
-        <input type="text" id="lokasiEvent" placeholder="Lokasi">
-        <input type="date" id="tglEvent">
-        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4"></textarea>
-        
-        <p style="font-size: 12px; margin: 0;">Upload Foto ke Cloudinary:</p>
-        <input type="file" id="fotoEvent" accept="image/*" multiple capture="environment">
-        <div id="uploadStatus" style="font-size: 11px; color: var(--primary); margin: 5px 0;"></div>
-
-        <div class="extra-tools">
-            <button class="btn-tool" onclick="window.shareWhatsApp()"><i class="fab fa-whatsapp" style="color:#25D366"></i> SHARE WA</button>
-            <button class="btn-tool" onclick="window.generatePDF()"><i class="fas fa-file-pdf" style="color:#e74c3c"></i> PDF</button>
-        </div>
-
-        <button class="btn-action" style="background:var(--accent)" id="btnSimpan">SIMPAN & SINNKRONKAN</button>
-
-        <div class="absensi-box">
-            <div class="absensi-header">
-                <span style="font-weight:bold; font-size:13px;"><i class="fas fa-qrcode"></i> ABSENSI</span>
-                <span class="total-counter">Total: <span id="totalAbsen">0</span></span>
-            </div>
-            <button id="btnStartScanner" class="btn-action" style="background: var(--primary);" onclick="window.startScanner()">SCAN QR</button>
-            <div id="reader"></div>
-            <button id="btnStopScanner" onclick="window.stopScanner()"><i class="fas fa-times"></i> TUTUP KAMERA</button>
-        </div>
-
-        <div class="log-activity-box">
-            <span style="font-weight:bold; font-size:13px;"><i class="fas fa-history"></i> LOG ACTIVITY (CLOUD)</span>
-            <div id="logContent" style="margin-top:10px;"></div>
-        </div>
+    <div class="instruction">
+        <p><i class="fas fa-expand"></i> Arahkan kamera ke QR Code Jemaat</p>
     </div>
-    
-    <div id="newsList"></div>
-</div>
 
-<script>
-    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxzllsbgi/image/upload";
-    const CLOUDINARY_PRESET = "sipapua_preset";
-    window.cloudinaryImages = [];
-    let html5QrCode;
+    <script>
+        let html5QrCode;
 
-    document.addEventListener("DOMContentLoaded", function() {
-        console.log("DOM Ready - SIPAPUA System Active");
-    });
+        function onScanSuccess(decodedText, decodedResult) {
+            // Memberikan getaran sukses
+            if (navigator.vibrate) navigator.vibrate(100);
 
-    window.togglePassword = function() {
-        const p = document.getElementById('passAdmin');
-        const eye = document.getElementById('eyeIcon');
-        if (p && eye) {
-            if (p.type === "password") {
-                p.type = "text";
-                eye.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                p.type = "password";
-                eye.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-    };
-
-    window.toggleLoginSlider = function() {
-        const box = document.getElementById('loginBox');
-        if (box) {
-            if (box.style.display === "none" || box.style.display === "") {
-                box.style.display = "block";
-            } else {
-                box.style.display = "none";
-            }
-        }
-    };
-
-    window.loginEvent = function() {
-        const u = document.getElementById('userAdmin').value;
-        const p = document.getElementById('passAdmin').value;
-        if(u === "admin" && p === "admin123") {
-            document.getElementById('adminSection').style.display = 'block';
-            document.getElementById('newsList').style.display = 'none';
-            document.getElementById('btnBack').style.display = 'flex';
-            document.getElementById('loginBox').style.display = 'none';
-            Swal.fire({ icon: 'success', title: 'Admin Login Berhasil', timer: 1000, showConfirmButton: false });
-        } else { 
-            Swal.fire('Gagal', 'Username atau Password Salah', 'error'); 
-        }
-    };
-
-    const fotoInput = document.getElementById('fotoEvent');
-    if(fotoInput) {
-        fotoInput.onchange = async function(e) {
-            const files = Array.from(e.target.files);
-            if (files.length === 0) return;
-            const statusLabel = document.getElementById('uploadStatus');
-            statusLabel.innerText = "⏳ Memproses...";
-            try {
-                for (let file of files) {
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("upload_preset", CLOUDINARY_PRESET);
-                    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-                    const data = await res.json();
-                    if (data.secure_url) window.cloudinaryImages.push(data.secure_url);
+            // Cek apakah hasil scan mengandung protokol sipapua:// atau langsung email
+            if (decodedText.includes("sipapua://scan") || decodedText.includes("@")) {
+                let email = "";
+                
+                if (decodedText.includes("?email=")) {
+                    const urlParams = new URLSearchParams(decodedText.split('?')[1]);
+                    email = urlParams.get('email');
+                } else {
+                    email = decodedText; // Jika QR hanya berisi email mentah
                 }
-                statusLabel.innerText = "✅ Selesai. " + window.cloudinaryImages.length + " foto siap.";
-            } catch (err) { statusLabel.innerText = "❌ Upload Gagal"; }
-        };
-    }
 
-    window.renderList = function(list) {
-        const container = document.getElementById('newsList');
-        if (!container) return;
-        container.innerHTML = list.map(item => `
-            <div class="event-item" onclick="window.detailEvent('${item.id}')">
-                <img src="${item.fotos ? item.fotos[0] : ''}" class="event-thumb">
-                <div class="event-content">
-                    <h3>${item.nama}</h3>
-                    <div class="date-badge">${item.tgl}</div>
-                </div>
-            </div>`).join('');
-    };
-
-    window.detailEvent = function(id) {
-        const item = window.currentEvents.find(x => x.id === id);
-        if(!item) return;
-        let photoHTML = (item.fotos && item.fotos.length > 1) 
-            ? `<div class="image-grid">` + item.fotos.map(img => `<img src="${img}" style="width:100%; margin-bottom:5px; border-radius:8px;">`).join('') + `</div>` 
-            : `<img src="${item.fotos ? item.fotos[0] : ''}" style="width:100%; border-radius:8px;">`;
-        
-        Swal.fire({
-            title: item.nama,
-            html: `<div style="text-align:left; font-size:14px;">${photoHTML}<p style="margin-top:10px;"><b>📍 Lokasi:</b> ${item.lokasi}</p><p>${item.isi}</p></div>`,
-            width: '95%',
-            confirmButtonColor: '#3085d6'
-        });
-    };
-
-    // --- FITUR TAMBAHAN SESUAI PERMINTAAN ---
-
-    // 8. SHARE WHATSAPP (Optimasi APK)
-    window.shareWhatsApp = function() {
-        const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        const tgl = document.getElementById('tglEvent').value;
-        if(!nama) return Swal.fire('Info', 'Isi nama kegiatan dulu', 'info');
-        
-        const pesan = encodeURIComponent(`*INFO KEGIATAN JEMAAT*\n\nKegiatan: ${nama}\nLokasi: ${lokasi}\nTanggal: ${tgl}\n\n_Diposting melalui Aplikasi SIPAPUA_`);
-        window.open(`whatsapp://send?text=${pesan}`, '_blank');
-    };
-
-    // 9. GENERATE PDF (Menggunakan html2canvas + jspdf)
-    window.generatePDF = function() {
-        const el = document.getElementById('adminSection');
-        const btn = document.querySelector('.btn-tool i.fa-file-pdf');
-        btn.className = "fas fa-spinner fa-spin"; // Efek loading
-
-        html2canvas(el, { scale: 2 }).then(canvas => {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png');
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Event_${new Date().getTime()}.pdf`);
-            btn.className = "fas fa-file-pdf";
-            Swal.fire('Berhasil', 'PDF telah dibuat', 'success');
-        });
-    };
-
-    // 10. SCANNER QR (Optimasi Sensitivitas Kartu Digital + Tombol Tutup)
-    window.startScanner = function() {
-        const reader = document.getElementById('reader');
-        const btnStop = document.getElementById('btnStopScanner');
-        const btnStart = document.getElementById('btnStartScanner');
-        
-        reader.style.display = 'block';
-        btnStop.style.display = 'block';
-        btnStart.style.display = 'none';
-        
-        html5QrCode = new Html5Qrcode("reader");
-        const config = { 
-            fps: 20, // Lebih cepat untuk kartu digital
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
-
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            (decodedText) => {
-                window.stopScanner();
-                if (window.prosesAbsenDigital) window.prosesAbsenDigital(decodedText); 
+                if (email) {
+                    // Berhenti scan agar tidak terjadi pemindaian ganda
+                    html5QrCode.stop().then(() => {
+                        // Arahkan ke halaman bio singkat
+                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                    }).catch(err => {
+                        console.error("Gagal menghentikan scanner", err);
+                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                    });
+                }
+            } else {
+                console.log("QR Code tidak dikenal");
             }
-        ).catch(err => {
-            Swal.fire('Kamera Error', 'Cek izin kamera HP anda', 'error');
-            window.stopScanner();
-        });
-    };
-
-    window.stopScanner = function() {
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('reader').style.display = 'none';
-                document.getElementById('btnStopScanner').style.display = 'none';
-                document.getElementById('btnStartScanner').style.display = 'block';
-            }).catch(err => console.log("Stop error", err));
         }
-    };
-</script>
+
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            
+            const config = { 
+                fps: 15, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0 
+            };
+
+            // Mulai kamera belakang secara otomatis
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess
+            ).catch(err => {
+                console.error("Gagal meminta izin kamera atau memulai scanner: ", err);
+                // Jika gagal di APK, biasanya karena izin Manifest belum diset
+            });
+        }
+
+        // Jalankan otomatis saat halaman siap
+        window.addEventListener('DOMContentLoaded', startScanner);
+    </script>
 </body>
 </html>
