@@ -162,29 +162,48 @@
         }
     }
 
+    // FUNGSI YANG DIPERBAHARUI SESUAI PERINTAH
     async function uploadToCloudinary(e) {
         const files = Array.from(e.target.files);
         const statusLabel = document.getElementById('uploadStatus');
         cloudinaryImages = [];
 
-        for (let file of files) {
-            statusLabel.innerText = `Mengunggah ${file.name}...`;
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("upload_preset", CLOUDINARY_PRESET);
+        // Tampilkan loading sederhana tanpa menutup seluruh layar
+        statusLabel.innerText = "Sedang mengunggah...";
 
-            try {
+        try {
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("upload_preset", CLOUDINARY_PRESET);
+
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-                if (!res.ok) throw new Error();
+                
+                if (!res.ok) throw new Error("Gagal unggah ke Cloudinary");
+
                 const data = await res.json();
                 cloudinaryImages.push(data.secure_url);
-            } catch (err) {
-                Swal.fire('Error', 'Tampungan Server Penuh!', 'error');
-                statusLabel.innerText = "Gagal unggah.";
-                return;
             }
+            
+            statusLabel.innerText = "✅ Selesai Mengunggah.";
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Foto berhasil diunggah!',
+                timer: 2000
+            });
+
+        } catch (err) {
+            console.error(err);
+            statusLabel.innerText = "❌ Gagal mengunggah.";
+            
+            // Memastikan jika ada overlay yang stuck, kita tutup secara paksa
+            Swal.fire({
+                icon: 'error',
+                title: 'Unggah Gagal',
+                text: 'Terjadi kesalahan koneksi atau limit storage. Silakan coba lagi.'
+            });
         }
-        statusLabel.innerText = "Selesai Mengunggah.";
     }
 
     function simpanData() {
