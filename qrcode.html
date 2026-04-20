@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scan QR Jemaat - SIPAPUA</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,51,102,1), rgba(0,0,0,0));
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .btn-back {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        .scanner-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #reader {
+            width: 100% !important;
+            border: none !important;
+        }
+
+        /* Styling kotak fokus scanner */
+        #reader__scan_region {
+            background: rgba(0,0,0,0.3);
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .instruction p {
+            background: rgba(0, 0, 0, 0.7);
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid rgba(255,255,255,0.1);
+            pointer-events: none;
+        }
+
+        #result {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="btn-back" onclick="window.location.href='menu.html'">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h3 style="margin: 0; font-size: 18px;">Scan QR Koneksi</h3>
+    </div>
+
+    <div class="scanner-container">
+        <div id="reader"></div>
+        <div class="overlay"></div>
+    </div>
+
+    <div class="instruction">
+        <p><i class="fas fa-expand"></i> Arahkan kamera ke QR Code Jemaat</p>
+    </div>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            // Memberikan getaran sukses
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            // Cek apakah hasil scan mengandung protokol sipapua://
+            if (decodedText.includes("sipapua://scan")) {
+                // Ambil email dari parameter
+                const urlParams = new URLSearchParams(decodedText.split('?')[1]);
+                const email = urlParams.get('email');
+
+                if (email) {
+                    // Berhenti scan agar tidak duplikat
+                    html5QrcodeScanner.clear();
+                    
+                    // Arahkan ke halaman bio singkat
+                    window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                }
+            } else {
+                // Jika QR Code bukan milik SIPAPUA
+                console.log("QR Code tidak dikenal");
+            }
+        }
+
+        function onScanFailure(error) {
+            // Tidak perlu menampilkan error setiap detik saat gagal fokus
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            { 
+                fps: 15, 
+                qrbox: {width: 250, height: 250},
+                aspectRatio: 1.0 
+            },
+            /* verbose= */ false
+        );
+        
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    </script>
+</body>
+</html>
