@@ -13,7 +13,7 @@
         :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* HEADER FIX: Penyejajaran Simetris */
+        /* HEADER */
         .header { 
             background: var(--primary); 
             color: white; 
@@ -27,36 +27,79 @@
             border-bottom: 3px solid var(--accent); 
         }
 
-        .login-mini { 
-            display: flex; 
-            align-items: center; /* Sejajar secara vertikal */
-            gap: 5px; 
-        }
-
-        /* Input & Button dibuat tingginya sama agar simetris */
-        .login-mini input { 
-            padding: 6px 8px; 
-            border-radius: 4px; 
-            border: 1px solid #ccc; 
-            font-size: 12px; 
-            width: 75px; /* Lebar kolom disamakan */
-            height: 30px; /* Tinggi disamakan */
-            box-sizing: border-box;
-        }
-
-        .login-mini button { 
-            height: 30px; /* Tinggi sama dengan input */
-            padding: 0 12px; 
-            background: var(--accent); 
-            border: none; 
-            color: white; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 12px; 
-            font-weight: bold;
+        /* Navigasi Admin & Dropdown Slider */
+        .nav-admin { position: relative; }
+        
+        .btn-toggle-login {
+            background: var(--accent);
+            color: white;
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .login-dropdown {
+            display: none; 
+            position: absolute;
+            top: 50px;
+            right: 0;
+            width: 240px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            z-index: 2000;
+            border: 1px solid #eee;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-dropdown h4 { margin: 0 0 15px 0; color: var(--primary); font-size: 15px; text-align: center; }
+
+        /* Input di dalam Dropdown */
+        .login-dropdown input {
+            width: 100%;
+            height: 42px;
+            margin-bottom: 12px;
+            padding: 0 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        /* Password Wrapper & Eye Icon */
+        .pass-wrapper { position: relative; width: 100%; }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 13px;
+            color: #999;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .btn-masuk-dropdown {
+            width: 100%;
+            height: 42px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
         }
 
         /* Container & Card Style */
@@ -78,13 +121,25 @@
 <div class="header">
     <h1 style="font-size: 1rem; margin: 0; letter-spacing: 1px;">EVENT</h1>
     
-    <div class="login-mini" id="loginBox">
-        <input type="text" id="userAdmin" placeholder="User">
-        <input type="password" id="passAdmin" placeholder="Pass">
-        <button onclick="loginEvent()">MASUK</button>
-    </div>
+    <div class="nav-admin">
+        <button id="btnToggle" class="btn-toggle-login" onclick="toggleLoginSlider()">
+            <i class="fas fa-user-shield"></i>
+        </button>
 
-    <button id="btnLogout" style="display:none; background:#e74c3c; border:none; color:white; height: 30px; padding:0 12px; border-radius:4px;" onclick="logout()">LOGOUT</button>
+        <div id="loginBox" class="login-dropdown">
+            <h4>Admin Login</h4>
+            <input type="text" id="userAdmin" placeholder="Username">
+            
+            <div class="pass-wrapper">
+                <input type="password" id="passAdmin" placeholder="Password">
+                <i class="fas fa-eye toggle-password" id="eyeIcon" onclick="toggleEye()"></i>
+            </div>
+            
+            <button class="btn-masuk-dropdown" onclick="loginEvent()">MASUK</button>
+        </div>
+
+        <button id="btnLogout" style="display:none; background:#e74c3c; border:none; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold;" onclick="logout()">LOGOUT</button>
+    </div>
 </div>
 
 <div class="container">
@@ -116,12 +171,32 @@
 
     window.onload = function() { renderList(); };
 
+    // --- LOGIKA LOGIN & SLIDER ---
+    function toggleLoginSlider() {
+        const box = document.getElementById('loginBox');
+        box.style.display = (box.style.display === "block") ? "none" : "block";
+        if(box.style.display === "block") document.getElementById('userAdmin').focus();
+    }
+
+    function toggleEye() {
+        const passInput = document.getElementById('passAdmin');
+        const eyeIcon = document.getElementById('eyeIcon');
+        if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            passInput.type = "password";
+            eyeIcon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
     function loginEvent() {
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
         if(u === "admin" && p === "admin123") {
             document.getElementById('adminSection').style.display = 'block';
             document.getElementById('loginBox').style.display = 'none';
+            document.getElementById('btnToggle').style.display = 'none';
             document.getElementById('btnLogout').style.display = 'block';
             Swal.fire('Login Berhasil', 'Mode Admin Aktif', 'success');
         } else {
@@ -129,8 +204,18 @@
         }
     }
 
+    // Tutup dropdown jika klik di luar
+    window.addEventListener('click', function(e) {
+        const box = document.getElementById('loginBox');
+        const btn = document.getElementById('btnToggle');
+        if (box.style.display === "block" && !box.contains(e.target) && !btn.contains(e.target)) {
+            box.style.display = "none";
+        }
+    });
+
     function logout() { location.reload(); }
 
+    // --- LOGIKA CMS & SCAN ---
     function previewImage(e) {
         const reader = new FileReader();
         reader.onload = function() { imageBase64 = reader.result; };
@@ -169,12 +254,13 @@
         Swal.fire('Berhasil!', 'Kegiatan dipublikasikan', 'success');
         renderList();
         document.getElementById('adminSection').style.display = 'none';
+        document.getElementById('btnLogout').style.display = 'block';
     }
 
     function renderList() {
         const list = JSON.parse(localStorage.getItem('eventList')) || [];
         const container = document.getElementById('newsList');
-        container.innerHTML = list.length ? "" : "<p style='text-align:center; color:#888;'>Belum ada kegiatan.</p>";
+        container.innerHTML = list.length ? "" : "<p style='text-align:center; color:#888; margin-top:50px;'>Belum ada kegiatan.</p>";
 
         list.forEach(item => {
             container.innerHTML += `
