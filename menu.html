@@ -563,7 +563,8 @@
                 document.getElementById('dnij').innerText = d.nij || "0000 0000";
                 const qrBox = document.getElementById("qrbox");
                 qrBox.innerHTML = "";
-                new QRCode(qrBox, { text: `sipapua://scan?email=${userEmail}`, width: 200, height: 200, colorDark : "#003366", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+                // Format QR Code disesuaikan untuk diparsing nantinya
+                new QRCode(qrBox, { text: userEmail, width: 200, height: 200, colorDark : "#003366", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
                 document.getElementById('modalKartuDigital').style.display = 'flex';
             }
         });
@@ -573,6 +574,44 @@
     function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
     function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
     function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.href = "index.html"; }); }
+
+    // --- FITUR BARU: SCANNER HANDLER ---
+    function onScanSuccess(decodedText, decodedResult) {
+        // Logika untuk mendeteksi email dari QR Code Sipapua
+        let targetEmail = decodedText;
+        if(decodedText.includes("email=")) {
+            targetEmail = decodedText.split("email=")[1];
+        }
+
+        db.collection("users").where("email", "==", targetEmail).get()
+        .then((s) => {
+            if (!s.empty) {
+                const data = s.docs[0].data();
+                renderDetailBiodata(data);
+            } else {
+                Swal.fire({ title: "Ops!", text: "Biodata tidak ditemukan.", icon: "error", heightAuto: false });
+            }
+        })
+        .catch((error) => { console.error("Error:", error); });
+    }
+
+    function renderDetailBiodata(data) {
+        Swal.fire({
+            title: 'Biodata Terdeteksi',
+            html: `
+                <div style="text-align:left; font-size:14px;">
+                    <center><img src="${data.foto_profil || 'https://via.placeholder.com/100'}" style="width:80px; border-radius:10px; margin-bottom:10px;"></center>
+                    <b>Nama:</b> ${data.nama}<br>
+                    <b>NIJ:</b> ${data.nij || '-'}<br>
+                    <b>Email:</b> ${data.email}<br>
+                    <b>Komsel:</b> JC ${data.komsel || '-'}
+                </div>
+            `,
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#003366',
+            heightAuto: false
+        });
+    }
 
     window.onload = () => {
         const toggleBtn = document.getElementById('toggleProfile');
