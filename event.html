@@ -14,11 +14,15 @@
         :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* CSS FIX: Menangani kolom agar tidak over garis container */
+        /* FIX: Menangani kolom agar tidak over garis container */
         input, textarea, select {
-            box-sizing: border-box; /* Sangat penting */
-            width: 100% !important;  /* Mengikuti lebar container */
-            max-width: 100%;        /* Mencegah overflow */
+            box-sizing: border-box;
+            width: 100% !important;
+            max-width: 100%;
+            margin-bottom: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
         }
 
         .header { 
@@ -34,12 +38,13 @@
             border-bottom: 3px solid var(--accent); 
         }
 
-        /* Navigasi Kiri & Kanan */
+        /* Navigasi */
         .nav-left { position: absolute; left: 15px; bottom: 15px; }
         .nav-admin { position: absolute; right: 15px; bottom: 15px; }
         
         .btn-toggle-login { background: var(--accent); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
+        /* Login Dropdown Design */
         .login-dropdown { 
             display: none; 
             position: absolute; 
@@ -63,7 +68,7 @@
 
         .container { padding: 15px; max-width: 800px; margin: auto; }
 
-        /* Headline List Unik */
+        /* Event List Design */
         .event-item { 
             background: white; border-radius: 16px; overflow: hidden; display: flex; margin-bottom: 20px; 
             box-shadow: 0 10px 20px rgba(0,0,0,0.05); position: relative; cursor: pointer; 
@@ -79,11 +84,7 @@
             border-radius: 6px; font-size: 11px; font-weight: bold; margin-top: 8px; align-self: flex-start;
         }
 
-        /* Mosaic Grid untuk Detail Berita */
-        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
-        .photo-main { grid-column: span 3; width: 100%; border-radius: 12px; object-fit: cover; max-height: 300px; }
-        .photo-sub { width: 100%; height: 80px; object-fit: cover; border-radius: 8px; }
-        
+        /* CMS & Tool Styling */
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
         .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
 
@@ -103,7 +104,7 @@
 
 <div class="header">
     <div class="nav-left">
-        <a href="index.html" id="btnBack" style="display:none; text-decoration:none; background:#555; color:white; height: 38px; padding:0 20px; border-radius:19px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;">KEMBALI</a>
+        <button id="btnBack" onclick="location.reload()" style="display:none; border:none; background:#555; color:white; height: 38px; padding:0 20px; border-radius:19px; font-weight:bold; cursor:pointer; align-items:center; justify-content:center;">KEMBALI</button>
     </div>
     <h1 style="font-size: 1.1rem; margin: 0; letter-spacing: 1px;">EVENT JEMAAT</h1>
     <div class="nav-admin">
@@ -123,17 +124,13 @@
 
 <div class="container">
     <div id="adminSection">
-        <button onclick="location.reload()" style="background:none; border:none; color:var(--primary); font-weight:bold; cursor:pointer; margin-bottom:15px; padding:0; display:flex; align-items:center; gap:5px;">
-            <i class="fas fa-arrow-left"></i> KEMBALI
-        </button>
-
         <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
-        <input type="text" id="namaEvent" placeholder="Nama Kegiatan" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
-        <input type="text" id="lokasiEvent" placeholder="Lokasi" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
-        <input type="date" id="tglEvent" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
-        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4" style="padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;"></textarea>
+        <input type="text" id="namaEvent" placeholder="Nama Kegiatan">
+        <input type="text" id="lokasiEvent" placeholder="Lokasi">
+        <input type="date" id="tglEvent">
+        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4"></textarea>
         
-        <p style="font-size: 12px; margin: 0;">Upload Foto ke Cloudinary (Maks 4 untuk layout rapi):</p>
+        <p style="font-size: 12px; margin: 0;">Upload Foto ke Cloudinary:</p>
         <input type="file" id="fotoEvent" accept="image/*" multiple onchange="uploadToCloudinary(event)">
         <div id="uploadStatus" style="font-size: 11px; color: var(--primary); margin: 5px 0;"></div>
 
@@ -161,6 +158,7 @@
             <div id="logContent" style="margin-top:10px;"></div>
         </div>
     </div>
+    
     <div id="newsList"></div>
 </div>
 
@@ -183,20 +181,9 @@
         updateLogActivity();
     };
 
-    function formatTglIndo(dateStr) {
-        if(!dateStr) return "-";
-        const [y, m, d] = dateStr.split('-');
-        return `${d}-${m}-${y}`;
-    }
-
-    // FUNGSI DEFINISI ULANG SLIDER
     function toggleLoginSlider() {
-        const slider = document.getElementById('loginBox'); 
-        if (slider.style.display === "block") {
-            slider.style.display = "none";
-        } else {
-            slider.style.display = "block";
-        }
+        const box = document.getElementById('loginBox');
+        box.style.display = (box.style.display === "block") ? "none" : "block";
     }
 
     function togglePassword() {
@@ -213,27 +200,13 @@
         if(u === "admin" && p === "admin123") {
             isAdmin = true;
             document.getElementById('adminSection').style.display = 'block';
-            document.getElementById('newsList').style.display = 'none'; 
+            document.getElementById('newsList').style.display = 'none';
             document.getElementById('loginBox').style.display = 'none';
             document.getElementById('btnToggle').style.display = 'none';
-            document.getElementById('btnBack').style.display = 'flex'; 
-            renderList(); 
+            document.getElementById('btnBack').style.display = 'flex';
         } else {
             Swal.fire('Gagal', 'Akses Ditolak', 'error');
         }
-    }
-
-    function confirmLogout() {
-        Swal.fire({
-            title: 'Konfirmasi Keluar',
-            text: "Apakah anda ingin keluar?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Iya',
-            cancelButtonText: 'Tidak'
-        }).then((result) => {
-            if (result.isConfirmed) { location.reload(); }
-        });
     }
 
     async function uploadToCloudinary(e) {
@@ -272,14 +245,7 @@
         list.unshift(newEntry);
         localStorage.setItem('eventList', JSON.stringify(list));
         
-        document.getElementById('namaEvent').value = "";
-        document.getElementById('lokasiEvent').value = "";
-        document.getElementById('isiEvent').value = "";
-        cloudinaryImages = [];
-        
-        renderList();
-        updateLogActivity();
-        Swal.fire('Berhasil', 'Event telah dipublikasikan', 'success');
+        location.reload(); 
     }
 
     function renderList() {
@@ -292,7 +258,7 @@
                     <img src="${item.fotos[0]}" class="event-thumb">
                     <div class="event-content">
                         <h3>${item.nama}</h3>
-                        <div class="date-badge"><i class="fas fa-calendar-alt"></i> ${formatTglIndo(item.tgl)}</div>
+                        <div class="date-badge"><i class="fas fa-calendar"></i> ${item.tgl}</div>
                     </div>
                 </div>`;
         });
@@ -303,73 +269,35 @@
         const item = list.find(x => x.id === id);
         if(!item) return;
 
-        let photoHtml = `<img src="${item.fotos[0]}" class="photo-main">`;
-        if(item.fotos.length > 1) {
-            photoHtml = `<div class="photo-grid"><img src="${item.fotos[0]}" class="photo-main">`;
-            for(let i=1; i < Math.min(item.fotos.length, 4); i++) {
-                photoHtml += `<img src="${item.fotos[i]}" class="photo-sub">`;
-            }
-            photoHtml += `</div>`;
-        }
-
         Swal.fire({
-            title: `<span style="color:#003366; font-size:1.4rem;">${item.nama}</span>`,
+            title: item.nama,
             html: `
-                <div style="text-align:left; font-size:14px; line-height:1.6;">
-                    ${photoHtml}
-                    <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin:10px 0;">
-                        <p style="margin:2px 0;"><b><i class="fas fa-map-marker-alt" style="color:#e74c3c"></i> Lokasi:</b> ${item.lokasi}</p>
-                        <p style="margin:2px 0;"><b><i class="fas fa-calendar-day" style="color:#3498db"></i> Waktu:</b> ${formatTglIndo(item.tgl)}</p>
-                    </div>
-                    <div style="padding:5px; font-size:15px; color:#333; text-align:justify;">
-                        <p style="white-space: pre-line;">${item.isi}</p>
-                    </div>
+                <div style="text-align:left; font-size:14px;">
+                    <img src="${item.fotos[0]}" style="width:100%; border-radius:10px; margin-bottom:10px;">
+                    <p><b><i class="fas fa-map-marker-alt"></i> Lokasi:</b> ${item.lokasi}</p>
+                    <p><b><i class="fas fa-calendar-alt"></i> Tanggal:</b> ${item.tgl}</p>
+                    <hr>
+                    <p style="white-space: pre-line;">${item.isi}</p>
                 </div>
             `,
-            confirmButtonText: 'Tutup Halaman',
-            confirmButtonColor: '#003366',
-            width: '95%'
+            confirmButtonText: 'Tutup',
+            width: '90%'
         });
     }
 
     function shareWhatsApp() {
         const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        const tgl = formatTglIndo(document.getElementById('tglEvent').value);
-        const isi = document.getElementById('isiEvent').value;
-        
-        if(!nama) return Swal.fire('Info', 'Isi data event dulu', 'info');
-        const text = encodeURIComponent(`*BERITA EVENT - SIPAPUA*\n\n*Kegiatan:* ${nama}\n*Lokasi:* ${lokasi}\n*Tanggal:* ${tgl}\n\n*Detail:* \n${isi}\n\n_Dibuat via Sistem SIPAPUA_`);
+        const text = encodeURIComponent(`*EVENT - SIPAPUA*\n\n*Kegiatan:* ${nama}\n\n_Dibuat via Sistem SIPAPUA_`);
         window.open(`https://wa.me/?text=${text}`, '_blank');
     }
 
     function generatePDF() {
         const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        const tgl = formatTglIndo(document.getElementById('tglEvent').value);
-        const isi = document.getElementById('isiEvent').value;
-
-        if(!nama || cloudinaryImages.length === 0) return Swal.fire('Info', 'Lengkapi data dan foto untuk buat PDF', 'info');
-
+        if(!nama) return Swal.fire('Info', 'Isi data dulu', 'info');
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text("LAPORAN EVENT SIPAPUA", 105, 20, { align: "center" });
-        doc.setFontSize(12);
-        doc.text(`Nama Kegiatan : ${nama}`, 20, 40);
-        doc.text(`Lokasi        : ${lokasi}`, 20, 50);
-        doc.text(`Tanggal       : ${tgl}`, 20, 60);
-        doc.text("Detail Kegiatan:", 20, 80);
-        const splitText = doc.splitTextToSize(isi, 170);
-        doc.text(splitText, 20, 90);
-
-        const img = new Image();
-        img.crossOrigin = "Anonymous"; 
-        img.src = cloudinaryImages[0];
-        img.onload = function() {
-            doc.addImage(img, 'JPEG', 20, 120, 170, 100);
-            doc.save(`Event_${nama}.pdf`);
-        };
+        doc.text(`LAPORAN EVENT: ${nama}`, 20, 20);
+        doc.save(`Event_${nama}.pdf`);
     }
 
     function startScanner() {
@@ -378,7 +306,7 @@
         html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
             if (listHadirID.includes(decodedText)) {
-                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Tidak bisa dobel absen' });
+                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Sudah absen' });
             } else {
                 const namaLengkap = databaseJemaat[decodedText] || decodedText;
                 listHadirID.push(decodedText);
@@ -386,7 +314,7 @@
                 document.getElementById('totalAbsen').innerText = listHadirID.length;
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Hadir: ' + namaLengkap, showConfirmButton: false, timer: 1500 });
             }
-        }).catch(err => { console.log(err); });
+        });
     }
 
     function stopScanner() {
@@ -398,27 +326,12 @@
         }
     }
 
-    function showHistoryAbsen() {
-        if (listHadirNames.length === 0) return Swal.fire('Info', 'Belum ada jemaat.', 'info');
-        let htmlList = '<table style="width:100%; font-size:14px; text-align:left;">';
-        listHadirNames.forEach((nama, i) => { htmlList += `<tr><td>${i+1}. ${nama}</td></tr>`; });
-        htmlList += '</table>';
-        Swal.fire({ title: 'Daftar Hadir', html: htmlList });
-    }
-
     function updateLogActivity() {
         const list = JSON.parse(localStorage.getItem('eventList')) || [];
         const logBox = document.getElementById('logContent');
         logBox.innerHTML = "";
         list.forEach(item => {
-            logBox.innerHTML += `
-                <div class="log-item">
-                    <div>
-                        <b style="display:block;">${item.nama}</b>
-                        <small style="color:#888;">${formatTglIndo(item.tgl)}</small>
-                    </div>
-                    <button onclick="hapusBerita(${item.id})" style="border:none; color:red; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                </div>`;
+            logBox.innerHTML += `<div class="log-item"><span>${item.nama}</span><button onclick="hapusBerita(${item.id})" style="border:none; color:red; background:none;"><i class="fas fa-trash"></i></button></div>`;
         });
     }
 
@@ -428,8 +341,7 @@
             let list = JSON.parse(localStorage.getItem('eventList'));
             list = list.filter(x => x.id !== id);
             localStorage.setItem('eventList', JSON.stringify(list));
-            renderList();
-            updateLogActivity();
+            location.reload();
         }
     }
 </script>
