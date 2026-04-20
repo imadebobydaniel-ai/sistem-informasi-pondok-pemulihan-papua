@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; }
@@ -60,7 +61,6 @@
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
         .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
 
-        /* CSS TAMBAHAN SESUAI PERINTAH GAMBAR */
         .extra-tools { display: flex; gap: 10px; margin: 10px 0; }
         .btn-tool { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; cursor: pointer; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
         
@@ -68,10 +68,14 @@
             background: white; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-top: 15px;
         }
         .absensi-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
-        .total-counter { background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; }
         
-        #qrcode { margin: 10px auto; display: flex; justify-content: center; }
-        .list-absen { max-height: 100px; overflow-y: auto; font-size: 12px; color: #555; }
+        /* Tombol Total Clickable */
+        .total-counter { background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: 0.3s; }
+        .total-counter:hover { background: #0055aa; transform: scale(1.05); }
+        
+        /* Area Kamera */
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; margin: 10px 0; display: none; border: 2px dashed var(--accent); }
+        
         .log-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f1f1; font-size: 12px; }
     </style>
 </head>
@@ -116,14 +120,15 @@
 
         <div class="absensi-box">
             <div class="absensi-header">
-                <span style="font-weight:bold; font-size:13px;"><i class="fas fa-qrcode"></i> QRCODE ABSENSI</span>
-                <span class="total-counter">Total: <span id="totalAbsen">0</span></span>
+                <span style="font-weight:bold; font-size:13px;"><i class="fas fa-qrcode"></i> ABSENSI JEMAAT</span>
+                <span class="total-counter" onclick="showHistoryAbsen()">Total: <span id="totalAbsen">0</span></span>
             </div>
-            <div id="qrcode"></div>
-            <div class="list-absen" id="historyAbsen">
-                <center><i>Belum ada riwayat absen hari ini.</i></center>
-            </div>
-        </div>
+            
+            <button class="btn-action" style="background: var(--primary); margin-bottom: 10px;" onclick="startScanner()">
+                <i class="fas fa-camera"></i> SCAN KARTU DIGITAL
+            </button>
+            
+            <div id="reader"></div> </div>
 
         <div class="log-activity-box">
             <span style="font-weight:bold; font-size:13px;"><i class="fas fa-history"></i> LOG ACTIVITY</span>
@@ -138,10 +143,13 @@
     const CLOUDINARY_PRESET = "sipapua_preset";
     let cloudinaryImages = [];
     let isAdmin = false;
+    
+    // Variabel Absensi
+    let listHadir = []; 
+    let html5QrCode;
 
     window.onload = function() { 
         renderList(); 
-        generateQR(); // Inisialisasi QR Code
         updateLogActivity();
     };
 
@@ -221,6 +229,61 @@
         location.reload();
     }
 
+    // --- FITUR ABSENSI QR SCANNER ---
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            // Jika data belum ada di list hadir
+            if (!listHadir.includes(decodedText)) {
+                listHadir.push(decodedText);
+                document.getElementById('totalAbsen').innerText = listHadir.length;
+                
+                // Bunyi bip atau getar (opsional)
+                if (navigator.vibrate) navigator.vibrate(100);
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Absensi Berhasil: ' + decodedText,
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            } else {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: 'Sudah diabsen!',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        });
+    }
+
+    function showHistoryAbsen() {
+        if (listHadir.length === 0) return Swal.fire('Info', 'Belum ada jemaat yang diabsen.', 'info');
+        
+        let htmlList = '<table style="width:100%; font-size:14px; text-align:left; border-collapse:collapse;">';
+        htmlList += '<tr style="background:#eee;"><th style="padding:5px;">No</th><th style="padding:5px;">Nama/ID Jemaat</th></tr>';
+        
+        listHadir.forEach((nama, index) => {
+            htmlList += `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${index + 1}</td><td style="padding:5px; border-bottom:1px solid #ddd;">${nama}</td></tr>`;
+        });
+        htmlList += '</table>';
+
+        Swal.fire({
+            title: 'Riwayat Absensi',
+            html: htmlList,
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: var(--primary)
+        });
+    }
+
     // FITUR: SHARE WHATSAPP
     function shareWhatsApp() {
         const nama = document.getElementById('namaEvent').value;
@@ -241,18 +304,6 @@
         doc.save(`${nama}.pdf`);
     }
 
-    // FITUR: QR CODE GENERATOR
-    function generateQR() {
-        const qrContainer = document.getElementById("qrcode");
-        qrContainer.innerHTML = "";
-        new QRCode(qrContainer, {
-            text: "ABSENSI-EVENT-" + Date.now(),
-            width: 120,
-            height: 120
-        });
-    }
-
-    // FITUR: LOG AKTIVITAS & DELETE DENGAN PASSWORD
     function updateLogActivity() {
         const list = JSON.parse(localStorage.getItem('eventList')) || [];
         const logBox = document.getElementById('logContent');
