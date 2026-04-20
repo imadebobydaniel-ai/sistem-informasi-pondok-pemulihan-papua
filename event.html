@@ -53,9 +53,9 @@
         .btn-masuk-dropdown { width: 100%; height: 42px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
         .container { padding: 15px; max-width: 800px; margin: auto; }
-        .event-item { background: white; border-radius: 12px; overflow: hidden; display: flex; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        .event-item { background: white; border-radius: 12px; overflow: hidden; display: flex; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
         .event-thumb { width: 100px; height: 100px; object-fit: cover; }
-        .event-content { padding: 12px; flex: 1; cursor: pointer; }
+        .event-content { padding: 12px; flex: 1; }
         
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
         .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
@@ -136,7 +136,6 @@
 </div>
 
 <script>
-    // Kamus Data Jemaat
     const databaseJemaat = {
         "boby.daniel4@gmail.com": "I Made Boby",
         "admin@sipapua.com": "Administrator"
@@ -163,13 +162,9 @@
     function togglePassword() {
         const pInput = document.getElementById('passAdmin');
         const icon = document.getElementById('eyeIcon');
-        if (pInput.type === "password") {
-            pInput.type = "text";
-            icon.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            pInput.type = "password";
-            icon.classList.replace('fa-eye-slash', 'fa-eye');
-        }
+        pInput.type = (pInput.type === "password") ? "text" : "password";
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
     }
 
     function loginEvent() {
@@ -193,40 +188,11 @@
             text: "Apakah anda ingin keluar?",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#e74c3c',
-            cancelButtonColor: '#3085d6',
             confirmButtonText: 'Iya',
-            cancelButtonText: 'Tidak',
-            width: '400px'
+            cancelButtonText: 'Tidak'
         }).then((result) => {
             if (result.isConfirmed) { location.reload(); }
         });
-    }
-
-    function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        document.getElementById('btnCloseScanner').style.display = 'block';
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-            if (listHadirID.includes(decodedText)) {
-                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Tidak bisa dobel absen', width: '400px' });
-            } else {
-                const namaLengkap = databaseJemaat[decodedText] || decodedText;
-                listHadirID.push(decodedText);
-                listHadirNames.push(namaLengkap);
-                document.getElementById('totalAbsen').innerText = listHadirID.length;
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Hadir: ' + namaLengkap, showConfirmButton: false, timer: 1500 });
-            }
-        }).catch(err => { console.log(err); });
-    }
-
-    function stopScanner() {
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('reader').style.display = 'none';
-                document.getElementById('btnCloseScanner').style.display = 'none';
-            });
-        }
     }
 
     async function uploadToCloudinary(e) {
@@ -253,7 +219,7 @@
         }
     }
 
-    async function simpanData() {
+    function simpanData() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
         const tgl = document.getElementById('tglEvent').value;
@@ -264,7 +230,125 @@
         let list = JSON.parse(localStorage.getItem('eventList')) || [];
         list.unshift(newEntry);
         localStorage.setItem('eventList', JSON.stringify(list));
-        location.reload();
+        
+        // Reset form
+        document.getElementById('namaEvent').value = "";
+        document.getElementById('lokasiEvent').value = "";
+        document.getElementById('isiEvent').value = "";
+        cloudinaryImages = [];
+        
+        renderList();
+        updateLogActivity();
+        Swal.fire('Berhasil', 'Event telah dipublikasikan', 'success');
+    }
+
+    function renderList() {
+        const list = JSON.parse(localStorage.getItem('eventList')) || [];
+        const container = document.getElementById('newsList');
+        container.innerHTML = "";
+        list.forEach(item => {
+            container.innerHTML += `
+                <div class="event-item" onclick="detailEvent(${item.id})">
+                    <img src="${item.fotos[0]}" class="event-thumb">
+                    <div class="event-content">
+                        <h3 style="margin:0; font-size:1rem;">${item.nama}</h3>
+                        <p style="margin:5px 0; font-size:0.8rem; color:#666;"><i class="fas fa-calendar"></i> ${item.tgl}</p>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function detailEvent(id) {
+        const list = JSON.parse(localStorage.getItem('eventList')) || [];
+        const item = list.find(x => x.id === id);
+        if(!item) return;
+
+        Swal.fire({
+            title: item.nama,
+            html: `
+                <div style="text-align:left; font-size:14px;">
+                    <img src="${item.fotos[0]}" style="width:100%; border-radius:10px; margin-bottom:10px;">
+                    <p><b><i class="fas fa-map-marker-alt"></i> Lokasi:</b> ${item.lokasi}</p>
+                    <p><b><i class="fas fa-calendar-alt"></i> Tanggal:</b> ${item.tgl}</p>
+                    <hr>
+                    <p style="white-space: pre-line;">${item.isi}</p>
+                </div>
+            `,
+            confirmButtonText: 'Tutup',
+            width: '90%'
+        });
+    }
+
+    function shareWhatsApp() {
+        const nama = document.getElementById('namaEvent').value;
+        const lokasi = document.getElementById('lokasiEvent').value;
+        const tgl = document.getElementById('tglEvent').value;
+        const isi = document.getElementById('isiEvent').value;
+        
+        if(!nama) return Swal.fire('Info', 'Isi data event dulu', 'info');
+
+        const text = encodeURIComponent(`*BERITA EVENT - SIPAPUA*\n\n*Kegiatan:* ${nama}\n*Lokasi:* ${lokasi}\n*Tanggal:* ${tgl}\n\n*Detail:* \n${isi}\n\n_Dibuat via Sistem SIPAPUA_`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+
+    function generatePDF() {
+        const nama = document.getElementById('namaEvent').value;
+        const lokasi = document.getElementById('lokasiEvent').value;
+        const tgl = document.getElementById('tglEvent').value;
+        const isi = document.getElementById('isiEvent').value;
+
+        if(!nama || cloudinaryImages.length === 0) return Swal.fire('Info', 'Lengkapi data dan foto untuk buat PDF', 'info');
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text("LAPORAN EVENT SIPAPUA", 105, 20, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.text(`Nama Kegiatan : ${nama}`, 20, 40);
+        doc.text(`Lokasi        : ${lokasi}`, 20, 50);
+        doc.text(`Tanggal       : ${tgl}`, 20, 60);
+        
+        doc.text("Detail Kegiatan:", 20, 80);
+        const splitText = doc.splitTextToSize(isi, 170);
+        doc.text(splitText, 20, 90);
+
+        // Menambahkan Foto ke PDF
+        const img = new Image();
+        img.crossOrigin = "Anonymous"; 
+        img.src = cloudinaryImages[0];
+        img.onload = function() {
+            doc.addImage(img, 'JPEG', 20, 120, 170, 100);
+            doc.save(`Event_${nama}.pdf`);
+        };
+    }
+
+    // Fungsi Absensi & Log (Tetap sesuai aslinya)
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        document.getElementById('btnCloseScanner').style.display = 'block';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+            if (listHadirID.includes(decodedText)) {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Tidak bisa dobel absen' });
+            } else {
+                const namaLengkap = databaseJemaat[decodedText] || decodedText;
+                listHadirID.push(decodedText);
+                listHadirNames.push(namaLengkap);
+                document.getElementById('totalAbsen').innerText = listHadirID.length;
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Hadir: ' + namaLengkap, showConfirmButton: false, timer: 1500 });
+            }
+        }).catch(err => { console.log(err); });
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('btnCloseScanner').style.display = 'none';
+            });
+        }
     }
 
     function showHistoryAbsen() {
@@ -273,19 +357,6 @@
         listHadirNames.forEach((nama, i) => { htmlList += `<tr><td>${i+1}. ${nama}</td></tr>`; });
         htmlList += '</table>';
         Swal.fire({ title: 'Daftar Hadir', html: htmlList });
-    }
-
-    function shareWhatsApp() {
-        const nama = document.getElementById('namaEvent').value;
-        const text = encodeURIComponent(`*INFO EVENT*\nKegiatan: ${nama}`);
-        window.open(`https://wa.me/?text=${text}`, '_blank');
-    }
-
-    function generatePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text("LAPORAN EVENT", 10, 10);
-        doc.save("laporan.pdf");
     }
 
     function updateLogActivity() {
@@ -303,17 +374,9 @@
             let list = JSON.parse(localStorage.getItem('eventList'));
             list = list.filter(x => x.id !== id);
             localStorage.setItem('eventList', JSON.stringify(list));
-            location.reload();
+            renderList();
+            updateLogActivity();
         }
-    }
-
-    function renderList() {
-        const list = JSON.parse(localStorage.getItem('eventList')) || [];
-        const container = document.getElementById('newsList');
-        container.innerHTML = "";
-        list.forEach(item => {
-            container.innerHTML += `<div class="event-item"><img src="${item.fotos[0]}" class="event-thumb"><div class="event-content"><h3>${item.nama}</h3><p>${item.tgl}</p></div></div>`;
-        });
     }
 
     function logout() { confirmLogout(); }
