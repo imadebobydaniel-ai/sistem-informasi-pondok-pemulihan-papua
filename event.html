@@ -56,7 +56,6 @@
         .event-item { background: white; border-radius: 12px; overflow: hidden; display: flex; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
         .event-thumb { width: 100px; height: 100px; object-fit: cover; }
         .event-content { padding: 12px; flex: 1; cursor: pointer; }
-        .btn-delete-news { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; display: none; }
         
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
         .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
@@ -69,13 +68,10 @@
         }
         .absensi-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
         
-        /* Tombol Total Clickable */
         .total-counter { background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: 0.3s; }
         .total-counter:hover { background: #0055aa; transform: scale(1.05); }
         
-        /* Area Kamera */
         #reader { width: 100%; border-radius: 10px; overflow: hidden; margin: 10px 0; display: none; border: 2px dashed var(--accent); }
-        
         .log-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f1f1; font-size: 12px; }
     </style>
 </head>
@@ -123,12 +119,11 @@
                 <span style="font-weight:bold; font-size:13px;"><i class="fas fa-qrcode"></i> ABSENSI JEMAAT</span>
                 <span class="total-counter" onclick="showHistoryAbsen()">Total: <span id="totalAbsen">0</span></span>
             </div>
-            
             <button class="btn-action" style="background: var(--primary); margin-bottom: 10px;" onclick="startScanner()">
                 <i class="fas fa-camera"></i> SCAN KARTU DIGITAL
             </button>
-            
-            <div id="reader"></div> </div>
+            <div id="reader"></div>
+        </div>
 
         <div class="log-activity-box">
             <span style="font-weight:bold; font-size:13px;"><i class="fas fa-history"></i> LOG ACTIVITY</span>
@@ -143,8 +138,6 @@
     const CLOUDINARY_PRESET = "sipapua_preset";
     let cloudinaryImages = [];
     let isAdmin = false;
-    
-    // Variabel Absensi
     let listHadir = []; 
     let html5QrCode;
 
@@ -171,7 +164,6 @@
     }
 
     function loginEvent() {
-        Swal.close();
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
         if(u === "admin" && p === "admin123") {
@@ -199,15 +191,12 @@
                 formData.append("file", file);
                 formData.append("upload_preset", CLOUDINARY_PRESET);
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-                if (!res.ok) throw new Error("Gagal unggah");
                 const data = await res.json();
                 cloudinaryImages.push(data.secure_url);
             }
-            statusLabel.innerText = "✅ Selesai Mengunggah (" + cloudinaryImages.length + " foto).";
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Foto berhasil diunggah!', timer: 1500, showConfirmButton: false });
+            statusLabel.innerText = "✅ Selesai Mengunggah.";
         } catch (err) {
             statusLabel.innerText = "❌ Gagal mengunggah.";
-            Swal.fire('Error', 'Gagal mengunggah gambar.', 'error');
         } finally {
             document.getElementById('btnSimpan').disabled = false;
         }
@@ -224,84 +213,40 @@
         let list = JSON.parse(localStorage.getItem('eventList')) || [];
         list.unshift(newEntry);
         localStorage.setItem('eventList', JSON.stringify(list));
-
-        await Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Kegiatan telah dipublikasikan.', timer: 1500, showConfirmButton: false });
         location.reload();
     }
 
-    // --- FITUR ABSENSI QR SCANNER ---
     function startScanner() {
         document.getElementById('reader').style.display = 'block';
         html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-            // Jika data belum ada di list hadir
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
             if (!listHadir.includes(decodedText)) {
                 listHadir.push(decodedText);
                 document.getElementById('totalAbsen').innerText = listHadir.length;
-                
-                // Bunyi bip atau getar (opsional)
-                if (navigator.vibrate) navigator.vibrate(100);
-
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'success',
-                    title: 'Absensi Berhasil: ' + decodedText,
-                    showConfirmButton: false,
-                    timer: 2000
-                });
-            } else {
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    icon: 'warning',
-                    title: 'Sudah diabsen!',
-                    showConfirmButton: false,
-                    timer: 2000
-                });
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Hadir: ' + decodedText, showConfirmButton: false, timer: 1500 });
             }
         });
     }
 
     function showHistoryAbsen() {
-        if (listHadir.length === 0) return Swal.fire('Info', 'Belum ada jemaat yang diabsen.', 'info');
-        
-        let htmlList = '<table style="width:100%; font-size:14px; text-align:left; border-collapse:collapse;">';
-        htmlList += '<tr style="background:#eee;"><th style="padding:5px;">No</th><th style="padding:5px;">Nama/ID Jemaat</th></tr>';
-        
-        listHadir.forEach((nama, index) => {
-            htmlList += `<tr><td style="padding:5px; border-bottom:1px solid #ddd;">${index + 1}</td><td style="padding:5px; border-bottom:1px solid #ddd;">${nama}</td></tr>`;
-        });
+        if (listHadir.length === 0) return Swal.fire('Info', 'Belum ada jemaat.', 'info');
+        let htmlList = '<table style="width:100%; font-size:14px; text-align:left;">';
+        listHadir.forEach((nama, i) => { htmlList += `<tr><td>${i+1}. ${nama}</td></tr>`; });
         htmlList += '</table>';
-
-        Swal.fire({
-            title: 'Riwayat Absensi',
-            html: htmlList,
-            confirmButtonText: 'Tutup',
-            confirmButtonColor: var(--primary)
-        });
+        Swal.fire({ title: 'Daftar Hadir', html: htmlList });
     }
 
-    // FITUR: SHARE WHATSAPP
     function shareWhatsApp() {
         const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        if(!nama) return Swal.fire('Info', 'Isi data event terlebih dahulu', 'info');
-        const text = encodeURIComponent(`*INFO EVENT JEMAAT*\n\nKegiatan: ${nama}\nLokasi: ${lokasi}\n\nSilahkan cek di aplikasi SIPAPUA.`);
+        const text = encodeURIComponent(`*INFO EVENT*\nKegiatan: ${nama}`);
         window.open(`https://wa.me/?text=${text}`, '_blank');
     }
 
-    // FITUR: GENERATE PDF
     function generatePDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const nama = document.getElementById('namaEvent').value || "Tanpa Nama";
-        doc.text("LAPORAN KEGIATAN EVENT", 10, 10);
-        doc.text(`Nama: ${nama}`, 10, 20);
-        doc.text(`Lokasi: ${document.getElementById('lokasiEvent').value}`, 10, 30);
-        doc.save(`${nama}.pdf`);
+        doc.text("LAPORAN EVENT", 10, 10);
+        doc.save("laporan.pdf");
     }
 
     function updateLogActivity() {
@@ -309,33 +254,17 @@
         const logBox = document.getElementById('logContent');
         logBox.innerHTML = "";
         list.forEach(item => {
-            logBox.innerHTML += `
-                <div class="log-item">
-                    <span><b>${item.nama}</b> (${item.tgl})</span>
-                    <button onclick="hapusBerita(${item.id})" style="background:none; border:none; color:#e74c3c; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
+            logBox.innerHTML += `<div class="log-item"><span>${item.nama}</span><button onclick="hapusBerita(${item.id})" style="border:none; color:red; background:none;"><i class="fas fa-trash"></i></button></div>`;
         });
     }
 
     async function hapusBerita(id) {
-        const { value: password } = await Swal.fire({
-            title: 'Hapus Aktivitas?',
-            input: 'password',
-            inputLabel: 'Masukkan Password Admin',
-            inputPlaceholder: 'Password',
-            showCancelButton: true
-        });
-
-        if (password === 'admin123') {
+        const { value: pass } = await Swal.fire({ title: 'Sandi Admin', input: 'password' });
+        if (pass === 'admin123') {
             let list = JSON.parse(localStorage.getItem('eventList'));
             list = list.filter(x => x.id !== id);
             localStorage.setItem('eventList', JSON.stringify(list));
-            renderList();
-            updateLogActivity();
-            Swal.fire('Terhapus', 'Aktivitas telah dihapus', 'success');
-        } else if (password) {
-            Swal.fire('Gagal', 'Password Salah!', 'error');
+            location.reload();
         }
     }
 
@@ -344,15 +273,7 @@
         const container = document.getElementById('newsList');
         container.innerHTML = "";
         list.forEach(item => {
-            container.innerHTML += `
-                <div class="event-item">
-                    <img src="${item.fotos[0]}" class="event-thumb">
-                    <div class="event-content">
-                        <h3 style="margin:0; font-size:16px; color:var(--primary);">${item.nama}</h3>
-                        <p style="font-size:11px; color:#666;">${item.tgl} | ${item.lokasi}</p>
-                    </div>
-                </div>
-            `;
+            container.innerHTML += `<div class="event-item"><img src="${item.fotos[0]}" class="event-thumb"><div class="event-content"><h3>${item.nama}</h3><p>${item.tgl}</p></div></div>`;
         });
     }
 
