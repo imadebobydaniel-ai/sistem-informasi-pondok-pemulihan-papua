@@ -49,7 +49,6 @@
             border: none !important;
         }
 
-        /* Styling kotak fokus scanner */
         #reader__scan_region {
             background: rgba(0,0,0,0.3);
         }
@@ -79,10 +78,6 @@
             border: 2px solid rgba(255,255,255,0.1);
             pointer-events: none;
         }
-
-        #result {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -104,44 +99,60 @@
     </div>
 
     <script>
+        let html5QrCode;
+
         function onScanSuccess(decodedText, decodedResult) {
             // Memberikan getaran sukses
             if (navigator.vibrate) navigator.vibrate(100);
 
-            // Cek apakah hasil scan mengandung protokol sipapua://
-            if (decodedText.includes("sipapua://scan")) {
-                // Ambil email dari parameter
-                const urlParams = new URLSearchParams(decodedText.split('?')[1]);
-                const email = urlParams.get('email');
+            // Cek apakah hasil scan mengandung protokol sipapua:// atau langsung email
+            if (decodedText.includes("sipapua://scan") || decodedText.includes("@")) {
+                let email = "";
+                
+                if (decodedText.includes("?email=")) {
+                    const urlParams = new URLSearchParams(decodedText.split('?')[1]);
+                    email = urlParams.get('email');
+                } else {
+                    email = decodedText; // Jika QR hanya berisi email mentah
+                }
 
                 if (email) {
-                    // Berhenti scan agar tidak duplikat
-                    html5QrcodeScanner.clear();
-                    
-                    // Arahkan ke halaman bio singkat
-                    window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                    // Berhenti scan agar tidak terjadi pemindaian ganda
+                    html5QrCode.stop().then(() => {
+                        // Arahkan ke halaman bio singkat
+                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                    }).catch(err => {
+                        console.error("Gagal menghentikan scanner", err);
+                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                    });
                 }
             } else {
-                // Jika QR Code bukan milik SIPAPUA
                 console.log("QR Code tidak dikenal");
             }
         }
 
-        function onScanFailure(error) {
-            // Tidak perlu menampilkan error setiap detik saat gagal fokus
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            
+            const config = { 
+                fps: 15, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0 
+            };
+
+            // Mulai kamera belakang secara otomatis
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess
+            ).catch(err => {
+                console.error("Gagal meminta izin kamera atau memulai scanner: ", err);
+                // Jika gagal di APK, biasanya karena izin Manifest belum diset
+            });
         }
 
-        let html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader", 
-            { 
-                fps: 15, 
-                qrbox: {width: 250, height: 250},
-                aspectRatio: 1.0 
-            },
-            /* verbose= */ false
-        );
-        
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        // Jalankan otomatis saat halaman siap
+        window.addEventListener('DOMContentLoaded', startScanner);
     </script>
 </body>
 </html>
