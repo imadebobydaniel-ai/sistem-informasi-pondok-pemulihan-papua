@@ -78,6 +78,15 @@
         .news-text-large { font-size: 18px !important; line-height: 1.7; white-space: pre-line; margin-bottom: 25px; color: #333; }
 
         .btn-header-back { border:none; background:#555; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold; cursor:pointer; font-size: 12px; display: flex; align-items: center; }
+
+        /* Perbaikan tampilan input password agar simetris di HP */
+        .swal2-input-custom {
+            width: 80% !important;
+            margin: 10px auto !important;
+            display: block !important;
+            text-align: center;
+            border-radius: 8px !important;
+        }
     </style>
 </head>
 <body>
@@ -145,7 +154,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, push, onValue, remove, get, set, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // --- CONFIG FIREBASE (URL SUDAH DISESUAIKAN BERDASARKAN LINK ANDA) ---
     const firebaseConfig = {
         apiKey: "AIzaSy...",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -215,9 +223,23 @@
         }
     };
 
+    // 3. PERBAIKAN TAMPILAN PASSWORD HAPUS BERITA
     window.hapusBerita = async function(id) {
-        const { value: pass } = await Swal.fire({ title: 'Sandi Admin', input: 'password' });
-        if (pass === 'admin123') { remove(ref(db, `events/${id}`)); }
+        const { value: pass } = await Swal.fire({
+            title: 'Sandi Admin',
+            html: `<input type="password" id="swal-input-pass" class="swal2-input swal2-input-custom" placeholder="Masukkan Sandi">`,
+            focusConfirm: false,
+            preConfirm: () => {
+                return document.getElementById('swal-input-pass').value;
+            }
+        });
+
+        if (pass === 'admin123') {
+            remove(ref(db, `events/${id}`)); 
+            Swal.fire('Terhapus', 'Berita telah dihapus dari cloud', 'success');
+        } else if (pass !== undefined) {
+            Swal.fire('Gagal', 'Sandi Salah', 'error');
+        }
     };
 </script>
 
@@ -227,24 +249,36 @@
     window.cloudinaryImages = [];
     let html5QrCode;
 
+    // 1. PERBAIKAN UPLOAD FOTO (KHUSUS APK)
     document.getElementById('fotoEvent').onchange = async function(e) {
         const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
         const statusLabel = document.getElementById('uploadStatus');
-        statusLabel.innerText = "⏳ Mengunggah...";
+        statusLabel.innerText = "⏳ Memproses " + files.length + " foto...";
         
         try {
             for (let file of files) {
                 const formData = new FormData();
                 formData.append("file", file);
                 formData.append("upload_preset", CLOUDINARY_PRESET);
-                const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+
+                const res = await fetch(CLOUDINARY_URL, { 
+                    method: "POST", 
+                    body: formData 
+                });
+
                 const data = await res.json();
-                if(data.secure_url) window.cloudinaryImages.push(data.secure_url);
+                if (data.secure_url) {
+                    window.cloudinaryImages.push(data.secure_url);
+                } else {
+                    throw new Error(data.error ? data.error.message : "Gagal ke Cloudinary");
+                }
             }
-            statusLabel.innerText = "✅ " + window.cloudinaryImages.length + " Foto siap.";
+            statusLabel.innerText = "✅ Selesai. " + window.cloudinaryImages.length + " foto siap.";
         } catch (err) { 
-            statusLabel.innerText = "❌ Gagal Upload";
-            Swal.fire('Error', 'Gagal kirim gambar ke server', 'error');
+            statusLabel.innerText = "❌ Error: " + err.message;
+            Swal.fire('Gagal', 'Coba satu per satu jika file terlalu besar.', 'error');
         }
     };
 
@@ -315,19 +349,20 @@
         });
     }
 
+    // 2. PERBAIKAN SHARE WA (MENGATASI ERR_UNKNOWN_URL_SCHEME)
     function shareWhatsApp() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
         const isi = document.getElementById('isiEvent').value;
+        
         if(!nama) return Swal.fire('Info', 'Isi data terlebih dahulu', 'info');
         
         const teks = `*EVENT JEMAAT*\n*Kegiatan:* ${nama}\n*Lokasi:* ${lokasi}\n\n${isi}`;
         const encodedText = encodeURIComponent(teks);
-        const url = /Android|iPhone|iPad/i.test(navigator.userAgent) 
-                    ? `whatsapp://send?text=${encodedText}` 
-                    : `https://web.whatsapp.com/send?text=${encodedText}`;
         
-        window.location.href = url;
+        // Gunakan link API standar agar tidak diblokir WebView APK
+        const url = `https://api.whatsapp.com/send?text=${encodedText}`;
+        window.open(url, '_blank');
     }
 
     async function generatePDF() {
