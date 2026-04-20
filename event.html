@@ -148,6 +148,7 @@
     }
 
     function loginEvent() {
+        Swal.close(); // Menutup paksa semua alert yang mungkin masih menggantung
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
         if(u === "admin" && p === "admin123") {
@@ -166,10 +167,13 @@
     async function uploadToCloudinary(e) {
         const files = Array.from(e.target.files);
         const statusLabel = document.getElementById('uploadStatus');
-        cloudinaryImages = [];
+        if (files.length === 0) return;
 
-        // Tampilkan loading sederhana tanpa menutup seluruh layar
-        statusLabel.innerText = "Sedang mengunggah...";
+        cloudinaryImages = [];
+        statusLabel.innerText = "⏳ Sedang mengunggah...";
+        
+        // Gunakan loading state agar user tidak menekan tombol simpan dulu
+        document.getElementById('btnSimpan').disabled = true;
 
         try {
             for (let file of files) {
@@ -179,45 +183,55 @@
 
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
                 
-                if (!res.ok) throw new Error("Gagal unggah ke Cloudinary");
+                if (!res.ok) throw new Error("Gagal unggah");
 
                 const data = await res.json();
                 cloudinaryImages.push(data.secure_url);
             }
             
-            statusLabel.innerText = "✅ Selesai Mengunggah.";
+            statusLabel.innerText = "✅ Selesai Mengunggah (" + cloudinaryImages.length + " foto).";
             Swal.fire({
                 icon: 'success',
                 title: 'Berhasil',
                 text: 'Foto berhasil diunggah!',
-                timer: 2000
+                timer: 1500,
+                showConfirmButton: false
             });
 
         } catch (err) {
             console.error(err);
             statusLabel.innerText = "❌ Gagal mengunggah.";
-            
-            // Memastikan jika ada overlay yang stuck, kita tutup secara paksa
-            Swal.fire({
-                icon: 'error',
-                title: 'Unggah Gagal',
-                text: 'Terjadi kesalahan koneksi atau limit storage. Silakan coba lagi.'
-            });
+            Swal.fire('Error', 'Gagal mengunggah gambar. Periksa koneksi/kuota Cloudinary.', 'error');
+        } finally {
+            document.getElementById('btnSimpan').disabled = false;
         }
     }
 
-    function simpanData() {
+    // PERBAIKAN FUNGSI SIMPAN SESUAI PERINTAH
+    async function simpanData() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
         const tgl = document.getElementById('tglEvent').value;
         const isi = document.getElementById('isiEvent').value;
 
-        if(!nama || cloudinaryImages.length === 0) return Swal.fire('Gagal', 'Lengkapi data', 'warning');
+        if(!nama || cloudinaryImages.length === 0) {
+            return Swal.fire('Peringatan', 'Nama kegiatan dan foto wajib diisi!', 'warning');
+        }
 
         const newEntry = { id: Date.now(), nama, lokasi, tgl, isi, fotos: cloudinaryImages };
         let list = JSON.parse(localStorage.getItem('eventList')) || [];
         list.unshift(newEntry);
         localStorage.setItem('eventList', JSON.stringify(list));
+
+        // Berikan feedback dulu baru reload
+        await Swal.fire({
+            icon: 'success',
+            title: 'Tersimpan!',
+            text: 'Kegiatan telah dipublikasikan.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+        
         location.reload();
     }
 
