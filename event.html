@@ -166,11 +166,25 @@
         console.log("DOM Ready - SIPAPUA System Active");
     });
 
-    // FUNGSI BUKA/TUTUP LOGIN (Dibuat Global agar bisa diklik di HP)
+    // 1. FUNGSI TOGGLE PASSWORD (Lihat/Sembunyikan Password)
+    window.togglePassword = function() {
+        const p = document.getElementById('passAdmin');
+        const eye = document.getElementById('eyeIcon');
+        if (p && eye) {
+            if (p.type === "password") {
+                p.type = "text";
+                eye.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                p.type = "password";
+                eye.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+    };
+
+    // 2. FUNGSI BUKA/TUTUP LOGIN BOX
     window.toggleLoginSlider = function() {
         const box = document.getElementById('loginBox');
         if (box) {
-            // Logika toggle yang lebih kuat
             if (box.style.display === "none" || box.style.display === "") {
                 box.style.display = "block";
                 console.log("Login Box Opened");
@@ -183,7 +197,7 @@
         }
     };
 
-    // FUNGSI PROSES LOGIN
+    // 3. FUNGSI PROSES LOGIN ADMIN
     window.loginEvent = function() {
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
@@ -193,13 +207,13 @@
             document.getElementById('newsList').style.display = 'none';
             document.getElementById('btnBack').style.display = 'flex';
             document.getElementById('loginBox').style.display = 'none';
-            Swal.fire({ icon: 'success', title: 'Admin Login', timer: 1000, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'Admin Login Berhasil', timer: 1000, showConfirmButton: false });
         } else { 
-            Swal.fire('Gagal', 'Akses Ditolak', 'error'); 
+            Swal.fire('Gagal', 'Username atau Password Salah', 'error'); 
         }
     };
 
-    // Fungsi Upload Cloudinary
+    // 4. FUNGSI UPLOAD KE CLOUDINARY
     const fotoInput = document.getElementById('fotoEvent');
     if(fotoInput) {
         fotoInput.onchange = async function(e) {
@@ -218,11 +232,14 @@
                     if (data.secure_url) window.cloudinaryImages.push(data.secure_url);
                 }
                 statusLabel.innerText = "✅ Selesai. " + window.cloudinaryImages.length + " foto siap.";
-            } catch (err) { statusLabel.innerText = "❌ Error"; }
+            } catch (err) { 
+                statusLabel.innerText = "❌ Upload Gagal";
+                console.error(err);
+            }
         };
     }
 
-    // Fungsi Render & Detail tetap seperti sebelumnya (ditambah window.)
+    // 5. FUNGSI TAMPILKAN DAFTAR BERITA/EVENT
     window.renderList = function(list) {
         const container = document.getElementById('newsList');
         if (!container) return;
@@ -236,6 +253,7 @@
             </div>`).join('');
     };
 
+    // 6. FUNGSI DETAIL EVENT (Popup Swal)
     window.detailEvent = function(id) {
         const item = window.currentEvents.find(x => x.id === id);
         if(!item) return;
@@ -251,6 +269,7 @@
         });
     };
 
+    // 7. FUNGSI SCANNER QR
     window.startScanner = function() {
         const reader = document.getElementById('reader');
         if (reader) reader.style.display = 'block';
@@ -259,7 +278,9 @@
         html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
             html5QrCode.stop();
             document.getElementById('reader').style.display = 'none';
-            window.prosesAbsenDigital(decodedText); 
+            if (window.prosesAbsenDigital) {
+                window.prosesAbsenDigital(decodedText); 
+            }
         }).catch(err => {
             Swal.fire('Kamera Error', 'Izin kamera ditolak atau sedang digunakan aplikasi lain', 'error');
         });
