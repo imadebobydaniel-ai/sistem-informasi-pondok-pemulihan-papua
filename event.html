@@ -3,156 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scan QR Jemaat - SIPAPUA</title>
+    <title>Portal Event Jemaat - SIPAPUA</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root { --primary: #003366; --accent: #2ecc71; }
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #000;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
+            margin: 0; font-family: 'Segoe UI', sans-serif;
+            background-color: #f4f7f6; color: #333;
         }
 
+        /* HEADER & NAVIGATION */
         .header {
-            padding: 20px;
-            background: linear-gradient(to bottom, rgba(0,51,102,1), rgba(0,0,0,0));
-            display: flex;
-            align-items: center;
-            z-index: 10;
+            background: var(--primary); color: white; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 1000;
         }
 
-        .btn-back {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            margin-right: 15px;
+        /* CONTAINER UTAMA */
+        .main-container { padding: 20px; max-width: 800px; margin: auto; }
+
+        /* SECTION BERITA (Page Depan) */
+        .news-section { margin-bottom: 30px; }
+        .card-news {
+            background: white; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px;
+        }
+        .card-news img { width: 100%; height: 180px; object-fit: cover; }
+        .card-news-body { padding: 15px; }
+
+        /* LOGIN CONTAINER */
+        .login-container {
+            background: white; padding: 25px; border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-top: 20px;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group input {
+            width: 100%; padding: 12px; border: 1px solid #ddd;
+            border-radius: 8px; box-sizing: border-box;
+        }
+        .btn-login {
+            width: 100%; padding: 12px; background: var(--primary);
+            color: white; border: none; border-radius: 8px; font-weight: bold;
         }
 
-        .scanner-container {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
+        /* MODAL / OVERLAY SCANNER (Hanya muncul saat tombol absen diklik) */
+        #scanner-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column;
         }
+        #reader { width: 100%; max-width: 400px; margin: auto; }
+        .scanner-tools { padding: 20px; display: flex; justify-content: center; gap: 10px; }
 
-        #reader {
-            width: 100% !important;
-            border: none !important;
-        }
-
-        #reader__scan_region {
-            background: rgba(0,0,0,0.3);
-        }
-
-        .instruction {
-            position: absolute;
-            bottom: 100px;
-            width: 100%;
-            text-align: center;
-            padding: 20px;
-            box-sizing: border-box;
-            z-index: 10;
-        }
-
-        .instruction p {
-            background: rgba(0, 0, 0, 0.7);
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border: 2px solid rgba(255,255,255,0.1);
-            pointer-events: none;
+        .fab-absen {
+            position: fixed; bottom: 20px; right: 20px;
+            background: var(--accent); color: white; width: 60px; height: 60px;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <button class="btn-back" onclick="window.location.href='menu.html'">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h3 style="margin: 0; font-size: 18px;">Scan QR Koneksi</h3>
+        <h2 style="margin:0; font-size: 18px;">Portal SIPAPUA</h2>
+        <div id="user-info"><i class="fas fa-user-circle"></i> Guest</div>
     </div>
 
-    <div class="scanner-container">
+    <div class="main-container">
+        <div id="page-berita" class="news-section">
+            <h3>Berita Jemaat Terbaru</h3>
+            <div class="card-news">
+                <div class="card-news-body">
+                    <h4>Ibadah Raya Minggu & Perjamuan Kudus</h4>
+                    <p style="font-size: 13px; color: #666;">Dilaksanakan pada Minggu besok pukul 09.00 WIT. Diharapkan seluruh jemaat membawa kartu digital...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-login" class="login-container">
+            <h3 style="text-align: center; margin-top: 0;">Portal Input Kegiatan</h3>
+            <div class="form-group">
+                <input type="text" placeholder="Username / Email">
+            </div>
+            <div class="form-group">
+                <input type="password" placeholder="Password">
+            </div>
+            <button class="btn-login" onclick="Swal.fire('Login Berhasil', 'Silakan input berita jemaat', 'success')">Masuk Portal</button>
+        </div>
+    </div>
+
+    <div class="fab-absen" onclick="openScanner()">
+        <i class="fas fa-qrcode"></i>
+    </div>
+
+    <div id="scanner-overlay">
+        <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: white; margin: 0;">Scan Kehadiran</h3>
+            <button onclick="closeScanner()" style="background:none; border:none; color:white; font-size: 24px;">&times;</button>
+        </div>
         <div id="reader"></div>
-        <div class="overlay"></div>
-    </div>
-
-    <div class="instruction">
-        <p><i class="fas fa-expand"></i> Arahkan kamera ke QR Code Jemaat</p>
+        <div class="scanner-tools">
+            <button class="btn-login" style="background:#e67e22;" onclick="simpanKePDF()">Simpan PDF</button>
+            <button class="btn-login" style="background:#3498db;" onclick="sinkronData()">Sinkron</button>
+        </div>
+        <div style="text-align: center; padding: 10px;">
+            <span id="count-label" style="color: #2ecc71; font-weight: bold;">Terdata: 0 Orang</span>
+        </div>
     </div>
 
     <script>
         let html5QrCode;
+        let dataAbsensi = [];
 
-        function onScanSuccess(decodedText, decodedResult) {
-            // Memberikan getaran sukses
-            if (navigator.vibrate) navigator.vibrate(100);
+        function openScanner() {
+            document.getElementById('scanner-overlay').style.display = 'flex';
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
+        }
 
-            // Cek apakah hasil scan mengandung protokol sipapua:// atau langsung email
-            if (decodedText.includes("sipapua://scan") || decodedText.includes("@")) {
-                let email = "";
-                
-                if (decodedText.includes("?email=")) {
-                    const urlParams = new URLSearchParams(decodedText.split('?')[1]);
-                    email = urlParams.get('email');
-                } else {
-                    email = decodedText; // Jika QR hanya berisi email mentah
-                }
-
-                if (email) {
-                    // Berhenti scan agar tidak terjadi pemindaian ganda
-                    html5QrCode.stop().then(() => {
-                        // Arahkan ke halaman bio singkat
-                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
-                    }).catch(err => {
-                        console.error("Gagal menghentikan scanner", err);
-                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
-                    });
-                }
+        function closeScanner() {
+            if(html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-overlay').style.display = 'none';
+                });
             } else {
-                console.log("QR Code tidak dikenal");
+                document.getElementById('scanner-overlay').style.display = 'none';
             }
         }
 
-        function startScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-            
-            const config = { 
-                fps: 15, 
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0 
-            };
-
-            // Mulai kamera belakang secara otomatis
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                onScanSuccess
-            ).catch(err => {
-                console.error("Gagal meminta izin kamera atau memulai scanner: ", err);
-                // Jika gagal di APK, biasanya karena izin Manifest belum diset
-            });
+        function onScanSuccess(decodedText) {
+            let nama = decodedText.split('@')[0]; // Simple logic ambil nama
+            const exists = dataAbsensi.find(x => x.nama === nama);
+            if (!exists) {
+                if (navigator.vibrate) navigator.vibrate(100);
+                dataAbsensi.push({ nama: nama, jam: new Date().toLocaleTimeString() });
+                document.getElementById('count-label').innerText = `Terdata: ${dataAbsensi.length} Orang`;
+                Swal.fire({ title: 'Berhasil', text: nama + ' terabsen', timer: 1000, showConfirmButton: false });
+            }
         }
 
-        // Jalankan otomatis saat halaman siap
-        window.addEventListener('DOMContentLoaded', startScanner);
+        function simpanKePDF() {
+            if (dataAbsensi.length === 0) return Swal.fire('Data Kosong', '', 'error');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("BERITA ACARA EVENT JEMAAT", 105, 20, { align: "center" });
+            const tableData = dataAbsensi.map((item, i) => [i + 1, item.nama, item.jam]);
+            doc.autoTable({ head: [['No', 'Nama', 'Jam']], body: tableData, startY: 30 });
+            doc.save("Berita_Acara.pdf");
+        }
+
+        function sinkronData() {
+            Swal.fire('Sinkronisasi', 'Data sedang dikirim ke database portal...', 'info');
+        }
     </script>
 </body>
 </html>
