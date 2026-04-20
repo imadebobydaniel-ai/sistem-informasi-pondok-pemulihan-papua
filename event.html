@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root { --primary: #003366; --accent: #D4AF37; --bg: #f4f7fa; }
@@ -17,15 +18,18 @@
         /* Form & Input */
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
         .btn-primary { background: var(--primary); color: white; }
-        .btn-share { background: #25D366; color: white; } /* Warna WA */
+        .btn-share { background: #25D366; color: white; } 
+        .btn-pdf { background: #e74c3c; color: white; }
         
         /* Scan Section */
         .scan-area { background: #e8f4fd; border: 2px dashed var(--primary); padding: 15px; text-align: center; border-radius: 10px; }
-        #totalHadir { font-size: 40px; font-weight: bold; color: var(--primary); }
+        #reader { width: 100%; border-radius: 10px; margin-top: 10px; display: none; }
+        #totalHadir { font-size: 50px; font-weight: bold; color: var(--primary); margin: 10px 0; }
         
         #adminSection, #viewSection { display: none; }
+        .img-preview { width: 100%; border-radius: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -40,6 +44,7 @@
         <input type="text" id="userAdmin" placeholder="Username">
         <input type="password" id="passAdmin" placeholder="Password">
         <button class="btn-primary" onclick="loginEvent()">Masuk</button>
+        <button style="background: #ddd; color: #333;" onclick="showPublicView()">Lihat Hasil Kegiatan</button>
     </div>
 
     <div id="adminSection">
@@ -49,30 +54,54 @@
             <input type="text" id="lokasiEvent" placeholder="Lokasi">
             <input type="date" id="tglEvent">
             <textarea id="isiEvent" placeholder="Deskripsi Kegiatan" rows="3"></textarea>
-            <input type="file" id="fotoEvent" accept="image/*" multiple>
+            <label>Lampirkan Foto Kegiatan:</label>
+            <input type="file" id="fotoEvent" accept="image/*" onchange="previewImage(event)">
+            <img id="outputPreview" class="img-preview" style="display:none;">
         </div>
 
         <div class="card scan-area">
-            <h3>Absensi Tap Barcode</h3>
-            <p>Klik kotak bawah ini, lalu tap kartu digital</p>
-            <input type="text" id="inputScan" placeholder="Tap Barcode Di Sini..." onchange="hitungAbsen()">
+            <h3>Absensi QR Code</h3>
+            <div id="reader"></div>
+            <button id="btnStartScan" class="btn-primary" onclick="mulaiScan()">
+                <i class="fas fa-camera"></i> BUKA SCANNER
+            </button>
+            <button id="btnStopScan" style="background:#e74c3c; color:white; display:none;" onclick="stopScan()">
+                TUTUP KAMERA
+            </button>
             <hr>
             <p>Total Kehadiran Saat Ini:</p>
             <div id="totalHadir">0</div>
         </div>
 
         <button class="btn-primary" onclick="simpanEvent()">SIMPAN DATA</button>
+        <button class="btn-pdf" onclick="generatePDF()">DOWNLOAD PDF</button>
         <button class="btn-share" onclick="shareWA()">SHARE VIA WHATSAPP</button>
         <button style="background:#888; color:white;" onclick="logoutEvent()">LOGOUT</button>
     </div>
 
     <div id="viewSection">
+        <div class="card">
+            <h2 id="viewNama" style="color: var(--primary); margin-top:0;"></h2>
+            <p><strong>Lokasi:</strong> <span id="viewLokasi"></span></p>
+            <p><strong>Tanggal:</strong> <span id="viewTgl"></span></p>
+            <hr>
+            <p id="viewIsi"></p>
+            <div class="scan-area">
+                <small>Total Kehadiran</small>
+                <div id="viewHadir" style="font-size: 30px; font-weight: bold; color: var(--primary);">0</div>
+            </div>
+            <div id="viewFoto"></div>
+            <button class="btn-primary" onclick="location.reload()">KEMBALI KE LOGIN</button>
         </div>
+    </div>
 </div>
 
 <script>
+    let html5QrCode;
     let jumlahPeserta = 0;
+    let imageData = null;
 
+    // --- FUNGSI LOGIN ---
     function loginEvent() {
         const user = document.getElementById('userAdmin').value;
         const pass = document.getElementById('passAdmin').value;
@@ -86,32 +115,100 @@
         }
     }
 
-    function hitungAbsen() {
-        const input = document.getElementById('inputScan');
-        if(input.value !== "") {
+    // --- FUNGSI SCANNER ---
+    function mulaiScan() {
+        document.getElementById('reader').style.display = 'block';
+        document.getElementById('btnStartScan').style.display = 'none';
+        document.getElementById('btnStopScan').style.display = 'block';
+
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
             jumlahPeserta++;
             document.getElementById('totalHadir').innerText = jumlahPeserta;
-            input.value = ""; // Reset input biar bisa tap lagi
-            input.focus();
-            // Suara bip sederhana (opsional)
-            const audio = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
-            audio.play();
+            new Audio('https://www.soundjay.com/buttons/beep-01a.mp3').play();
+            
+            Swal.fire({ title: 'Absen Berhasil!', text: 'ID: ' + decodedText, icon: 'success', timer: 800, showConfirmButton: false });
+            
+            stopScan();
+            setTimeout(() => { mulaiScan(); }, 1200);
+        });
+    }
+
+    function stopScan() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').style.display = 'none';
+                document.getElementById('btnStartScan').style.display = 'block';
+                document.getElementById('btnStopScan').style.display = 'none';
+            });
         }
     }
 
+    // --- FUNGSI CMS & MEDIA ---
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function() {
+            const output = document.getElementById('outputPreview');
+            output.src = reader.result;
+            output.style.display = 'block';
+            imageData = reader.result; // Simpan untuk PDF & View
+        }
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
     function simpanEvent() {
-        const nama = document.getElementById('namaEvent').value;
-        if(!nama) return Swal.fire('Maaf', 'Isi nama kegiatan dulu', 'warning');
+        const data = {
+            nama: document.getElementById('namaEvent').value,
+            lokasi: document.getElementById('lokasiEvent').value,
+            tgl: document.getElementById('tglEvent').value,
+            isi: document.getElementById('isiEvent').value,
+            hadir: jumlahPeserta,
+            foto: imageData
+        };
+
+        if(!data.nama) return Swal.fire('Maaf', 'Isi nama kegiatan dulu', 'warning');
         
-        Swal.fire('Berhasil!', 'Data Kegiatan Telah Tersimpan di Database', 'success');
-        // Logika Firebase Simpan Data bisa ditaruh di sini
+        localStorage.setItem('lastEvent', JSON.stringify(data));
+        Swal.fire('Berhasil!', 'Data Kegiatan Telah Tersimpan', 'success');
+    }
+
+    // --- FUNGSI OUTPUT (PDF & WA) ---
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const nama = document.getElementById('namaEvent').value;
+        
+        doc.text("LAPORAN KEGIATAN EVENT", 10, 10);
+        doc.text(`Nama Kegiatan: ${nama}`, 10, 20);
+        doc.text(`Total Hadir: ${jumlahPeserta}`, 10, 30);
+        doc.save(`Laporan_${nama}.pdf`);
     }
 
     function shareWA() {
         const nama = document.getElementById('namaEvent').value;
-        const hadir = document.getElementById('totalHadir').innerText;
-        const text = `LAPORAN KEGIATAN SIPAPUA%0A%0ANama: ${nama}%0ATotal Hadir: ${hadir} Orang`;
+        const text = `LAPORAN EVENT SIPAPUA%0A%0ANama: ${nama}%0ATotal Hadir: ${jumlahPeserta} Orang`;
         window.open(`https://wa.me/?text=${text}`);
+    }
+
+    // --- FUNGSI VIEW HASIL ---
+    function showPublicView() {
+        const data = JSON.parse(localStorage.getItem('lastEvent'));
+        if(!data) return Swal.fire('Kosong', 'Belum ada data kegiatan yang diinput', 'info');
+
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('viewSection').style.display = 'block';
+
+        document.getElementById('viewNama').innerText = data.nama;
+        document.getElementById('viewLokasi').innerText = data.lokasi;
+        document.getElementById('viewTgl').innerText = data.tgl;
+        document.getElementById('viewIsi').innerText = data.isi;
+        document.getElementById('viewHadir').innerText = data.hadir;
+        
+        if(data.foto) {
+            document.getElementById('viewFoto').innerHTML = `<img src="${data.foto}" class="img-preview">`;
+        }
     }
 
     function logoutEvent() {
