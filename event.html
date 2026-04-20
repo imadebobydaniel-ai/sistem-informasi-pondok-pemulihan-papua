@@ -155,7 +155,7 @@
     import { getDatabase, ref, push, onValue, remove, get, set, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSy...",
+        apiKey: "AIzaSy...", // Pastikan API Key Anda lengkap di sini
         authDomain: "boby-apps-project.firebaseapp.com",
         databaseURL: "https://boby-apps-project-default-rtdb.firebaseio.com/", 
         projectId: "boby-apps-project",
@@ -169,7 +169,7 @@
     const eventRef = ref(db, 'events');
     const absenRef = ref(db, 'absensi_event');
 
-    // Pastikan fungsi shareWhatsApp bisa diakses oleh tombol (global scope)
+    // FIX SHARE WA: Agar tidak error di APK
     window.shareWhatsApp = function() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
@@ -178,11 +178,10 @@
         if(!nama) return Swal.fire('Info', 'Isi data dulu', 'info');
         
         const teks = `*EVENT JEMAAT*\n*Kegiatan:* ${nama}\n*Lokasi:* ${lokasi}\n\n${isi}`;
-        
-        // Perbaikan utama: Menggunakan wa.me dan location.href agar tidak diblokir APK
         window.location.href = `https://wa.me/?text=${encodeURIComponent(teks)}`;
     };
 
+    // AMBIL DATA DARI FIREBASE
     onValue(eventRef, (snapshot) => {
         const data = snapshot.val();
         const list = [];
@@ -192,6 +191,7 @@
         updateLogActivity(list);
     });
 
+    // SIMPAN DATA KE FIREBASE
     document.getElementById('btnSimpan').onclick = function() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
@@ -211,49 +211,118 @@
             ['namaEvent','lokasiEvent','tglEvent','isiEvent','fotoEvent'].forEach(id => document.getElementById(id).value = "");
             window.cloudinaryImages = [];
             document.getElementById('uploadStatus').innerText = "";
-        }).catch(err => Swal.fire('Error', 'Koneksi Gagal: ' + err.message, 'error'));
+        }).catch(err => Swal.fire('Error', 'Gagal: ' + err.message, 'error'));
     };
 
+    // FUNGSI ABSEN QR
     window.prosesAbsenDigital = async function(userId) {
         const now = Date.now();
         const userAbsenRef = child(absenRef, userId);
-        
         try {
             const snapshot = await get(userAbsenRef);
             if (snapshot.exists()) {
                 const lastAbsen = snapshot.val().last_timestamp;
-                const selisihJam = (now - lastAbsen) / (1000 * 60 * 60);
-                
-                if (selisihJam < 24) {
-                    return Swal.fire({ icon: 'error', title: 'Absen Tidak Boleh Dobel', text: 'Silahkan absen lagi besok.', confirmButtonColor: '#d33' });
+                if ((now - lastAbsen) / (1000 * 60 * 60) < 24) {
+                    return Swal.fire('Error', 'Silahkan absen lagi besok.', 'error');
                 }
             }
-            
             await set(userAbsenRef, { last_timestamp: now, date: new Date().toLocaleString() });
-            Swal.fire({ icon: 'success', title: 'Absen Berhasil', text: 'ID: ' + userId });
-            
-        } catch (error) {
-            console.error(error);
-        }
+            Swal.fire('Berhasil', 'Absen ID: ' + userId, 'success');
+        } catch (error) { console.error(error); }
     };
 
+    // HAPUS DATA (ADMIN)
     window.hapusBerita = async function(id) {
         const { value: pass } = await Swal.fire({
             title: 'Sandi Admin',
-            html: `<input type="password" id="swal-input-pass" class="swal2-input swal2-input-custom" placeholder="Masukkan Sandi">`,
-            focusConfirm: false,
-            preConfirm: () => {
-                return document.getElementById('swal-input-pass').value;
-            }
+            html: `<input type="password" id="swal-input-pass" class="swal2-input" placeholder="Sandi">`,
+            preConfirm: () => document.getElementById('swal-input-pass').value
         });
 
         if (pass === 'admin123') {
             remove(ref(db, `events/${id}`)); 
-            Swal.fire('Terhapus', 'Berita telah dihapus dari cloud', 'success');
+            Swal.fire('Terhapus', 'Data dihapus', 'success');
         } else if (pass !== undefined) {
             Swal.fire('Gagal', 'Sandi Salah', 'error');
         }
     };
+</script>
+
+<script>
+    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxzllsbgi/image/upload";
+    const CLOUDINARY_PRESET = "sipapua_preset";
+    window.cloudinaryImages = [];
+    let html5QrCode;
+
+    // FIX UPLOAD: Proses upload ke Cloudinary
+    document.getElementById('fotoEvent').onchange = async function(e) {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        const statusLabel = document.getElementById('uploadStatus');
+        statusLabel.innerText = "⏳ Memproses...";
+        
+        try {
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("upload_preset", CLOUDINARY_PRESET);
+                const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.secure_url) window.cloudinaryImages.push(data.secure_url);
+            }
+            statusLabel.innerText = "✅ Selesai. " + window.cloudinaryImages.length + " foto siap.";
+        } catch (err) { statusLabel.innerText = "❌ Error"; }
+    };
+
+    function loginEvent() {
+        const u = document.getElementById('userAdmin').value;
+        const p = document.getElementById('passAdmin').value;
+        if(u === "admin" && p === "admin123") {
+            document.getElementById('adminSection').style.display = 'block';
+            document.getElementById('newsList').style.display = 'none';
+            document.getElementById('btnBack').style.display = 'flex';
+        } else { Swal.fire('Gagal', 'Akses Ditolak', 'error'); }
+    }
+
+    function renderList(list) {
+        document.getElementById('newsList').innerHTML = list.map(item => `
+            <div class="event-item" onclick="detailEvent('${item.id}')">
+                <img src="${item.fotos ? item.fotos[0] : ''}" class="event-thumb">
+                <div class="event-content">
+                    <h3>${item.nama}</h3>
+                    <div class="date-badge">${item.tgl}</div>
+                </div>
+            </div>`).join('');
+    }
+
+    function detailEvent(id) {
+        const item = window.currentEvents.find(x => x.id === id);
+        if(!item) return;
+        let photoHTML = item.fotos.length > 1 ? `<div class="image-grid">` + item.fotos.map(img => `<img src="${img}" style="width:100%">`).join('') + `</div>` : `<img src="${item.fotos[0]}" style="width:100%">`;
+        Swal.fire({
+            title: item.nama,
+            html: `<div style="text-align:left;">${photoHTML}<p><b>Lokasi:</b> ${item.lokasi}</p><p>${item.isi}</p></div>`,
+            width: '95%'
+        });
+    }
+
+    function updateLogActivity(list) {
+        document.getElementById('logContent').innerHTML = list.map(item => `
+            <div class="log-item">
+                <span>${item.nama}</span>
+                <button onclick="hapusBerita('${item.id}')" style="color:red; background:none; border:none;"><i class="fas fa-trash"></i></button>
+            </div>`).join('');
+    }
+
+    function startScanner() {
+        document.getElementById('reader').style.display = 'block';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+            html5QrCode.stop();
+            document.getElementById('reader').style.display = 'none';
+            window.prosesAbsenDigital(decodedText); 
+        });
+    }
 </script>
 </body>
 </html>
