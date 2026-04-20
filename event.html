@@ -10,31 +10,69 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; --danger: #e74c3c; }
+        :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        .header { background: var(--primary); color: white; padding: 35px 15px 15px 15px; display: flex; justify-content: center; align-items: center; position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--accent); }
+        .header { 
+            background: var(--primary); 
+            color: white; 
+            padding: 35px 15px 15px 15px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+            border-bottom: 3px solid var(--accent); 
+        }
+
         .nav-admin { position: absolute; right: 15px; bottom: 15px; }
+        .btn-toggle-login { background: var(--accent); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .login-dropdown { 
+            display: none; 
+            position: absolute; 
+            top: 50px; 
+            right: 0; 
+            width: 240px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25); 
+            z-index: 2000; 
+            border: 1px solid #eee; 
+        }
+        
+        .login-logo { display: block; margin: 0 auto 5px auto; max-width: 80px; height: auto; }
+        .login-label { text-align: center; font-size: 12px; font-weight: bold; color: var(--primary); margin-bottom: 15px; display: block; }
+        .login-dropdown input { width: 100%; height: 42px; margin-bottom: 12px; padding: 0 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+        .pass-container { position: relative; width: 100%; }
+        .toggle-pass { position: absolute; right: 12px; top: 13px; color: #888; cursor: pointer; z-index: 10; }
+        .btn-masuk-dropdown { width: 100%; height: 42px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
         .container { padding: 15px; max-width: 800px; margin: auto; }
+        .event-item { background: white; border-radius: 12px; overflow: hidden; display: flex; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        .event-thumb { width: 100px; height: 100px; object-fit: cover; }
+        .event-content { padding: 12px; flex: 1; cursor: pointer; }
+        .btn-delete-news { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; padding: 5px 8px; border-radius: 5px; cursor: pointer; display: none; }
+        
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
-        
-        /* Modul Baru: Absensi & QRCode */
-        .absensi-box { background: #eef7ff; border: 2px dashed var(--primary); padding: 15px; border-radius: 12px; margin: 15px 0; text-align: center; }
-        .absensi-list { text-align: left; background: white; padding: 10px; border-radius: 8px; max-height: 150px; overflow-y: auto; margin-top: 10px; font-size: 13px; border: 1px solid #ddd; }
-        
-        /* Tombol Share & PDF */
-        .flex-buttons { display: flex; gap: 10px; margin-bottom: 10px; }
-        .btn-small { flex: 1; padding: 10px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .btn-action { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
 
-        /* Log Aktivitas / List Berita */
-        .log-section { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-top: 20px; }
-        .event-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; position: relative; }
-        .event-thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; margin-right: 15px; }
-        .btn-delete { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; }
-
-        .login-dropdown { display: none; position: absolute; top: 50px; right: 0; width: 240px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid #eee; }
-        input, textarea { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        /* CSS TAMBAHAN SESUAI PERINTAH GAMBAR */
+        .extra-tools { display: flex; gap: 10px; margin: 10px 0; }
+        .btn-tool { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; cursor: pointer; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        
+        .absensi-box, .log-activity-box { 
+            background: white; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-top: 15px;
+        }
+        .absensi-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+        .total-counter { background: var(--primary); color: white; padding: 2px 10px; border-radius: 20px; font-size: 14px; }
+        
+        #qrcode { margin: 10px auto; display: flex; justify-content: center; }
+        .list-absen { max-height: 100px; overflow-y: auto; font-size: 12px; color: #555; }
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f1f1; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -42,72 +80,99 @@
 <div class="header">
     <h1 style="font-size: 1.1rem; margin: 0; letter-spacing: 1px;">EVENT JEMAAT</h1>
     <div class="nav-admin">
-        <button id="btnToggle" style="background:var(--accent); color:white; border:none; width:38px; height:38px; border-radius:50%; cursor:pointer;" onclick="toggleLoginSlider()"><i class="fas fa-user-shield"></i></button>
+        <button id="btnToggle" class="btn-toggle-login" onclick="toggleLoginSlider()"><i class="fas fa-user-shield"></i></button>
         <div id="loginBox" class="login-dropdown">
+            <img src="logo_pondok.png" alt="Logo" class="login-logo">
+            <span class="login-label">LOGIN EVENT JEMAAT</span>
             <input type="text" id="userAdmin" placeholder="Username">
-            <input type="password" id="passAdmin" placeholder="Password">
-            <button style="width:100%; background:var(--primary); color:white; border:none; padding:10px; border-radius:8px;" onclick="loginEvent()">MASUK</button>
+            <div class="pass-container">
+                <input type="password" id="passAdmin" placeholder="Password">
+                <i class="fas fa-eye toggle-pass" id="eyeIcon" onclick="togglePassword()"></i>
+            </div>
+            <button class="btn-masuk-dropdown" onclick="loginEvent()">MASUK</button>
         </div>
-        <button id="btnLogout" style="display:none; background:var(--danger); border:none; color:white; padding:8px 15px; border-radius:20px;" onclick="logout()">LOGOUT</button>
+        <button id="btnLogout" style="display:none; background:#e74c3c; border:none; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold;" onclick="logout()">LOGOUT</button>
     </div>
 </div>
 
 <div class="container">
     <div id="adminSection">
         <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
-        <input type="text" id="namaEvent" placeholder="Nama Kegiatan">
-        <input type="text" id="lokasiEvent" placeholder="Lokasi">
-        <input type="date" id="tglEvent">
-        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4"></textarea>
+        <input type="text" id="namaEvent" placeholder="Nama Kegiatan" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <input type="text" id="lokasiEvent" placeholder="Lokasi" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <input type="date" id="tglEvent" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;">
+        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4" style="width:100%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ddd;"></textarea>
         
-        <p style="font-size: 12px; margin: 0;">Upload Foto:</p>
+        <p style="font-size: 12px; margin: 0;">Upload Foto ke Cloudinary:</p>
         <input type="file" id="fotoEvent" accept="image/*" multiple onchange="uploadToCloudinary(event)">
         <div id="uploadStatus" style="font-size: 11px; color: var(--primary); margin: 5px 0;"></div>
 
-        <div class="flex-buttons">
-            <button class="btn-small" style="background: #25D366;" onclick="shareWA()"><i class="fab fa-whatsapp"></i> SHARE WA</button>
-            <button class="btn-small" style="background: #e74c3c;" onclick="generatePDF()"><i class="fas fa-file-pdf"></i> GENERATE PDF</button>
+        <div class="extra-tools">
+            <button class="btn-tool" onclick="shareWhatsApp()"><i class="fab fa-whatsapp" style="color:#25D366"></i> SHARE WA</button>
+            <button class="btn-tool" onclick="generatePDF()"><i class="fas fa-file-pdf" style="color:#e74c3c"></i> GENERATE PDF</button>
         </div>
+
+        <button class="btn-action" style="background:var(--accent)" id="btnSimpan" onclick="simpanData()">SIMPAN & PUBLIKASIKAN</button>
 
         <div class="absensi-box">
-            <h4 style="margin:0 0 10px 0;">Absensi Tap Barcode</h4>
-            <div id="qrcode" style="display:none;"></div>
-            <input type="text" id="inputQR" placeholder="Tap Barcode Di Sini..." onchange="prosesAbsen(this.value)" style="text-align:center; font-weight:bold; border:2px solid var(--primary);">
-            <div style="font-size: 14px; font-weight: bold; margin: 10px 0;">Total Kehadiran Saat Ini: <span id="totalAbsen" style="font-size: 24px; color: var(--primary);">0</span></div>
-            <div class="absensi-list" id="riwayatAbsen">Belum ada data absensi.</div>
+            <div class="absensi-header">
+                <span style="font-weight:bold; font-size:13px;"><i class="fas fa-qrcode"></i> QRCODE ABSENSI</span>
+                <span class="total-counter">Total: <span id="totalAbsen">0</span></span>
+            </div>
+            <div id="qrcode"></div>
+            <div class="list-absen" id="historyAbsen">
+                <center><i>Belum ada riwayat absen hari ini.</i></center>
+            </div>
         </div>
 
-        <button class="btn-action" id="btnSimpan" style="width:100%; padding:15px; background:var(--accent); color:white; border:none; border-radius:8px; font-weight:bold;" onclick="simpanData()">SIMPAN & PUBLIKASIKAN</button>
+        <div class="log-activity-box">
+            <span style="font-weight:bold; font-size:13px;"><i class="fas fa-history"></i> LOG ACTIVITY</span>
+            <div id="logContent" style="margin-top:10px;"></div>
+        </div>
     </div>
-
-    <div class="log-section">
-        <h3 style="margin-top:0;"><i class="fas fa-history"></i> LOG AKTIVITAS BERITA</h3>
-        <div id="newsLog"></div>
-    </div>
+    <div id="newsList"></div>
 </div>
 
 <script>
     const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxzllsbgi/image/upload";
     const CLOUDINARY_PRESET = "sipapua_preset";
     let cloudinaryImages = [];
-    let dataAbsen = [];
+    let isAdmin = false;
 
-    window.onload = function() { renderLog(); };
+    window.onload = function() { 
+        renderList(); 
+        generateQR(); // Inisialisasi QR Code
+        updateLogActivity();
+    };
 
     function toggleLoginSlider() {
         const box = document.getElementById('loginBox');
         box.style.display = (box.style.display === "block") ? "none" : "block";
     }
 
+    function togglePassword() {
+        const pInput = document.getElementById('passAdmin');
+        const icon = document.getElementById('eyeIcon');
+        if (pInput.type === "password") {
+            pInput.type = "text";
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            pInput.type = "password";
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
     function loginEvent() {
+        Swal.close();
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
         if(u === "admin" && p === "admin123") {
+            isAdmin = true;
             document.getElementById('adminSection').style.display = 'block';
             document.getElementById('loginBox').style.display = 'none';
             document.getElementById('btnToggle').style.display = 'none';
             document.getElementById('btnLogout').style.display = 'block';
-            Swal.fire('Berhasil', 'Selamat Datang Admin', 'success');
+            renderList(); 
         } else {
             Swal.fire('Gagal', 'Akses Ditolak', 'error');
         }
@@ -120,110 +185,94 @@
         cloudinaryImages = [];
         statusLabel.innerText = "⏳ Sedang mengunggah...";
         document.getElementById('btnSimpan').disabled = true;
-
         try {
             for (let file of files) {
                 const formData = new FormData();
                 formData.append("file", file);
                 formData.append("upload_preset", CLOUDINARY_PRESET);
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+                if (!res.ok) throw new Error("Gagal unggah");
                 const data = await res.json();
                 cloudinaryImages.push(data.secure_url);
             }
             statusLabel.innerText = "✅ Selesai Mengunggah (" + cloudinaryImages.length + " foto).";
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Foto berhasil diunggah!', timer: 1500, showConfirmButton: false });
         } catch (err) {
             statusLabel.innerText = "❌ Gagal mengunggah.";
+            Swal.fire('Error', 'Gagal mengunggah gambar.', 'error');
         } finally {
             document.getElementById('btnSimpan').disabled = false;
         }
     }
 
-    // FITUR ABSENSI
-    function prosesAbsen(val) {
-        if(!val) return;
-        const namaJemaat = val; // Asumsi isi Barcode adalah nama jemaat
-        dataAbsen.push({ nama: namaJemaat, waktu: new Date().toLocaleTimeString() });
-        document.getElementById('inputQR').value = "";
-        updateUI_Absensi();
-    }
-
-    function updateUI_Absensi() {
-        document.getElementById('totalAbsen').innerText = dataAbsen.length;
-        const listHtml = dataAbsen.map(item => `<div>• ${item.nama} <span style="color:#888; font-size:10px;">(${item.waktu})</span></div>`).join("");
-        document.getElementById('riwayatAbsen').innerHTML = listHtml || "Belum ada data absensi.";
-    }
-
-    // FITUR SHARE & PDF
-    function shareWA() {
-        const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        if(!nama) return Swal.fire('Gagal', 'Isi nama kegiatan dulu', 'warning');
-        const text = `*INFO EVENT JEMAAT*%0A*Kegiatan:* ${nama}%0A*Lokasi:* ${lokasi}%0A*Total Hadir:* ${dataAbsen.length}`;
-        window.open(`https://wa.me/?text=${text}`);
-    }
-
-    function generatePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text("LAPORAN KEGIATAN JEMAAT", 10, 10);
-        doc.text(`Kegiatan: ${document.getElementById('namaEvent').value}`, 10, 20);
-        doc.text(`Total Hadir: ${dataAbsen.length}`, 10, 30);
-        doc.save("laporan_event.pdf");
-    }
-
-    // SIMPAN DATA KE LOG
-    function simpanData() {
+    async function simpanData() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
         const tgl = document.getElementById('tglEvent').value;
+        const isi = document.getElementById('isiEvent').value;
+        if(!nama || cloudinaryImages.length === 0) return Swal.fire('Peringatan', 'Nama kegiatan dan foto wajib diisi!', 'warning');
         
-        if(!nama) return Swal.fire('Peringatan', 'Nama kegiatan wajib diisi!', 'warning');
-
-        const newEntry = { 
-            id: Date.now(), 
-            nama, lokasi, tgl, 
-            fotos: cloudinaryImages, 
-            absen: [...dataAbsen] 
-        };
-        
+        const newEntry = { id: Date.now(), nama, lokasi, tgl, isi, fotos: cloudinaryImages };
         let list = JSON.parse(localStorage.getItem('eventList')) || [];
         list.unshift(newEntry);
         localStorage.setItem('eventList', JSON.stringify(list));
 
-        Swal.fire('Tersimpan!', 'Kegiatan telah masuk Log Aktivitas.', 'success');
-        renderLog();
-        // Reset form
-        dataAbsen = [];
-        updateUI_Absensi();
+        await Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Kegiatan telah dipublikasikan.', timer: 1500, showConfirmButton: false });
+        location.reload();
     }
 
-    function renderLog() {
-        const list = JSON.parse(localStorage.getItem('eventList')) || [];
-        const container = document.getElementById('newsLog');
-        container.innerHTML = list.length === 0 ? "<p style='color:#888;'>Belum ada riwayat kegiatan.</p>" : "";
+    // FITUR: SHARE WHATSAPP
+    function shareWhatsApp() {
+        const nama = document.getElementById('namaEvent').value;
+        const lokasi = document.getElementById('lokasiEvent').value;
+        if(!nama) return Swal.fire('Info', 'Isi data event terlebih dahulu', 'info');
+        const text = encodeURIComponent(`*INFO EVENT JEMAAT*\n\nKegiatan: ${nama}\nLokasi: ${lokasi}\n\nSilahkan cek di aplikasi SIPAPUA.`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
 
+    // FITUR: GENERATE PDF
+    function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const nama = document.getElementById('namaEvent').value || "Tanpa Nama";
+        doc.text("LAPORAN KEGIATAN EVENT", 10, 10);
+        doc.text(`Nama: ${nama}`, 10, 20);
+        doc.text(`Lokasi: ${document.getElementById('lokasiEvent').value}`, 10, 30);
+        doc.save(`${nama}.pdf`);
+    }
+
+    // FITUR: QR CODE GENERATOR
+    function generateQR() {
+        const qrContainer = document.getElementById("qrcode");
+        qrContainer.innerHTML = "";
+        new QRCode(qrContainer, {
+            text: "ABSENSI-EVENT-" + Date.now(),
+            width: 120,
+            height: 120
+        });
+    }
+
+    // FITUR: LOG AKTIVITAS & DELETE DENGAN PASSWORD
+    function updateLogActivity() {
+        const list = JSON.parse(localStorage.getItem('eventList')) || [];
+        const logBox = document.getElementById('logContent');
+        logBox.innerHTML = "";
         list.forEach(item => {
-            const img = item.fotos.length > 0 ? item.fotos[0] : "https://via.placeholder.com/60";
-            container.innerHTML += `
-                <div class="event-item">
-                    <img src="${img}" class="event-thumb">
-                    <div style="flex:1">
-                        <div style="font-weight:bold; color:var(--primary);">${item.nama}</div>
-                        <div style="font-size:11px; color:#666;">${item.tgl} | ${item.lokasi}</div>
-                        <div style="font-size:11px; color:var(--accent);">Hadir: ${item.absen.length} Orang</div>
-                    </div>
-                    <button class="btn-delete" onclick="konfirmasiHapus(${item.id})"><i class="fas fa-trash"></i> Hapus</button>
+            logBox.innerHTML += `
+                <div class="log-item">
+                    <span><b>${item.nama}</b> (${item.tgl})</span>
+                    <button onclick="hapusBerita(${item.id})" style="background:none; border:none; color:#e74c3c; cursor:pointer;"><i class="fas fa-trash"></i></button>
                 </div>
             `;
         });
     }
 
-    async function konfirmasiHapus(id) {
+    async function hapusBerita(id) {
         const { value: password } = await Swal.fire({
-            title: 'Hapus Kegiatan?',
+            title: 'Hapus Aktivitas?',
             input: 'password',
-            inputLabel: 'Masukkan Password Admin untuk menghapus',
-            inputPlaceholder: 'Password...',
+            inputLabel: 'Masukkan Password Admin',
+            inputPlaceholder: 'Password',
             showCancelButton: true
         });
 
@@ -231,11 +280,29 @@
             let list = JSON.parse(localStorage.getItem('eventList'));
             list = list.filter(x => x.id !== id);
             localStorage.setItem('eventList', JSON.stringify(list));
-            renderLog();
-            Swal.fire('Terhapus', 'Data telah dihapus dari log.', 'success');
+            renderList();
+            updateLogActivity();
+            Swal.fire('Terhapus', 'Aktivitas telah dihapus', 'success');
         } else if (password) {
             Swal.fire('Gagal', 'Password Salah!', 'error');
         }
+    }
+
+    function renderList() {
+        const list = JSON.parse(localStorage.getItem('eventList')) || [];
+        const container = document.getElementById('newsList');
+        container.innerHTML = "";
+        list.forEach(item => {
+            container.innerHTML += `
+                <div class="event-item">
+                    <img src="${item.fotos[0]}" class="event-thumb">
+                    <div class="event-content">
+                        <h3 style="margin:0; font-size:16px; color:var(--primary);">${item.nama}</h3>
+                        <p style="font-size:11px; color:#666;">${item.tgl} | ${item.lokasi}</p>
+                    </div>
+                </div>
+            `;
+        });
     }
 
     function logout() { location.reload(); }
