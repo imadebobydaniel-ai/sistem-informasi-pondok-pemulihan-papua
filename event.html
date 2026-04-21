@@ -173,148 +173,159 @@
         <button onclick="simpanLaporan()" style="padding: 15px; background: #e67e22; color: white; border: none; cursor: pointer; font-weight: bold;">SIMPAN LAPORAN PDF</button>
     </div>
 
-    <script>
-        let html5QrCode;
-        let dataScan = [];
-        let newsLogs = [
-            { activity: "Publikasi Berita: IBADAH ARSO 1", user: "admin", time: "20 Apr 2026, 09:00" }
-        ];
+ <script>
+    let html5QrCode;
+    let dataScan = [];
+    let newsLogs = [
+        { activity: "Publikasi Berita: IBADAH ARSO 1", user: "admin", time: "20 Apr 2026, 09:00" }
+    ];
 
-        function toggleDropdown() { document.getElementById('login-dropdown').classList.toggle('show'); }
-        function toggleShare(e) { e.stopPropagation(); document.getElementById('share-menu').classList.toggle('show'); }
-        window.onclick = function(event) {
-            if (!event.target.matches('.btn-admin') && !event.target.closest('.dropdown-content')) {
-                document.getElementById('login-dropdown').classList.remove('show');
-            }
-            if (!event.target.matches('.btn-share')) {
-                document.getElementById('share-menu').classList.remove('show');
-            }
+    // Perbaikan: Definisi fungsi dipastikan tersedia di global scope
+    function toggleDropdown() { document.getElementById('login-dropdown').classList.toggle('show'); }
+    function toggleShare(e) { e.stopPropagation(); document.getElementById('share-menu').classList.toggle('show'); }
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.btn-admin') && !event.target.closest('.dropdown-content')) {
+            document.getElementById('login-dropdown').classList.remove('show');
         }
-
-        function logInputBerita() {
-            let logHtml = newsLogs.map(log => `<div style="text-align:left; font-size:12px; margin-bottom:5px; border-bottom:1px solid #eee;"><b>${log.time}</b>: ${log.activity} (${log.user})</div>`).join('');
-            Swal.fire({
-                title: 'Log Activity Berita',
-                html: `<div style="max-height:300px; overflow-y:auto;">${logHtml || 'Belum ada aktivitas'}</div>`,
-                confirmButtonText: 'Tutup',
-                confirmButtonColor: var(--primary)
-            });
+        if (!event.target.matches('.btn-share')) {
+            document.getElementById('share-menu').classList.remove('show');
         }
+    }
 
-        function tambahAdmin() {
-            Swal.fire({
-                title: 'Tambah Administrator Baru',
-                html: `<input type="text" id="new-user" class="swal2-input" placeholder="Username Baru">
-                       <input type="password" id="new-pass" class="swal2-input" placeholder="Password Baru">`,
-                showCancelButton: true,
-                confirmButtonText: 'Simpan',
-                preConfirm: () => {
-                    const user = Swal.getPopup().querySelector('#new-user').value;
-                    const pass = Swal.getPopup().querySelector('#new-pass').value;
-                    if (!user || !pass) { Swal.showValidationMessage(`Silakan isi semua bidang`); }
-                    return { user: user, pass: pass };
+    function logInputBerita() {
+        let logHtml = newsLogs.map(log => `<div style="text-align:left; font-size:12px; margin-bottom:5px; border-bottom:1px solid #eee;"><b>${log.time}</b>: ${log.activity} (${log.user})</div>`).join('');
+        Swal.fire({
+            title: 'Log Activity Berita',
+            html: `<div style="max-height:300px; overflow-y:auto;">${logHtml || 'Belum ada aktivitas'}</div>`,
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#003366' // Perbaikan: String warna manual karena var(--primary) tidak bisa langsung di JS
+        });
+    }
+
+    function tambahAdmin() {
+        Swal.fire({
+            title: 'Tambah Administrator Baru',
+            html: `<input type="text" id="new-user" class="swal2-input" placeholder="Username Baru">
+                   <input type="password" id="new-pass" class="swal2-input" placeholder="Password Baru">`,
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            preConfirm: () => {
+                const user = Swal.getPopup().querySelector('#new-user').value;
+                const pass = Swal.getPopup().querySelector('#new-pass').value;
+                if (!user || !pass) { Swal.showValidationMessage(`Silakan isi semua bidang`); }
+                return { user: user, pass: pass };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire('Berhasil', `Admin ${result.value.user} telah ditambahkan ke database sistem.`, 'success');
+            }
+        });
+    }
+
+    // Fungsi Utama yang sebelumnya error karena urutan load
+    function bukaBerita(judul, tgl, isi) {
+        document.getElementById('popup-title').innerText = judul;
+        document.getElementById('popup-date').innerText = "Diterbitkan pada: " + tgl;
+        document.getElementById('popup-text').innerText = isi;
+        document.getElementById('modalBerita').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function tutupBerita() {
+        document.getElementById('modalBerita').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function shareWA() {
+        const judul = document.getElementById('popup-title').innerText;
+        const isi = document.getElementById('popup-text').innerText;
+        const kop = "Pondok Pemulihan Papua Informasi Event Kegiatan Jemaat";
+        const penutup = "dikirim melalui aplikasi SIPAPUA";
+        const text = encodeURIComponent(`*${kop}*\n\n*${judul}*\n\n${isi}\n\n_${penutup}_`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+
+    async function sharePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const judul = document.getElementById('popup-title').innerText;
+        const isi = document.getElementById('popup-text').innerText;
+        const tgl = document.getElementById('popup-date').innerText;
+        const imgW = 85; const imgH = 55;
+        doc.setFillColor(230, 230, 230);
+        doc.rect(15, 15, imgW, imgH, 'F'); doc.text("FOTO 1", 45, 45);
+        doc.rect(105, 15, imgW, imgH, 'F'); doc.text("FOTO 2", 135, 45);
+        doc.rect(15, 75, imgW, imgH, 'F'); doc.text("FOTO 3", 45, 105);
+        doc.rect(105, 75, imgW, imgH, 'F'); doc.text("FOTO 4", 135, 105);
+        doc.setFontSize(10); doc.setTextColor(120); doc.text(tgl, 15, 145);
+        doc.setFontSize(16); doc.setTextColor(0, 51, 102); doc.setFont(undefined, 'bold'); doc.text(judul, 15, 155);
+        doc.setFontSize(11); doc.setTextColor(50); doc.setFont(undefined, 'normal');
+        const splitContent = doc.splitTextToSize(isi, 180);
+        doc.text(splitContent, 15, 165);
+        doc.save(`Berita_${judul.replace(/\s+/g, '_')}.pdf`);
+    }
+
+    function hapusBerita() {
+        Swal.fire({
+            title: 'Verifikasi Administrator',
+            input: 'password',
+            inputPlaceholder: 'Masukkan Password Admin',
+            showCancelButton: true,
+            confirmButtonText: 'Hapus Berita',
+            confirmButtonColor: '#c0392b',
+            cancelButtonText: 'Batal',
+            backdrop: true,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (result.value === 'admin123') {
+                    newsLogs.push({ activity: "Menghapus Berita: " + document.getElementById('popup-title').innerText, user: "admin", time: new Date().toLocaleString() });
+                    Swal.fire('Berhasil', 'Berita telah dihapus.', 'success').then(() => { tutupBerita(); });
+                } else {
+                    Swal.fire('Gagal', 'Password salah!', 'error');
                 }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire('Berhasil', `Admin ${result.value.user} telah ditambahkan ke database sistem.`, 'success');
-                }
-            });
-        }
+            }
+        });
+    }
 
-        function bukaBerita(judul, tgl, isi) {
-            document.getElementById('popup-title').innerText = judul;
-            document.getElementById('popup-date').innerText = "Diterbitkan pada: " + tgl;
-            document.getElementById('popup-text').innerText = isi;
-            document.getElementById('modalBerita').style.display = 'block';
-            document.body.style.overflow = 'hidden';
+    function prosesLogin() {
+        const u = document.getElementById('user').value;
+        const p = document.getElementById('pass').value;
+        if(u === "admin" && p === "admin123") {
+            document.getElementById('halaman-depan').style.display = 'none';
+            document.querySelector('.admin-dropdown').style.display = 'none';
+            document.getElementById('portal-internal').style.display = 'block';
+        } else {
+            Swal.fire('Login Gagal', 'Username atau Password salah', 'error');
         }
-        function tutupBerita() {
-            document.getElementById('modalBerita').style.display = 'none';
-            document.body.style.overflow = 'auto';
+    }
+
+    function bukaScanner() {
+        document.getElementById('scanner-container').style.display = 'flex';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            dataScan.push({ nama: text, waktu: new Date().toLocaleTimeString() });
+            Swal.fire({ title: 'Tercatat: ' + text, timer: 1000, showConfirmButton: false, position: 'top' });
+        });
+    }
+
+    function tutupScanner() {
+        if(html5QrCode) {
+            html5QrCode.stop().then(() => { document.getElementById('scanner-container').style.display = 'none'; });
+        } else {
+            document.getElementById('scanner-container').style.display = 'none';
         }
-        function shareWA() {
-            const judul = document.getElementById('popup-title').innerText;
-            const isi = document.getElementById('popup-text').innerText;
-            const kop = "Pondok Pemulihan Papua Informasi Event Kegiatan Jemaat";
-            const penutup = "dikirim melalui aplikasi SIPAPUA";
-            const text = encodeURIComponent(`*${kop}*\n\n*${judul}*\n\n${isi}\n\n_${penutup}_`);
-            window.open(`https://wa.me/?text=${text}`, '_blank');
-        }
-        async function sharePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const judul = document.getElementById('popup-title').innerText;
-            const isi = document.getElementById('popup-text').innerText;
-            const tgl = document.getElementById('popup-date').innerText;
-            const imgW = 85; const imgH = 55;
-            doc.setFillColor(230, 230, 230);
-            doc.rect(15, 15, imgW, imgH, 'F'); doc.text("FOTO 1", 45, 45);
-            doc.rect(105, 15, imgW, imgH, 'F'); doc.text("FOTO 2", 135, 45);
-            doc.rect(15, 75, imgW, imgH, 'F'); doc.text("FOTO 3", 45, 105);
-            doc.rect(105, 75, imgW, imgH, 'F'); doc.text("FOTO 4", 135, 105);
-            doc.setFontSize(10); doc.setTextColor(120); doc.text(tgl, 15, 145);
-            doc.setFontSize(16); doc.setTextColor(0, 51, 102); doc.setFont(undefined, 'bold'); doc.text(judul, 15, 155);
-            doc.setFontSize(11); doc.setTextColor(50); doc.setFont(undefined, 'normal');
-            const splitContent = doc.splitTextToSize(isi, 180);
-            doc.text(splitContent, 15, 165);
-            doc.save(`Berita_${judul.replace(/\s+/g, '_')}.pdf`);
-        }
-        function hapusBerita() {
-            Swal.fire({
-                title: 'Verifikasi Administrator',
-                input: 'password',
-                inputPlaceholder: 'Masukkan Password Admin',
-                showCancelButton: true,
-                confirmButtonText: 'Hapus Berita',
-                confirmButtonColor: '#c0392b',
-                cancelButtonText: 'Batal',
-                backdrop: true,
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    if (result.value === 'admin123') {
-                        newsLogs.push({ activity: "Menghapus Berita: " + document.getElementById('popup-title').innerText, user: "admin", time: new Date().toLocaleString() });
-                        Swal.fire('Berhasil', 'Berita telah dihapus.', 'success').then(() => { tutupBerita(); });
-                    } else {
-                        Swal.fire('Gagal', 'Password salah!', 'error');
-                    }
-                }
-            });
-        }
-        function prosesLogin() {
-            const u = document.getElementById('user').value;
-            const p = document.getElementById('pass').value;
-            if(u === "admin" && p === "admin123") {
-                document.getElementById('halaman-depan').style.display = 'none';
-                document.querySelector('.admin-dropdown').style.display = 'none';
-                document.getElementById('portal-internal').style.display = 'block';
-            } else {
-                Swal.fire('Login Gagal', 'Username atau Password salah', 'error');
-            }
-        }
-        function bukaScanner() {
-            document.getElementById('scanner-container').style.display = 'flex';
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-                dataScan.push({ nama: text, waktu: new Date().toLocaleTimeString() });
-                Swal.fire({ title: 'Tercatat: ' + text, timer: 1000, showConfirmButton: false, position: 'top' });
-            });
-        }
-        function tutupScanner() {
-            if(html5QrCode) {
-                html5QrCode.stop().then(() => { document.getElementById('scanner-container').style.display = 'none'; });
-            } else {
-                document.getElementById('scanner-container').style.display = 'none';
-            }
-        }
-        function simpanLaporan() {
-            if(dataScan.length === 0) return Swal.fire('Data Kosong', 'Belum ada jemaat yang di-scan', 'warning');
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.setFontSize(18); doc.text("LAPORAN KEHADIRAN JEMAAT", 105, 20, { align: "center" });
-            const rows = dataScan.map((item, i) => [i+1, item.nama, item.waktu]);
-            doc.autoTable({ head: [['No', 'ID/Nama Jemaat', 'Waktu Presensi']], body: rows, startY: 30, theme: 'striped', headStyles: { fillColor: [0, 51, 102] } });
-            doc.save("Laporan_Absensi_SIPAPUA.pdf");
-        }
-    </script>
+    }
+
+    function simpanLaporan() {
+        if(dataScan.length === 0) return Swal.fire('Data Kosong', 'Belum ada jemaat yang di-scan', 'warning');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18); doc.text("LAPORAN KEHADIRAN JEMAAT", 105, 20, { align: "center" });
+        const rows = dataScan.map((item, i) => [i+1, item.nama, item.waktu]);
+        doc.autoTable({ head: [['No', 'ID/Nama Jemaat', 'Waktu Presensi']], body: rows, startY: 30, theme: 'striped', headStyles: { fillColor: [0, 51, 102] } });
+        doc.save("Laporan_Absensi_SIPAPUA.pdf");
+    }
+</script>
 </body>
 </html>
