@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --primary: #003366; --bg: #f8f9fa; }
+        :root { --primary: #003366; --bg: #f8f9fa; --danger: #c0392b; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; }
 
         .header {
@@ -20,7 +20,6 @@
             position: relative;
         }
 
-        /* DROPDOWN LOGIN */
         .admin-dropdown { position: relative; }
         .btn-admin {
             background: rgba(255,255,255,0.2); border: 1px solid white; color: white;
@@ -36,7 +35,6 @@
         .input-login { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .btn-masuk { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        /* LIST BERITA */
         #halaman-depan { padding: 20px; max-width: 800px; margin: auto; }
         .card-berita {
             background: white; border-radius: 12px; display: flex; 
@@ -47,7 +45,6 @@
         .img-area { width: 100px; min-width: 100px; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #999; }
         .info-berita { padding: 15px; }
 
-        /* POPUP BERITA DIGITAL */
         .modal-news {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 2000; overflow-y: auto;
@@ -56,17 +53,31 @@
             background: white; width: 90%; max-width: 600px; margin: 30px auto;
             border-radius: 15px; overflow: hidden; position: relative;
         }
-        .close-news { position: absolute; top: 15px; right: 15px; font-size: 24px; color: white; cursor: pointer; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10; }
         
         .news-gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; background: #eee; }
         .news-gallery img { width: 100%; height: 150px; object-fit: cover; }
         
-        .news-article { padding: 20px; }
-        .news-article h2 { margin-top: 0; color: var(--primary); font-size: 20px; }
-        .news-meta { font-size: 12px; color: #888; margin-bottom: 15px; display: block; }
-        .news-text { line-height: 1.6; font-size: 14px; color: #444; }
+        .news-article { padding: 20px; position: relative; }
+        .btn-close-modal { position: absolute; right: 20px; top: 20px; background: #eee; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        
+        .news-article h2 { margin-top: 0; color: var(--primary); font-size: 22px; padding-right: 40px; }
+        .news-meta { font-size: 12px; color: #888; margin-bottom: 10px; display: block; }
+        .news-text { line-height: 1.6; font-size: 14px; color: #444; margin-bottom: 25px; }
 
-        /* PORTAL INTERNAL */
+        .news-actions { display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px; align-items: center; }
+        .dropdown-share { position: relative; display: inline-block; }
+        .btn-share { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+        
+        .share-menu {
+            display: none; position: absolute; bottom: 40px; left: 0;
+            background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 8px; z-index: 10; min-width: 150px;
+        }
+        .share-menu button { width: 100%; text-align: left; padding: 10px; border: none; background: none; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+        .share-menu button:hover { background: #f9f9f9; }
+        .share-menu.show { display: block; }
+
         #portal-internal { display: none; padding: 20px; max-width: 900px; margin: auto; }
         .list-menu-admin { list-style: none; padding: 0; }
         .list-menu-admin li {
@@ -104,18 +115,29 @@
     </div>
 
     <div id="modalBerita" class="modal-news">
-        <span class="close-news" onclick="tutupBerita()">&times; Close</span>
         <div class="modal-news-content">
-            <div class="news-gallery">
-                <img src="https://via.placeholder.com/300x200?text=Foto+1" alt="img1">
-                <img src="https://via.placeholder.com/300x200?text=Foto+2" alt="img2">
-                <img src="https://via.placeholder.com/300x200?text=Foto+3" alt="img3">
-                <img src="https://via.placeholder.com/300x200?text=Foto+4" alt="img4">
+            <div id="news-gallery-container" class="news-gallery">
+                <img src="https://via.placeholder.com/300x200?text=Foto+1" alt="img1" id="img1">
+                <img src="https://via.placeholder.com/300x200?text=Foto+2" alt="img2" id="img2">
+                <img src="https://via.placeholder.com/300x200?text=Foto+3" alt="img3" id="img3">
+                <img src="https://via.placeholder.com/300x200?text=Foto+4" alt="img4" id="img4">
             </div>
             <div class="news-article">
+                <button class="btn-close-modal" onclick="tutupBerita()"><i class="fas fa-times"></i></button>
                 <span id="popup-date" class="news-meta"></span>
                 <h2 id="popup-title"></h2>
                 <div id="popup-text" class="news-text"></div>
+
+                <div class="news-actions">
+                    <div class="dropdown-share">
+                        <button class="btn-share" onclick="toggleShare()"><i class="fas fa-share-alt"></i> Bagikan</button>
+                        <div id="share-menu" class="share-menu">
+                            <button onclick="shareWA()"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                            <button onclick="sharePDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                        </div>
+                    </div>
+                    <button class="btn-delete" onclick="hapusBerita()"><i class="fas fa-trash"></i> Hapus</button>
+                </div>
             </div>
         </div>
     </div>
@@ -146,30 +168,93 @@
         let html5QrCode;
         let dataScan = [];
 
-        function toggleDropdown() {
-            document.getElementById('login-dropdown').classList.toggle('show');
-        }
+        function toggleDropdown() { document.getElementById('login-dropdown').classList.toggle('show'); }
+        function toggleShare() { document.getElementById('share-menu').classList.toggle('show'); }
 
         window.onclick = function(event) {
             if (!event.target.matches('.btn-admin') && !event.target.closest('.dropdown-content')) {
                 document.getElementById('login-dropdown').classList.remove('show');
             }
+            if (!event.target.matches('.btn-share')) {
+                document.getElementById('share-menu').classList.remove('show');
+            }
         }
 
-        // FUNGSI BERITA DIGITAL
         function bukaBerita(judul, tgl, isi) {
             document.getElementById('popup-title').innerText = judul;
             document.getElementById('popup-date').innerText = "Diterbitkan pada: " + tgl;
             document.getElementById('popup-text').innerText = isi;
             document.getElementById('modalBerita').style.display = 'block';
-            document.body.style.overflow = 'hidden'; // Lock scroll
+            document.body.style.overflow = 'hidden';
         }
 
         function tutupBerita() {
             document.getElementById('modalBerita').style.display = 'none';
             document.body.style.overflow = 'auto';
         }
-        
+
+        function shareWA() {
+            const judul = document.getElementById('popup-title').innerText;
+            const isi = document.getElementById('popup-text').innerText;
+            const kop = "Pondok pemulihan papua Informasi Event Kegiatan jemaat";
+            const penutup = "dikirim melalui aplikasi SIPAPUA";
+            
+            const text = encodeURIComponent(`*${kop}*\n\n*${judul}*\n\n${isi}\n\n_${penutup}_`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        async function sharePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const judul = document.getElementById('popup-title').innerText;
+            const isi = document.getElementById('popup-text').innerText;
+            const tgl = document.getElementById('popup-date').innerText;
+
+            // Header Gambar (4 Susun Foto sesuai tampilan)
+            // Menambahkan gambar placeholder ke PDF
+            doc.addImage("https://via.placeholder.com/300x200?text=Foto+1", 'JPEG', 15, 15, 85, 55);
+            doc.addImage("https://via.placeholder.com/300x200?text=Foto+2", 'JPEG', 105, 15, 85, 55);
+            doc.addImage("https://via.placeholder.com/300x200?text=Foto+3", 'JPEG', 15, 75, 85, 55);
+            doc.addImage("https://via.placeholder.com/300x200?text=Foto+4", 'JPEG', 105, 75, 85, 55);
+
+            // Redaksi di bawah (Mulai koordinat y = 145)
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(tgl, 15, 145);
+
+            doc.setFontSize(16);
+            doc.setTextColor(0, 51, 102); // Primary color
+            doc.setFont(undefined, 'bold');
+            doc.text(judul, 15, 155);
+
+            doc.setFontSize(11);
+            doc.setTextColor(50);
+            doc.setFont(undefined, 'normal');
+            const splitContent = doc.splitTextToSize(isi, 180);
+            doc.text(splitContent, 15, 165);
+
+            doc.save(`${judul}.pdf`);
+        }
+
+        function hapusBerita() {
+            Swal.fire({
+                title: 'Verifikasi Administrator',
+                input: 'password',
+                inputPlaceholder: 'Masukkan Password Admin',
+                showCancelButton: true,
+                confirmButtonText: 'Hapus Berita',
+                confirmButtonColor: '#c0392b',
+            }).then((result) => {
+                if (result.value === 'admin123') {
+                    Swal.fire('Berhasil', 'Berita telah dihapus.', 'success').then(() => {
+                        tutupBerita();
+                    });
+                } else if (result.value) {
+                    Swal.fire('Gagal', 'Password salah!', 'error');
+                }
+            });
+        }
+
         function prosesLogin() {
             document.getElementById('halaman-depan').style.display = 'none';
             document.querySelector('.admin-dropdown').style.display = 'none';
