@@ -11,175 +11,173 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f4f8; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: #333; }
+        :root { --primary: #003366; --accent: #2ecc71; --bg: #f8f9fa; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; }
 
         /* HEADER */
         .header {
             background: var(--primary); color: white; padding: 12px 20px;
             display: flex; justify-content: space-between; align-items: center;
-            position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: sticky; top: 0; z-index: 1000;
         }
 
-        .header-right { display: flex; align-items: center; gap: 15px; }
-        
-        .btn-admin-login {
-            background: rgba(255,255,255,0.2); border: 1px solid white;
-            color: white; padding: 6px 12px; border-radius: 20px;
-            cursor: pointer; font-size: 13px; transition: 0.3s;
+        .btn-admin {
+            background: rgba(255,255,255,0.2); border: 1px solid white; color: white;
+            padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 14px;
         }
-        .btn-admin-login:hover { background: white; color: var(--primary); }
 
-        /* LIST BERITA DIGITAL */
-        .main-content { padding: 20px; max-width: 600px; margin: auto; }
-        .news-item {
+        /* HALAMAN DEPAN: LIST BERITA */
+        #halaman-depan { padding: 20px; max-width: 800px; margin: auto; }
+        .card-berita {
             background: white; border-radius: 12px; display: flex; 
-            margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            cursor: pointer; border: 1px solid #e1e8ed;
+            margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;
         }
-        .news-img { width: 100px; height: 100px; object-fit: cover; background: #ddd; }
-        .news-info { padding: 12px; flex: 1; }
-        .news-info h4 { margin: 0 0 5px 0; color: var(--primary); font-size: 15px; }
-        .news-date { font-size: 11px; color: #999; background: #f0f0f0; padding: 2px 8px; border-radius: 10px; }
+        .img-placeholder { width: 120px; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #aaa; }
+        .info-berita { padding: 15px; }
+        .tag-tgl { font-size: 11px; color: #007bff; background: #e7f3ff; padding: 2px 8px; border-radius: 4px; }
 
-        /* LOGIN SLIDER (Pojok Kanan Atas) */
-        #login-slider {
-            position: fixed; top: 60px; right: -320px; width: 280px;
-            background: white; padding: 20px; border-radius: 15px 0 0 15px;
-            box-shadow: -5px 5px 15px rgba(0,0,0,0.1); transition: 0.4s; z-index: 999;
-        }
-        #login-slider.active { right: 0; }
-        .login-input {
-            width: 100%; padding: 10px; margin: 8px 0;
-            border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
-        }
-        .btn-masuk {
-            width: 100%; padding: 10px; background: var(--primary);
-            color: white; border: none; border-radius: 8px; cursor: pointer;
-        }
-
-        /* FLOATING ACTION BUTTON (SCAN) */
-        .fab-scan {
-            position: fixed; bottom: 25px; right: 25px;
-            background: var(--accent); color: white; width: 55px; height: 55px;
-            border-radius: 50%; display: flex; justify-content: center; align-items: center;
-            font-size: 22px; box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4); cursor: pointer; z-index: 100;
-        }
-
-        /* SCANNER OVERLAY */
-        #scanner-view {
+        /* MODAL LOGIN */
+        #modal-login {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; z-index: 2000; flex-direction: column;
+            background: rgba(0,0,0,0.5); z-index: 1100; justify-content: center; align-items: center;
         }
+        .box-login { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 350px; text-align: center; }
+        .input-login { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+        /* PORTAL INTERNAL (SETELAH LOGIN) */
+        #portal-internal { display: none; padding: 20px; max-width: 900px; margin: auto; }
+        .grid-menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-top: 20px; }
+        .menu-item {
+            background: white; padding: 20px; border-radius: 15px; text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; border-bottom: 4px solid var(--primary);
+        }
+        .menu-item i { font-size: 30px; color: var(--primary); margin-bottom: 10px; }
+
+        /* SCANNER VIEW */
+        #scanner-container { display: none; flex-direction: column; height: 100vh; background: #000; position: fixed; top: 0; left: 0; width: 100%; z-index: 2000; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <button style="background:none; border:none; color:white; cursor:pointer;" onclick="history.back()"><i class="fas fa-chevron-left"></i> KEMBALI</button>
-            <span style="font-weight: bold; letter-spacing: 1px;">EVENT JEMAAT</span>
-        </div>
-        <div class="header-right">
-            <button class="btn-admin-login" onclick="toggleLoginSlider()">
-                <i class="fas fa-lock"></i> Admin
-            </button>
-            <i class="fas fa-user-circle" style="font-size: 24px;"></i>
+        <div style="font-weight: bold;"><i class="fas fa-church"></i> PORTAL SIPAPUA</div>
+        <div id="header-nav">
+            <button class="btn-admin" id="btn-login-toggle" onclick="bukaLogin()"><i class="fas fa-lock"></i> Admin</button>
         </div>
     </div>
 
-    <div id="login-slider">
-        <h4 style="margin: 0 0 15px 0; text-align: center;">Portal Input Kegiatan</h4>
-        <input type="text" class="login-input" placeholder="Username">
-        <input type="password" class="login-input" placeholder="Password">
-        <button class="btn-masuk" onclick="handleLogin()">Masuk Portal</button>
-    </div>
-
-    <div class="main-content">
-        <div class="news-item">
-            <img src="https://via.placeholder.com/100" class="news-img" alt="Ibadah">
-            <div class="news-info">
-                <h4>IBADAH ARSO 1</h4>
-                <span class="news-date">2026-04-20</span>
+    <div id="halaman-depan">
+        <h3 style="margin-bottom: 20px;">INFORMASI EVENT JEMAAT</h3>
+        <div class="card-berita">
+            <div class="img-placeholder"><i class="fas fa-image"></i></div>
+            <div class="info-berita">
+                <span class="tag-tgl">20 Apr 2026</span>
+                <h4 style="margin: 8px 0;">IBADAH ARSO 1</h4>
+                <p style="font-size: 13px; color: #666; margin: 0;">Ibadah rutin di wilayah Arso 1 berjalan dengan hikmat...</p>
             </div>
         </div>
-        
-        <div class="news-item">
-            <img src="https://via.placeholder.com/100" class="news-img" alt="Rapat">
-            <div class="news-info">
-                <h4>RAPAT PANITIA PEMBANGUNAN</h4>
-                <span class="news-date">2026-04-21</span>
+        <div class="card-berita">
+            <div class="img-placeholder"><i class="fas fa-image"></i></div>
+            <div class="info-berita">
+                <span class="tag-tgl">21 Apr 2026</span>
+                <h4 style="margin: 8px 0;">RAPAT PANITIA PEMBANGUNAN</h4>
+                <p style="font-size: 13px; color: #666; margin: 0;">Pembahasan progres pembangunan gedung gereja baru.</p>
             </div>
         </div>
     </div>
 
-    <div class="fab-scan" onclick="startQR()">
-        <i class="fas fa-qrcode"></i>
+    <div id="modal-login" onclick="event.target == this ? tutupLogin() : ''">
+        <div class="box-login">
+            <h3 style="margin-top: 0;">Login Portal Admin</h3>
+            <input type="text" id="user" class="input-login" placeholder="Username">
+            <input type="password" id="pass" class="input-login" placeholder="Password">
+            <button class="input-login" style="background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer;" onclick="prosesLogin()">MASUK PORTAL</button>
+        </div>
     </div>
 
-    <div id="scanner-view">
-        <div style="padding: 15px; display: flex; justify-content: space-between; align-items: center; background: var(--primary);">
-            <h4 style="color: white; margin: 0;">Scan Kartu Jemaat</h4>
-            <button onclick="stopQR()" style="background:none; border:none; color:white; font-size: 24px;">&times;</button>
+    <div id="portal-internal">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Selamat Datang, Admin</h3>
+            <button onclick="logout()" style="color: red; border: none; background: none; cursor: pointer;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+        <hr>
+        <div class="grid-menu">
+            <div class="menu-item">
+                <i class="fas fa-edit"></i>
+                <div>Input Berita</div>
+            </div>
+            <div class="menu-item" onclick="bukaScanner()">
+                <i class="fas fa-qrcode"></i>
+                <div>Absensi Jemaat</div>
+            </div>
+            <div class="menu-item">
+                <i class="fas fa-users"></i>
+                <div>Data Jemaat</div>
+            </div>
+            <div class="menu-item">
+                <i class="fas fa-file-invoice"></i>
+                <div>Laporan</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scanner-container">
+        <div style="padding: 15px; color: white; display: flex; justify-content: space-between; align-items: center; background: var(--primary);">
+            <h4 style="margin: 0;">Scan Kehadiran</h4>
+            <button onclick="tutupScanner()" style="background:none; border:none; color:white; font-size: 24px;">&times;</button>
         </div>
         <div id="reader" style="flex: 1;"></div>
         <div style="padding: 20px; background: white; display: flex; gap: 10px;">
-            <button onclick="generatePDF()" style="flex: 1; padding: 12px; background: #e67e22; color: white; border: none; border-radius: 8px;">Simpan PDF</button>
-            <button onclick="syncData()" style="flex: 1; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px;">Sinkron</button>
+            <button onclick="simpanLaporan()" style="flex: 1; padding: 12px; background: #e67e22; color: white; border: none; border-radius: 8px;">Cetak Berita Acara (PDF)</button>
         </div>
     </div>
 
     <script>
-        let scanner;
-        let logAbsensi = [];
+        let html5QrCode;
+        let dataScan = [];
 
-        // FUNGSI TOGGLE LOGIN (MEMPERBAIKI ERROR REFERENCE)
-        function toggleLoginSlider() {
-            const slider = document.getElementById('login-slider');
-            slider.classList.toggle('active');
+        // LOGIN LOGIC
+        function bukaLogin() { document.getElementById('modal-login').style.display = 'flex'; }
+        function tutupLogin() { document.getElementById('modal-login').style.display = 'none'; }
+
+        function prosesLogin() {
+            // Simulasi login berhasil
+            Swal.fire('Berhasil', 'Selamat datang di Portal Event', 'success');
+            document.getElementById('halaman-depan').style.display = 'none';
+            document.getElementById('modal-login').style.display = 'none';
+            document.getElementById('btn-login-toggle').style.display = 'none';
+            document.getElementById('portal-internal').style.display = 'block';
         }
 
-        function handleLogin() {
-            Swal.fire('Sukses', 'Mengarahkan ke Portal Input...', 'success');
-            toggleLoginSlider();
+        function logout() {
+            location.reload();
         }
 
-        // FUNGSI QR CODE
-        function startQR() {
-            document.getElementById('scanner-view').style.display = 'flex';
-            scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+        // SCANNER LOGIC (HANYA BISA DIAKSES DARI DALAM PORTAL)
+        function bukaScanner() {
+            document.getElementById('scanner-container').style.display = 'flex';
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
                 if (navigator.vibrate) navigator.vibrate(100);
-                let nama = text.split('@')[0]; 
-                if(!logAbsensi.includes(nama)) {
-                    logAbsensi.push({nama: nama, jam: new Date().toLocaleTimeString()});
-                    Swal.fire({ title: 'Tercatat', text: nama, timer: 800, showConfirmButton: false });
-                }
+                dataScan.push({ nama: decodedText.split('@')[0], waktu: new Date().toLocaleTimeString() });
+                Swal.fire({ title: 'Terabsen!', text: decodedText, timer: 700, showConfirmButton: false });
             });
         }
 
-        function stopQR() {
-            if(scanner) scanner.stop().then(() => { document.getElementById('scanner-view').style.display = 'none'; });
+        function tutupScanner() {
+            if(html5QrCode) {
+                html5QrCode.stop().then(() => { document.getElementById('scanner-container').style.display = 'none'; });
+            }
         }
 
-        // REDAKSI BERITA DALAM PDF
-        function generatePDF() {
-            if(logAbsensi.length === 0) return Swal.fire('Kosong', 'Belum ada data scan', 'warning');
+        function simpanLaporan() {
+            if(dataScan.length === 0) return Swal.fire('Data Kosong', '', 'warning');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.setFontSize(16);
-            doc.text("BERITA ACARA KEHADIRAN EVENT", 105, 20, { align: "center" });
-            doc.setFontSize(10);
-            doc.text("Lokasi: Jayapura, Papua | Tanggal: " + new Date().toLocaleDateString(), 20, 30);
-            
-            const rows = logAbsensi.map((item, i) => [i+1, item.nama, item.jam, "HADIR"]);
-            doc.autoTable({ head: [['No', 'Nama Jemaat', 'Waktu Kehadiran', 'Keterangan']], body: rows, startY: 35 });
-            
+            doc.text("BERITA ACARA EVENT JEMAAT", 105, 20, { align: "center" });
+            const rows = dataScan.map((item, i) => [i+1, item.nama, item.waktu]);
+            doc.autoTable({ head: [['No', 'Nama Jemaat', 'Jam Absen']], body: rows, startY: 30 });
             doc.save("Berita_Acara_Event.pdf");
-        }
-
-        function syncData() {
-            Swal.fire('Sinkron', 'Data berhasil dikirim ke portal jemaat', 'success');
         }
     </script>
 </body>
