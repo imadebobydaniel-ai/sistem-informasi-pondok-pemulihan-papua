@@ -141,225 +141,140 @@
     <div id="newsList"></div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove, get, set, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-    // --- CONFIG FIREBASE (URL SUDAH DISESUAIKAN BERDASARKAN LINK ANDA) ---
-    const firebaseConfig = {
-        apiKey: "AIzaSy...",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        databaseURL: "https://boby-apps-project-default-rtdb.firebaseio.com/", 
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const eventRef = ref(db, 'events');
-    const absenRef = ref(db, 'absensi_event');
-
-    onValue(eventRef, (snapshot) => {
-        const data = snapshot.val();
-        const list = [];
-        for (let id in data) { list.unshift({ id, ...data[id] }); }
-        window.currentEvents = list;
-        renderList(list);
-        updateLogActivity(list);
-    });
-
-    document.getElementById('btnSimpan').onclick = function() {
-        const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        const tgl = document.getElementById('tglEvent').value;
-        const isi = document.getElementById('isiEvent').value;
-
-        if(!nama || window.cloudinaryImages.length === 0) {
-            return Swal.fire('Peringatan', 'Nama kegiatan dan foto wajib diisi!', 'warning');
-        }
-
-        push(eventRef, {
-            nama, lokasi, tgl, isi,
-            fotos: window.cloudinaryImages,
-            createdAt: Date.now()
-        }).then(() => {
-            Swal.fire('Tersinkron', 'Data berhasil disimpan', 'success');
-            ['namaEvent','lokasiEvent','tglEvent','isiEvent','fotoEvent'].forEach(id => document.getElementById(id).value = "");
-            window.cloudinaryImages = [];
-            document.getElementById('uploadStatus').innerText = "";
-        }).catch(err => Swal.fire('Error', 'Koneksi Gagal: ' + err.message, 'error'));
-    };
-
-    window.prosesAbsenDigital = async function(userId) {
-        const now = Date.now();
-        const userAbsenRef = child(absenRef, userId);
-        
-        try {
-            const snapshot = await get(userAbsenRef);
-            if (snapshot.exists()) {
-                const lastAbsen = snapshot.val().last_timestamp;
-                const selisihJam = (now - lastAbsen) / (1000 * 60 * 60);
-                
-                if (selisihJam < 24) {
-                    return Swal.fire({ icon: 'error', title: 'Absen Tidak Boleh Dobel', text: 'Silahkan absen lagi besok.', confirmButtonColor: '#d33' });
-                }
-            }
-            
-            await set(userAbsenRef, { last_timestamp: now, date: new Date().toLocaleString() });
-            Swal.fire({ icon: 'success', title: 'Absen Berhasil', text: 'ID: ' + userId });
-            
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    window.hapusBerita = async function(id) {
-        const { value: pass } = await Swal.fire({ title: 'Sandi Admin', input: 'password' });
-        if (pass === 'admin123') { remove(ref(db, `events/${id}`)); }
-    };
-</script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxzllsbgi/image/upload";
-    const CLOUDINARY_PRESET = "sipapua_preset";
-    window.cloudinaryImages = [];
-    let html5QrCode;
+    // --- 1. DATA & STATE (DIPASANG DI WINDOW AGAR AMAN) ---
+    window.uploadedPhotos = window.uploadedPhotos || []; // Menampung hasil upload Cloudinary
+    let daftarAbsen = JSON.parse(localStorage.getItem('absensi_kegiatan')) || [];
 
-    document.getElementById('fotoEvent').onchange = async function(e) {
-        const files = Array.from(e.target.files);
-        const statusLabel = document.getElementById('uploadStatus');
-        statusLabel.innerText = "⏳ Mengunggah...";
+    // --- 2. LOGIKA SCANNER & ABSENSI (ANTI-DOBEL) ---
+    function onScanSuccess(decodedText) {
+        // Asumsi decodedText berisi Nama Jemaat
+        const namaJemaat = decodedText.trim();
         
-        try {
-            for (let file of files) {
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("upload_preset", CLOUDINARY_PRESET);
-                const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-                const data = await res.json();
-                if(data.secure_url) window.cloudinaryImages.push(data.secure_url);
-            }
-            statusLabel.innerText = "✅ " + window.cloudinaryImages.length + " Foto siap.";
-        } catch (err) { 
-            statusLabel.innerText = "❌ Gagal Upload";
-            Swal.fire('Error', 'Gagal kirim gambar ke server', 'error');
-        }
-    };
+        // Cek apakah sudah absen hari ini/di kegiatan ini
+        const sudahAbsen = daftarAbsen.some(data => data.nama === namaJemaat);
 
-    function toggleLoginSlider() {
-        const box = document.getElementById('loginBox');
-        box.style.display = (box.style.display === "block") ? "none" : "block";
-    }
-
-    function togglePassword() {
-        const pInput = document.getElementById('passAdmin');
-        pInput.type = (pInput.type === "password") ? "text" : "password";
-    }
-
-    function loginEvent() {
-        const u = document.getElementById('userAdmin').value;
-        const p = document.getElementById('passAdmin').value;
-        if(u === "admin" && p === "admin123") {
-            document.getElementById('adminSection').style.display = 'block';
-            document.getElementById('newsList').style.display = 'none';
-            document.getElementById('loginBox').style.display = 'none';
-            document.getElementById('btnToggle').style.display = 'none';
-            document.getElementById('btnPortalBack').style.display = 'none';
-            document.getElementById('btnBack').style.display = 'flex';
+        if (sudahAbsen) {
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Getar peringatan
+            Swal.fire('Error', `Tidak bisa absen dobel! ${namaJemaat} sudah tercatat.`, 'error');
         } else {
-            Swal.fire('Gagal', 'Akses Ditolak', 'error');
-        }
-    }
-
-    function renderList(list) {
-        const container = document.getElementById('newsList');
-        container.innerHTML = list.map(item => `
-            <div class="event-item" onclick="detailEvent('${item.id}')">
-                <img src="${item.fotos ? item.fotos[0] : ''}" class="event-thumb">
-                <div class="event-content">
-                    <h3>${item.nama}</h3>
-                    <div class="date-badge"><i class="fas fa-calendar"></i> ${item.tgl}</div>
-                </div>
-            </div>`).join('');
-    }
-
-    function detailEvent(id) {
-        const item = window.currentEvents.find(x => x.id === id);
-        if(!item) return;
-        let photoHTML = item.fotos.length > 1 ? `<div class="image-grid">` + item.fotos.map(img => `<img src="${img}">`).join('') + `</div>` : `<img src="${item.fotos[0]}" class="single-image">`;
-        Swal.fire({
-            title: item.nama,
-            html: `<div style="text-align:left;">${photoHTML}<p><b>Lokasi:</b> ${item.lokasi}</p><p class="news-text-large">${item.isi}</p></div>`,
-            width: '95%', confirmButtonText: 'TUTUP', confirmButtonColor: '#d33'
-        });
-    }
-
-    function updateLogActivity(list) {
-        const logBox = document.getElementById('logContent');
-        logBox.innerHTML = list.map(item => `
-            <div class="log-item">
-                <span>${item.nama}</span>
-                <button onclick="hapusBerita('${item.id}')" style="border:none; color:red; background:none;"><i class="fas fa-trash"></i></button>
-            </div>`).join('');
-    }
-
-    function startScanner() {
-        document.getElementById('reader').style.display = 'block';
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-            html5QrCode.stop();
-            document.getElementById('reader').style.display = 'none';
-            window.prosesAbsenDigital(decodedText); 
-        });
-    }
-
-    function shareWhatsApp() {
-        const nama = document.getElementById('namaEvent').value;
-        const lokasi = document.getElementById('lokasiEvent').value;
-        const isi = document.getElementById('isiEvent').value;
-        if(!nama) return Swal.fire('Info', 'Isi data terlebih dahulu', 'info');
-        
-        const teks = `*EVENT JEMAAT*\n*Kegiatan:* ${nama}\n*Lokasi:* ${lokasi}\n\n${isi}`;
-        const encodedText = encodeURIComponent(teks);
-        const url = /Android|iPhone|iPad/i.test(navigator.userAgent) 
-                    ? `whatsapp://send?text=${encodedText}` 
-                    : `https://web.whatsapp.com/send?text=${encodedText}`;
-        
-        window.location.href = url;
-    }
-
-    async function generatePDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const nama = document.getElementById('namaEvent').value || "Event";
-        const fotos = window.cloudinaryImages;
-
-        if(fotos.length === 0) return Swal.fire('Info', 'Wajib ada foto untuk PDF', 'info');
-
-        Swal.fire({ title: 'Menyiapkan PDF...', didOpen: () => Swal.showLoading() });
-
-        doc.text("LAPORAN EVENT", 20, 20);
-        doc.text("Kegiatan: " + nama, 20, 30);
-        
-        let y = 40;
-        for(let url of fotos) {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.src = url;
-            await new Promise(res => {
-                img.onload = () => {
-                    if(y > 220) { doc.addPage(); y = 20; }
-                    doc.addImage(img, 'JPEG', 20, y, 80, 60);
-                    y += 70;
-                    res();
-                }
+            if (navigator.vibrate) navigator.vibrate(100); // Getar sukses
+            
+            // Tambahkan ke daftar
+            const waktu = new Date().toLocaleTimeString();
+            daftarAbsen.push({ nama: namaJemaat, jam: waktu });
+            
+            // Simpan & Update Tampilan
+            localStorage.setItem('absensi_kegiatan', JSON.stringify(daftarAbsen));
+            updateCounter();
+            
+            Swal.fire({
+                title: 'Berhasil Absen',
+                text: `Selamat datang, ${namaJemaat}`,
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
             });
         }
-        doc.save(nama + ".pdf");
-        Swal.close();
     }
-</script>
-</body>
+
+    // --- 3. HITUNG & TAMPILKAN POPUP NAMA ---
+    function updateCounter() {
+        const counterEl = document.getElementById('total-absen');
+        if (counterEl) counterEl.innerText = daftarAbsen.length;
+    }
+
+    function lihatDetailAbsen() {
+        if (daftarAbsen.length === 0) {
+            Swal.fire('Info', 'Belum ada jemaat yang absen.', 'info');
+            return;
+        }
+
+        let listHtml = '<ul style="text-align:left; max-height:300px; overflow-y:auto;">';
+        daftarAbsen.forEach((d, i) => {
+            listHtml += `<li><b>${i+1}. ${d.nama}</b> <small style="color:gray;">(${d.jam})</small></li>`;
+        });
+        listHtml += '</ul>';
+
+        Swal.fire({
+            title: 'Daftar Jemaat Hadir',
+            html: listHtml,
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#003366'
+        });
+    }
+
+    // --- 4. SISTEM PUBLISH BERITA (ANTI-EROR "WAJIB DIISI") ---
+    // PENTING: Panggil fungsi ini saat file di-upload di portal admin
+    async function uploadKeCloudinary(fileInput) {
+        const files = fileInput.files;
+        if (files.length === 0) return;
+
+        Swal.fire({ title: 'Mengupload Foto...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        for (let file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', 'sipapua_preset'); // SESUAIKAN PRESET ANDA
+
+            try {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/dxzllsbgj/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.secure_url) {
+                    window.uploadedPhotos.push(data.secure_url);
+                    console.log("Berhasil upload:", data.secure_url);
+                }
+            } catch (err) {
+                console.error("Upload gagal", err);
+            }
+        }
+        Swal.close();
+        Swal.fire('Sukses', `${files.length} Foto berhasil diproses.`, 'success');
+    }
+
+    function simpanKeCloud() {
+        const namaKegiatan = document.getElementById('inputNamaKegiatan').value;
+        const isiBerita = document.getElementById('inputIsiBerita').value;
+
+        debugLog("Cek Data:", { nama: namaKegiatan, foto: window.uploadedPhotos });
+
+        // Validasi Ketat
+        if (!namaKegiatan || namaKegiatan.trim() === "") {
+            Swal.fire('Peringatan', 'Nama kegiatan wajib diisi!', 'warning');
+            return;
+        }
+        
+        if (window.uploadedPhotos.length === 0) {
+            Swal.fire('Peringatan', 'Foto belum diupload atau gagal diproses!', 'warning');
+            return;
+        }
+
+        // Jika lolos validasi, simpan ke localStorage Berita
+        const dataBerita = {
+            nama: namaKegiatan,
+            isi: isiBerita,
+            tgl: new Date().toLocaleDateString('id-ID'),
+            urls: window.uploadedPhotos,
+            totalHadir: daftarAbsen.length
+        };
+
+        let dbBerita = JSON.parse(localStorage.getItem('beritaJemaat')) || [];
+        dbBerita.unshift(dataBerita);
+        localStorage.setItem('beritaJemaat', JSON.stringify(dbBerita));
+
+        Swal.fire('Berhasil', 'Berita & Absensi telah dipublikasikan!', 'success').then(() => {
+            window.location.href = "rubrik-berita.html";
+        });
+    }
+
+    function debugLog(msg, data) {
+        console.log(`[SYSTEM] ${msg}`, data);
+    }
+</script></body>
 </html>
