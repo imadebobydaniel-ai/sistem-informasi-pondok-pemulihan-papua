@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portal Jemaat - SIPAPUA</title>
+    <title>EVENT JEMAAT - SIPAPUA</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -18,7 +18,6 @@
             background: var(--primary); color: white; padding: 12px 20px;
             display: flex; justify-content: space-between; align-items: center;
             position: relative; z-index: 100;
-            /* Outline padding atas warna emas */
             border-top: 5px solid var(--gold);
         }
 
@@ -39,16 +38,13 @@
 
         #halaman-depan { padding: 20px; max-width: 800px; margin: auto; }
         
-        /* Outline container list berita warna emas */
         .card-berita {
             background: white; border-radius: 12px; display: flex; 
             margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;
             cursor: pointer; border: 2px solid var(--gold);
-            /* Efek transisi untuk hover */
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        /* Efek hover: bergeser ke atas, kembali ke posisi semula jika tidak disentuh */
         .card-berita:hover { 
             transform: translateY(-8px); 
             box-shadow: 0 8px 15px rgba(0,0,0,0.2); 
@@ -104,7 +100,7 @@
 <body>
 
     <div class="header">
-        <div><i class="fas fa-church"></i> PORTAL SIPAPUA</div>
+        <div><i class="fas fa-church"></i> INFO EVENT JEMAAT</div>
         <div class="admin-dropdown">
             <button class="btn-admin" onclick="toggleDropdown()"><i class="fas fa-lock"></i> Admin <i class="fas fa-caret-down"></i></button>
             <div id="login-dropdown" class="dropdown-content">
@@ -160,10 +156,11 @@
             <button onclick="location.reload()" style="border:none; background:none; color:red; cursor:pointer; font-weight:bold;">Logout</button>
         </div>
         <ul class="list-menu-admin">
-            <li><i class="fas fa-edit"></i> Input Berita</li>
+            <li onclick="logInputBerita()"><i class="fas fa-history"></i> Log Activity Input Berita</li>
+            <li onclick="tambahAdmin()"><i class="fas fa-user-plus"></i> Tambah Administrator</li>
             <li onclick="bukaScanner()"><i class="fas fa-qrcode"></i> Absensi Jemaat</li>
-            <li><i class="fas fa-users"></i> Data Jemaat</li>
-            <li><i class="fas fa-file-pdf"></i> Laporan</li>
+            <li style="display: none;"><i class="fas fa-users"></i> Data Jemaat</li>
+            <li style="display: none;"><i class="fas fa-file-pdf"></i> Laporan</li>
         </ul>
     </div>
 
@@ -179,6 +176,9 @@
     <script>
         let html5QrCode;
         let dataScan = [];
+        let newsLogs = [
+            { activity: "Publikasi Berita: IBADAH ARSO 1", user: "admin", time: "20 Apr 2026, 09:00" }
+        ];
 
         function toggleDropdown() { document.getElementById('login-dropdown').classList.toggle('show'); }
         function toggleShare(e) { e.stopPropagation(); document.getElementById('share-menu').classList.toggle('show'); }
@@ -190,6 +190,37 @@
                 document.getElementById('share-menu').classList.remove('show');
             }
         }
+
+        function logInputBerita() {
+            let logHtml = newsLogs.map(log => `<div style="text-align:left; font-size:12px; margin-bottom:5px; border-bottom:1px solid #eee;"><b>${log.time}</b>: ${log.activity} (${log.user})</div>`).join('');
+            Swal.fire({
+                title: 'Log Activity Berita',
+                html: `<div style="max-height:300px; overflow-y:auto;">${logHtml || 'Belum ada aktivitas'}</div>`,
+                confirmButtonText: 'Tutup',
+                confirmButtonColor: var(--primary)
+            });
+        }
+
+        function tambahAdmin() {
+            Swal.fire({
+                title: 'Tambah Administrator Baru',
+                html: `<input type="text" id="new-user" class="swal2-input" placeholder="Username Baru">
+                       <input type="password" id="new-pass" class="swal2-input" placeholder="Password Baru">`,
+                showCancelButton: true,
+                confirmButtonText: 'Simpan',
+                preConfirm: () => {
+                    const user = Swal.getPopup().querySelector('#new-user').value;
+                    const pass = Swal.getPopup().querySelector('#new-pass').value;
+                    if (!user || !pass) { Swal.showValidationMessage(`Silakan isi semua bidang`); }
+                    return { user: user, pass: pass };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('Berhasil', `Admin ${result.value.user} telah ditambahkan ke database sistem.`, 'success');
+                }
+            });
+        }
+
         function bukaBerita(judul, tgl, isi) {
             document.getElementById('popup-title').innerText = judul;
             document.getElementById('popup-date').innerText = "Diterbitkan pada: " + tgl;
@@ -241,6 +272,7 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     if (result.value === 'admin123') {
+                        newsLogs.push({ activity: "Menghapus Berita: " + document.getElementById('popup-title').innerText, user: "admin", time: new Date().toLocaleString() });
                         Swal.fire('Berhasil', 'Berita telah dihapus.', 'success').then(() => { tutupBerita(); });
                     } else {
                         Swal.fire('Gagal', 'Password salah!', 'error');
