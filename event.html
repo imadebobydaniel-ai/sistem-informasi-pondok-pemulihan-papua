@@ -174,61 +174,81 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
     // --- 1. KONFIGURASI ---
     const CLOUDINARY_CLOUD_NAME = "dxzllsbgj";
     const CLOUDINARY_UPLOAD_PRESET = "sipapua_preset";
     const ADMIN_PASSWORD = "admin123"; 
 
-    let savedNews = JSON.parse(localStorage.getItem('beritaJemaat')) || [];
+    // Fungsi Aman untuk mengambil data (Pencegahan Freeze di Incognito)
+    function loadDataSafe() {
+        try {
+            const data = localStorage.getItem('beritaJemaat');
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.warn("Akses LocalStorage diblokir. Menggunakan memori sementara.");
+            return [];
+        }
+    }
+
+    let savedNews = loadDataSafe();
 
     // Pastikan DOM siap sebelum menjalankan fungsi
     document.addEventListener('DOMContentLoaded', () => {
         refreshTampilanBerita();
         
-        // Pastikan modal tertutup saat awal agar tidak menghalangi klik (Anti-Freeze)
+        // Pastikan modal tertutup saat awal agar tidak menghalangi klik
         const modal = document.getElementById('modalBerita');
         if(modal) modal.style.display = 'none';
     });
 
-    // --- 2. REFRESH TAMPILAN (PERBAIKAN FUNGSI KLIK) ---
+    // --- 2. REFRESH TAMPILAN (OPTIMASI HP & KLIK) ---
     function refreshTampilanBerita() {
         const list = document.getElementById('list-berita-jemaat');
         if (!list) return;
         list.innerHTML = '';
 
-        if (savedNews.length === 0) {
+        // Ambil data terbaru dari memori lokal perangkat tersebut
+        const currentData = loadDataSafe(); 
+
+        if (currentData.length === 0) {
             list.innerHTML = `
                 <div class="card-berita" style="cursor: default;">
                     <div class="img-area" style="background:#f0f0f0; display:flex; align-items:center; justify-content:center;">
                         <i class="fas fa-info-circle" style="color:#ccc; font-size:24px;"></i>
                     </div>
-                    <div class="info-berita"><h4>Belum Ada Berita</h4><p>Silahkan input berita baru melalui portal admin.</p></div>
+                    <div class="info-berita">
+                        <h4>Belum ada berita di perangkat ini</h4>
+                        <p style="font-size: 11px; color: #888;">Silahkan input berita baru melalui portal admin.</p>
+                    </div>
                 </div>`;
             return;
         }
 
-        savedNews.forEach((data, index) => {
+        currentData.forEach((data) => {
             const card = document.createElement('div');
             card.className = 'card-berita';
-            card.style.cursor = 'pointer'; // Menandakan bisa diklik
+            card.style.cursor = 'pointer';
             
             const d = new Date(data.tgl);
             const dateStr = d.toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
             
-            const hasImage = data.urls && data.urls.length > 0;
-            const imgHtml = hasImage 
-                ? `<img src="${data.urls[0]}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\"fas fa-image\"></i>'">` 
-                : `<div style="width:100%; height:100%; background:#003366; display:flex; align-items:center; justify-content:center;"><i class="fas fa-church" style="color:white; font-size:20px;"></i></div>`;
+            // Optimasi Gambar untuk HP (Lazy Load)
+            const thumb = (data.urls && data.urls.length > 0) ? data.urls[0] : '';
+            const imgHtml = thumb 
+                ? `<img src="${thumb}" loading="lazy" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\"fas fa-image\"></i>'">` 
+                : `<div style="background:#003366; height:100%; display:flex; align-items:center; justify-content:center;"><i class="fas fa-church" style="color:white; font-size:20px;"></i></div>`;
 
             card.innerHTML = `
                 <div class="img-area">${imgHtml}</div>
                 <div class="info-berita">
-                    <h4 style="margin: 0; color: #003366;">${data.nama}</h4>
-                    <p style="font-size: 12px; color: #888; margin-top: 4px;"><i class="far fa-calendar-alt"></i> ${dateStr}</p>
+                    <h4 style="margin: 0; font-size: 14px; color: #003366;">${data.nama}</h4>
+                    <p style="font-size: 11px; color: #888; margin-top: 4px;"><i class="far fa-calendar-alt"></i> ${dateStr}</p>
                 </div>`;
 
-            // Gunakan addEventListener untuk menghindari konflik klik
+            // Event Klik yang aman
             card.addEventListener('click', (e) => {
                 e.preventDefault();
                 bukaBerita(data);
@@ -238,7 +258,7 @@
         });
     }
 
-    // --- 3. LOGIKA MODAL, WA & PDF (FIXED) ---
+    // --- 3. LOGIKA MODAL, WA & PDF ---
     function bukaBerita(data) {
         const modal = document.getElementById('modalBerita');
         if(!modal) return;
@@ -250,12 +270,11 @@
         document.getElementById('popup-date').innerText = "Diterbitkan: " + dateStr;
         document.getElementById('popup-text').innerText = data.isi;
         
-        // Update Subtema & Lokasi jika ada elemennya
         const subEl = document.getElementById('popup-subtheme');
         if(subEl) subEl.innerText = data.subtema || '';
         
         const locEl = document.getElementById('popup-location');
-        if(locEl) locEl.querySelector('span').innerText = data.lokasi || '';
+        if(locEl) locEl.querySelector('span').innerText = data.lokasi || '-';
 
         const gallery = document.getElementById('news-gallery-container');
         if(gallery) {
@@ -271,10 +290,10 @@
             } else { gallery.style.display = 'none'; }
         }
 
-        // --- GLOBAL FUNCTIONS UNTUK TOMBOL ---
+        // Fungsi Global untuk Tombol Share
         window.bagikanWA = () => {
             const linkAplikasi = window.location.href;
-            const pesan = `*INFO EVENT JEMAAT*\n\n*Kegiatan:* ${data.nama}\n*Lokasi:* ${data.lokasi || '-'}\n*Tanggal:* ${dateStr}\n\n${data.isi}\n\nLihat selengkapnya di: ${linkAplikasi}`;
+            const pesan = `*INFO EVENT JEMAAT*\n\n*Kegiatan:* ${data.nama}\n*Lokasi:* ${data.lokasi || '-'}\n*Tanggal:* ${dateStr}\n\n${data.isi}\n\nLihat di: ${linkAplikasi}`;
             window.open(`https://wa.me/?text=${encodeURIComponent(pesan)}`, '_blank');
         };
 
@@ -284,30 +303,26 @@
             doc.setFont("helvetica", "bold");
             doc.text("INFO EVENT JEMAAT", 105, 15, null, null, "center");
             doc.line(10, 20, 200, 20);
-            
             doc.setFontSize(14);
             doc.text(data.nama, 10, 30);
-            
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
             doc.text(`Lokasi  : ${data.lokasi || '-'}`, 10, 38);
             doc.text(`Tanggal : ${dateStr}`, 10, 44);
-            
             doc.text("Deskripsi Kegiatan:", 10, 55);
             const splitContent = doc.splitTextToSize(data.isi, 180);
             doc.text(splitContent, 10, 62);
-            
             doc.save(`Berita_${data.nama.replace(/\s+/g, '_')}.pdf`);
         };
 
         modal.style.display = 'block';
-        document.body.style.overflow = 'hidden'; // Kunci scroll latar belakang
+        document.body.style.overflow = 'hidden';
     }
 
     function tutupBerita() {
         const modal = document.getElementById('modalBerita');
         if(modal) modal.style.display = 'none';
-        document.body.style.overflow = 'auto'; // Aktifkan kembali scroll
+        document.body.style.overflow = 'auto';
     }
 
     // --- 4. PORTAL INPUT ---
@@ -330,7 +345,7 @@
                 const nama = document.getElementById('nb-nama').value;
                 const tgl = document.getElementById('nb-tgl').value;
                 const isi = document.getElementById('nb-isi').value;
-                if (!nama || !tgl || !isi) return Swal.showValidationMessage("Judul, Tanggal, dan Isi wajib diisi!");
+                if (!nama || !tgl || !isi) return Swal.showValidationMessage("Wajib diisi!");
 
                 Swal.showLoading();
                 const files = document.getElementById('nb-foto').files;
@@ -352,7 +367,9 @@
         }).then(res => {
             if (res.isConfirmed) {
                 savedNews.unshift(res.value);
-                localStorage.setItem('beritaJemaat', JSON.stringify(savedNews));
+                try {
+                    localStorage.setItem('beritaJemaat', JSON.stringify(savedNews));
+                } catch(e) { console.error("Gagal simpan ke LocalStorage"); }
                 refreshTampilanBerita();
                 Swal.fire("Sukses", "Berita berhasil diterbitkan", "success");
             }
