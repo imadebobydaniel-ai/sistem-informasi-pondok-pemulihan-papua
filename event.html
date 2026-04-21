@@ -11,13 +11,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --primary: #003366; --bg: #f8f9fa; --danger: #c0392b; }
+        :root { --primary: #003366; --bg: #f8f9fa; --danger: #c0392b; --gold: #ffd700; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; }
 
         .header {
             background: var(--primary); color: white; padding: 12px 20px;
             display: flex; justify-content: space-between; align-items: center;
             position: relative; z-index: 100;
+            /* Outline padding atas warna emas */
+            border-top: 5px solid var(--gold);
         }
 
         .admin-dropdown { position: relative; }
@@ -36,16 +38,25 @@
         .btn-masuk { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
         #halaman-depan { padding: 20px; max-width: 800px; margin: auto; }
+        
+        /* Outline container list berita warna emas */
         .card-berita {
             background: white; border-radius: 12px; display: flex; 
             margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden;
-            cursor: pointer; transition: 0.2s;
+            cursor: pointer; border: 2px solid var(--gold);
+            /* Efek transisi untuk hover */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .card-berita:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        /* Efek hover: bergeser ke atas, kembali ke posisi semula jika tidak disentuh */
+        .card-berita:hover { 
+            transform: translateY(-8px); 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2); 
+        }
+
         .img-area { width: 100px; min-width: 100px; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #999; }
         .info-berita { padding: 15px; }
 
-        /* CRITICAL FIX: Z-INDEX diturunkan agar SweetAlert2 tampil di depan */
         .modal-news {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8); z-index: 1050; overflow-y: auto;
@@ -129,7 +140,6 @@
                 <span id="popup-date" class="news-meta"></span>
                 <h2 id="popup-title"></h2>
                 <div id="popup-text" class="news-text"></div>
-
                 <div class="news-actions">
                     <div class="dropdown-share">
                         <button class="btn-share" onclick="toggleShare(event)"><i class="fas fa-share-alt"></i> Bagikan</button>
@@ -171,12 +181,7 @@
         let dataScan = [];
 
         function toggleDropdown() { document.getElementById('login-dropdown').classList.toggle('show'); }
-        
-        function toggleShare(e) { 
-            e.stopPropagation();
-            document.getElementById('share-menu').classList.toggle('show'); 
-        }
-
+        function toggleShare(e) { e.stopPropagation(); document.getElementById('share-menu').classList.toggle('show'); }
         window.onclick = function(event) {
             if (!event.target.matches('.btn-admin') && !event.target.closest('.dropdown-content')) {
                 document.getElementById('login-dropdown').classList.remove('show');
@@ -185,7 +190,6 @@
                 document.getElementById('share-menu').classList.remove('show');
             }
         }
-
         function bukaBerita(judul, tgl, isi) {
             document.getElementById('popup-title').innerText = judul;
             document.getElementById('popup-date').innerText = "Diterbitkan pada: " + tgl;
@@ -193,58 +197,38 @@
             document.getElementById('modalBerita').style.display = 'block';
             document.body.style.overflow = 'hidden';
         }
-
         function tutupBerita() {
             document.getElementById('modalBerita').style.display = 'none';
             document.body.style.overflow = 'auto';
         }
-
         function shareWA() {
             const judul = document.getElementById('popup-title').innerText;
             const isi = document.getElementById('popup-text').innerText;
             const kop = "Pondok Pemulihan Papua Informasi Event Kegiatan Jemaat";
             const penutup = "dikirim melalui aplikasi SIPAPUA";
-            
             const text = encodeURIComponent(`*${kop}*\n\n*${judul}*\n\n${isi}\n\n_${penutup}_`);
             window.open(`https://wa.me/?text=${text}`, '_blank');
         }
-
         async function sharePDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const judul = document.getElementById('popup-title').innerText;
             const isi = document.getElementById('popup-text').innerText;
             const tgl = document.getElementById('popup-date').innerText;
-
-            // Placeholder gambar (Simulasi 4 Susun Foto)
             const imgW = 85; const imgH = 55;
             doc.setFillColor(230, 230, 230);
             doc.rect(15, 15, imgW, imgH, 'F'); doc.text("FOTO 1", 45, 45);
             doc.rect(105, 15, imgW, imgH, 'F'); doc.text("FOTO 2", 135, 45);
             doc.rect(15, 75, imgW, imgH, 'F'); doc.text("FOTO 3", 45, 105);
             doc.rect(105, 75, imgW, imgH, 'F'); doc.text("FOTO 4", 135, 105);
-
-            // Redaksi
-            doc.setFontSize(10);
-            doc.setTextColor(120);
-            doc.text(tgl, 15, 145);
-
-            doc.setFontSize(16);
-            doc.setTextColor(0, 51, 102);
-            doc.setFont(undefined, 'bold');
-            doc.text(judul, 15, 155);
-
-            doc.setFontSize(11);
-            doc.setTextColor(50);
-            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10); doc.setTextColor(120); doc.text(tgl, 15, 145);
+            doc.setFontSize(16); doc.setTextColor(0, 51, 102); doc.setFont(undefined, 'bold'); doc.text(judul, 15, 155);
+            doc.setFontSize(11); doc.setTextColor(50); doc.setFont(undefined, 'normal');
             const splitContent = doc.splitTextToSize(isi, 180);
             doc.text(splitContent, 15, 165);
-
             doc.save(`Berita_${judul.replace(/\s+/g, '_')}.pdf`);
         }
-
         function hapusBerita() {
-            // SweetAlert2 sekarang akan tampil di atas modal karena z-index fix
             Swal.fire({
                 title: 'Verifikasi Administrator',
                 input: 'password',
@@ -253,24 +237,20 @@
                 confirmButtonText: 'Hapus Berita',
                 confirmButtonColor: '#c0392b',
                 cancelButtonText: 'Batal',
-                backdrop: true, // Pastikan backdrop aktif
+                backdrop: true,
             }).then((result) => {
                 if (result.isConfirmed) {
-                    if (result.value === 'admin123') { // Ganti dengan password Anda
-                        Swal.fire('Berhasil', 'Berita telah dihapus.', 'success').then(() => {
-                            tutupBerita();
-                        });
+                    if (result.value === 'admin123') {
+                        Swal.fire('Berhasil', 'Berita telah dihapus.', 'success').then(() => { tutupBerita(); });
                     } else {
                         Swal.fire('Gagal', 'Password salah!', 'error');
                     }
                 }
             });
         }
-
         function prosesLogin() {
             const u = document.getElementById('user').value;
             const p = document.getElementById('pass').value;
-            
             if(u === "admin" && p === "admin123") {
                 document.getElementById('halaman-depan').style.display = 'none';
                 document.querySelector('.admin-dropdown').style.display = 'none';
@@ -279,7 +259,6 @@
                 Swal.fire('Login Gagal', 'Username atau Password salah', 'error');
             }
         }
-
         function bukaScanner() {
             document.getElementById('scanner-container').style.display = 'flex';
             html5QrCode = new Html5Qrcode("reader");
@@ -288,33 +267,20 @@
                 Swal.fire({ title: 'Tercatat: ' + text, timer: 1000, showConfirmButton: false, position: 'top' });
             });
         }
-
         function tutupScanner() {
             if(html5QrCode) {
-                html5QrCode.stop().then(() => { 
-                    document.getElementById('scanner-container').style.display = 'none'; 
-                });
+                html5QrCode.stop().then(() => { document.getElementById('scanner-container').style.display = 'none'; });
             } else {
                 document.getElementById('scanner-container').style.display = 'none';
             }
         }
-
         function simpanLaporan() {
             if(dataScan.length === 0) return Swal.fire('Data Kosong', 'Belum ada jemaat yang di-scan', 'warning');
-            
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.setFontSize(18);
-            doc.text("LAPORAN KEHADIRAN JEMAAT", 105, 20, { align: "center" });
-            
+            doc.setFontSize(18); doc.text("LAPORAN KEHADIRAN JEMAAT", 105, 20, { align: "center" });
             const rows = dataScan.map((item, i) => [i+1, item.nama, item.waktu]);
-            doc.autoTable({ 
-                head: [['No', 'ID/Nama Jemaat', 'Waktu Presensi']], 
-                body: rows, 
-                startY: 30,
-                theme: 'striped',
-                headStyles: { fillColor: [0, 51, 102] }
-            });
+            doc.autoTable({ head: [['No', 'ID/Nama Jemaat', 'Waktu Presensi']], body: rows, startY: 30, theme: 'striped', headStyles: { fillColor: [0, 51, 102] } });
             doc.save("Laporan_Absensi_SIPAPUA.pdf");
         }
     </script>
