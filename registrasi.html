@@ -51,9 +51,46 @@
         
         .dynamic-field { display: none; }
         .child-row { background: #f8f9fa; padding: 10px; border-radius: 10px; border-left: 4px solid #28a745; margin-bottom: 10px; }
+
+        /* --- FITUR BARU: ANIMASI MODAL LUPA PASSWORD --- */
+        .modal-show {
+            display: flex !important;
+            animation: fadeInModal 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeInModal {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-box { transition: transform 0.3s ease-out; }
+
+        .btn-next, .btn-prev { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+
+        .btn-next:hover { filter: brightness(1.1); box-shadow: 0 4px 12px rgba(0,123,255,0.3); }
     </style>
 </head>
 <body>
+
+<div id="forgot-password-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10001; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px);">
+    <div class="modal-box" style="transform: scale(0.9); transition: all 0.3s ease;">
+        <div style="background: #fff4e5; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+            <i class="fa-solid fa-key" style="font-size: 25px; color: #ffa000;"></i>
+        </div>
+        <h3 style="margin-bottom: 5px; color: #333;">Lupa Password?</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Masukkan email terdaftar untuk menerima link reset password.</p>
+        
+        <div class="form-group" style="text-align: left;">
+            <label>Alamat Email</label>
+            <input type="email" id="reset-email-input" placeholder="contoh@email.com">
+        </div>
+
+        <div class="btn-group">
+            <button type="button" class="btn-prev" onclick="closeForgotPassword()" style="background: #f1f1f1; color: #666;">BATAL</button>
+            <button type="button" class="btn-next" id="btnSendReset" onclick="processResetPassword()" style="background: #007bff;">KIRIM LINK</button>
+        </div>
+    </div>
+</div>
 
 <div id="custom-alert">
     <div class="modal-box">
@@ -211,6 +248,34 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // --- LOGIKA RESET PASSWORD ---
+    function openForgotPassword() {
+        const modal = document.getElementById("forgot-password-modal");
+        modal.classList.add("modal-show");
+    }
+
+    function closeForgotPassword() {
+        const modal = document.getElementById("forgot-password-modal");
+        modal.classList.remove("modal-show");
+        setTimeout(() => { modal.style.display = "none"; }, 300);
+    }
+
+    async function processResetPassword() {
+        const email = document.getElementById("reset-email-input").value.trim();
+        const btn = document.getElementById("btnSendReset");
+        if (!email) { alert("Mohon masukkan email Anda!"); return; }
+        btn.disabled = true; btn.innerText = "Mengirim...";
+        try {
+            await auth.sendPasswordResetEmail(email);
+            closeForgotPassword();
+            document.getElementById("custom-alert").style.display = "flex";
+        } catch (e) {
+            btn.disabled = false; btn.innerText = "KIRIM LINK";
+            if (e.code === 'auth/user-not-found') { alert("Email tidak terdaftar di sistem kami."); } 
+            else { alert("Terjadi kesalahan: " + e.message); }
+        }
+    }
+
     // LOGIKA GENERATE KOLOM ANAK
     function generateChildFields() {
         const container = document.getElementById("child_fields_container");
@@ -255,10 +320,8 @@
         } catch (e) { displayInput.value = `NIJ-PPP-${lokasi}-001-${new Date().getFullYear()}`; }
     }
 
-    // LOGIKA REGISTRASI DENGAN VALIDASI DUPLIKAT
     async function handleRegistrasi() {
         const btnSubmit = document.getElementById("btnSubmit");
-        
         const childNames = document.querySelectorAll(".child-name");
         const childGenders = document.querySelectorAll(".child-gender");
         let listAnak = [];
@@ -292,7 +355,6 @@
             dataAnak: listAnak
         };
 
-        // 1. Validasi Input Kosong
         if (!data.email || !data.pass || !data.nama || !data.hp || !data.lokasi) { 
             alert("Mohon lengkapi semua data wajib (Nama, Email, WhatsApp, dan Lokasi)!"); 
             return; 
@@ -302,23 +364,15 @@
         btnSubmit.innerText = "Mengecek Data...";
 
         try {
-            // 2. CEK APAKAH EMAIL SUDAH TERDAFTAR DI FIRESTORE
             const emailCheck = await db.collection("users").where("email", "==", data.email).get();
-            if (!emailCheck.empty) {
-                throw new Error("Maaf email atau no HP yang anda masukan sudah terdaftar");
-            }
+            if (!emailCheck.empty) { throw new Error("Maaf email atau no HP yang anda masukan sudah terdaftar"); }
 
-            // 3. CEK APAKAH NOMOR HP SUDAH TERDAFTAR DI FIRESTORE
             const hpCheck = await db.collection("users").where("whatsapp", "==", data.hp).get();
-            if (!hpCheck.empty) {
-                throw new Error("Maaf email atau no HP yang anda masukan sudah terdaftar");
-            }
+            if (!hpCheck.empty) { throw new Error("Maaf email atau no HP yang anda masukan sudah terdaftar"); }
 
-            // 4. PROSES REGISTRASI KE FIREBASE AUTH
             const userCredential = await auth.createUserWithEmailAndPassword(data.email, data.pass);
             await userCredential.user.sendEmailVerification();
             
-            // 5. SIMPAN DATA KE FIRESTORE
             await db.collection("users").doc(userCredential.user.uid).set({
                 uid: userCredential.user.uid, 
                 nama: data.nama, 
@@ -348,12 +402,8 @@
         } catch (e) { 
             btnSubmit.disabled = false; 
             btnSubmit.innerText = "FINALISASI & DAFTAR"; 
-            
-            if (e.code === 'auth/email-already-in-use') {
-                alert("Maaf email atau no HP yang anda masukan sudah terdaftar");
-            } else {
-                alert(e.message); 
-            }
+            if (e.code === 'auth/email-already-in-use') { alert("Maaf email atau no HP yang anda masukan sudah terdaftar"); } 
+            else { alert(e.message); }
         }
     }
 
