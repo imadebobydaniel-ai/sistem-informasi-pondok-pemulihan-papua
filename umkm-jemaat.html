@@ -64,7 +64,8 @@
             transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
-        .dropdown:hover .dropdown-content { 
+        /* Class khusus untuk memunculkan dropdown via Click */
+        .dropdown-content.show { 
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
@@ -139,10 +140,10 @@
 <div class="navbar">
     <h1><i class="fa-solid fa-store"></i> UMKM Jemaat</h1>
     <div class="dropdown">
-        <button class="dropbtn">
+        <button class="dropbtn" onclick="toggleMenu(event)">
             <i class="fa-solid fa-bars-staggered"></i> Menu UMKM
         </button>
-        <div class="dropdown-content">
+        <div id="myDropdown" class="dropdown-content">
             <a href="javascript:void(0)" onclick="bukaModal('modal-daftar')">
                 <i class="fa-solid fa-store"></i> Daftar UMKM Baru
             </a>
@@ -225,7 +226,31 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    function bukaModal(id) { document.getElementById(id).style.display = 'flex'; }
+    // FUNGSI DROPDOWN KLIK
+    function toggleMenu(event) {
+        event.stopPropagation();
+        document.getElementById("myDropdown").classList.toggle("show");
+    }
+
+    // Tutup dropdown jika klik di luar
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                var openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+
+    function bukaModal(id) { 
+        document.getElementById(id).style.display = 'flex'; 
+        // Tutup dropdown setelah pilih menu
+        document.getElementById("myDropdown").classList.remove("show");
+    }
+    
     function tutupModal() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
 
     function togglePassAdmin() {
