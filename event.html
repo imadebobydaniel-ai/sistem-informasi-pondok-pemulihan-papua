@@ -7,104 +7,91 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         :root { --primary: #003366; --accent: #2ecc71; --bg: #f0f2f5; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        input, textarea, select {
-           box-sizing: border-box; width: 100% !important; max-width: 100%;
-           margin-bottom: 12px; padding: 12px; border-radius: 8px;
-           border: 1px solid #ddd; font-size: 16px;
-        }
-
+        /* HEADER - Pastikan tombol kembali dan login tetap terlihat */
         .header { 
-            background: var(--primary); color: white; padding: 35px 15px 15px 15px; 
-            display: flex; justify-content: center; align-items: center; 
+            background: var(--primary); color: white; padding: 10px 15px; 
+            display: flex; justify-content: space-between; align-items: center; 
             position: sticky; top: 0; z-index: 1000; border-bottom: 3px solid var(--accent); 
+            height: 70px; box-sizing: border-box;
         }
 
-        .nav-left { position: absolute; left: 15px; bottom: 15px; display: flex; gap: 10px; }
-        .nav-admin { position: absolute; right: 15px; bottom: 15px; }
-        .btn-toggle-login { background: var(--accent); color: white; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-header-back { 
+            border:none; background: rgba(255,255,255,0.15); color:white; 
+            padding: 8px 12px; border-radius: 20px; font-weight: bold; cursor: pointer;
+            font-size: 11px; display: flex; align-items: center;
+        }
+
+        .btn-toggle-login { background: var(--accent); color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; }
 
         .login-dropdown { 
-            display: none; position: absolute; top: 50px; right: 0; width: 240px; 
-            background: white; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid #eee; 
+            display: none; position: absolute; top: 75px; right: 15px; width: 250px; 
+            background: white; padding: 15px; border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 2000; color: #333;
         }
 
         .container { padding: 15px; max-width: 1200px; margin: auto; }
 
-        /* LIST BERITA: Layout Simetris & Responsif */
+        /* GRID BERITA SIMETRIS - Card diperkecil di desktop */
         #newsList { 
             display: grid; 
-            /* Desktop: 3 kolom maksimal, HP: 1 kolom */
             grid-template-columns: repeat(auto-fit, minmax(280px, 350px)); 
-            gap: 25px; 
-            padding: 20px 0;
-            justify-content: center; /* Membuat card tetap di tengah (simetris) */
-            width: 100%;
+            gap: 20px; padding: 20px 0; justify-content: center;
         }
         
         .news-card {
             background: white; border-radius: 12px; overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease;
-            cursor: pointer; display: flex; flex-direction: column;
-            width: 100%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); cursor: pointer;
+            display: flex; flex-direction: column; width: 100%;
         }
-        .news-card:hover { transform: translateY(-5px); }
-        .news-img { width: 100%; height: 180px; object-fit: cover; }
-        .news-body { padding: 15px; flex-grow: 1; }
-        .news-category { color: var(--accent); font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
-        .news-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); line-height: 1.4; margin-bottom: 8px; }
-        .news-meta { font-size: 0.75rem; color: #7f8c8d; display: flex; justify-content: space-between; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .news-img { width: 100%; height: 180px; object-fit: cover; background: #ddd; }
+        .news-body { padding: 15px; }
+        .news-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 5px 0; line-height: 1.3; }
 
         #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
-        .btn-action { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; color: white; }
-        .btn-header-back { border:none; background:#555; color:white; height: 38px; padding:0 15px; border-radius:19px; font-weight:bold; cursor:pointer; display: flex; align-items: center; font-size: 12px; }
-
-        /* Preview foto di admin agar tidak terlalu besar */
-        #uploadStatus img { max-width: 100px; border-radius: 5px; margin: 5px; }
+        
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        
+        .btn-wa { background: #25d366; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-pdf { background: var(--danger); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div class="nav-left">
-        <button id="btnPortalBack" class="btn-header-back" onclick="window.history.back()">
-            <i class="fas fa-chevron-left"></i> &nbsp;KEMBALI
-       </button>
-        <button id="btnBack" onclick="location.reload()" style="display:none; border:none; background:#d33; color:white; height: 38px; padding:0 20px; border-radius:19px; font-weight:bold; cursor:pointer;">LOGOUT</button>
+    <button class="btn-header-back" onclick="window.history.back()">
+        <i class="fas fa-chevron-left"></i> &nbsp;KEMBALI
+    </button>
+    <h1 style="font-size: 0.9rem; margin: 0; text-align: center;">EVENT JEMAAT</h1>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <button id="btnLogout" onclick="location.reload()" style="display:none; background:#d33; color:white; border:none; padding:6px 12px; border-radius:15px; font-weight:bold; cursor:pointer; font-size: 10px;">LOGOUT</button>
+        <button id="btnToggle" class="btn-toggle-login" onclick="toggleLoginSlider()">
+            <i class="fas fa-user-shield"></i>
+        </button>
     </div>
-    <h1 style="font-size: 1.1rem; margin: 0; letter-spacing: 1px;">EVENT JEMAAT</h1>
-    <div class="nav-admin">
-        <button id="btnToggle" class="btn-toggle-login" onclick="toggleLoginSlider()"><i class="fas fa-user-shield"></i></button>
-        <div id="loginBox" class="login-dropdown">
-            <span style="text-align:center; display:block; font-size:12px; font-weight:bold; color:var(--primary); margin-bottom:10px;">LOGIN ADMIN</span>
-            <input type="text" id="userAdmin" placeholder="Username">
-            <input type="password" id="passAdmin" placeholder="Password">
-            <button onclick="loginEvent()" style="width:100%; padding:10px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">MASUK</button>
-        </div>
+
+    <div id="loginBox" class="login-dropdown">
+        <h4 style="margin:0 0 10px 0; text-align:center; font-size: 14px;">LOGIN ADMIN</h4>
+        <input type="text" id="userAdmin" placeholder="Username">
+        <input type="password" id="passAdmin" placeholder="Password">
+        <button onclick="loginEvent()" style="width:100%; padding:10px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">MASUK</button>
     </div>
 </div>
 
 <div class="container">
     <div id="adminSection">
-       <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
+        <h3 style="margin-top: 0;"><i class="fas fa-plus-circle"></i> Posting Berita Baru</h3>
         <input type="text" id="namaEvent" placeholder="Nama Kegiatan">
         <input type="text" id="lokasiEvent" placeholder="Lokasi">
         <input type="date" id="tglEvent">
-        <textarea id="isiEvent" placeholder="Isi detail kegiatan..." rows="4"></textarea>
-        
-        <p style="font-size: 12px; margin: 0;">Upload Foto:</p>
-        <input type="file" id="fotoEvent" accept="image/*" multiple capture="environment">
-        <div id="uploadStatus"></div>
-
-        <button class="btn-action" style="background:var(--accent)" id="btnSimpan">SIMPAN & SINNKRONKAN</button>
+        <textarea id="isiEvent" placeholder="Tulis artikel berita di sini..." rows="5"></textarea>
+        <p style="font-size: 11px; color: #666; margin: 0 0 5px 0;">*ID Penulis akan otomatis sesuai login</p>
+        <button onclick="simpanEvent()" style="width:100%; padding:14px; background:var(--accent); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">PUBLIKASIKAN BERITA</button>
     </div>
-    
     <div id="newsList"></div>
 </div>
 
@@ -123,11 +110,17 @@
     const db = getDatabase(app);
     const eventRef = ref(db, 'events');
 
-    window.currentAdmin = null; 
+    window.currentAdmin = null;
     window.currentEvents = [];
-    window.cloudinaryImages = []; // Simulasi penampung URL foto
 
-    // === LOGIN & ADMIN ACCESS ===
+    // --- FORMAT TANGGAL INDONESIA (Tanggal Bulan Tahun) ---
+    const formatTglIndo = (dateStr) => {
+        if(!dateStr) return "-";
+        const opsi = { day: 'numeric', month: 'long', year: 'numeric' };
+        return new Date(dateStr).toLocaleDateString('id-ID', opsi);
+    };
+
+    // --- REGISTRASI FUNGSI GLOBAL ---
     window.toggleLoginSlider = () => {
         const box = document.getElementById('loginBox');
         box.style.display = box.style.display === 'block' ? 'none' : 'block';
@@ -136,143 +129,107 @@
     window.loginEvent = async () => {
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
-        let auth = false;
-
+        // Logic Login Anda
         if(u === "admin" && p === "admin123") {
             window.currentAdmin = "SuperAdmin";
-            auth = true;
-        } else {
-            const snap = await get(child(ref(db), `admin_users/${u}`));
-            if(snap.exists() && snap.val().password === p) {
-                window.currentAdmin = u;
-                auth = true;
-            }
-        }
-
-        if(auth) {
             document.getElementById('adminSection').style.display = 'block';
             document.getElementById('loginBox').style.display = 'none';
-            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('btnLogout').style.display = 'block';
             document.getElementById('btnToggle').style.display = 'none';
-            Swal.fire('Berhasil', `Halo, ${window.currentAdmin}`, 'success');
+            Swal.fire('Berhasil', `Selamat datang, ${u}`, 'success');
         } else {
-            Swal.fire('Gagal', 'Username/Password Salah', 'error');
+            Swal.fire('Gagal', 'Username/Password salah', 'error');
         }
     };
 
-    // === SIMPAN (ID Penulis Sesuai Login) ===
-    document.getElementById('btnSimpan').onclick = function() {
+    window.simpanEvent = () => {
         const nama = document.getElementById('namaEvent').value.trim();
-        if(!nama) return Swal.fire('Peringatan', 'Nama kegiatan wajib diisi', 'warning');
+        if(!nama) return Swal.fire('Peringatan', 'Judul berita wajib diisi', 'warning');
 
         push(eventRef, {
             nama: nama,
             lokasi: document.getElementById('lokasiEvent').value,
-            tgl: document.getElementById('tglEvent').value,
+            tgl: document.getElementById('tglEvent').value, // Simpan format standar YYYY-MM-DD
             isi: document.getElementById('isiEvent').value,
-            fotos: window.cloudinaryImages || [], 
-            createdBy: window.currentAdmin, // Menggunakan ID yang sedang login
+            createdBy: window.currentAdmin || "System",
             createdAt: Date.now()
         }).then(() => {
-            Swal.fire('Sukses', 'Berita Berhasil Terbit', 'success').then(() => location.reload());
+            Swal.fire('Sukses', 'Berita berhasil dipublikasikan', 'success').then(() => location.reload());
         });
     };
 
-    // === DETAIL & GENERATE PDF (FORMAT REDAKSI) ===
-    window.detailEvent = function(id) {
+    window.detailEvent = (id) => {
         const item = window.currentEvents.find(x => x.id === id);
-        if (!item) return;
+        if(!item) return;
 
         Swal.fire({
             title: item.nama,
             html: `
-                <div style="text-align: left; font-size: 14px;">
-                    <img src="${item.fotos[0] || ''}" style="width:100%; border-radius:10px; margin-bottom:15px;">
-                    <p><strong>Lokasi:</strong> ${item.lokasi || '-'}</p>
-                    <p><strong>Tanggal:</strong> ${item.tgl || '-'}</p>
+                <div style="text-align:left; font-size:14px;">
+                    <p><strong><i class="fas fa-map-marker-alt"></i> Lokasi:</strong> ${item.lokasi || '-'}</p>
+                    <p><strong><i class="fas fa-calendar"></i> Waktu:</strong> ${formatTglIndo(item.tgl)}</p>
                     <hr>
-                    <div style="white-space: pre-wrap;">${item.isi || ''}</div>
-                    <p style="font-size: 10px; color: #888; margin-top: 20px;">Penulis: ${item.createdBy || 'Unknown'}</p>
+                    <div style="white-space:pre-wrap; color: #333; line-height: 1.5;">${item.isi || 'Tidak ada artikel.'}</div>
+                    <p style="font-size:10px; color:#888; margin-top:20px; border-top: 1px dashed #ccc; padding-top: 10px;">ID Pemilik: ${item.createdBy}</p>
                 </div>
-                <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
-                    <button onclick="generatePDF('${id}')" style="background:var(--danger); color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;"><i class="fas fa-file-pdf"></i> CETAK PDF</button>
-                    <button onclick="hapusBerita('${id}')" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;"><i class="fas fa-trash"></i> HAPUS</button>
+                <div style="margin-top:20px; display:flex; gap:10px;">
+                    <button class="btn-wa" onclick="window.shareWA('${id}')"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                    <button class="btn-pdf" onclick="window.generatePDF('${id}')"><i class="fas fa-file-pdf"></i> PDF</button>
                 </div>
             `,
             showConfirmButton: false, showCloseButton: true, width: '95%'
         });
     };
 
-    window.generatePDF = async function(id) {
+    window.shareWA = (id) => {
         const item = window.currentEvents.find(x => x.id === id);
-        if (!item) return;
+        const text = `*BERITA EVENT*\n\n*Judul:* ${item.nama}\n*Tanggal:* ${formatTglIndo(item.tgl)}\n*Lokasi:* ${item.lokasi}\n\n*Isi Berita:* \n${item.isi}`;
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    };
 
+    window.generatePDF = (id) => {
+        const item = window.currentEvents.find(x => x.id === id);
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-
-        // Header PDF
-        doc.setFontSize(18); doc.setTextColor(0, 51, 102);
+        
+        doc.setFontSize(16);
         doc.text("PONDOK PEMULIHAN PAPUA", 105, 20, { align: "center" });
-        doc.setFontSize(10); doc.setTextColor(100);
-        doc.text("Laporan Berita & Dokumentasi Kegiatan", 105, 27, { align: "center" });
+        doc.setFontSize(12);
+        doc.text("Laporan Dokumentasi Berita", 105, 28, { align: "center" });
         doc.line(20, 32, 190, 32);
 
-        // Masukkan Foto (Sama seperti format redaksi)
-        if(item.fotos && item.fotos[0]) {
-            try {
-                const img = new Image();
-                img.src = item.fotos[0];
-                await new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-                doc.addImage(img, 'JPEG', 20, 40, 170, 95); 
-            } catch(e) { console.log("Gagal memuat gambar ke PDF"); }
-        }
-
-        // Artikel di bawah foto
-        doc.setFontSize(14); doc.setTextColor(0);
-        doc.text(item.nama, 20, 145);
+        doc.setFontSize(13);
+        doc.text(item.nama, 20, 45);
         doc.setFontSize(10);
-        doc.text(`Lokasi: ${item.lokasi} | Tanggal: ${item.tgl}`, 20, 152);
+        doc.text(`Waktu: ${formatTglIndo(item.tgl)} | Lokasi: ${item.lokasi}`, 20, 52);
         
         doc.setFontSize(11);
-        const splitContent = doc.splitTextToSize(item.isi, 170);
-        doc.text(splitContent, 20, 162);
+        const isiSplit = doc.splitTextToSize(item.isi, 170);
+        doc.text(isiSplit, 20, 65);
 
-        doc.setFontSize(9); doc.setFont("helvetica", "italic");
-        doc.text(`Dicetak oleh sistem SIPAPUA - Penulis: ${item.createdBy}`, 20, 285);
-
+        doc.setFontSize(8);
+        doc.text(`ID Penulis: ${item.createdBy}`, 20, 285);
+        
         doc.save(`Berita_${item.nama}.pdf`);
     };
 
-    window.hapusBerita = async function(id) {
-        if(!window.currentAdmin) return Swal.fire('Akses Ditolak', 'Login dahulu', 'warning');
-        remove(ref(db, `events/${id}`)).then(() => {
-            Swal.fire('Dihapus', 'Berita telah dihapus', 'success').then(() => location.reload());
-        });
-    };
-
-    // === RENDER LIST BERITA (SIMETRIS) ===
-    window.renderList = (list) => {
-        const container = document.getElementById('newsList');
-        if(!container) return;
-        container.innerHTML = list.map(item => `
-            <div class="news-card" onclick="detailEvent('${item.id}')">
-                <img src="${item.fotos && item.fotos[0] ? item.fotos[0] : ''}" class="news-img">
-                <div class="news-body">
-                    <div class="news-category">OLEH: ${item.createdBy || 'Unknown'}</div>
-                    <div class="news-title">${item.nama}</div>
-                    <div class="news-meta">
-                        <span><i class="fas fa-calendar-alt"></i> ${item.tgl}</span>
-                    </div>
-                </div>
-            </div>`).join('');
-    };
-
+    // --- REALTIME DATA ---
     onValue(eventRef, (snapshot) => {
         const data = snapshot.val();
         const list = [];
         for (let id in data) { list.unshift({ id, ...data[id] }); }
         window.currentEvents = list;
-        window.renderList(list);
+        
+        const container = document.getElementById('newsList');
+        container.innerHTML = list.map(item => `
+            <div class="news-card" onclick="window.detailEvent('${item.id}')">
+                <div class="news-body">
+                    <div style="font-size:10px; color:var(--accent); font-weight:bold; text-transform:uppercase;">OLEH: ${item.createdBy}</div>
+                    <div class="news-title">${item.nama}</div>
+                    <div style="font-size:12px; color:#666;"><i class="fas fa-calendar-alt"></i> ${formatTglIndo(item.tgl)}</div>
+                </div>
+            </div>
+        `).join('');
     });
 </script>
 </body>
