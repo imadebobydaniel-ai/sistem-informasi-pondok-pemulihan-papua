@@ -9,6 +9,15 @@
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .shop-container { width: 100%; max-width: 450px; background: white; padding: 30px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.07); margin-top: 10px; }
         
+        /* Admin Dropdown Style */
+        .admin-dropdown-container { position: absolute; top: 15px; left: 15px; z-index: 999; }
+        #admin-login-box { 
+            display: none; background: white; padding: 15px; border-radius: 12px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2); width: 200px; margin-top: 10px; 
+            border: 1px solid #eee;
+        }
+        #admin-login-box input { width: 100%; padding: 10px; margin-bottom: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 12px; box-sizing: border-box; }
+
         .header { text-align: center; margin-bottom: 30px; }
         .header i { font-size: 45px; color: #4CAF50; margin-bottom: 12px; }
         .header h2 { margin: 0; font-size: 22px; color: #2c3e50; }
@@ -48,6 +57,24 @@
     </style>
 </head>
 <body>
+
+<div class="admin-dropdown-container">
+    <button onclick="toggleAdminPanel()" style="background: none; border: none; color: #ccc; cursor: pointer; font-size: 18px;">
+        <i class="fa-solid fa-shield-halved"></i>
+    </button>
+    
+    <div id="admin-login-box">
+        <label style="font-size: 10px; font-weight: bold; color: #2c3e50; display: block; margin-bottom: 5px;">PORTAL KONTROL</label>
+        <input type="text" id="admin-user" placeholder="Username">
+        
+        <div style="position: relative;">
+            <input type="password" id="admin-pass" placeholder="Password">
+            <i class="fa-solid fa-eye" id="toggleEye" onclick="togglePass()" style="position: absolute; right: 10px; top: 12px; font-size: 12px; color: #aaa; cursor: pointer;"></i>
+        </div>
+        
+        <button onclick="loginAdmin()" style="width: 100%; margin-top: 5px; padding: 10px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;">MASUK ADMIN</button>
+    </div>
+</div>
 
 <div class="shop-container">
     <div class="header">
@@ -98,7 +125,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
 <script>
-    // Config Firebase (Tetap sinkron dengan database utama Anda)
+    // Config Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -111,6 +138,37 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
     const auth = firebase.auth();
+
+    // --- LOGIKA SUPER ADMIN ---
+    function toggleAdminPanel() {
+        const box = document.getElementById('admin-login-box');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function togglePass() {
+        const p = document.getElementById('admin-pass');
+        const eye = document.getElementById('toggleEye');
+        if (p.type === "password") {
+            p.type = "text";
+            eye.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            p.type = "password";
+            eye.classList.replace("fa-eye-slash", "fa-eye");
+        }
+    }
+
+    function loginAdmin() {
+        const u = document.getElementById('admin-user').value;
+        const p = document.getElementById('admin-pass').value;
+        
+        if(u === "admin" && p === "admin321") {
+            sessionStorage.setItem("isAdmin", "true");
+            window.location.href = "super-admin.html";
+        } else {
+            alert("Akses Ditolak! User atau Password salah.");
+        }
+    }
+    // ---------------------------
 
     function previewImage(event) {
         const reader = new FileReader();
@@ -150,24 +208,22 @@
         btn.disabled = true; btn.innerText = "Memproses...";
 
         try {
-            // Upload ke folder umkm_logos
             const storageRef = storage.ref(`umkm_logos/${user.uid}.jpg`);
             await storageRef.put(logoFile);
             const logoURL = await storageRef.getDownloadURL();
 
-            // Simpan ke koleksi UMKM
             await db.collection("umkm_stores").doc(user.uid).set({
                 uid: user.uid,
                 nama_toko: namaToko,
                 whatsapp: kontakToko,
                 logo: logoURL,
-                verified: false, // Default false sebelum dicek admin
+                verified: false,
                 tgl_daftar: firebase.firestore.FieldValue.serverTimestamp()
             });
 
             tampilkanModal("Pendaftaran Berhasil!", "Lapak Anda sedang disiapkan. Menuju portal penjual...", "success");
             setTimeout(() => {
-                window.location.href = "portal-dashboard.html"; // Target selanjutnya
+                window.location.href = "dashboard-umkm.html";
             }, 2000);
 
         } catch (error) {
