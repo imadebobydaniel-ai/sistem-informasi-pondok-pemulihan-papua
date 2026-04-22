@@ -214,7 +214,7 @@
         document.getElementById('newAdminUser').value = ""; document.getElementById('newAdminPass').value = "";
     };
 
-    // FUNGSI HANDLE FILE UPLOAD YANG DIPERBARUI
+    // FUNGSI HANDLE FILE UPLOAD (DIPERBARUI DENGAN CLOUD NAME & PRESET YANG BENAR)
     window.handleFileUpload = async (event) => {
         const files = event.target.files;
         window.cloudinaryImages = [];
@@ -223,12 +223,12 @@
         for (let file of files) {
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('upload_preset', 'vj96p7dt');
+            formData.append('upload_preset', 'sipapua_preset'); // Menggunakan preset dari panel Cloudinary Anda
             try {
-                const resp = await fetch('https://api.cloudinary.com/v1_1/dxt7m8psv/image/upload', { method: 'POST', body: formData });
+                // Menggunakan Cloud Name 'dxzllsbgi' sesuai identitas akun Anda
+                const resp = await fetch('https://api.cloudinary.com/v1_1/dxzllsbgi/image/upload', { method: 'POST', body: formData });
                 const data = await resp.json();
                 
-                // HANYA push jika data.secure_url ada (tidak undefined)
                 if (data.secure_url) {
                     window.cloudinaryImages.push(data.secure_url);
                 } else {
@@ -242,7 +242,7 @@
         document.getElementById('uploadStatus').innerText = window.cloudinaryImages.length + " Foto siap.";
     };
 
-    // FUNGSI SIMPAN BERITA YANG DIPERBARUI
+    // FUNGSI SIMPAN BERITA (ANTI-UNDEFINED)
     window.simpanBerita = async function() {
         const nama = document.getElementById('namaEvent').value;
         const lokasi = document.getElementById('lokasiEvent').value;
@@ -253,7 +253,6 @@
             return Swal.fire('Error', 'Data wajib diisi!', 'error');
         }
 
-        // Filter array untuk membuang nilai null/undefined sebelum dikirim ke Firebase
         const daftarFotoValid = (window.cloudinaryImages || []).filter(url => url != null);
 
         const newEvent = { 
@@ -261,7 +260,7 @@
             lokasi, 
             tgl, 
             isi: isi || "", 
-            fotos: daftarFotoValid, // Menggunakan array yang sudah bersih
+            fotos: daftarFotoValid, 
             createdBy: window.currentAdmin || "Admin", 
             createdAt: new Date().toISOString() 
         };
@@ -412,6 +411,5 @@
 
     document.getElementById('fotoEvent').onchange = window.handleFileUpload;
     document.getElementById('btnSimpan').onclick = window.simpanBerita;
-</script>
-</body>
+</script></body>
 </html>
