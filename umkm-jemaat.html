@@ -166,6 +166,12 @@
             <input type="text" id="reg-toko" placeholder="Nama UMKM" required>
             <input type="text" id="reg-pemilik" placeholder="Nama Pemilik" required>
             <input type="tel" id="reg-hp" placeholder="Nomor HP / WhatsApp" required>
+            
+            <div style="margin: 8px 0; text-align: left;">
+                <label style="font-size: 11px; font-weight: bold; color: var(--primary); margin-left: 5px;">UNGGAH FOTO/LOGO UMKM:</label>
+                <input type="file" id="reg-foto" accept="image/*" required style="font-size: 12px;">
+            </div>
+
             <select id="reg-jenis" required>
                 <option value="">-- Pilih Jenis UMKM --</option>
                 <option>Jualan Makanan Siap Saji</option>
@@ -180,7 +186,7 @@
                 <input type="email" id="reg-email" placeholder="Email Akun" required>
                 <input type="password" id="reg-pass" placeholder="Password Akun" required>
             </div>
-            <button type="button" class="btn-action" onclick="prosesDaftar()">BUAT LAPAK SEKARANG</button>
+            <button type="button" class="btn-action" id="btn-daftar" onclick="prosesDaftar()">BUAT LAPAK SEKARANG</button>
             <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:10px; color:#999;">Batal</button>
         </form>
     </div>
@@ -213,6 +219,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -225,6 +232,7 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
+    const storage = firebase.storage(); // Inisialisasi Storage
 
     // FUNGSI DROPDOWN KLIK
     function toggleMenu(event) {
@@ -232,7 +240,6 @@
         document.getElementById("myDropdown").classList.toggle("show");
     }
 
-    // Tutup dropdown jika klik di luar
     window.onclick = function(event) {
         if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
             var dropdowns = document.getElementsByClassName("dropdown-content");
@@ -247,7 +254,6 @@
 
     function bukaModal(id) { 
         document.getElementById(id).style.display = 'flex'; 
-        // Tutup dropdown setelah pilih menu
         document.getElementById("myDropdown").classList.remove("show");
     }
     
@@ -289,18 +295,42 @@
     async function prosesDaftar() {
         const email = document.getElementById("reg-email").value;
         const pass = document.getElementById("reg-pass").value;
+        const fotoFile = document.getElementById("reg-foto").files[0];
+        const btn = document.getElementById("btn-daftar");
+
+        if(!fotoFile) return alert("Mohon pilih foto UMKM!");
+
         try {
+            btn.disabled = true;
+            btn.innerText = "Mendaftarkan...";
+
+            // 1. Create User
             const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-            await db.collection("umkm_stores").doc(userCredential.user.uid).set({
+            const uid = userCredential.user.uid;
+
+            // 2. Upload Foto ke Storage
+            const storageRef = storage.ref(`umkm_logos/${uid}_${fotoFile.name}`);
+            await storageRef.put(fotoFile);
+            const photoURL = await storageRef.getDownloadURL();
+
+            // 3. Simpan ke Firestore
+            await db.collection("umkm_stores").doc(uid).set({
                 nama_toko: document.getElementById("reg-toko").value,
                 nama_pemilik: document.getElementById("reg-pemilik").value,
                 whatsapp: document.getElementById("reg-hp").value,
                 jenis_umkm: document.getElementById("reg-jenis").value,
-                uid: userCredential.user.uid,
+                deskripsi: document.getElementById("reg-desc").value,
+                logo_url: photoURL,
+                uid: uid,
                 dibuat: firebase.firestore.FieldValue.serverTimestamp()
             });
+
             window.location.href = "dashboard-umkm.html";
-        } catch (e) { alert(e.message); }
+        } catch (e) { 
+            alert(e.message);
+            btn.disabled = false;
+            btn.innerText = "BUAT LAPAK SEKARANG";
+        }
     }
 
     async function prosesLogin() {
