@@ -55,20 +55,15 @@
         background: white; border-radius: 12px; overflow: visible !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s;
         cursor: pointer; display: flex; flex-direction: column;
-        width: 100%; margin: 0; position: relative;
+        width: 100%; margin: 0; position: relative !important;
     }
 
     .news-card:hover { transform: translateY(-5px); }
-    .news-img { width: 100%; height: 200px; object-fit: cover; background: #eee; }
+    .news-img { width: 100%; height: 200px; object-fit: cover; background: #eee; border-radius: 12px 12px 0 0; }
     .news-body { padding: 15px; flex-grow: 1; }
     .news-category { color: var(--accent); font-size: 0.75rem; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
     .news-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--primary); line-height: 1.3; }
     .news-meta { font-size: 0.75rem; color: #7f8c8d; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
-
-    .btn-card-delete {
-        background: var(--danger); color: white; border: none; 
-        padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
-    }
 
     #adminSection { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 2px solid var(--primary); display: none; }
     #superAdminSection { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px dashed var(--primary); display: none; }
@@ -89,7 +84,7 @@
         <button class="btn-header-back" onclick="window.history.back()">
             <i class="fas fa-chevron-left"></i> &nbsp;KEMBALI
        </button>
-        <button id="btnBack" onclick="location.reload()" style="display:none; border:none; background:#d33; color:white; height: 38px; padding:0 20px; border-radius:19px; font-weight:bold; cursor:pointer;">LOGOUT</button>
+        <button id="btnBack" onclick="logoutEvent()" style="display:none; border:none; background:#d33; color:white; height: 38px; padding:0 20px; border-radius:19px; font-weight:bold; cursor:pointer;">LOGOUT</button>
     </div>
     <h1 style="font-size: 1.1rem; margin: 0; letter-spacing: 1px;">EVENT JEMAAT</h1>
     <div class="nav-admin">
@@ -98,7 +93,7 @@
             <span class="login-label">LOGIN ADMIN</span>
             <input type="text" id="userAdmin" placeholder="Username">
             <div class="pass-container">
-               <input type="password" id="passAdmin" placeholder="Password">
+                <input type="password" id="passAdmin" placeholder="Password">
                 <i class="fas fa-eye toggle-pass" id="eyeIcon" onclick="togglePassword()"></i>
           </div>
             <button class="btn-masuk-dropdown" onclick="loginEvent()">MASUK</button>
@@ -108,7 +103,7 @@
 
 <div class="container">
     <div id="adminSection">
-       <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
+        <h3><i class="fas fa-edit"></i> CMS Input Kegiatan</h3>
         <input type="text" id="namaEvent" placeholder="Nama Kegiatan">
         <input type="text" id="lokasiEvent" placeholder="Lokasi">
         <input type="date" id="tglEvent">
@@ -145,7 +140,7 @@
             <span style="font-weight:bold; font-size:13px;"><i class="fas fa-history"></i> LOG ACTIVITY (CLOUD)</span>
             <div id="logContent" style="margin-top:10px; font-size:11px;"></div>
         </div>
-    </div>
+        </div>
     
     <div id="newsList"></div>
 </div>
@@ -170,9 +165,13 @@
     window.currentAdmin = localStorage.getItem('sipapua_admin') || null; 
     window.cloudinaryImages = [];
     window.currentEvents = [];
-    let listAbsensi = [];
 
-    // 1. --- FUNGSI SISTEM TANGGAL INDONESIA ---
+    // --- FUNGSI LOGOUT (DIPERBAIKI) ---
+    window.logoutEvent = () => {
+        localStorage.removeItem('sipapua_admin');
+        location.reload();
+    };
+
     const formatTglIndo = (dateStr) => {
         if(!dateStr) return "";
         const bulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -180,9 +179,8 @@
         return `${d.getDate()} ${bulanIndo[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    // 2. --- SISTEM HAPUS BERITA (LOGIKA KAPASITAS) ---
     window.hapusBerita = async (id, owner) => {
-        event.stopPropagation(); // Mencegah detail terbuka saat klik tombol hapus
+        event.stopPropagation(); 
         const activeAdmin = localStorage.getItem('sipapua_admin');
 
         if (activeAdmin !== "SuperAdmin" && activeAdmin !== owner) {
@@ -213,12 +211,12 @@
         });
     };
 
-    // 3. --- RENDER LIST BERITA (VERSI FIX TOMBOL) ---
     onValue(eventRef, (snapshot) => {
         const data = snapshot.val(); 
         const newsList = document.getElementById('newsList');
-        newsList.innerHTML = "";
+        if (!newsList) return;
         
+        newsList.innerHTML = "";
         const list = [];
         for (let id in data) { list.unshift({ id, ...data[id] }); }
         window.currentEvents = list;
@@ -227,17 +225,17 @@
             const activeAdmin = localStorage.getItem('sipapua_admin');
             let btnHapusHtml = '';
             
-            // CEK LOGIN: Tombol hanya dibuat jika ada session admin
             if (activeAdmin === "SuperAdmin" || (activeAdmin && activeAdmin === item.createdBy)) {
                 btnHapusHtml = `
                 <div onclick="hapusBerita('${item.id}', '${item.createdBy}')" 
-                     style="position: absolute; bottom: 10px; right: 10px; background: #e74c3c; color: white; width: 35px; height: 35px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 999; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-                    <i class="fas fa-trash-alt" style="font-size: 14px;"></i>
+                     style="position: absolute; top: -10px; right: -10px; background: #e74c3c; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 2px solid white;">
+                    <i class="fas fa-trash-alt" style="font-size: 12px;"></i>
                 </div>`;
             }
 
             newsList.innerHTML += `
-            <div class="news-card" onclick="detailEvent('${item.id}')" style="position: relative; overflow: visible !important;">
+            <div class="news-card" onclick="detailEvent('${item.id}')">
+                ${btnHapusHtml}
                 <img src="${(item.fotos && item.fotos[0]) || NO_IMG}" class="news-img">
                 <div class="news-body">
                     <div class="news-category" style="color: #2ecc71; font-weight: bold;">OLEH: ${item.createdBy || 'ADMIN'}</div>
@@ -246,12 +244,10 @@
                         <span><i class="fas fa-calendar-alt"></i> ${formatTglIndo(item.tgl)}</span>
                     </div>
                 </div>
-                ${btnHapusHtml}
             </div>`;
         });
     });
 
-    // --- MANAJEMEN LOGIN & SESSION ---
     window.toggleLoginSlider = () => {
         const box = document.getElementById('loginBox');
         box.style.display = (box.style.display === 'block') ? 'none' : 'block';
@@ -288,7 +284,6 @@
         }
     };
 
-    // --- UPLOAD, SHARE, PDF, DETAIL ---
     window.handleFileUpload = async (event) => {
         const files = event.target.files;
         if (files.length === 0) return;
@@ -334,15 +329,15 @@
         Swal.fire({
             title: item.nama,
             html: `<div style="max-height:350px; overflow-y:auto">${gallery}</div>
-                   <div style="text-align:left; font-size:14px; margin-top:15px">
+                    <div style="text-align:left; font-size:14px; margin-top:15px">
                         <p><b>📍 Lokasi:</b> ${item.lokasi}</p>
                         <p><b>📅 Tanggal:</b> ${formatTglIndo(item.tgl)}</p>
                         <hr><div style="white-space:pre-line">${item.isi}</div>
-                   </div>
-                   <div style="display:flex; gap:8px; margin-top:20px">
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:20px">
                         <button onclick="shareWA('${id}')" style="flex:1; padding:10px; background:#25d366; color:white; border:none; border-radius:6px;"><i class="fab fa-whatsapp"></i> WA</button>
                         <button onclick="downloadPDF('${id}')" style="flex:1; padding:10px; background:#e74c3c; color:white; border:none; border-radius:6px;"><i class="fas fa-file-pdf"></i> PDF</button>
-                   </div>`,
+                    </div>`,
             showConfirmButton: false, showCloseButton: true, width: '90%'
         });
     };
@@ -361,7 +356,6 @@
         doc.save(`Laporan_${item.nama}.pdf`);
     };
 
-    // --- AUTO LOAD SESSION & LOG ---
     if (window.currentAdmin) {
         document.getElementById('adminSection').style.display = 'block';
         document.getElementById('btnBack').style.display = 'inline-block';
