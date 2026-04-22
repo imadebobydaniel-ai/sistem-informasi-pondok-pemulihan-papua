@@ -162,7 +162,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove, get, set, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, push, onValue, remove, get, set, child, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSy...", 
@@ -175,10 +175,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     
+    // --- STATE MANAGEMENT ---
     window.currentAdmin = null; 
     window.selectedEventId = null; 
     window.cloudinaryImages = [];
     window.currentEvents = [];
+    let listAbsensi = []; // Variabel penampung nama hasil scan
 
     const eventRef = ref(db, 'events');
     const adminRef = ref(db, 'admin_users');
@@ -190,7 +192,98 @@
         return new Date(dateString).toLocaleDateString('id-ID', options);
     }
 
-    // === FUNGSI DETAIL EVENT DENGAN SHARE & HAPUS ===
+    // --- 1. LOG ACTIVITY DROPDOWN SETUP ---
+    const setupLogDropdown = () => {
+        const logContainer = document.querySelector('.card:last-child'); // Target box LOG ACTIVITY
+        if (logContainer && !logContainer.querySelector('details')) {
+            const content = logContainer.innerHTML;
+            logContainer.innerHTML = `
+                <details style="cursor:pointer; border: 1px solid #eee; border-radius: 8px; padding: 5px;">
+                    <summary style="font-weight:bold; padding:10px; list-style:none; display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-history"></i> LOG ACTIVITY (CLOUD)</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </summary>
+                    <div id="logContent" style="padding:10px; border-top:1px solid #eee; max-height: 200px; overflow-y: auto;">
+                        ${content}
+                    </div>
+                </details>`;
+        }
+    };
+
+    // --- 2. FUNGSI QR SCANNER & PROSES ABSENSI ---
+    let html5QrCode;
+
+    window.startScanner = function() {
+        const scannerContainer = document.getElementById('reader');
+        if (!scannerContainer) {
+            const newReader = document.createElement('div');
+            newReader.id = 'reader';
+            newReader.style.width = '100%';
+            newReader.style.marginTop = '10px';
+            document.getElementById('btnScanQR').after(newReader);
+        }
+
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            prosesAbsensi(decodedText);
+            html5QrCode.stop().then(() => {
+                document.getElementById('reader').remove();
+            });
+        }).catch((err) => {
+            console.error("Gagal start scanner", err);
+        });
+    };
+
+    function prosesAbsensi(nama) {
+        if (!listAbsensi.includes(nama)) {
+            listAbsensi.push(nama);
+            
+            // Update UI Angka Akumulasi
+            const totalElement = document.getElementById('totalAbsen');
+            if(totalElement) {
+                totalElement.innerText = listAbsensi.length;
+                totalElement.style.cursor = 'pointer';
+                totalElement.title = "Klik untuk lihat daftar nama";
+            }
+            
+            Swal.fire('Berhasil', `${nama} telah diabsen`, 'success');
+        } else {
+            Swal.fire('Info', `${nama} sudah diabsen sebelumnya.`, 'warning');
+        }
+    }
+
+    // --- 3. FUNGSI KLIK ANGKA (TAMPILKAN DAFTAR NAMA) ---
+    window.showAbsenList = function() {
+        if (listAbsensi.length === 0) {
+            return Swal.fire('Info', 'Belum ada jemaat yang absen.', 'info');
+        }
+
+        const htmlList = `<div style="text-align:left; max-height:300px; overflow-y:auto;">
+            <ol>${listAbsensi.map(n => `<li>${n}</li>`).join('')}</ol>
+        </div>`;
+
+        Swal.fire({
+            title: 'Daftar Nama Terabsen',
+            html: htmlList,
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#003366'
+        });
+    };
+
+    // --- EVENT LISTENER & INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        setupLogDropdown();
+        
+        const btnScan = document.getElementById('btnScanQR');
+        if(btnScan) btnScan.onclick = window.startScanner;
+
+        const totalClick = document.getElementById('totalAbsen');
+        if(totalClick) totalClick.onclick = window.showAbsenList;
+    });
+
+    // === FUNGSI DETAIL EVENT ===
     window.detailEvent = function(id) {
         const item = window.currentEvents.find(x => x.id === id);
         if (!item) return;
@@ -229,103 +322,14 @@
     window.shareWA = function(id) {
         const item = window.currentEvents.find(x => x.id === id);
         if (!item) return;
-
         const kop = "*PONDOK PEMULIHAN PAPUA*\n";
-        const subKop = "_Informasi Event Jemaat_\n\n";
         const body = `*Kegiatan:* ${item.nama}\n*Lokasi:* ${item.lokasi}\n*Tanggal:* ${formatTglIndo(item.tgl)}\n\n${item.isi}\n\n`;
-        const footer = "_Informasi ini dibagikan melalui Aplikasi SIPAPUA_";
-
-        const teksFull = kop + subKop + body + footer;
+        const teksFull = kop + body + "_Informasi dibagikan melalui SIPAPUA_";
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(teksFull)}`;
         window.open(url, '_blank');
     };
 
-    // === FUNGSI GENERATE PDF ===
-    window.generatePDF = function(id) {
-        const item = window.currentEvents.find(x => x.id === id);
-        if (!item || !window.jspdf) {
-            return Swal.fire('Error', 'Library PDF tidak ditemukan atau data kosong', 'error');
-        }
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("PONDOK PEMULIHAN PAPUA", 105, 20, { align: "center" });
-        
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text("Laporan Dokumentasi Event Jemaat", 105, 27, { align: "center" });
-        doc.line(20, 30, 190, 30);
-
-        doc.setFontSize(11);
-        doc.text(`Kegiatan : ${item.nama}`, 20, 42);
-        doc.text(`Lokasi     : ${item.lokasi}`, 20, 49);
-        doc.text(`Tanggal   : ${formatTglIndo(item.tgl)}`, 20, 56);
-        doc.text(`Penulis   : ${item.createdBy}`, 20, 63);
-        
-        const splitText = doc.splitTextToSize(item.isi, 170);
-        doc.text(splitText, 20, 75);
-
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.text("Dokumen otomatis SIPAPUA - Jayapura, Papua", 105, 285, { align: "center" });
-
-        doc.save(`Event_${item.nama.replace(/\s+/g, '_')}.pdf`);
-    };
-
-    // === FUNGSI HAPUS BERITA (OTORITAS ADMIN + PASSWORD) ===
-    window.hapusBerita = async function(id) {
-        const item = window.currentEvents.find(x => x.id === id);
-        if (!item) return;
-
-        if (!window.currentAdmin) {
-            return Swal.fire('Akses Ditolak', 'Hanya Admin yang diizinkan menghapus berita', 'warning');
-        }
-
-        if (window.currentAdmin !== "SuperAdmin" && item.createdBy !== window.currentAdmin) {
-            return Swal.fire('Gagal', 'Maaf, Anda hanya dapat menghapus berita yang Anda posting sendiri.', 'error');
-        }
-
-        const { value: pass } = await Swal.fire({
-            title: 'Verifikasi Keamanan',
-            text: `Masukkan password admin Anda untuk menghapus berita: "${item.nama}"`,
-            input: 'password',
-            inputPlaceholder: 'Konfirmasi Password',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Ya, Hapus'
-        });
-
-        if (!pass) return;
-
-        let isValid = false;
-        if (window.currentAdmin === "SuperAdmin" && pass === "admin123") {
-            isValid = true;
-        } else {
-            const adminSnap = await get(child(ref(db), `admin_users/${window.currentAdmin}`));
-            if (adminSnap.exists() && adminSnap.val().password === pass) isValid = true;
-        }
-
-        if (isValid) {
-            remove(ref(db, `events/${id}`)).then(() => {
-                Swal.fire('Berhasil', 'Berita telah dihapus secara permanen.', 'success').then(() => {
-                    location.reload();
-                });
-            });
-        } else {
-            Swal.fire('Gagal', 'Password salah. Akses penghapusan ditolak.', 'error');
-        }
-    };
-
-    // --- FUNGSI LOGIN & ADMIN ---
-    window.toggleLoginSlider = function() {
-        const slider = document.getElementById('loginBox');
-        slider.style.display = (slider.style.display === 'none' || slider.style.display === '') ? 'block' : 'none';
-    };
-
-    // FUNGSI LOGIN DENGAN PENYEMBUNYIAN NEWSLIST
+    // === FUNGSI LOGIN EVENT ===
     window.loginEvent = async function() {
         const u = document.getElementById('userAdmin').value;
         const p = document.getElementById('passAdmin').value;
@@ -343,52 +347,28 @@
         if (loggedInUser) {
             window.currentAdmin = loggedInUser;
             document.getElementById('adminSection').style.display = 'block';
-            
-            // --- BARIS YANG DITAMBAHKAN ---
             document.getElementById('newsList').style.display = 'none'; 
-            // ------------------------------
-
             document.getElementById('loginBox').style.display = 'none';
             document.getElementById('btnBack').style.display = 'inline-block';
             document.getElementById('btnToggle').style.display = 'none';
             Swal.fire('Berhasil', `Selamat datang, ${loggedInUser}`, 'success');
+            setupLogDropdown(); // Pastikan dropdown terpasang setelah login
         } else { 
             Swal.fire('Gagal', 'Username atau Password salah', 'error'); 
         }
     };
 
-    document.getElementById('btnSimpan').onclick = function() {
-        const nama = document.getElementById('namaEvent').value.trim();
-        if(!nama) return Swal.fire('Peringatan', 'Isi nama kegiatan!', 'warning');
-
-        push(eventRef, {
-            nama,
-            lokasi: document.getElementById('lokasiEvent').value,
-            tgl: document.getElementById('tglEvent').value,
-            isi: document.getElementById('isiEvent').value,
-            fotos: window.cloudinaryImages,
-            createdBy: window.currentAdmin,
-            createdAt: Date.now()
-        }).then(() => {
-            Swal.fire('Sukses', 'Kegiatan Berhasil Dipublikasikan', 'success').then(() => location.reload());
-        });
-    };
-
+    // === RENDER & LISTEN DATABASE ===
     window.renderList = function(list) {
         const container = document.getElementById('newsList');
         if(!container) return;
         container.innerHTML = list.map(item => `
             <div class="news-card" onclick="detailEvent('${item.id}')" style="position:relative;">
-                <span style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:white; padding:2px 8px; border-radius:5px; font-size:10px; z-index:10;">
-                    ID: ${item.id.substring(1, 6)}
-                </span>
                 <img src="${item.fotos ? item.fotos[0] : ''}" class="news-img" onerror="this.src='https://via.placeholder.com/400x200?text=No+Image'">
                 <div class="news-body">
                     <div class="news-category">Post by: ${item.createdBy || 'System'}</div>
                     <div class="news-title">${item.nama}</div>
-                    <div class="news-meta">
-                        <span><i class="fas fa-calendar-alt"></i> ${formatTglIndo(item.tgl)}</span>
-                    </div>
+                    <div class="news-meta"><span><i class="fas fa-calendar-alt"></i> ${formatTglIndo(item.tgl)}</span></div>
                 </div>
             </div>`).join('');
     };
