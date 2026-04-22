@@ -59,6 +59,9 @@
         <div class="dropdown-content">
             <a href="javascript:void(0)" onclick="bukaModal('modal-daftar')">Daftar UMKM Baru</a>
             <a href="javascript:void(0)" onclick="bukaModal('modal-login')">Masuk Lapak Saya</a>
+            <a href="javascript:void(0)" onclick="bukaModal('modal-admin-auth')" style="background: #fff5f5; color: #d32f2f; border-top: 2px solid #eee;">
+                <i class="fa-solid fa-shield-halved"></i> Panel Super Admin
+            </a>
         </div>
     </div>
 </div>
@@ -109,12 +112,29 @@
     </div>
 </div>
 
+<div id="modal-admin-auth" class="modal-overlay">
+    <div class="modal-content" style="border-top: 5px solid #d32f2f;">
+        <h3 style="margin-top: 0; color: #d32f2f;"><i class="fa-solid fa-lock"></i> Verifikasi Admin</h3>
+        <p style="font-size: 12px; color: #666;">Hanya untuk pengelola pusat Pondok Pemulihan Papua.</p>
+        
+        <input type="text" id="admin-user" placeholder="Username Admin">
+        
+        <div style="position: relative;">
+            <input type="password" id="admin-pass" placeholder="Password Admin" style="padding-right: 40px;">
+            <i class="fa-solid fa-eye" id="toggleEye" onclick="togglePassAdmin()" 
+               style="position: absolute; right: 15px; top: 22px; color: #999; cursor: pointer;"></i>
+        </div>
+        
+        <button class="btn-action" style="background: #d32f2f;" onclick="prosesLoginAdmin()">MASUK PANEL KONTROL</button>
+        <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:15px; color:#999; font-weight:bold;">BATAL</button>
+    </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // Config tetap sama
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -128,6 +148,31 @@
 
     function bukaModal(id) { document.getElementById(id).style.display = 'flex'; }
     function tutupModal() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
+
+    // Fungsi Lihat Password Admin
+    function togglePassAdmin() {
+        const p = document.getElementById('admin-pass');
+        const eye = document.getElementById('toggleEye');
+        if (p.type === "password") {
+            p.type = "text";
+            eye.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            p.type = "password";
+            eye.classList.replace("fa-eye-slash", "fa-eye");
+        }
+    }
+
+    // Login Admin Logic
+    function prosesLoginAdmin() {
+        const user = document.getElementById('admin-user').value;
+        const pass = document.getElementById('admin-pass').value;
+        if(user === "admin" && pass === "admin321") {
+            sessionStorage.setItem("isAdmin", "true");
+            window.location.href = "super-admin-umkm.html";
+        } else {
+            alert("Akses Ditolak! Username atau Password Admin salah.");
+        }
+    }
 
     // LOAD PRODUK KE HALAMAN UTAMA
     async function loadMainMarket() {
@@ -163,9 +208,10 @@
                 whatsapp: hp,
                 jenis_umkm: jenis,
                 deskripsi: document.getElementById("reg-desc").value,
-                uid: userCredential.user.uid
+                uid: userCredential.user.uid,
+                dibuat: firebase.firestore.FieldValue.serverTimestamp()
             });
-            alert("Lapak berhasil dibuat! Silakan masuk ke Dashboard untuk upload logo dan produk.");
+            alert("Lapak berhasil dibuat!");
             window.location.href = "dashboard-umkm.html";
         } catch (e) { alert(e.message); }
     }
