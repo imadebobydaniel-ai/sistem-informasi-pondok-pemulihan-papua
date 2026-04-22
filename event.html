@@ -140,7 +140,7 @@
             <span style="font-weight:bold; font-size:13px;"><i class="fas fa-history"></i> LOG ACTIVITY (CLOUD)</span>
             <div id="logContent" style="margin-top:10px; font-size:11px;"></div>
         </div>
-        </div>
+    </div>
     
     <div id="newsList"></div>
 </div>
@@ -166,7 +166,6 @@
     window.cloudinaryImages = [];
     window.currentEvents = [];
 
-    // --- FUNGSI LOGOUT (DIPERBAIKI) ---
     window.logoutEvent = () => {
         localStorage.removeItem('sipapua_admin');
         location.reload();
@@ -179,63 +178,27 @@
         return `${d.getDate()} ${bulanIndo[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    window.hapusBerita = async (id, owner) => {
-        event.stopPropagation(); 
-        const activeAdmin = localStorage.getItem('sipapua_admin');
-
-        if (activeAdmin !== "SuperAdmin" && activeAdmin !== owner) {
-            return Swal.fire('Ditolak', 'Kapasitas Anda tidak cukup untuk menghapus ini.', 'error');
-        }
-
-        Swal.fire({
-            title: 'Hapus Berita?',
-            text: "Data akan hilang permanen dari sistem.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Ya, Hapus!'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    await remove(ref(db, `events/${id}`));
-                    await push(ref(db, 'log_activity'), { 
-                        user: activeAdmin, 
-                        action: `Hapus Berita ID: ${id}`, 
-                        timestamp: new Date().toLocaleString() 
-                    });
-                    Swal.fire('Terhapus!', 'Berita telah dibuang.', 'success');
-                } catch (err) {
-                    Swal.fire('Error', 'Gagal menghapus.', 'error');
-                }
-            }
-        });
-    };
-
+    // LOGIKA RENDER BERITA: Hanya jika TIDAK sedang login admin
     onValue(eventRef, (snapshot) => {
         const data = snapshot.val(); 
         const newsList = document.getElementById('newsList');
         if (!newsList) return;
         
+        // JIKA ADMIN LOGIN, SEMBUNYIKAN LIST BERITA AGAR TIDAK RIBET
+        if (window.currentAdmin) {
+            newsList.style.display = "none";
+            return;
+        }
+
+        newsList.style.display = "grid";
         newsList.innerHTML = "";
         const list = [];
         for (let id in data) { list.unshift({ id, ...data[id] }); }
         window.currentEvents = list;
 
         list.forEach(item => {
-            const activeAdmin = localStorage.getItem('sipapua_admin');
-            let btnHapusHtml = '';
-            
-            if (activeAdmin === "SuperAdmin" || (activeAdmin && activeAdmin === item.createdBy)) {
-                btnHapusHtml = `
-                <div onclick="hapusBerita('${item.id}', '${item.createdBy}')" 
-                     style="position: absolute; top: -10px; right: -10px; background: #e74c3c; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 2px solid white;">
-                    <i class="fas fa-trash-alt" style="font-size: 12px;"></i>
-                </div>`;
-            }
-
             newsList.innerHTML += `
             <div class="news-card" onclick="detailEvent('${item.id}')">
-                ${btnHapusHtml}
                 <img src="${(item.fotos && item.fotos[0]) || NO_IMG}" class="news-img">
                 <div class="news-body">
                     <div class="news-category" style="color: #2ecc71; font-weight: bold;">OLEH: ${item.createdBy || 'ADMIN'}</div>
@@ -248,6 +211,7 @@
         });
     });
 
+    // LOGIN & CMS FUNCTIONS
     window.toggleLoginSlider = () => {
         const box = document.getElementById('loginBox');
         box.style.display = (box.style.display === 'block') ? 'none' : 'block';
