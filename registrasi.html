@@ -215,7 +215,7 @@
     function generateChildFields() {
         const container = document.getElementById("child_fields_container");
         const count = parseInt(document.getElementById("jumlah_anak").value) || 0;
-        container.innerHTML = ""; // Bersihkan kolom sebelumnya
+        container.innerHTML = ""; 
 
         for (let i = 1; i <= count; i++) {
             const childDiv = document.createElement("div");
@@ -255,10 +255,10 @@
         } catch (e) { displayInput.value = `NIJ-PPP-${lokasi}-001-${new Date().getFullYear()}`; }
     }
 
+    // LOGIKA REGISTRASI DENGAN VALIDASI DUPLIKAT
     async function handleRegistrasi() {
         const btnSubmit = document.getElementById("btnSubmit");
         
-        // Ambil Data Anak dari input dinamis
         const childNames = document.querySelectorAll(".child-name");
         const childGenders = document.querySelectorAll(".child-gender");
         let listAnak = [];
@@ -269,34 +269,91 @@
         });
 
         const data = {
-            email: document.getElementById("email").value, pass: document.getElementById("pass").value, nama: document.getElementById("nama").value, nij: document.getElementById("nij-display").value,
-            hp: document.getElementById("hp").value, lokasi: document.getElementById("lokasi").value, komsel: document.getElementById("komsel").value, jabatan: document.getElementById("jabatan_jemaat").value,
-            sub: document.getElementById("sub_jabatan").value, pel: document.getElementById("pelayanan").value, det: document.getElementById("pelayanan_spesifik_non").value, alamat: document.getElementById("alamat").value,
-            nikah: document.getElementById("status_pernikahan").value, kerja: document.getElementById("pekerjaan").value, provLahir: document.getElementById("provinsi_lahir").value,
-            kotaLahir: document.getElementById("kota_lahir").value, kecLahir: document.getElementById("kecamatan_lahir").value, desaLahir: document.getElementById("desa_lahir").value, tglLahir: document.getElementById("tgl_lahir").value,
+            email: document.getElementById("email").value.trim(), 
+            pass: document.getElementById("pass").value, 
+            nama: document.getElementById("nama").value, 
+            nij: document.getElementById("nij-display").value,
+            hp: document.getElementById("hp").value.trim(), 
+            lokasi: document.getElementById("lokasi").value, 
+            komsel: document.getElementById("komsel").value, 
+            jabatan: document.getElementById("jabatan_jemaat").value,
+            sub: document.getElementById("sub_jabatan").value, 
+            pel: document.getElementById("pelayanan").value, 
+            det: document.getElementById("pelayanan_spesifik_non").value, 
+            alamat: document.getElementById("alamat").value,
+            nikah: document.getElementById("status_pernikahan").value, 
+            kerja: document.getElementById("pekerjaan").value, 
+            provLahir: document.getElementById("provinsi_lahir").value,
+            kotaLahir: document.getElementById("kota_lahir").value, 
+            kecLahir: document.getElementById("kecamatan_lahir").value, 
+            desaLahir: document.getElementById("desa_lahir").value, 
+            tglLahir: document.getElementById("tgl_lahir").value,
             namaPasangan: document.getElementById("nama_pasangan")?.value || "",
             dataAnak: listAnak
         };
 
-        if (!data.email || !data.pass || !data.nama || !data.lokasi) { alert("Lengkapi data wajib!"); return; }
-        btnSubmit.disabled = true; btnSubmit.innerText = "Memproses...";
+        // 1. Validasi Input Kosong
+        if (!data.email || !data.pass || !data.nama || !data.hp || !data.lokasi) { 
+            alert("Mohon lengkapi semua data wajib (Nama, Email, WhatsApp, dan Lokasi)!"); 
+            return; 
+        }
+
+        btnSubmit.disabled = true; 
+        btnSubmit.innerText = "Mengecek Data...";
 
         try {
+            // 2. CEK APAKAH EMAIL SUDAH TERDAFTAR DI FIRESTORE
+            const emailCheck = await db.collection("users").where("email", "==", data.email).get();
+            if (!emailCheck.empty) {
+                throw new Error("Maaf email atau no HP yang anda masukan sudah terdaftar");
+            }
+
+            // 3. CEK APAKAH NOMOR HP SUDAH TERDAFTAR DI FIRESTORE
+            const hpCheck = await db.collection("users").where("whatsapp", "==", data.hp).get();
+            if (!hpCheck.empty) {
+                throw new Error("Maaf email atau no HP yang anda masukan sudah terdaftar");
+            }
+
+            // 4. PROSES REGISTRASI KE FIREBASE AUTH
             const userCredential = await auth.createUserWithEmailAndPassword(data.email, data.pass);
             await userCredential.user.sendEmailVerification();
+            
+            // 5. SIMPAN DATA KE FIRESTORE
             await db.collection("users").doc(userCredential.user.uid).set({
-                uid: userCredential.user.uid, nama: data.nama, email: data.email, nij: data.nij, whatsapp: data.hp, lokasi: data.lokasi, komsel: data.komsel, jabatan: data.jabatan,
-                sub_jabatan: data.sub, pelayanan: data.pel, detail_pelayanan: data.det, alamat: data.alamat, tempat_lahir: data.kotaLahir, provinsi_lahir: data.provLahir, tanggal_lahir: data.tglLahir,
-                status_pernikahan: data.nikah, pekerjaan: data.kerja, nama_pasangan: data.namaPasangan, data_anak: data.dataAnak, status_akun: "Aktif", createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                uid: userCredential.user.uid, 
+                nama: data.nama, 
+                email: data.email, 
+                nij: data.nij, 
+                whatsapp: data.hp, 
+                lokasi: data.lokasi, 
+                komsel: data.komsel, 
+                jabatan: data.jabatan,
+                sub_jabatan: data.sub, 
+                pelayanan: data.pel, 
+                detail_pelayanan: data.det, 
+                alamat: data.alamat, 
+                tempat_lahir: data.kotaLahir, 
+                provinsi_lahir: data.provLahir, 
+                tanggal_lahir: data.tglLahir,
+                status_pernikahan: data.nikah, 
+                pekerjaan: data.kerja, 
+                nama_pasangan: data.namaPasangan, 
+                data_anak: data.dataAnak, 
+                status_akun: "Aktif", 
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             
-            // MENGAKTIFKAN MODAL NOTIFIKASI YANG BARU DIBUAT
             document.getElementById("notif-email-sent").style.display = "flex";
 
         } catch (e) { 
             btnSubmit.disabled = false; 
             btnSubmit.innerText = "FINALISASI & DAFTAR"; 
-            alert(e.message); 
+            
+            if (e.code === 'auth/email-already-in-use') {
+                alert("Maaf email atau no HP yang anda masukan sudah terdaftar");
+            } else {
+                alert(e.message); 
+            }
         }
     }
 
