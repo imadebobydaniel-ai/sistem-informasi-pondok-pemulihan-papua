@@ -56,15 +56,12 @@
             overflow: hidden; 
             z-index: 1001;
             border: 1px solid rgba(0,0,0,0.05);
-            
-            /* Efek Smooth Dropdown */
             opacity: 0;
             visibility: hidden;
             transform: translateY(15px);
             transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
 
-        /* Class khusus untuk memunculkan dropdown via Click */
         .dropdown-content.show { 
             opacity: 1;
             visibility: visible;
@@ -95,11 +92,6 @@
             background-color: #f8f9fa; 
             color: var(--accent);
             padding-left: 24px;
-        }
-
-        .dropdown-content a:hover i {
-            color: var(--accent);
-            transform: scale(1.2);
         }
 
         /* Gaya Khusus Admin */
@@ -182,6 +174,7 @@
 <div id="modal-daftar" class="modal-overlay">
     <div class="modal-content">
         <h3 style="margin-top: 0;">Buat Lapak Baru</h3>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">*Gunakan email yang sama dengan aplikasi SIPAPUA</p>
         <form id="reg-form">
             <input type="text" id="reg-toko" placeholder="Nama UMKM" required>
             <input type="text" id="reg-pemilik" placeholder="Nama Pemilik" required>
@@ -203,8 +196,8 @@
             </select>
             <textarea id="reg-desc" placeholder="Deskripsi Usaha..." rows="2"></textarea>
             <div style="background: #f8f9fa; padding: 10px; border-radius: 10px;">
-                <input type="email" id="reg-email" placeholder="Email Akun" required>
-                <input type="password" id="reg-pass" placeholder="Password Akun" required>
+                <input type="email" id="reg-email" placeholder="Email (Gunakan Email SIPAPUA)" required>
+                <input type="password" id="reg-pass" placeholder="Password (Gunakan Password SIPAPUA)" required>
             </div>
             <button type="button" class="btn-action" id="btn-daftar" onclick="prosesDaftar()">BUAT LAPAK SEKARANG</button>
             <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:10px; color:#999;">Batal</button>
@@ -254,16 +247,13 @@
     const auth = firebase.auth();
     const storage = firebase.storage();
 
-    // FUNGSI NOTIFIKASI BLOCK DISPLAY
     function tampilNotif(pesan, warna = "#2c3e50") {
         const container = document.getElementById("notif-container");
         const content = document.getElementById("notif-content");
         const msg = document.getElementById("notif-message");
-        
         msg.innerText = pesan;
         content.style.background = warna;
         container.style.display = "block";
-        
         setTimeout(() => { container.style.display = "none"; }, 3500);
     }
 
@@ -332,14 +322,26 @@
         const fotoFile = document.getElementById("reg-foto").files[0];
         const btn = document.getElementById("btn-daftar");
 
-        if(!fotoFile) return tampilNotif("Mohon pilih foto UMKM!", "#f39c12");
+        if(!fotoFile) return tampilNotif("Mohon unggah logo UMKM Anda!", "#f39c12");
 
         try {
             btn.disabled = true;
-            btn.innerText = "Mendaftarkan...";
+            btn.innerText = "Menghubungkan Akun...";
 
-            const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-            const uid = userCredential.user.uid;
+            let uid;
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+                uid = userCredential.user.uid;
+                tampilNotif("Akun baru berhasil dibuat untuk UMKM.", "#27ae60");
+            } catch (authError) {
+                if (authError.code === "auth/email-already-in-use") {
+                    tampilNotif("Email terdeteksi dari SIPAPUA. Menghubungkan lapak...", "#2980b9");
+                    const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+                    uid = userCredential.user.uid;
+                } else {
+                    throw authError;
+                }
+            }
 
             const storageRef = storage.ref(`umkm_logos/${uid}_${fotoFile.name}`);
             await storageRef.put(fotoFile);
@@ -352,15 +354,17 @@
                 jenis_umkm: document.getElementById("reg-jenis").value,
                 deskripsi: document.getElementById("reg-desc").value,
                 logo_url: photoURL,
+                email_terdaftar: email,
                 uid: uid,
                 dibuat: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            tampilNotif("Pendaftaran Berhasil! Membuka Portal...", "#27ae60");
+            tampilNotif("Lapak UMKM Berhasil Aktif!", "#27ae60");
             setTimeout(() => { window.location.href = "dashboard-umkm.html"; }, 1500);
-        } catch (e) { 
-            let errorMsg = e.message;
-            if(e.code === "auth/email-already-in-use") errorMsg = "Email ini sudah digunakan oleh UMKM lain!";
+
+        } catch (e) {
+            let errorMsg = "Gagal mendaftar: " + e.message;
+            if(e.code === "auth/wrong-password") errorMsg = "Password salah! Gunakan password SIPAPUA Anda.";
             tampilNotif(errorMsg, "#c0392b");
             btn.disabled = false;
             btn.innerText = "BUAT LAPAK SEKARANG";
@@ -375,8 +379,7 @@
             tampilNotif("Berhasil Masuk! Membuka Dashboard...", "#27ae60");
             setTimeout(() => { window.location.href = "dashboard-umkm.html"; }, 1000);
         } catch (e) { 
-            let errorMsg = "Email atau Password Salah!";
-            tampilNotif(errorMsg, "#c0392b"); 
+            tampilNotif("Email atau Password Salah!", "#c0392b"); 
         }
     }
 
