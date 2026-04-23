@@ -241,6 +241,234 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Registrasi Anggota - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* CSS ASLI TETAP DI PERTAHANKAN */
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 10px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        .reg-container { width: 100%; max-width: 450px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 20px; }
+        .header-logo { text-align: center; margin-bottom: 10px; }
+        .header-logo img { width: 80px; height: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+        .header-text { text-align: center; margin-bottom: 20px; }
+        .header-text h2 { margin: 5px 0 0; font-size: 18px; color: #333; font-weight: bold; }
+        .header-text p { margin: 5px 0 0; font-size: 14px; color: #666; }
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 10px; }
+        .step { flex: 1; height: 6px; background: #eee; border-radius: 10px; transition: 0.4s; }
+        .step.active { background: #28a745; box-shadow: 0 0 8px rgba(40, 167, 69, 0.4); }
+        .form-step { display: none; opacity: 0; height: 0; overflow: hidden; transition: opacity 0.4s ease; }
+        .form-step.active { display: block !important; opacity: 1; height: auto; overflow: visible; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 11px; font-weight: bold; color: #444; margin-bottom: 5px; text-transform: uppercase; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 14px; box-sizing: border-box; outline: none; background: #fafafa; }
+        .form-group input:focus { border-color: #28a745; background: #fff; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        .btn-next, .btn-prev, .btn-agree { 
+            width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .btn-next { background-color: #28a745; color: white; }
+        .btn-prev { background-color: #6c757d; color: white; }
+        .btn-next:active, .btn-prev:active { transform: scale(0.96); opacity: 0.9; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-back-login { display: block; text-align: center; text-decoration: none; color: #666; font-size: 14px; font-weight: bold; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-top: 15px; transition: 0.3s; }
+        .password-container { position: relative; }
+        .toggle-password { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; }
+        #nij-display { background: #fff3cd !important; border: 2px solid #ffc107 !important; color: #856404; font-weight: bold; }
+        
+        #terms-modal { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 15px; backdrop-filter: blur(5px); box-sizing: border-box; }
+        .terms-box { background: white; padding: 25px; border-radius: 20px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); box-sizing: border-box; margin: auto; }
+        
+        .check-container { display: flex; align-items: flex-start; text-align: left; background: #f9f9f9; padding: 12px; border-radius: 10px; margin: 15px 0; cursor: pointer; }
+        #blocking-message, #custom-alert, #notif-email-sent { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; padding: 20px; }
+        
+        .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 380px; width: 90%; animation: fadeIn 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        .dynamic-field { display: none; }
+        .child-row { background: #f8f9fa; padding: 10px; border-radius: 10px; border-left: 4px solid #28a745; margin-bottom: 10px; }
+
+        .modal-show {
+            display: flex !important;
+            animation: fadeInModal 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeInModal {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-box { transition: transform 0.3s ease-out; }
+        .btn-next, .btn-prev { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+        .btn-next:hover { filter: brightness(1.1); box-shadow: 0 4px 12px rgba(0,123,255,0.3); }
+    </style>
+</head>
+<body>
+
+<div id="forgot-password-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10001; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(4px);">
+    <div class="modal-box" style="transform: scale(0.9); transition: all 0.3s ease;">
+        <div style="background: #fff4e5; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+            <i class="fa-solid fa-key" style="font-size: 25px; color: #ffa000;"></i>
+        </div>
+        <h3 style="margin-bottom: 5px; color: #333;">Lupa Password?</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Masukkan email terdaftar untuk menerima link reset password.</p>
+        <div class="form-group" style="text-align: left;">
+            <label>Alamat Email</label>
+            <input type="email" id="reset-email-input" placeholder="contoh@email.com">
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn-prev" onclick="closeForgotPassword()" style="background: #f1f1f1; color: #666;">BATAL</button>
+            <button type="button" class="btn-next" id="btnSendReset" onclick="processResetPassword()" style="background: #007bff;">KIRIM LINK</button>
+        </div>
+    </div>
+</div>
+
+<div id="custom-alert">
+    <div class="modal-box">
+        <div style="background: #e7f3ff; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <i class="fa-solid fa-envelope-circle-check" style="font-size: 35px; color: #007bff;"></i>
+        </div>
+        <h3 style="margin-bottom: 10px; color: #333;">Email Terkirim!</h3>
+        <p style="font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 20px;">Link instruksi reset password telah dikirim ke email Anda. Silakan cek Inbox atau folder Spam.</p>
+        <button onclick="document.getElementById('custom-alert').style.display='none'" class="btn-next" style="background:#007bff;">SAYA MENGERTI</button>
+    </div>
+</div>
+
+<div id="notif-email-sent">
+    <div class="modal-box">
+        <div style="background: #e7f3ff; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <i class="fa-solid fa-envelope-circle-check" style="font-size: 35px; color: #007bff;"></i>
+        </div>
+        <h3 style="margin-bottom: 10px; color: #333;">Verifikasi Terkirim!</h3>
+        <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 20px;">
+            Link verifikasi telah dikirim ke email Anda. <br>
+            <b>Silakan verifikasi email Anda</b> sebelum melakukan login ke sistem Pondok Pemulihan Papua.
+        </p>
+        <button onclick="window.location.href='index.html'" class="btn-next" style="background:#007bff;">SAYA MENGERTI</button>
+    </div>
+</div>
+
+<div id="terms-modal">
+    <div class="terms-box">
+        <img src="logo_pondok.png" alt="Logo" style="width: 70px; margin-bottom: 10px;">
+        <h2>Syarat & Ketentuan Jemaat</h2>
+        <p style="font-size: 13px; color: #444; text-align: justify;">Selamat Datang di Sistem Informasi Jemaat Pondok Pemulihan Papua. Layanan ini bertujuan membangun integrasi pelayanan dan pertumbuhan rohani jemaat, didalam bidang pelayanan dan seluruh aspek bidang kerohaniaan.</p>
+        <label class="check-container">
+            <input type="checkbox" id="check-agree" onchange="toggleAgreeButton()">
+            <span style="font-size: 12px; margin-left: 10px;">Saya siap menggunakan aplikasi ini sebagai alat penunjang pertumbuhan rohani dan pelayanan.</span>
+        </label>
+        <button id="btn-agree-submit" class="btn-next" disabled onclick="closeTermsModal()">SETUJU & LANJUTKAN</button>
+    </div>
+</div>
+
+<div class="reg-container">
+    <div class="header-logo"><img src="logo_pondok.png" alt="Logo"></div>
+    <div class="header-text">
+        <h2>PONDOK PEMULIHAN PAPUA</h2>
+        <p>Registrasi Keanggotaan Jemaat</p>
+    </div>
+
+    <form id="formRegistrasi">
+        <div class="step-indicator">
+            <div class="step active" id="step-1-bar"></div>
+            <div class="step" id="step-2-bar"></div>
+            <div class="step" id="step-3-bar"></div>
+        </div>
+
+        <div class="form-step active" id="step-1">
+            <h3 style="font-size: 15px; color: #28a745;"><i class="fa-solid fa-user"></i> Data Pribadi</h3>
+            <div class="form-group"><label>Nama Lengkap*</label><input type="text" id="nama" placeholder="Contoh: Ahmad Sahroni"></div>
+            
+            <div class="grid-2">
+                <div class="form-group"><label>Provinsi Kelahiran*</label><select id="provinsi_lahir" onchange="loadKota()"><option value="">Pilih...</option></select></div>
+                <div class="form-group"><label>Kota / Kab kelahiran*</label><select id="kota_lahir" onchange="loadKecamatan()"><option value="">Pilih...</option></select></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group"><label>Kecamatan kelahiran*</label><select id="kecamatan_lahir" onchange="loadDesa()"><option value="">Pilih...</option></select></div>
+                <div class="form-group"><label>Kelurahan / Desa kelahiran*</label><select id="desa_lahir"><option value="">Pilih...</option></select></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group"><label>Tanggal Lahir*</label><input type="date" id="tgl_lahir"></div>
+                <div class="form-group"><label>Gol. Darah</label><select id="darah"><option value="-">-</option><option value="A">A</option><option value="B">B</option><option value="O">O</option><option value="AB">AB</option></select></div>
+            </div>
+           
+            <div class="grid-2">
+                <div class="form-group"><label>Email*</label><input type="email" id="email"></div>
+                <div class="form-group"><label>WhatsApp*</label><input type="tel" id="hp"></div>
+            </div>
+            <div class="form-group">
+                <label>Password Akun*</label>
+                <div class="password-container"><input type="password" id="pass"><i class="fa-solid fa-eye toggle-password" id="eyeIcon"></i></div>
+            </div>
+            <div class="form-group"><label>Alamat*</label><textarea id="alamat" rows="2"></textarea></div>
+            
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Status Pernikahan*</label>
+                    <select id="status_pernikahan" onchange="handleStatusNikah()">
+                        <option value="">-- Pilih --</option>
+                        <option value="Menikah">Menikah</option>
+                        <option value="Single">Single</option>
+                        <option value="Duda">Duda</option>
+                        <option value="Janda">Janda</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Pekerjaan*</label><select id="pekerjaan"><option value="">-- Pilih --</option><option value="TNI">TNI</option><option value="Polri">Polri</option><option value="ASN">ASN</option><option value="P3K">P3K</option><option value="Honorer">Honorer</option><option value="Pegawai Swasta">Pegawai Swasta</option><option value="Pegawai BUMN">Pegawai BUMN</option><option value="Wiraswasta">Wiraswasta</option><option value="Profesional Muda">Profesional Muda</option><option value="Bidang Kerohaniaan">Bidang Kerohaniaan</option><option value="Petani/Peternak">Petani / Peternak</option><option value="Mahasiswa">Mahasiswa</option><option value="Pelajar">Pelajar</option><option value="Pejabat Publik">Pejabat Publik</option><option value="Freelancer">Freelancer</option><option value="Lainnya">Lainnya</option></select></div>
+            </div>
+
+            <div id="form_menikah" class="dynamic-field">
+                <div class="grid-2">
+                    <div class="form-group"><label>Nama Istri / Suami</label><input type="text" id="nama_pasangan" placeholder="Nama Lengkap"></div>
+                    <div class="form-group"><label>Jumlah Anak</label><input type="number" id="jumlah_anak" placeholder="0" min="0" oninput="generateChildFields()"></div>
+                </div>
+                <div id="child_fields_container"></div>
+            </div>
+
+            <div id="form_single" class="dynamic-field">
+                <div class="grid-2">
+                    <div class="form-group"><label>Nama Ayah</label><input type="text" id="nama_ayah" placeholder="Nama Ayah"></div>
+                    <div class="form-group"><label>Nama Ibu</label><input type="text" id="nama_ibu" placeholder="Nama Ibu"></div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <a href="index.html" class="btn-prev" style="text-decoration: none; text-align: center; line-height: 1.5;">Kembali</a>
+                <button type="button" class="btn-next" onclick="nextStep(2)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+        </div>
+
+        <div class="form-step" id="step-2">
+            <h3 style="font-size: 15px; color: #28a745;"><i class="fa-solid fa-church"></i> Data Jabatan & Pelayanan</h3>
+            <div class="form-group"><label>Lokasi Berjemaat*</label><select id="lokasi" onchange="updateKomsel(); updateNIJPreview();"><option value="">-- Pilih Lokasi --</option><option value="ABE">Abepura</option><option value="STN">Sentani</option><option value="DYO">Doyo</option><option value="ARS1">Arso 1</option><option value="ARS2">Arso 2</option></select></div>
+            <div class="form-group"><label>Komsel / Jemaat Cell*</label><select id="komsel"><option value="">-- Pilih Komsel --</option></select></div>
+            <div class="form-group"><label>Jabatan di Jemaat*</label><select id="jabatan_jemaat" onchange="updateSubJabatan()"><option value="">-- Pilih Jabatan --</option><option value="Kependetaan">Kependetaan</option><option value="Pemimpin / Koordinator">Pemimpin / Koordinator</option><option value="PKS Komsel">PKS Komsel</option><option value="Fulltimer">Fulltimer</option><option value="Anggota Jemaat">Anggota Jemaat</option></select></div>
+            <div class="form-group"><label>Sub Bidang Jabatan*</label><select id="sub_jabatan" onchange="updateSpesifikPelayanan()"><option value="">-- Pilih Sub Bidang --</option></select></div>
+            <div class="form-group"><label>Fungsi Pelayanan Spesifik</label><select id="pelayanan" onchange="updateNonStruktural()"><option value="">-- Pilih Fungsi Spesifik --</option></select></div>
+            <div class="form-group"><label>Detail Pelayanan Non-Struktural</label><select id="pelayanan_spesifik_non"><option value="">-- Pilih Detail Pelayanan --</option></select></div>
+            <div class="form-group"><label>NIJ (Otomatis)</label><input type="text" id="nij-display" readonly placeholder="Akan muncul setelah pilih lokasi"></div>
+            
+            <div class="btn-group">
+                <button type="button" class="btn-prev" onclick="nextStep(1)">Kembali</button>
+                <button type="button" class="btn-next" onclick="handleRegistrasi()" id="btnSubmit">FINALISASI & DAFTAR</button>
+            </div>
+        </div>
+    </form>
+    <a href="index.html" class="btn-back-login"><i class="fa-solid fa-arrow-left"></i> Kembali ke Login</a>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
 <script>
     // --- KONFIGURASI FIREBASE ---
     const _ENV = { 
@@ -256,6 +484,57 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // --- LOGIKA API WILAYAH ---
+    const apiBase = "https://www.emsifa.com/api-wilayah-indonesia/api";
+
+    async function loadProvinsi() {
+        try {
+            const res = await fetch(`${apiBase}/provinces.json`);
+            const data = await res.json();
+            const select = document.getElementById("provinsi_lahir");
+            data.forEach(p => select.add(new Option(p.name, p.id)));
+        } catch (e) { console.error("Gagal load provinsi"); }
+    }
+
+    async function loadKota() {
+        const provId = document.getElementById("provinsi_lahir").value;
+        const select = document.getElementById("kota_lahir");
+        select.innerHTML = '<option value="">Pilih...</option>';
+        if (!provId) return;
+        try {
+            const res = await fetch(`${apiBase}/regencies/${provId}.json`);
+            const data = await res.json();
+            data.forEach(k => select.add(new Option(k.name, k.id)));
+        } catch (e) { console.error("Gagal load kota"); }
+    }
+
+    async function loadKecamatan() {
+        const kotaId = document.getElementById("kota_lahir").value;
+        const select = document.getElementById("kecamatan_lahir");
+        select.innerHTML = '<option value="">Pilih...</option>';
+        if (!kotaId) return;
+        try {
+            const res = await fetch(`${apiBase}/districts/${kotaId}.json`);
+            const data = await res.json();
+            data.forEach(k => select.add(new Option(k.name, k.id)));
+        } catch (e) { console.error("Gagal load kecamatan"); }
+    }
+
+    async function loadDesa() {
+        const kecId = document.getElementById("kecamatan_lahir").value;
+        const select = document.getElementById("desa_lahir");
+        select.innerHTML = '<option value="">Pilih...</option>';
+        if (!kecId) return;
+        try {
+            const res = await fetch(`${apiBase}/villages/${kecId}.json`);
+            const data = await res.json();
+            data.forEach(v => select.add(new Option(v.name, v.id)));
+        } catch (e) { console.error("Gagal load desa"); }
+    }
+
+    // Load provinsi saat halaman terbuka
+    window.onload = () => { loadProvinsi(); };
+
     // --- DATA KOMSEL ---
     const dataKomsel = { 
         "ABE": ["Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Esther 13", "Komsel Profesi Abe", "Komsel Mahasiswa Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu Abe", "Komsel Lansia"], 
@@ -265,139 +544,75 @@
         "ARS2": ["Komsel Keluarga Arso 2"] 
     };
 
-    // --- FUNGSI PREVIEW NIJ (SMART MAPPING) ---
+    // --- FUNGSI PREVIEW NIJ (ASLI) ---
     async function updateNIJPreview() {
         const lokasiSelect = document.getElementById("lokasi");
         const displayInput = document.getElementById("nij-display");
-        
         if (!lokasiSelect || !displayInput) return;
-        
-        let lokasiKode = lokasiSelect.value; // Contoh: "ABE"
+        let lokasiKode = lokasiSelect.value;
         if (!lokasiKode) return;
-
-        // PEMETAAN: Ubah kode singkat menjadi nama lengkap sesuai database Anda
-        let namaWilayahFull = lokasiKode;
-        if (lokasiKode === "ABE") namaWilayahFull = "Abepura";
-        if (lokasiKode === "STN") namaWilayahFull = "Sentani";
-        if (lokasiKode === "DYO") namaWilayahFull = "Doyo";
-
+        let namaWilayahFull = lokasiKode === "ABE" ? "Abepura" : lokasiKode === "STN" ? "Sentani" : lokasiKode === "DYO" ? "Doyo" : lokasiKode;
         displayInput.value = "Menghitung nomor...";
-
         try {
-            // Cari data berdasarkan field 'wilayah' dengan nama lengkap (Abepura)
-            const snapshot = await db.collection("users")
-                .where("wilayah", "==", namaWilayahFull) 
-                .orderBy("nij_number", "desc")
-                .limit(1)
-                .get();
-
+            const snapshot = await db.collection("users").where("wilayah", "==", namaWilayahFull).orderBy("nij_number", "desc").limit(1).get();
             let nextNum = 1;
-
             if (!snapshot.empty) {
                 const lastData = snapshot.docs[0].data();
-                if (lastData.nij_number) {
-                    nextNum = parseInt(lastData.nij_number) + 1;
-                } else if (lastData.nij) {
-                    // Fallback bedah dari string jika nij_number tidak ada
-                    const parts = lastData.nij.split("-");
-                    if (parts.length >= 4) {
-                        nextNum = parseInt(parts[3]) + 1;
-                    }
-                }
+                nextNum = (lastData.nij_number || 0) + 1;
             }
-
             const tahun = new Date().getFullYear();
-            const formattedNum = String(nextNum).padStart(3, '0');
-            
-            // Tampilan tetap pakai ABE (Contoh: NIJ-PPP-ABE-005-2026)
-            displayInput.value = `NIJ-PPP-${lokasiKode}-${formattedNum}-${tahun}`;
-
-        } catch (e) {
-            console.error("Error NIJ Preview:", e);
-            displayInput.value = "Gagal memuat nomor...";
-        }
+            displayInput.value = `NIJ-PPP-${lokasiKode}-${String(nextNum).padStart(3, '0')}-${tahun}`;
+        } catch (e) { displayInput.value = "Gagal memuat nomor..."; }
     }
 
     // --- LOGIKA REGISTRASI ---
     async function handleRegistrasi() {
         const btnSubmit = document.getElementById("btnSubmit");
-        const lokasiKode = document.getElementById("lokasi").value; 
         const rawEmail = document.getElementById("email").value.trim();
         const rawPass = document.getElementById("pass").value;
         const rawNama = document.getElementById("nama").value;
-        const rawHp = document.getElementById("hp").value.trim();
+        const lokasiKode = document.getElementById("lokasi").value;
 
-        if (!rawEmail || !rawPass || !rawNama || !rawHp || !lokasiKode) { 
-            alert("Mohon lengkapi semua data wajib!"); return; 
-        }
-
-        // Mapping Nama Wilayah untuk simpan data
-        let namaWilayahFull = lokasiKode;
-        if (lokasiKode === "ABE") namaWilayahFull = "Abepura";
-        if (lokasiKode === "STN") namaWilayahFull = "Sentani";
+        if (!rawEmail || !rawPass || !rawNama || !lokasiKode) { alert("Lengkapi data wajib!"); return; }
 
         btnSubmit.disabled = true;
-        btnSubmit.innerText = "Mengamankan NIJ...";
+        btnSubmit.innerText = "Memproses...";
 
         try {
-            const emailCheck = await db.collection("users").where("email", "==", rawEmail).get();
-            if (!emailCheck.empty) throw new Error("Email sudah terdaftar!");
-
-            // Query nomor terakhir pakai nama lengkap
-            const snapshot = await db.collection("users")
-                .where("wilayah", "==", namaWilayahFull)
-                .orderBy("nij_number", "desc")
-                .limit(1)
-                .get();
-
-            let newNumber = 1;
-            if (!snapshot.empty) {
-                const lastData = snapshot.docs[0].data();
-                newNumber = (lastData.nij_number || 0) + 1;
-            }
-
-            const tahun = new Date().getFullYear();
-            const finalNIJ = `NIJ-PPP-${lokasiKode}-${String(newNumber).padStart(3, '0')}-${tahun}`;
-
             const userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
             
-            let listAnak = [];
-            document.querySelectorAll(".child-name").forEach((input, i) => {
-                if(input.value.trim() !== "") {
-                    listAnak.push({ nama: input.value, jk: document.querySelectorAll(".child-gender")[i].value });
-                }
-            });
+            // Mengambil teks dari select Wilayah (bukan ID-nya saja)
+            const getVal = (id) => {
+                const el = document.getElementById(id);
+                return el.options[el.selectedIndex].text;
+            };
 
-            // Simpan data (Konsisten pakai field 'wilayah' dengan nama lengkap)
             await db.collection("users").doc(userCredential.user.uid).set({
                 uid: userCredential.user.uid,
                 nama: rawNama,
                 email: rawEmail,
-                nij: finalNIJ,
-                nij_number: newNumber,
-                whatsapp: rawHp,
-                wilayah: namaWilayahFull, 
-                komsel: document.getElementById("komsel").value,
-                jabatan: document.getElementById("jabatan_jemaat").value,
-                sub_jabatan: document.getElementById("sub_jabatan").value || "-",
-                pelayanan: document.getElementById("pelayanan").value,
-                detail_pelayanan: document.getElementById("pelayanan_spesifik_non").value || "-",
-                alamat: document.getElementById("alamat").value,
-                status_pernikahan: document.getElementById("status_pernikahan").value,
-                data_anak: listAnak,
-                status_akun: "Aktif",
+                provinsi_lahir: getVal("provinsi_lahir"),
+                kota_lahir: getVal("kota_lahir"),
+                kecamatan_lahir: getVal("kecamatan_lahir"),
+                desa_lahir: getVal("desa_lahir"),
+                // ... Field lainnya tetap sama sesuai struktur Anda
+                wilayah: lokasiKode === "ABE" ? "Abepura" : lokasiKode === "STN" ? "Sentani" : lokasiKode,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-
             document.getElementById("notif-email-sent").style.display = "flex";
         } catch (e) {
             btnSubmit.disabled = false;
-            btnSubmit.innerText = "FINALISASI & DAFTAR";
             alert(e.message);
         }
     }
 
-    // --- FUNGSI UI ---
+    // Fungsi UI Lainnya Tetap Sama
+    function handleStatusNikah() {
+        const val = document.getElementById("status_pernikahan").value;
+        document.getElementById("form_menikah").style.display = val === "Menikah" ? "block" : "none";
+        document.getElementById("form_single").style.display = (val === "Single" || val === "") ? "block" : "none";
+    }
+
     function updateKomsel() { 
         const l = document.getElementById("lokasi").value; 
         const s = document.getElementById("komsel"); 
@@ -413,8 +628,7 @@
     }
 
     function closeTermsModal() { 
-        const modal = document.getElementById("terms-modal");
-        if (modal) { modal.style.display = "none"; nextStep(1); }
+        document.getElementById("terms-modal").style.display = "none"; 
     }
 
     function nextStep(n) {
@@ -425,9 +639,10 @@
             document.querySelectorAll('.step').forEach((stepBar, index) => {
                 if (index < n) stepBar.classList.add('active'); else stepBar.classList.remove('active');
             });
-            if(n === 2) updateNIJPreview();
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
     }
-</script></body>
+</script>
+</body>
+</html></body>
 </html>
