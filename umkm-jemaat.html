@@ -162,7 +162,23 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Inisialisasi Firebase (Gunakan pola aman agar tidak error "already exists")
+    // 1. Fungsi Menu (Ditaruh paling atas agar langsung terbaca browser)
+    window.toggleMenu = function(event) {
+        if (event) event.stopPropagation();
+        const dropdown = document.getElementById("myDropdown");
+        if (dropdown) dropdown.classList.toggle("show");
+    };
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
+            const dropdowns = document.getElementsByClassName("dropdown-content");
+            for (let i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].classList.contains('show')) dropdowns[i].classList.remove('show');
+            }
+        }
+    };
+
+    // 2. Konfigurasi Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -171,32 +187,9 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-
-    // 2. Fungsi Toggle Menu (PENTING: Harus didefinisikan dengan benar)
-    function toggleMenu(event) {
-        if (event) event.stopPropagation();
-        const dropdown = document.getElementById("myDropdown");
-        if (dropdown) {
-            dropdown.classList.toggle("show");
-        }
-    }
-
-    // Menutup dropdown jika klik di luar area menu
-    window.onclick = function(event) {
-        if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
-            const dropdowns = document.getElementsByClassName("dropdown-content");
-            for (let i = 0; i < dropdowns.length; i++) {
-                if (dropdowns[i].classList.contains('show')) {
-                    dropdowns[i].classList.remove('show');
-                }
-            }
-        }
-    };
 
     // 3. Fungsi Notifikasi
     function tampilNotif(pesan, warna = "#2c3e50") {
@@ -208,30 +201,23 @@
         if (container) {
             container.style.display = "block";
             setTimeout(() => { container.style.display = "none"; }, 3500);
-        } else {
-            // Fallback jika elemen notif tidak ada di HTML
-            alert(pesan);
-        }
+        } else { alert(pesan); }
     }
 
-    // 4. Fungsi Proses Daftar (Perbaikan Cloudinary 401)
+    // 4. Fungsi Proses Daftar (Menggunakan preset yang sudah Anda buat)
     async function prosesDaftar() {
+        const btn = document.getElementById("btn-daftar");
         const email = document.getElementById("reg-email").value;
         const pass = document.getElementById("reg-pass").value;
         const fotoFile = document.getElementById("reg-foto").files[0];
-        const btn = document.getElementById("btn-daftar");
 
-        // Konfigurasi Cloudinary
-        const CLOUD_NAME = "dxzllsbgj"; 
-        const UPLOAD_PRESET = "sipapua_preset"; 
-
-        if(!fotoFile) return tampilNotif("Mohon unggah logo UMKM Anda!", "#f39c12");
+        if(!fotoFile) return tampilNotif("Pilih foto logo UMKM!", "#f39c12");
 
         try {
             btn.disabled = true;
-            btn.innerText = "Sedang Memproses...";
+            btn.innerText = "Memproses...";
 
-            // Firebase Auth
+            // STEP 1: Firebase Auth
             let uid;
             try {
                 const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
@@ -243,20 +229,22 @@
                 } else { throw err; }
             }
 
-            // Upload Cloudinary (Gunakan format Unsigned yang benar)
+            // STEP 2: Upload Cloudinary (Menggunakan sipapua_preset)
+            btn.innerText = "Mengunggah Logo...";
             const formData = new FormData();
             formData.append("file", fotoFile);
-            formData.append("upload_preset", UPLOAD_PRESET);
+            formData.append("upload_preset", "sipapua_preset");
 
-            const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+            const uploadRes = await fetch("https://api.cloudinary.com/v1_1/dxzllsbgj/image/upload", {
                 method: "POST",
                 body: formData
             });
 
             const dataFoto = await uploadRes.json();
-            if(!uploadRes.ok) throw new Error(dataFoto.error.message || "Gagal upload gambar");
+            if(!uploadRes.ok) throw new Error(dataFoto.error.message);
 
-            // Simpan ke Firestore
+            // STEP 3: Simpan Firestore
+            btn.innerText = "Menyimpan Data...";
             await db.collection("umkm_stores").doc(uid).set({
                 nama_toko: document.getElementById("reg-toko").value,
                 nama_pemilik: document.getElementById("reg-pemilik").value,
@@ -269,49 +257,26 @@
                 dibuat: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            tampilNotif("Lapak Berhasil Diaktifkan!", "#27ae60");
+            tampilNotif("Lapak Berhasil Aktif!", "#27ae60");
             setTimeout(() => { window.location.href = "dashboard-umkm.html"; }, 1500);
 
         } catch (e) {
             console.error(e);
-            tampilNotif("Gagal: " + e.message, "#c0392b");
+            tampilNotif("Error: " + e.message, "#c0392b");
             btn.disabled = false;
             btn.innerText = "BUAT LAPAK SEKARANG";
         }
     }
 
-    // Fungsi tambahan lainnya
-    function bukaModal(id) { 
+    // Fungsi Pembantu
+    window.bukaModal = function(id) { 
         document.getElementById(id).style.display = 'flex'; 
         const dropdown = document.getElementById("myDropdown");
         if(dropdown) dropdown.classList.remove("show");
-    }
+    };
     
-    function tutupModal() { 
+    window.tutupModal = function() { 
         document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); 
-    }
-
-    // Load produk awal
-    async function loadMainMarket() {
-        const market = document.getElementById("main-market");
-        if(!market) return;
-        try {
-            const snap = await db.collection("umkm_products").orderBy("dibuat", "desc").limit(10).get();
-            market.innerHTML = "";
-            snap.forEach(doc => {
-                const p = doc.data();
-                market.innerHTML += `
-                    <div class="product-card">
-                        <img src="${p.img_url}" class="product-img">
-                        <div class="product-info">
-                            <span class="category-tag">${p.status || 'UMKM'}</span>
-                            <h3>${p.nama}</h3>
-                        </div>
-                    </div>`;
-            });
-        } catch (e) { console.error(e); }
-    }
-
-    loadMainMarket();
+    };
 </script></body>
 </html>
