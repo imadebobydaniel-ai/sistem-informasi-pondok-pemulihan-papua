@@ -242,13 +242,22 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
-    const _ENV = { k: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", aD: "boby-apps-project.firebaseapp.com", pI: "boby-apps-project", sB: "boby-apps-project.appspot.com", mS: "125984859692", aI: "1:125984859692:web:09f75df5d2e4b6e3bcd389" };
+    // --- KONFIGURASI ENV & FIREBASE ---
+    const _ENV = { 
+        k: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
+        aD: "boby-apps-project.firebaseapp.com", 
+        pI: "boby-apps-project", 
+        sB: "boby-apps-project.appspot.com", 
+        mS: "125984859692", 
+        aI: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    };
     const firebaseConfig = { apiKey: _ENV.k, authDomain: _ENV.aD, projectId: _ENV.pI, storageBucket: _ENV.sB, messagingSenderId: _ENV.mS, appId: _ENV.aI };
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // --- DATA STATIS ---
     const dataKomsel = { 
         "ABE": ["Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Esther 13", "Komsel Profesi Abe", "Komsel Mahasiswa Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu Abe", "Komsel Lansia"], 
         "STN": ["Siloam 1", "Siloam 2", "Siloam 3", "Siloam 4", "Siloam 5", "Siloam 6", "Siloam 7", "Siloam 8", "Agape 1", "Agape 2", "Agape 3", "Agape 4", "Agape 5", "Agape 6", "Agape 7", "Agape 8", "Komsel Mahasiswa Sentani", "Komsel Profesi Sentani", "Komsel Pelajar Sentani", "Komsel Sekolah Minggu Sentani", "Komsel Lansia Sentani"], 
@@ -257,7 +266,7 @@
         "ARS2": ["Komsel Keluarga Arso 2"] 
     };
 
-    // --- FUNGSI UNTUK AKTIVASI TOMBOL SETUJU (FIX FREEZE) ---
+    // --- FUNGSI NAVIGASI & UI (CAKUPAN GLOBAL) ---
     function toggleAgreeButton() { 
         const c = document.getElementById("check-agree"); 
         const b = document.getElementById("btn-agree-submit"); 
@@ -267,7 +276,6 @@
         }
     }
 
-    // --- FUNGSI UNTUK LANJUT KE STEP 1 ---
     function closeTermsModal() { 
         const modal = document.getElementById("terms-modal");
         if (modal) {
@@ -276,7 +284,30 @@
         }
     }
 
-    // --- FUNGSI PREVIEW NIJ (HANYA UNTUK TAMPILAN) ---
+    function nextStep(n) {
+        // Sembunyikan semua step & hapus class active
+        document.querySelectorAll('.form-step').forEach(s => { 
+            s.style.display = 'none'; 
+            s.classList.remove('active');
+        });
+        
+        const target = document.getElementById('step-' + n);
+        if (target) {
+            target.style.display = 'block';
+            target.classList.add('active'); // Memicu animasi CSS
+            
+            // Update bar indikator
+            document.querySelectorAll('.step').forEach((stepBar, index) => {
+                if (index < n) stepBar.classList.add('active');
+                else stepBar.classList.remove('active');
+            });
+
+            if(n === 2) updateNIJPreview();
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+    }
+
+    // --- FUNGSI LOGIKA DATA ---
     async function updateNIJPreview() {
         const lokasi = document.getElementById("lokasi")?.value;
         const displayInput = document.getElementById("nij-display");
@@ -295,7 +326,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // --- LOGIKA REGISTRASI DENGAN TRANSACTION (ANTI-DOBEL) ---
     async function handleRegistrasi() {
         const btnSubmit = document.getElementById("btnSubmit");
         const lokasi = document.getElementById("lokasi").value;
@@ -318,20 +348,13 @@
             if (!hpCheck.empty) throw new Error("No WhatsApp sudah terdaftar!");
 
             const resultNIJ = await db.runTransaction(async (transaction) => {
-                const lastUserQuery = db.collection("users")
-                    .where("lokasi", "==", lokasi)
-                    .orderBy("createdAt", "desc")
-                    .limit(1);
-                
-                const snapshot = await lastUserQuery.get();
+                const snapshot = await db.collection("users").where("lokasi", "==", lokasi).orderBy("createdAt", "desc").limit(1).get();
                 let newNumber = 1;
-
                 if (!snapshot.empty) {
                     const lastNij = snapshot.docs[0].data().nij;
                     const parts = lastNij.split("-");
                     if(parts.length >= 4) newNumber = parseInt(parts[3]) + 1;
                 }
-
                 const tahun = new Date().getFullYear();
                 return `NIJ-PPP-${lokasi}-${String(newNumber).padStart(3, '0')}-${tahun}`;
             });
@@ -366,7 +389,6 @@
             });
 
             document.getElementById("notif-email-sent").style.display = "flex";
-
         } catch (e) {
             btnSubmit.disabled = false;
             btnSubmit.innerText = "FINALISASI & DAFTAR";
@@ -374,7 +396,7 @@
         }
     }
 
-    // --- FUNGSI PENDUKUNG ---
+    // --- FUNGSI PENDUKUNG FORM ---
     function updateKomsel() { 
         const l = document.getElementById("lokasi").value; 
         const s = document.getElementById("komsel"); 
@@ -389,16 +411,6 @@
         document.getElementById("form_single").style.display = (s !== "Menikah" && s !== "") ? "block" : "none"; 
     }
 
-    function nextStep(n) {
-        document.querySelectorAll('.form-step').forEach(s => { s.style.display = 'none'; });
-        const target = document.getElementById('step-'+n);
-        if (target) {
-            target.style.display = 'block';
-            if(n === 2) updateNIJPreview();
-            window.scrollTo({top:0, behavior:'smooth'});
-        }
-    }
-
     async function loadProvinsi() { 
         try {
             const resp = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json'); 
@@ -409,6 +421,7 @@
         } catch(e) { console.error("Gagal load provinsi", e); }
     }
 
+    // --- INISIALISASI AWAL ---
     window.onload = () => {
         loadProvinsi();
     };
