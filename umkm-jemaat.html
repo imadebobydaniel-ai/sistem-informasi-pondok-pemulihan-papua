@@ -162,7 +162,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // 1. Perbaikan inisialisasi Firebase agar tidak double-load
+    // 1. Inisialisasi Firebase (Gunakan pola aman agar tidak error "already exists")
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -171,61 +171,79 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    // Pastikan hanya inisialisasi jika belum ada app yang berjalan
-    let app;
     if (!firebase.apps.length) {
-        app = firebase.initializeApp(firebaseConfig);
-    } else {
-        app = firebase.app();
+        firebase.initializeApp(firebaseConfig);
     }
-
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // --- Fungsi UI (Tidak Berubah) ---
+    // 2. Fungsi Toggle Menu (PENTING: Harus didefinisikan dengan benar)
+    function toggleMenu(event) {
+        if (event) event.stopPropagation();
+        const dropdown = document.getElementById("myDropdown");
+        if (dropdown) {
+            dropdown.classList.toggle("show");
+        }
+    }
+
+    // Menutup dropdown jika klik di luar area menu
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropbtn') && !event.target.closest('.dropbtn')) {
+            const dropdowns = document.getElementsByClassName("dropdown-content");
+            for (let i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].classList.contains('show')) {
+                    dropdowns[i].classList.remove('show');
+                }
+            }
+        }
+    };
+
+    // 3. Fungsi Notifikasi
     function tampilNotif(pesan, warna = "#2c3e50") {
         const container = document.getElementById("notif-container");
         const content = document.getElementById("notif-content");
         const msg = document.getElementById("notif-message");
-        if(msg) msg.innerText = pesan;
-        if(content) content.style.background = warna;
-        if(container) container.style.display = "block";
-        setTimeout(() => { if(container) container.style.display = "none"; }, 3500);
+        if (msg) msg.innerText = pesan;
+        if (content) content.style.background = warna;
+        if (container) {
+            container.style.display = "block";
+            setTimeout(() => { container.style.display = "none"; }, 3500);
+        } else {
+            // Fallback jika elemen notif tidak ada di HTML
+            alert(pesan);
+        }
     }
 
-    // ... (Fungsi toggleMenu, tutupModal, loadMainMarket tetap sama) ...
-
-    // 2. Perbaikan Fungsi Pendaftaran (Fokus pada Cloudinary)
+    // 4. Fungsi Proses Daftar (Perbaikan Cloudinary 401)
     async function prosesDaftar() {
         const email = document.getElementById("reg-email").value;
         const pass = document.getElementById("reg-pass").value;
         const fotoFile = document.getElementById("reg-foto").files[0];
         const btn = document.getElementById("btn-daftar");
 
-        // Pastikan variabel ini sesuai dengan Dashboard Cloudinary Anda
+        // Konfigurasi Cloudinary
         const CLOUD_NAME = "dxzllsbgj"; 
-        const UPLOAD_PRESET = "sipapua_preset"; // KUNCI: Pastikan preset ini bertipe 'Unsigned' di Cloudinary
+        const UPLOAD_PRESET = "sipapua_preset"; 
 
         if(!fotoFile) return tampilNotif("Mohon unggah logo UMKM Anda!", "#f39c12");
 
         try {
             btn.disabled = true;
-            btn.innerText = "Memproses...";
+            btn.innerText = "Sedang Memproses...";
 
-            // STEP 1: Firebase Auth
+            // Firebase Auth
             let uid;
             try {
                 const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
                 uid = userCredential.user.uid;
-            } catch (authError) {
-                if (authError.code === "auth/email-already-in-use") {
+            } catch (err) {
+                if (err.code === "auth/email-already-in-use") {
                     const userCredential = await auth.signInWithEmailAndPassword(email, pass);
                     uid = userCredential.user.uid;
-                } else { throw authError; }
+                } else { throw err; }
             }
 
-            // STEP 2: Upload ke Cloudinary (Tanpa header otentikasi tambahan untuk Unsigned)
-            btn.innerText = "Mengunggah Logo...";
+            // Upload Cloudinary (Gunakan format Unsigned yang benar)
             const formData = new FormData();
             formData.append("file", fotoFile);
             formData.append("upload_preset", UPLOAD_PRESET);
@@ -236,37 +254,64 @@
             });
 
             const dataFoto = await uploadRes.json();
+            if(!uploadRes.ok) throw new Error(dataFoto.error.message || "Gagal upload gambar");
 
-            if(!uploadRes.ok) {
-                console.error("Cloudinary Error Detail:", dataFoto);
-                throw new Error(dataFoto.error.message || "Gagal upload. Cek Upload Preset Anda.");
-            }
-            
-            const photoURL = dataFoto.secure_url;
-
-            // STEP 3: Firestore
-            btn.innerText = "Menyimpan ke Database...";
+            // Simpan ke Firestore
             await db.collection("umkm_stores").doc(uid).set({
                 nama_toko: document.getElementById("reg-toko").value,
                 nama_pemilik: document.getElementById("reg-pemilik").value,
                 whatsapp: document.getElementById("reg-hp").value,
                 jenis_umkm: document.getElementById("reg-jenis").value,
                 deskripsi: document.getElementById("reg-desc").value,
-                logo_url: photoURL,
+                logo_url: dataFoto.secure_url,
                 email_terdaftar: email,
                 uid: uid,
                 dibuat: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            tampilNotif("Lapak UMKM Berhasil Aktif!", "#27ae60");
+            tampilNotif("Lapak Berhasil Diaktifkan!", "#27ae60");
             setTimeout(() => { window.location.href = "dashboard-umkm.html"; }, 1500);
 
         } catch (e) {
-            console.error("Proses Daftar Gagal:", e);
+            console.error(e);
             tampilNotif("Gagal: " + e.message, "#c0392b");
             btn.disabled = false;
             btn.innerText = "BUAT LAPAK SEKARANG";
         }
     }
+
+    // Fungsi tambahan lainnya
+    function bukaModal(id) { 
+        document.getElementById(id).style.display = 'flex'; 
+        const dropdown = document.getElementById("myDropdown");
+        if(dropdown) dropdown.classList.remove("show");
+    }
+    
+    function tutupModal() { 
+        document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); 
+    }
+
+    // Load produk awal
+    async function loadMainMarket() {
+        const market = document.getElementById("main-market");
+        if(!market) return;
+        try {
+            const snap = await db.collection("umkm_products").orderBy("dibuat", "desc").limit(10).get();
+            market.innerHTML = "";
+            snap.forEach(doc => {
+                const p = doc.data();
+                market.innerHTML += `
+                    <div class="product-card">
+                        <img src="${p.img_url}" class="product-img">
+                        <div class="product-info">
+                            <span class="category-tag">${p.status || 'UMKM'}</span>
+                            <h3>${p.nama}</h3>
+                        </div>
+                    </div>`;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    loadMainMarket();
 </script></body>
 </html>
