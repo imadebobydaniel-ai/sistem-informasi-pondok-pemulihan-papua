@@ -25,13 +25,13 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .dropdown-content { 
-            display: block; position: absolute; right: 0; top: 130%; background-color: white; 
+            display: none; position: absolute; right: 0; top: 130%; background-color: white; 
             min-width: 230px; box-shadow: 0px 10px 30px rgba(0,0,0,0.15); border-radius: 15px; 
             overflow: hidden; z-index: 1001; border: 1px solid rgba(0,0,0,0.05);
             opacity: 0; visibility: hidden; transform: translateY(15px);
             transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
-        .dropdown-content.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .dropdown-content.show { display: block; opacity: 1; visibility: visible; transform: translateY(0); }
         .dropdown-content a { 
             color: #444; padding: 14px 18px; text-decoration: none; display: flex;
             align-items: center; gap: 12px; font-size: 14px; font-weight: 500;
@@ -130,11 +130,10 @@
                 <input type="email" id="reg-email" placeholder="Email (Gunakan Email SIPAPUA)" required>
                 <div style="position: relative;">
                     <input type="password" id="reg-pass" placeholder="Password (Gunakan Password SIPAPUA)" required>
-                    <i class="fa-solid fa-eye" id="toggleRegEye" onclick="togglePassReg()" style="position: absolute; right: 15px; top: 22px; color: #999; cursor: pointer;"></i>
                 </div>
             </div>
             <button type="button" class="btn-action" id="btn-daftar" onclick="prosesDaftar()">BUAT LAPAK SEKARANG</button>
-           <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:10px; color:#000; font-weight:bold;">Batal</button>
+            <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:10px; color:#000; font-weight:bold;">Batal</button>
         </form>
     </div>
 </div>
@@ -143,12 +142,9 @@
     <div class="modal-content">
         <h3>Masuk ke Dashboard</h3>
         <input type="email" id="log-email" placeholder="Email">
-        <div style="position: relative;">
-            <input type="password" id="log-pass" placeholder="Password">
-            <i class="fa-solid fa-eye" id="toggleLogEye" onclick="togglePassLogin()" style="position: absolute; right: 15px; top: 22px; color: #999; cursor: pointer;"></i>
-        </div>
+        <input type="password" id="log-pass" placeholder="Password">
         <button class="btn-action" onclick="prosesLogin()">MASUK DASHBOARD</button>
-        <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:10px; color:#999;">Batal</button>
+        <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:10px; color:#000; font-weight:bold;">Batal</button>
     </div>
 </div>
 
@@ -156,12 +152,9 @@
     <div class="modal-content" style="border-top: 5px solid #d32f2f;">
         <h3 style="color: #d32f2f;"><i class="fa-solid fa-lock"></i> Verifikasi Admin</h3>
         <input type="text" id="admin-user" placeholder="Username Admin">
-        <div style="position: relative;">
-            <input type="password" id="admin-pass" placeholder="Password Admin">
-            <i class="fa-solid fa-eye" id="toggleEye" onclick="togglePassAdmin()" style="position: absolute; right: 15px; top: 22px; color: #999; cursor: pointer;"></i>
-        </div>
+        <input type="password" id="admin-pass" placeholder="Password Admin">
         <button class="btn-action" style="background: #d32f2f;" onclick="prosesLoginAdmin()">MASUK PANEL KONTROL</button>
-        <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:15px; color:#999;">Batal</button>
+        <button type="button" onclick="tutupModal()" style="background:none; border:none; width:100%; margin-top:15px; color:#000; font-weight:bold;">Batal</button>
     </div>
 </div>
 
@@ -169,7 +162,57 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-// --- 4. PROSES DAFTAR (PERBAIKAN TOTAL CLOUDINARY) ---
+<script>
+    // --- 1. KONFIGURASI FIREBASE (WAJIB DIISI) ---
+    const firebaseConfig = {
+        apiKey: "MASUKKAN_API_KEY_ANDA",
+        authDomain: "MASUKKAN_DOMAIN_ANDA",
+        projectId: "MASUKKAN_PROJECT_ID_ANDA",
+        storageBucket: "MASUKKAN_STORAGE_BUCKET_ANDA",
+        messagingSenderId: "ID_ANDA",
+        appId: "APP_ID_ANDA"
+    };
+    
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- 2. FUNGSI UI (MENU & MODAL) ---
+    function toggleMenu(event) {
+        event.stopPropagation();
+        document.getElementById("myDropdown").classList.toggle("show");
+    }
+
+    function tutupModal() {
+        const modals = document.querySelectorAll('.modal-overlay');
+        modals.forEach(m => m.style.display = 'none');
+    }
+
+    function bukaModal(id) {
+        document.getElementById(id).style.display = 'flex';
+    }
+
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropbtn')) {
+            const dropdowns = document.getElementsByClassName("dropdown-content");
+            for (let i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].classList.contains('show')) {
+                    dropdowns[i].classList.remove('show');
+                }
+            }
+        }
+    }
+
+    function tampilNotif(msg, color) {
+        const container = document.getElementById("notif-container");
+        const content = document.getElementById("notif-content");
+        document.getElementById("notif-message").innerText = msg;
+        content.style.backgroundColor = color;
+        container.style.display = "block";
+        setTimeout(() => { container.style.display = "none"; }, 3000);
+    }
+
+    // --- 3. PROSES DAFTAR & CLOUDINARY ---
     async function prosesDaftar() {
         const btn = document.getElementById("btn-daftar");
         const email = document.getElementById("reg-email").value;
@@ -183,7 +226,7 @@
             btn.disabled = true;
             btn.innerText = "Memproses...";
 
-            // STEP 1: Firebase Auth
+            // STEP 1: Firebase Auth (Daftar Akun)
             let uid;
             try {
                 const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
@@ -195,26 +238,19 @@
                 } else { throw err; }
             }
 
-            // STEP 2: Upload Cloudinary (Pola Unsigned Murni)
+            // STEP 2: Upload Cloudinary (Tanpa API Key - Unsigned)
             btn.innerText = "Mengunggah Logo...";
-            
             const formData = new FormData();
             formData.append("file", fotoFile);
-            formData.append("upload_preset", "sipapua_preset"); // Pastikan nama preset ini tepat
+            formData.append("upload_preset", "sipapua_preset");
 
-            // Gunakan fetch sederhana tanpa header tambahan
             const uploadRes = await fetch("https://api.cloudinary.com/v1_1/dxzllsbgj/image/upload", {
                 method: "POST",
                 body: formData
             });
 
             const dataFoto = await uploadRes.json();
-            
-            // Jika masih error, kita tangkap pesannya di sini
-            if(!uploadRes.ok) {
-                console.error("Detail Error Cloudinary:", dataFoto);
-                throw new Error(dataFoto.error.message || "Gagal upload ke Cloudinary");
-            }
+            if(!uploadRes.ok) throw new Error(dataFoto.error.message || "Gagal upload Cloudinary");
 
             // STEP 3: Simpan Ke Firestore
             btn.innerText = "Menyimpan Data...";
@@ -240,5 +276,6 @@
             btn.innerText = "BUAT LAPAK SEKARANG";
         }
     }
+</script>
 </body>
 </html>
