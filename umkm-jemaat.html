@@ -179,7 +179,7 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // --- 2. FUNGSI UI (MENU & MODAL) ---
+    // --- 2. FUNGSI UI (MENU, MODAL, & MATA PASSWORD) ---
     function toggleMenu(event) {
         event.stopPropagation();
         document.getElementById("myDropdown").classList.toggle("show");
@@ -192,6 +192,19 @@
 
     function bukaModal(id) {
         document.getElementById(id).style.display = 'flex';
+    }
+
+    // Fungsi Toggle Mata Password
+    function togglePassword(inputId, iconId) {
+        const passwordInput = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+            icon.classList.replace("fa-eye", "fa-eye-slash");
+        } else {
+            passwordInput.type = "password";
+            icon.classList.replace("fa-eye-slash", "fa-eye");
+        }
     }
 
     window.onclick = function(event) {
@@ -214,7 +227,7 @@
         setTimeout(() => { container.style.display = "none"; }, 3000);
     }
 
-    // --- 3. PROSES DAFTAR & CLOUDINARY (MURNI TANPA HEADER) ---
+    // --- 3. PROSES DAFTAR & CLOUDINARY (FIXED CLOUD NAME & ERROR HANDLING) ---
     async function prosesDaftar() {
         const btn = document.getElementById("btn-daftar");
         const email = document.getElementById("reg-email").value;
@@ -240,19 +253,27 @@
                 } else { throw err; }
             }
 
-            // STEP 2: Upload Cloudinary (Unsigned murni tanpa headers tambahan)
+            // STEP 2: Upload Cloudinary (FIXED: dxzllsbgi)
             btn.innerText = "Mengunggah Logo...";
+            const CLOUD_NAME = "dxzllsbgi"; 
+            const UPLOAD_PRESET = "sipapua_preset";
+
             const formData = new FormData();
             formData.append("file", fotoFile);
-            formData.append("upload_preset", "sipapua_preset");
+            formData.append("upload_preset", UPLOAD_PRESET);
 
-            const uploadRes = await fetch("https://api.cloudinary.com/v1_1/dxzllsbgj/image/upload", {
+            const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
                 method: "POST",
                 body: formData
             });
 
             const dataFoto = await uploadRes.json();
-            if(!uploadRes.ok) throw new Error(dataFoto.error.message || "Gagal upload Cloudinary");
+
+            // Penanganan error Cloudinary yang lebih kuat
+            if (!uploadRes.ok || dataFoto.error) {
+                console.error("Detail Error Cloudinary:", dataFoto);
+                throw new Error(dataFoto.error?.message || "Cloudinary tidak mengenali akun Anda (Cek Cloud Name)");
+            }
 
             // STEP 3: Simpan Ke Firestore
             btn.innerText = "Menyimpan Data...";
@@ -279,7 +300,6 @@
         }
     }
     
-    // Placeholder fungsi login jika dibutuhkan
     function prosesLogin() { console.log("Fungsi login dipanggil"); }
     function prosesLoginAdmin() { console.log("Fungsi login admin dipanggil"); }
 </script>
