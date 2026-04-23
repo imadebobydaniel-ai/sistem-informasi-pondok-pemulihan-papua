@@ -253,6 +253,9 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // --- KONFIGURASI API WILAYAH ---
+    const BASE_URL_WILAYAH = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+
     // --- DATA KOMSEL ---
     const dataKomsel = { 
         "ABE": ["Joseph 1", "Joseph 2", "Joseph 3", "Joseph 4", "Joseph 5", "Esther 1", "Esther 2", "Esther 3", "Esther 4", "Esther 5", "Esther 6", "Esther 7", "Esther 8", "Esther 9", "Esther 10", "Esther 11", "Esther 12", "Esther 13", "Komsel Profesi Abe", "Komsel Mahasiswa Abe", "Komsel Pelajar Abe", "Komsel Sekolah Minggu Abe", "Komsel Lansia"], 
@@ -262,7 +265,58 @@
         "ARS2": ["Komsel Keluarga Arso 2"] 
     };
 
-    // --- FITUR BARU: UPDATE DATA JABATAN (INTRUKSI KHUSUS) ---
+    // --- FUNGSI API WILAYAH (PROVINSI, KOTA, KEC, DESA) ---
+    async function loadProvinsi() {
+        try {
+            const res = await fetch(`${BASE_URL_WILAYAH}/provinces.json`);
+            const data = await res.json();
+            let options = '<option value="">-- Pilih Provinsi --</option>';
+            data.forEach(p => options += `<option value="${p.id}">${p.name}</option>`);
+            document.getElementById("provinsi").innerHTML = options;
+        } catch (e) { console.error("Gagal load provinsi"); }
+    }
+
+    async function loadKota() {
+        const provId = document.getElementById("provinsi").value;
+        const kotaSelect = document.getElementById("kota");
+        if (!provId) return;
+        kotaSelect.innerHTML = '<option value="">Memuat...</option>';
+        try {
+            const res = await fetch(`${BASE_URL_WILAYAH}/regencies/${provId}.json`);
+            const data = await res.json();
+            let options = '<option value="">-- Pilih Kota/Kabupaten --</option>';
+            data.forEach(k => options += `<option value="${k.id}">${k.name}</option>`);
+            kotaSelect.innerHTML = options;
+        } catch (e) { kotaSelect.innerHTML = '<option value="">Gagal memuat</option>'; }
+    }
+
+    async function loadKecamatan() {
+        const kotaId = document.getElementById("kota").value;
+        const kecSelect = document.getElementById("kecamatan");
+        if (!kotaId) return;
+        try {
+            const res = await fetch(`${BASE_URL_WILAYAH}/districts/${kotaId}.json`);
+            const data = await res.json();
+            let options = '<option value="">-- Pilih Kecamatan --</option>';
+            data.forEach(k => options += `<option value="${k.id}">${k.name}</option>`);
+            kecSelect.innerHTML = options;
+        } catch (e) { console.error("Gagal load kecamatan"); }
+    }
+
+    async function loadDesa() {
+        const kecId = document.getElementById("kecamatan").value;
+        const desaSelect = document.getElementById("desa");
+        if (!kecId) return;
+        try {
+            const res = await fetch(`${BASE_URL_WILAYAH}/villages/${kecId}.json`);
+            const data = await res.json();
+            let options = '<option value="">-- Pilih Desa/Kelurahan --</option>';
+            data.forEach(d => options += `<option value="${d.id}">${d.name}</option>`);
+            desaSelect.innerHTML = options;
+        } catch (e) { console.error("Gagal load desa"); }
+    }
+
+    // --- FUNGSI UPDATE JABATAN & PELAYANAN ---
     function updateSubJabatan() {
         const jab = document.getElementById("jabatan_jemaat").value;
         const sub = document.getElementById("sub_jabatan");
@@ -293,7 +347,6 @@
         const pel = document.getElementById("pelayanan");
         pel.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
 
-        // Klasifikasi Sub Bidang Jabatan Pelayanan Utama
         const listPel = [
             "Pengembalaan Jemaat", "Bagian Komisi", "Sekertaris Umum Gereja", "Bendahara Umum gereja",
             "Music Player", "Worship Leader", "Singer", "Tamborin", "Flag", "Choirs", "Campers",
@@ -307,12 +360,11 @@
     }
 
     function updateNonStruktural() {
-        const pel = document.getElementById("pelayanan").value;
         const nst = document.getElementById("pelayanan_spesifik_non");
-        nst.innerHTML = '<option value="">-- Pilih Detail Pelayanan --</option>';
-        
-        // Menambahkan opsi default "Sesuai Fungsi"
-        nst.add(new Option("Sesuai Fungsi Utama", "Utama"));
+        if(nst) {
+            nst.innerHTML = '<option value="">-- Pilih Detail Pelayanan --</option>';
+            nst.add(new Option("Sesuai Fungsi Utama", "Utama"));
+        }
     }
 
     // --- FUNGSI PREVIEW NIJ ---
@@ -359,14 +411,25 @@
             alert("Mohon lengkapi semua data wajib!"); return; 
         }
 
-        let namaWilayahFull = lokasiKode;
-        if (lokasiKode === "ABE") namaWilayahFull = "Abepura";
-        if (lokasiKode === "STN") namaWilayahFull = "Sentani";
-
         btnSubmit.disabled = true;
         btnSubmit.innerText = "Mengamankan NIJ...";
 
         try {
+            // Ambil Nama Teks dari Dropdown Wilayah (bukan ID)
+            const getTxt = (id) => {
+                const el = document.getElementById(id);
+                return el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : "-";
+            };
+
+            const provNama = getTxt("provinsi");
+            const kotaNama = getTxt("kota");
+            const kecNama = getTxt("kecamatan");
+            const desaNama = getTxt("desa");
+
+            let namaWilayahFull = lokasiKode;
+            if (lokasiKode === "ABE") namaWilayahFull = "Abepura";
+            if (lokasiKode === "STN") namaWilayahFull = "Sentani";
+
             const emailCheck = await db.collection("users").where("email", "==", rawEmail).get();
             if (!emailCheck.empty) throw new Error("Email sudah terdaftar!");
 
@@ -392,12 +455,18 @@
                 nij_number: newNumber,
                 whatsapp: rawHp,
                 wilayah: namaWilayahFull, 
+                // Data Alamat Lengkap dari API
+                provinsi: provNama,
+                kabupaten_kota: kotaNama,
+                kecamatan: kecNama,
+                desa_kelurahan: desaNama,
+                alamat_detail: document.getElementById("alamat").value,
+                
                 komsel: document.getElementById("komsel").value,
                 jabatan: document.getElementById("jabatan_jemaat").value,
                 sub_jabatan: document.getElementById("sub_jabatan").value || "-",
                 pelayanan: document.getElementById("pelayanan").value,
                 detail_pelayanan: document.getElementById("pelayanan_spesifik_non").value || "-",
-                alamat: document.getElementById("alamat").value,
                 status_pernikahan: document.getElementById("status_pernikahan").value,
                 status_akun: "Aktif",
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -448,6 +517,15 @@
         document.getElementById("form_menikah").style.display = (val === "Menikah") ? "block" : "none";
         document.getElementById("form_single").style.display = (val === "Single") ? "block" : "none";
     }
+
+    // --- EVENT LISTENER SAAT HALAMAN DIBUKA ---
+    document.addEventListener("DOMContentLoaded", () => {
+        loadProvinsi(); // Inisialisasi API Wilayah
+        // Tambahkan event listener onchange jika belum ada di HTML
+        document.getElementById("provinsi").addEventListener("change", loadKota);
+        document.getElementById("kota").addEventListener("change", loadKecamatan);
+        document.getElementById("kecamatan").addEventListener("change", loadDesa);
+    });
 </script>
 </body>
 </html>
