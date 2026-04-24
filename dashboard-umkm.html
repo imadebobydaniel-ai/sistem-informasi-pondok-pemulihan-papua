@@ -30,9 +30,18 @@
         }
 
         .nav-dash h1 { font-size: 14px; margin: 0; color: var(--gold); display: flex; align-items: center; gap: 8px; }
+        
+        /* Nav Actions Styling */
         .nav-actions { display: flex; gap: 10px; align-items: center; }
-        .btn-nav { background: none; border: 1px solid var(--gold); color: var(--gold); padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 11px; text-decoration: none; }
-        .btn-chat-nav { background: var(--gold); color: var(--primary); border: none; font-weight: bold; }
+        .btn-nav { 
+            padding: 6px 12px; border-radius: 8px; border: 1px solid var(--gold); 
+            cursor: pointer; font-size: 11px; text-decoration: none; 
+            display: flex; align-items: center; gap: 6px; font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn-chat-nav { background: var(--gold); color: var(--primary); }
+        .btn-logout-nav { background: transparent; color: var(--gold); }
+        .btn-logout-nav:hover { background: rgba(212, 175, 55, 0.1); }
 
         .container { max-width: 480px; margin: 0 auto; padding: 20px; }
         
@@ -98,7 +107,6 @@
         #notif-sheet { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: flex-end; }
         .sheet-content { background: white; width: 100%; max-width: 480px; padding: 30px 20px; border-radius: 25px 25px 0 0; text-align: center; box-sizing: border-box; margin: 0 auto; }
 
-        /* --- STYLES FOR EDIT POPUP --- */
         #modal-edit {
             display: none;
             position: fixed;
@@ -147,11 +155,11 @@
 <div class="nav-dash">
     <h1><i class="fa-solid fa-gauge-high"></i> PANEL SELLER</h1>
     <div class="nav-actions">
-        <button class="btn-nav btn-chat-nav" onclick="window.location.href='chat-dashboard-umkm.html'">
-            <i class="fa-solid fa-comment-dots"></i> Pesan
-        </button>
-        <button class="btn-nav" onclick="logout()">
-            <i class="fa-solid fa-power-off"></i>
+        <a href="chat-dashboard-umkm.html" class="btn-nav btn-chat-nav">
+            <i class="fa-solid fa-comments"></i> CHAT MASUK
+        </a>
+        <button class="btn-nav btn-logout-nav" onclick="logout()">
+            <i class="fa-solid fa-power-off"></i> LOGOUT
         </button>
     </div>
 </div>
@@ -238,14 +246,11 @@
             <div class="card-title" style="margin:0;"><i class="fa-solid fa-pen-to-square"></i> Edit Produk</div>
             <button class="btn-close-modal" onclick="tutupEdit()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-
         <input type="hidden" id="edit-id">
-
         <div class="form-group">
             <label>NAMA PRODUK</label>
             <input type="text" id="edit-p-name">
         </div>
-        
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div class="form-group">
                 <label>HARGA (RP)</label>
@@ -259,12 +264,10 @@
                 </select>
             </div>
         </div>
-
         <div class="form-group">
             <label>DESKRIPSI PRODUK</label>
             <textarea id="edit-p-desc" rows="3"></textarea>
         </div>
-
         <div class="form-group">
             <label>GANTI FOTO (BISA KOSONGKAN)</label>
             <div class="upload-area" onclick="document.getElementById('edit-p-files').click()">
@@ -274,7 +277,6 @@
             </div>
             <div id="edit-preview-container"></div>
         </div>
-
         <button class="btn-submit" onclick="updateProduk()" id="btn-edit-save">SIMPAN PERUBAHAN</button>
     </div>
 </div>
@@ -316,6 +318,13 @@
             window.location.href = "umkm-jemaat.html";
         }
     });
+
+    // Logout Function
+    function logout() {
+        auth.signOut().then(() => {
+            window.location.href = "umkm-jemaat.html";
+        });
+    }
 
     async function fetchStore(uid) {
         const doc = await db.collection("umkm_stores").doc(uid).get();
@@ -442,22 +451,15 @@
         });
     }
 
-    /* --- LOGIKA EDIT POPUP --- */
-
     async function editProduk(id) {
         const doc = await db.collection("umkm_products").doc(id).get();
         if(!doc.exists) return;
-
         const p = doc.data();
-        
-        // Load data ke modal
         document.getElementById("edit-id").value = id;
         document.getElementById("edit-p-name").value = p.nama;
         document.getElementById("edit-p-price").value = p.harga;
         document.getElementById("edit-p-status").value = p.status;
         document.getElementById("edit-p-desc").value = p.deskripsi;
-        
-        // Preview foto lama
         const container = document.getElementById("edit-preview-container");
         container.innerHTML = "";
         if(p.img_urls) {
@@ -468,7 +470,6 @@
                 container.appendChild(img);
             });
         }
-
         document.getElementById("modal-edit").style.display = "block";
         document.body.style.overflow = "hidden"; 
     }
@@ -497,12 +498,9 @@
         const status = document.getElementById("edit-p-status").value;
         const desc = document.getElementById("edit-p-desc").value;
         const files = document.getElementById("edit-p-files").files;
-        
         if(!name || !price) return munculkanNotif("Gagal", "Lengkapi Nama & Harga!", "warning");
-
         const btn = document.getElementById("btn-edit-save");
         btn.disabled = true; btn.innerText = "Memproses...";
-
         try {
             let updateData = {
                 nama: name,
@@ -511,8 +509,6 @@
                 deskripsi: desc,
                 terakhir_update: firebase.firestore.FieldValue.serverTimestamp()
             };
-
-            // Jika ada foto baru, upload dulu
             if(files.length > 0) {
                 const uploadedUrls = [];
                 for (let file of files) {
@@ -526,7 +522,6 @@
                 updateData.img_urls = uploadedUrls;
                 updateData.img_primary = uploadedUrls[0];
             }
-
             await db.collection("umkm_products").doc(id).update(updateData);
             tutupEdit();
             munculkanNotif("Berhasil", "Data produk diperbarui!", "success");
@@ -536,8 +531,6 @@
             btn.disabled = false; btn.innerText = "SIMPAN PERUBAHAN";
         }
     }
-
-    /* --- FUNGSI LAINNYA --- */
 
     async function hapusSatu(id) {
         if(confirm("Hapus produk ini?")) await db.collection("umkm_products").doc(id).delete();
@@ -555,10 +548,6 @@
             document.getElementById('check-all').checked = false;
             updateDeleteButton();
         }
-    }
-
-    function logout() {
-        auth.signOut().then(() => window.location.href = "umkm-jemaat.html");
     }
 
     function munculkanNotif(title, desc, type) {
