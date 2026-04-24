@@ -55,12 +55,11 @@
         gap: 8px;
     }
 
-    /* PERBAIKAN DROPDOWN: Menghilangkan celah agar tidak menghindar */
     .dropdown-content {
         display: none;
         position: absolute;
         right: 0;
-        top: 100%; /* Menempel tepat di bawah tombol */
+        top: 100%; 
         background-color: white;
         min-width: 200px;
         box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
@@ -68,10 +67,9 @@
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid var(--gold);
-        margin-top: 0; /* Jarak nol agar kursor tidak kehilangan fokus */
+        margin-top: 0; 
     }
 
-    /* Jembatan transparan agar hover tetap aktif saat transisi */
     .dropdown-content::before {
         content: "";
         position: absolute;
@@ -240,7 +238,12 @@
         </div>
         <div class="input-group">
             <label>PASSWORD</label>
-            <input type="password" id="log-pass">
+            <div style="position: relative;">
+                <input type="password" id="log-pass" placeholder="Password" style="width: 100%; padding-right: 40px;">
+                <span id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 18px;">
+                    👁️
+                </span>
+            </div>
         </div>
         <button class="btn-gold" onclick="loginUser('seller')">MASUK CMS SELLER</button>
         <button onclick="tutupModal()" style="width:100%; background:none; border:none; margin-top:10px; cursor:pointer;">Tutup</button>
@@ -283,6 +286,18 @@
     const db = firebase.firestore();
     const CLOUD_NAME = "dxzllsbgi";
     const UPLOAD_PRESET = "sipapua_preset";
+
+    // --- LOGIKA TOGGLE PASSWORD ---
+    document.getElementById("togglePassword").addEventListener("click", function() {
+        const passInput = document.getElementById("log-pass");
+        if (passInput.type === "password") {
+            passInput.type = "text";
+            this.innerText = "🔒"; 
+        } else {
+            passInput.type = "password";
+            this.innerText = "👁️";
+        }
+    });
 
     window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
     window.tutupModal = () => document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
@@ -329,11 +344,9 @@
             const user = await auth.signInWithEmailAndPassword(email, pass);
             const doc = await db.collection("umkm_stores").doc(user.user.uid).get();
             
-            // Logika Akses Admin Khusus
             if (role === 'admin' && email === 'boby.daniel4@gmail.com') { 
                 window.location.href = "admin-umkm.html";
             } 
-            // Logika Akses Seller
             else if (doc.exists && doc.data().role === 'seller') {
                 if(doc.data().status === 'suspended') return notif("Akun Anda sedang disuspen!");
                 window.location.href = "cms-seller.html";
