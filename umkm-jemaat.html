@@ -341,9 +341,11 @@
     function notif(m) {
         const n = document.getElementById("notif-container");
         const msgElement = document.getElementById("notif-message");
-        n.style.display = "block"; 
-        msgElement.innerText = m;
-        setTimeout(() => { n.style.display = "none"; }, 3000);
+        if(n) {
+            n.style.display = "block"; 
+            msgElement.innerText = m;
+            setTimeout(() => { n.style.display = "none"; }, 3000);
+        }
     }
 
     // --- LOGIKA AUTH ---
@@ -499,7 +501,7 @@
         if (chatUnsubscribe) chatUnsubscribe();
     }
 
-    // --- PERBAIKAN: LOGIKA TOMBOL BINTANG & LIKE ---
+    // --- LOGIKA TOMBOL BINTANG & LIKE ---
     async function tambahLike(uid, currentLikes, element) {
         element.classList.add('glow-active');
         setTimeout(() => element.classList.remove('glow-active'), 500);
@@ -513,31 +515,27 @@
                 likes_count: newLikes,
                 rating_level: newRating
             });
-            console.log(`Berhasil: ${newLikes} Likes`);
         } catch (e) {
             notif("Gagal memberikan like.");
         }
     }
 
-    // PERBAIKAN: FUNGSI SHARE WHATSAPP (Direct Chat tanpa permintaan profil/undangan)
-    function shareWA(namaToko, phone) {
-        if(!phone) {
-            notif("Nomor WhatsApp penjual tidak tersedia.");
-            return;
-        }
-        let cleanPhone = phone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('0')) {
-            cleanPhone = '62' + cleanPhone.slice(1);
-        }
+    // --- KONFIGURASI BARU: FUNGSI SHARE WHATSAPP ---
+    // Fungsi ini sekarang membuat link share publik agar user bisa membagikan info lapak ke siapa saja
+    function shareWA(namaToko, uid) {
+        const urlLapak = window.location.href; // Mengambil link halaman saat ini
         const text = encodeURIComponent(
-            `Halo *${namaToko}*,\n\nSaya melihat lapak Anda di aplikasi *UMKM SIPAPUA*. \n\nBisa dibantu informasi lebih lanjut mengenai produk yang Anda tawarkan?`
+            `Cek lapak keren ini di UMKM SIPAPUA: *${namaToko}*\n\nLihat produknya di sini: ${urlLapak}`
         );
-        window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${text}`, '_blank');
+        // Membuka WhatsApp Share (tanpa nomor spesifik agar user bisa pilih kontak/grup)
+        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
     }
 
     // --- RENDER MARKET ---
     function muatMarket() {
         const container = document.getElementById("main-market");
+        if(!container) return;
+
         db.collection("umkm_stores").where("status", "==", "active").onSnapshot(snap => {
             container.innerHTML = "";
             snap.forEach(doc => {
@@ -566,7 +564,7 @@
                                     <div class="info-dropdown">${likes} Likes</div>
                                 </button>
 
-                                <button class="btn-icon btn-wa" onclick="shareWA('${lapak.nama_toko}', '${lapak.whatsapp}')">
+                                <button class="btn-icon btn-wa" onclick="shareWA('${lapak.nama_toko}', '${uid}')">
                                     <i class="fa-brands fa-whatsapp"></i>
                                 </button>
                             </div>
@@ -576,7 +574,8 @@
         });
     }
 
-    muatMarket();
+    // Inisialisasi
+    document.addEventListener("DOMContentLoaded", muatMarket);
 </script>
 </body>
 </html>
