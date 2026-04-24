@@ -8,26 +8,43 @@
     <style>
         :root { --primary: #1a237e; --bg: #f0f2f5; --gold: #d4af37; --accent: #4CAF50; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styling */
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 20; }
         .sidebar-header { padding: 20px; background: var(--primary); color: white; border-bottom: 3px solid var(--gold); flex-shrink: 0; }
         .customer-list { flex: 1; overflow-y: auto; }
         .customer-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 12px; }
         .customer-item.active { background: #e8eaf6; border-left: 5px solid var(--gold); }
         .avatar { width: 45px; height: 45px; background: #e0e0e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); }
+        
+        /* Main Chat Area */
         .chat-main { flex: 1; display: flex; flex-direction: column; background: #efe7dd; position: relative; }
         .chat-header { padding: 15px 25px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box; }
+        
+        /* Nav Actions Styling */
+        .nav-actions { display: flex; gap: 10px; align-items: center; }
+        .btn-nav { 
+            padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer; 
+            font-size: 12px; font-weight: bold; text-decoration: none; display: flex; align-items: center; gap: 5px;
+        }
+        .btn-chat-nav { background: var(--gold); color: var(--primary); }
+        .btn-logout { background: #ff5252; color: white; }
+
         .messages-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .bubble { max-width: 75%; padding: 12px 18px; border-radius: 18px; font-size: 14px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .bubble-in { align-self: flex-start; background: white; border-bottom-left-radius: 4px; }
         .bubble-out { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 4px; }
         .timestamp { font-size: 10px; color: #888; margin-top: 6px; display: block; }
+        
         .reply-box { padding: 15px; background: #f0f0f0; display: flex; gap: 10px; border-top: 1px solid #ddd; }
         .reply-box input { flex: 1; padding: 12px 18px; border-radius: 25px; border: 1px solid #ccc; outline: none; }
         .btn-send { background: var(--primary); color: var(--gold); border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
         @media (max-width: 768px) {
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; }
             .sidebar.mobile-hidden { transform: translateX(-100%); }
             #btn-back-list { display: block; }
+            .nav-actions span { display: none; } /* Sembunyikan teks di mobile jika terlalu sempit */
         }
     </style>
 </head>
@@ -43,14 +60,25 @@
 <div class="chat-main">
     <div class="chat-header">
         <div style="display: flex; align-items: center;">
-            <button id="btn-back-list" onclick="toggleMobileView(true)" style="display:none;"><i class="fa-solid fa-arrow-left"></i></button>
+            <button id="btn-back-list" onclick="toggleMobileView(true)" style="display:none; background:none; border:none; margin-right:10px;"><i class="fa-solid fa-arrow-left"></i></button>
             <div id="target-name" style="font-weight: 800; color: var(--primary);">Pilih percakapan...</div>
         </div>
-        <button onclick="window.location.href='dashboard-umkm.html'" style="background:none; border:none; color: #999; cursor:pointer;">
-            <i class="fa-solid fa-circle-xmark fa-xl"></i>
-        </button>
+
+        <div class="nav-actions">
+            <a href="chat-dashboard-umkm.html" class="btn-nav btn-chat-nav">
+                <i class="fa-solid fa-comments"></i> <span>CHAT MASUK</span>
+            </a>
+            <button class="btn-nav btn-logout" onclick="logout()">
+                <i class="fa-solid fa-right-from-bracket"></i> <span>LOGOUT</span>
+            </button>
+            <button onclick="window.location.href='dashboard-umkm.html'" style="background:none; border:none; color: #999; cursor:pointer; margin-left: 5px;">
+                <i class="fa-solid fa-circle-xmark fa-xl"></i>
+            </button>
+        </div>
     </div>
+
     <div class="messages-window" id="chat-body"></div>
+
     <div class="reply-box">
         <input type="text" id="input-chat" placeholder="Ketik pesan balasan...">
         <button class="btn-send" onclick="kirimBalasan()"><i class="fa-solid fa-paper-plane"></i></button>
@@ -77,6 +105,12 @@
     let curCustId = null;
     let myId = null;
 
+    function logout() {
+        auth.signOut().then(() => {
+            window.location.href = "umkm-jemaat.html";
+        });
+    }
+
     function toggleMobileView(showList) {
         const sidebar = document.getElementById('sidebar');
         if (sidebar && window.innerWidth <= 768) {
@@ -101,7 +135,9 @@
             container.innerHTML = "";
             snap.forEach(doc => {
                 const d = doc.data();
-                listUnik[d.customer_id] = d.customer_name || "Pembeli Umum";
+                if(d.customer_id) {
+                    listUnik[d.customer_id] = d.customer_name || "Pembeli Umum";
+                }
             });
             Object.keys(listUnik).forEach(cid => {
                 const item = document.createElement("div");
@@ -158,7 +194,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // Perbaikan event listener Enter
     document.getElementById("input-chat").addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
             e.preventDefault();
