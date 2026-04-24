@@ -77,7 +77,7 @@
         .lapak-info { padding: 15px; text-align: center; }
         .lapak-info h3 { margin: 0 0 15px 0; color: var(--navy); font-size: 1.2rem; }
 
-        /* ACTION BUTTONS (MODIFIKASI BARU) */
+        /* ACTION BUTTONS */
         .action-group {
             display: flex;
             justify-content: center;
@@ -96,6 +96,8 @@
             transition: transform 0.2s, background 0.2s;
             border: none;
             cursor: pointer;
+            position: relative;
+            overflow: visible;
         }
         .btn-icon:active { transform: scale(0.9); }
         
@@ -103,6 +105,18 @@
         .btn-star { background: #fff9c4; color: #fbc02d; border: 1px solid #fbc02d; }
         .btn-thumb { background: #e3f2fd; color: #1976d2; border: 1px solid #1976d2; }
         .btn-wa { background: var(--wa-green); color: white; }
+
+        /* TWISTER FLASH EFFECT */
+        @keyframes twisterFlash {
+            0% { transform: translate(-50%, -50%) rotate(0deg) scale(0); opacity: 1; border-radius: 50%; }
+            50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) rotate(360deg) scale(2.5); opacity: 0; }
+        }
+        .twister-effect {
+            position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
+            background: white; pointer-events: none; z-index: 10;
+            animation: twisterFlash 0.6s ease-out forwards;
+        }
 
         /* MODAL & INPUT */
         .modal-overlay { 
@@ -123,13 +137,8 @@
         }
 
         .eye-icon {
-            position: absolute;
-            right: 12px;
-            bottom: 12px;
-            cursor: pointer;
-            color: #666;
-            font-size: 18px;
-            z-index: 10;
+            position: absolute; right: 12px; bottom: 12px;
+            cursor: pointer; color: #666; font-size: 18px; z-index: 10;
         }
 
         .btn-gold { 
@@ -167,6 +176,20 @@
 <div class="market-container" id="main-market"></div>
 
 <button class="fab-add" onclick="bukaModal('modal-daftar')"><i class="fa-solid fa-plus"></i></button>
+
+<div id="chat-popup" style="display: none; position: fixed; bottom: 90px; right: 20px; width: 320px; height: 400px; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 3000; flex-direction: column; overflow: hidden; border: 1px solid var(--gold);">
+    <div style="background: var(--navy); color: var(--gold); padding: 15px; display: flex; justify-content: space-between; align-items: center;">
+        <span id="chat-title" style="font-weight: 800; font-size: 13px;">Chat Penjual</span>
+        <i class="fa-solid fa-xmark" onclick="tutupChatPopup()" style="cursor: pointer; font-size: 18px;"></i>
+    </div>
+    <div id="chat-box-popup" style="flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px;"></div>
+    <div style="padding: 10px; display: flex; gap: 8px; border-top: 1px solid #eee;">
+        <input type="text" id="msg-input-popup" placeholder="Tulis pesan..." style="flex: 1; padding: 8px; border-radius: 20px; border: 1px solid #ddd; outline: none; font-size: 13px;">
+        <button onclick="kirimPesanPopup()" style="background: var(--gold); border: none; width: 35px; height: 35px; border-radius: 50%; color: var(--navy); cursor: pointer;">
+            <i class="fa-solid fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
 
 <div id="modal-daftar" class="modal-overlay">
     <div class="modal-content">
@@ -346,24 +369,79 @@
         window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
     }
 
-    // FUNGSI MUAT MARKET DENGAN LINK CHAT TERBARU
+    // LOGIKA CHAT POPUP & TWISTER
+    let currentSellerUid = "";
+    let chatUnsubscribe = null;
+
+    function triggerTwister(element, uid, namaToko) {
+        const flash = document.createElement('div');
+        flash.className = 'twister-effect';
+        element.appendChild(flash);
+        setTimeout(() => flash.remove(), 600);
+        setTimeout(() => bukaChatPopup(uid, namaToko), 200);
+    }
+
+    function bukaChatPopup(uid, namaToko) {
+        currentSellerUid = uid;
+        document.getElementById("chat-title").innerText = "Chat: " + namaToko;
+        document.getElementById("chat-popup").style.display = "flex";
+        if (chatUnsubscribe) chatUnsubscribe();
+        const custId = localStorage.getItem('chat_customer_id') || "GUEST_" + Math.random().toString(36).substr(2, 5);
+        localStorage.setItem('chat_customer_id', custId);
+
+        chatUnsubscribe = db.collection("chats")
+            .where("seller_uid", "==", uid)
+            .where("customer_id", "==", custId)
+            .orderBy("timestamp", "asc")
+            .onSnapshot(snap => {
+                const box = document.getElementById("chat-box-popup");
+                box.innerHTML = "";
+                snap.forEach(doc => {
+                    const m = doc.data();
+                    const align = m.sender === 'customer' ? 'flex-end' : 'flex-start';
+                    const bg = m.sender === 'customer' ? 'var(--navy)' : '#fff';
+                    const color = m.sender === 'customer' ? 'white' : '#333';
+                    box.innerHTML += `<div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">${m.message}</div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
+    }
+
+    function tutupChatPopup() {
+        document.getElementById("chat-popup").style.display = "none";
+        if (chatUnsubscribe) chatUnsubscribe();
+    }
+
+    function kirimPesanPopup() {
+        const input = document.getElementById("msg-input-popup");
+        const msg = input.value.trim();
+        const custId = localStorage.getItem('chat_customer_id');
+        if (!msg || !currentSellerUid) return;
+        db.collection("chats").add({
+            seller_uid: currentSellerUid,
+            customer_id: custId,
+            message: msg,
+            sender: 'customer',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        input.value = "";
+    }
+
     function muatMarket() {
         const container = document.getElementById("main-market");
         db.collection("umkm_stores").where("status", "==", "active").onSnapshot(snap => {
             container.innerHTML = "";
             snap.forEach(doc => {
                 const lapak = doc.data();
-                
                 container.innerHTML += `
                     <div class="lapak-card">
                         <div class="lapak-img-wrapper"><img src="${lapak.logo_url}" class="lapak-img"></div>
                         <div class="lapak-info">
                             <h3>${lapak.nama_toko}</h3>
                             <div class="action-group">
-                                <a href="chat-umkm.html?uid=${lapak.uid}" class="btn-icon btn-chat" title="Chat">
+                                <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${lapak.uid}', '${lapak.nama_toko}')" title="Chat">
                                     <i class="fa-solid fa-comment-dots"></i>
-                                </a>
-                                
+                                </button>
                                 <button class="btn-icon btn-star" title="Rating">
                                     <i class="fa-solid fa-star"></i>
                                 </button>
@@ -380,7 +458,6 @@
         });
     }
 
-    // Jalankan muat market saat halaman siap
     muatMarket();
 </script>
 </body>
