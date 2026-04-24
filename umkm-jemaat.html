@@ -277,17 +277,6 @@
     const CLOUD_NAME = "dxzllsbgi";
     const UPLOAD_PRESET = "sipapua_preset";
 
-    document.getElementById("togglePassword").addEventListener("click", function() {
-        const passInput = document.getElementById("log-pass");
-        if (passInput.type === "password") {
-            passInput.type = "text";
-            this.innerText = "🔒"; 
-        } else {
-            passInput.type = "password";
-            this.innerText = "👁️";
-        }
-    });
-
     window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
     window.tutupModal = () => document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
     
@@ -297,6 +286,7 @@
         n.style.display = "block"; setTimeout(() => n.style.display = "none", 3000);
     }
 
+    // --- FUNGSI DAFTAR / BUKA LAPAK ---
     async function prosesDaftar() {
         const btn = document.getElementById("btn-daftar");
         const foto = document.getElementById("reg-foto").files[0];
@@ -309,87 +299,105 @@
         if(!email || !pass) return notif("Email/Password wajib diisi!");
 
         try {
-            btn.innerText = "Mengaktifkan..."; btn.disabled = true;
+            btn.innerText = "Memproses..."; btn.disabled = true;
 
-            // 1. Upload Cloudinary
+            // 1. Upload Logo
             const fd = new FormData();
             fd.append("file", foto);
             fd.append("upload_preset", UPLOAD_PRESET);
             const resImg = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
             const dataImg = await resImg.json();
 
-            // 2. Logika Authentication Cerdas
+            // 2. Auth Logic (Create atau Login jika sudah ada)
             let user;
             try {
                 const resAuth = await auth.createUserWithEmailAndPassword(email, pass);
                 user = resAuth.user;
-            } catch (authError) {
-                if (authError.code === 'auth/email-already-in-use') {
-                    // Jika email tersangkut, langsung login
+            } catch (err) {
+                if (err.code === 'auth/email-already-in-use') {
                     const resLog = await auth.signInWithEmailAndPassword(email, pass);
                     user = resLog.user;
-                } else {
-                    throw authError;
-                }
+                } else { throw err; }
             }
             
-            // 3. Simpan data ke Firestore (Akan menimpa data lama jika UID sama)
+            // 3. Simpan/Update Firestore
             await db.collection("umkm_stores").doc(user.uid).set({
                 nama_toko: namaToko,
                 whatsapp: noHp,
                 logo_url: dataImg.secure_url,
                 uid: user.uid,
-                role: 'seller',
+                role: 'seller', // Pastikan role tertulis
                 status: 'active',
+                email: email,
                 dibuat: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            }, { merge: true });
 
             notif("Lapak Berhasil Diaktifkan!");
             setTimeout(() => location.reload(), 1500);
         } catch (e) { 
             notif("Gagal: " + e.message); 
-            btn.innerText = "DAFTARKAN LAPAK";
-            btn.disabled = false; 
+            btn.innerText = "DAFTARKAN LAPAK"; btn.disabled = false; 
         }
     }
 
+    // --- FUNGSI LOGIN (SUDAH DIPERBAIKI) ---
     async function loginUser(role) {
         const email = role === 'admin' ? document.getElementById('admin-email').value : document.getElementById('log-email').value;
         const pass = role === 'admin' ? document.getElementById('admin-pass').value : document.getElementById('log-pass').value;
+
+        if(!email || !pass) return notif("Isi email dan password!");
+
         try {
-            const user = await auth.signInWithEmailAndPassword(email, pass);
-            const doc = await db.collection("umkm_stores").doc(user.user.uid).get();
-            if (role === 'admin' && email === 'boby.daniel4@gmail.com') { 
+            const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+            const uid = userCredential.user.uid;
+
+            // JIKA LOGIN SEBAGAI ADMIN (Bypass cek database agar tidak 'Akses tidak dikenal')
+            if (role === 'admin' && email === 'boby.daniel4@gmail.com') {
                 window.location.href = "admin-umkm.html";
-            } else if (doc.exists && doc.data().role === 'seller') {
-                if(doc.data().status === 'suspended') return notif("Akun disuspen!");
+                return;
+            }
+
+            // JIKA LOGIN SEBAGAI SELLER
+            const doc = await db.collection("umkm_stores").doc(uid).get();
+            
+            if (doc.exists) {
+                const data = doc.data();
+                if (data.status === 'suspended') return notif("Akun Anda ditangguhkan!");
+                if (data.status === 'inactive') return notif("Lapak non-aktif. Silakan daftar ulang.");
+                
                 window.location.href = "cms-seller.html";
             } else {
-                notif("Akses tidak dikenal.");
+                // Jika user ada di Auth tapi data di Firestore hilang
+                notif("Data profil belum dibuat. Silakan klik Buka Lapak.");
             }
-        } catch (e) { notif("Login Gagal: " + e.message); }
+        } catch (e) { 
+            notif("Login Gagal: " + e.message); 
+        }
     }
 
     async function muatMarket() {
         const container = document.getElementById("main-market");
-        const snap = await db.collection("umkm_stores").where("status", "==", "active").get();
-        container.innerHTML = "";
-        if(snap.empty) container.innerHTML = "<p style='text-align:center'>Belum ada lapak.</p>";
-        snap.forEach(doc => {
-            const lapak = doc.data();
-            container.innerHTML += `
-                <div class="lapak-card">
-                    <div class="lapak-img-wrapper"><img src="${lapak.logo_url}" class="lapak-img"></div>
-                    <div class="lapak-info">
-                        <h3>${lapak.nama_toko}</h3>
-                        <a href="portal-chat.html?uid=${lapak.uid}" class="portal-chat">
-                            <i class="fa-solid fa-comments"></i> TANYA PENJUAL
-                        </a>
-                    </div>
-                </div>`;
+        db.collection("umkm_stores").where("status", "==", "active").onSnapshot(snap => {
+            container.innerHTML = "";
+            if(snap.empty) {
+                container.innerHTML = "<p style='text-align:center'>Belum ada lapak aktif.</p>";
+                return;
+            }
+            snap.forEach(doc => {
+                const lapak = doc.data();
+                container.innerHTML += `
+                    <div class="lapak-card">
+                        <div class="lapak-img-wrapper"><img src="${lapak.logo_url}" class="lapak-img"></div>
+                        <div class="lapak-info">
+                            <h3>${lapak.nama_toko}</h3>
+                            <a href="portal-chat.html?uid=${lapak.uid}" class="portal-chat">
+                                <i class="fa-solid fa-comments"></i> TANYA PENJUAL
+                            </a>
+                        </div>
+                    </div>`;
+            });
         });
     }
     muatMarket();
-</script>
-</body>
+</script></body>
 </html>
