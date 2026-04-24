@@ -74,6 +74,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
 
+        /* Pengaturan Slider Sesuai Instruksi */
         .product-slider {
             width: 100%;
             height: 250px;
@@ -97,17 +98,19 @@
 
         .lapak-info { padding: 15px; }
 
+        /* STATUS INDICATOR - Updated Colors */
         .status-indicator {
             display: flex;
             align-items: center;
             gap: 6px;
             font-size: 10px;
             font-weight: 800;
-            margin-top: 4px;
+            margin-top: 4px; /* Dipindah ke bawah harga */
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .dot-online { background-color: #2ecc71 !important; box-shadow: 0 0 5px #2ecc71; }
+        .dot-online { background-color: #2ecc71 !important; box-shadow: 0 0 5px #2ecc71; } /* Warna Hijau */
         .dot-offline { background-color: #e74c3c !important; }
+        .dot-suspend { background: #000000; }
 
         /* PANEL SLIDE-UP */
         .detail-panel {
@@ -120,7 +123,7 @@
             padding: 0 15px;
         }
         .detail-panel.active {
-            max-height: 350px;
+            max-height: 200px;
             padding: 15px;
             border-top: 1px solid var(--gold);
         }
@@ -134,38 +137,19 @@
             padding: 10px 0;
         }
 
-        /* RATING & STATS DISPLAY */
-        .rating-stats {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--gold);
-        }
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--navy);
-        }
-
-        /* ACTION BUTTONS */
+        /* ACTION BUTTONS & EFFECTS */
         .action-group { display: flex; justify-content: center; gap: 15px; padding-top: 5px; }
         .btn-icon {
             width: 40px; height: 40px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             border: none; cursor: pointer; position: relative; 
-            transition: all 0.3s ease;
         }
         .btn-chat { background: var(--navy); color: var(--gold); }
-        .btn-star { background: #fff; color: #ccc; border: 1px solid #ddd; }
-        .btn-star.active { background: #fff9c4; color: #fbc02d; border: 1px solid #fbc02d; }
-        .btn-thumb { background: #fff; color: #ccc; border: 1px solid #ddd; }
-        .btn-thumb.active { background: #e3f2fd; color: #1976d2; border: 1px solid #1976d2; }
+        .btn-star { background: #fff9c4; color: #fbc02d; border: 1px solid #fbc02d; }
+        .btn-thumb { background: #e3f2fd; color: #1976d2; border: 1px solid #1976d2; }
         .btn-wa { background: var(--wa-green); color: white; }
 
+        /* TWISTER FLASH EFFECT */
         @keyframes twisterFlash {
             0% { transform: translate(-50%, -50%) rotate(0deg) scale(0); opacity: 1; border-radius: 50%; }
             50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); opacity: 0.5; }
@@ -177,6 +161,7 @@
             animation: twisterFlash 0.6s ease-out forwards;
         }
 
+        /* MODAL & FAB */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { background: white; width: 100%; max-width: 400px; padding: 25px; border-radius: 24px; position: relative; }
         .input-group { margin-bottom: 15px; position: relative; }
@@ -188,6 +173,9 @@
         
         #notif-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 80%; display: none; }
         .notif-block { background: var(--navy); color: var(--gold); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid var(--gold); }
+        .chat-product-attachment { background: white; border-radius: 10px; padding: 8px; margin-bottom: 10px; display: flex; gap: 10px; border: 1px solid #eee; align-items: center; }
+        .chat-product-attachment img { width: 45px; height: 45px; object-fit: cover; border-radius: 5px; }
+        .chat-product-info { font-size: 11px; color: #333; line-height: 1.2; flex: 1; }
     </style>
 </head>
 <body>
@@ -261,7 +249,6 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
-    // --- CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -271,90 +258,27 @@
         messagingSenderId: "125984859692",
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
-    
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
     const CLOUD_NAME = "dxzllsbgi";
     const UPLOAD_PRESET = "sipapua_preset";
 
-    // --- UI HELPERS ---
+    // UI Helper Functions
     function toggleView(inputId, icon) {
         const input = document.getElementById(inputId);
-        if (input.type === "password") { 
-            input.type = "text"; 
-            icon.classList.replace("fa-eye", "fa-eye-slash"); 
-        } else { 
-            input.type = "password"; 
-            icon.classList.replace("fa-eye-slash", "fa-eye"); 
-        }
+        if (input.type === "password") { input.type = "text"; icon.classList.replace("fa-eye", "fa-eye-slash"); }
+        else { input.type = "password"; icon.classList.replace("fa-eye-slash", "fa-eye"); }
     }
-
     window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
     window.tutupModal = () => document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
-    
     function notif(m) {
         const n = document.getElementById("notif-container");
         const msgElement = document.getElementById("notif-message");
-        if(n) { 
-            n.style.display = "block"; 
-            msgElement.innerText = m; 
-            setTimeout(() => { n.style.display = "none"; }, 3000); 
-        }
+        if(n) { n.style.display = "block"; msgElement.innerText = m; setTimeout(() => { n.style.display = "none"; }, 3000); }
     }
 
-    // ==========================================
-    // LOGIKA SHARE, LIKE & RATING
-    // ==========================================
-
-    function shareWA(namaProduk, harga, namaToko, nomorWA) {
-        let formattedWA = nomorWA.startsWith('0') ? '62' + nomorWA.slice(1) : nomorWA;
-        const text = encodeURIComponent(
-            `*REKOMENDASI PRODUK UMKM SIPAPUA*\n\n` +
-            `🏪 *Toko:* ${namaToko}\n` +
-            `📦 *Produk:* ${namaProduk}\n` +
-            `💰 *Harga:* Rp ${Number(harga).toLocaleString('id-ID')}\n\n` +
-            `Jika berminat, hubungi penjual di: wa.me/${formattedWA}\n\n` +
-            `_Dibagikan melalui Aplikasi SIPAPUA_`
-        );
-        const shareUrl = `https://api.whatsapp.com/send?text=${text}`;
-        window.open(shareUrl, '_blank');
-    }
-
-    function toggleStar(btn) {
-        btn.classList.toggle('active');
-        if(btn.classList.contains('active')) notif("Simpan ke Favorit");
-    }
-
-    async function toggleThumb(btn, sellerUid) {
-        if (!sellerUid || sellerUid === "undefined") return notif("Data penjual tidak valid");
-        
-        btn.classList.toggle('active');
-        const storeRef = db.collection("umkm_stores").doc(sellerUid);
-
-        try {
-            await db.runTransaction(async (transaction) => {
-                const sfDoc = await transaction.get(storeRef);
-                if (!sfDoc.exists) return;
-
-                const currentLikes = sfDoc.data().likes_count || 0;
-                let newLikes = btn.classList.contains('active') ? currentLikes + 1 : Math.max(0, currentLikes - 1);
-                
-                const newRating = Math.floor(newLikes / 20);
-
-                transaction.update(storeRef, { 
-                    likes_count: newLikes,
-                    rating_level: newRating
-                });
-                
-                if(btn.classList.contains('active')) notif("Produk Disukai!");
-            });
-        } catch (e) {
-            console.error("Gagal update Rating:", e);
-        }
-    }
-
-    // --- AUTH & CHAT ---
+    // Auth Logic
     async function prosesDaftar() {
         const btn = document.getElementById("btn-daftar");
         const foto = document.getElementById("reg-foto").files[0];
@@ -362,191 +286,157 @@
         const pass = document.getElementById("reg-pass").value;
         const namaToko = document.getElementById("reg-toko").value;
         const noHp = document.getElementById("reg-hp").value;
-
         if(!namaToko || !foto || !noHp || !email || !pass) return notif("Lengkapi data!");
-
         try {
             btn.innerText = "Memproses..."; btn.disabled = true;
             const fd = new FormData(); fd.append("file", foto); fd.append("upload_preset", UPLOAD_PRESET);
             const resImg = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
             const dataImg = await resImg.json();
-
             let user;
-            try { 
-                const resAuth = await auth.createUserWithEmailAndPassword(email, pass); 
-                user = resAuth.user; 
-            } catch (err) { 
-                if (err.code === 'auth/email-already-in-use') { 
-                    const resLog = await auth.signInWithEmailAndPassword(email, pass); 
-                    user = resLog.user; 
-                } else { throw err; } 
-            }
-
+            try { const resAuth = await auth.createUserWithEmailAndPassword(email, pass); user = resAuth.user; }
+            catch (err) { if (err.code === 'auth/email-already-in-use') { const resLog = await auth.signInWithEmailAndPassword(email, pass); user = resLog.user; } else { throw err; } }
             await db.collection("umkm_stores").doc(user.uid).set({
-                nama_toko: namaToko, 
-                whatsapp: noHp, 
-                logo_url: dataImg.secure_url, 
-                uid: user.uid, 
-                role: 'seller', 
-                status: 'active', 
-                email: email, 
-                password_user: pass, 
-                likes_count: 0, 
-                rating_level: 0, 
-                dibuat: firebase.firestore.FieldValue.serverTimestamp()
+                nama_toko: namaToko, whatsapp: noHp, logo_url: dataImg.secure_url, uid: user.uid, role: 'seller', status: 'active', email: email, password_user: pass, likes_count: 0, rating_level: 0, dibuat: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
-
-            notif("Lapak Berhasil Diaktifkan!"); 
-            setTimeout(() => location.reload(), 1500);
-        } catch (e) { 
-            notif("Gagal: " + e.message); 
-            btn.innerText = "DAFTARKAN LAPAK"; btn.disabled = false; 
-        }
+            notif("Lapak Berhasil Diaktifkan!"); setTimeout(() => location.reload(), 1500);
+        } catch (e) { notif("Gagal: " + e.message); btn.innerText = "DAFTARKAN LAPAK"; btn.disabled = false; }
     }
 
-    // --- LOGIKA CHAT POPUP (TERUPDATE) ---
-    window.bukaChatPopup = function(uid, namaToko, gbrProduk) {
-        const chatModal = document.getElementById("chat-popup"); 
-        const container = document.getElementById("chat-history-container"); // Pastikan ID ini ada di HTML Anda
-        
-        if (chatModal) {
-            chatModal.style.display = 'flex';
-            
-            const chatHeader = document.getElementById("chat-title");
-            if(chatHeader) chatHeader.innerText = "Chat Penjual: " + namaToko;
+    async function loginUser(role) {
+        const email = role === 'admin' ? document.getElementById('admin-email').value : document.getElementById('log-email').value;
+        const pass = role === 'admin' ? document.getElementById('admin-pass').value : document.getElementById('log-pass').value;
+        try {
+            const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+            if (role === 'admin' && email === 'boby.daniel4@gmail.com') { window.location.href = "admin-umkm.html"; return; }
+            const doc = await db.collection("umkm_stores").doc(userCredential.user.uid).get();
+            if (doc.exists && doc.data().status === 'active') { window.location.href = "dashboard-umkm.html"; }
+            else { notif("Akses ditolak."); }
+        } catch (e) { notif("Login Gagal."); }
+    }
 
-            // Tampilkan loading saat mengambil data
-            if(container) container.innerHTML = '<p style="text-align:center; padding:10px;">Memuat riwayat chat...</p>';
-
-            // Ambil riwayat chat dari Firestore
-            db.collection("chats")
-                .where("seller_uid", "==", uid)
-                .orderBy("timestamp", "asc")
-                .onSnapshot(snapshot => {
-                    if(container) {
-                        container.innerHTML = "";
-                        if (snapshot.empty) {
-                            container.innerHTML = '<p style="text-align:center; color:gray; margin-top:20px;">Belum ada pesan. Kirim pesan pertama Anda!</p>';
-                        } else {
-                            snapshot.forEach(doc => {
-                                const data = doc.data();
-                                const msgDiv = document.createElement("div");
-                                msgDiv.className = data.sender === 'user' ? "chat-me" : "chat-them";
-                                msgDiv.innerText = data.text;
-                                container.appendChild(msgDiv);
-                            });
-                            container.scrollTop = container.scrollHeight; // Auto scroll ke bawah
-                        }
-                    }
-                });
-        } else {
-            notif("Fitur Chat tidak ditemukan di sistem.");
-        }
-    };
-
-    window.tutupChatPopup = function() {
-        const chatModal = document.getElementById("chat-popup");
-        if(chatModal) chatModal.style.display = 'none';
-    };
+    // Chat Logic
+    let currentSellerUid = "";
+    let chatUnsubscribe = null;
+    let customerAnonymousId = localStorage.getItem('chat_customer_id') || 'cust_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('chat_customer_id', customerAnonymousId);
 
     function triggerTwister(element, uid, namaToko, gbrProduk) {
-        const flash = document.createElement('div'); 
-        flash.className = 'twister-effect';
+        const flash = document.createElement('div'); flash.className = 'twister-effect';
         element.appendChild(flash);
         setTimeout(() => flash.remove(), 600);
-        // Memanggil fungsi bukaChatPopup yang sudah kita update
-        setTimeout(() => typeof bukaChatPopup === "function" && bukaChatPopup(uid, namaToko, gbrProduk), 200);
+        setTimeout(() => bukaChatPopup(uid, namaToko, gbrProduk), 200);
     }
 
-    // --- MARKET ENGINE ---
+    function bukaChatPopup(uid, namaToko, gbrProduk) {
+        currentSellerUid = uid;
+        document.getElementById("chat-title").innerText = "Chat: " + namaToko;
+        document.getElementById("chat-popup").style.display = "flex";
+        if (chatUnsubscribe) chatUnsubscribe();
+        if (gbrProduk) {
+            db.collection("chats").add({ seller_uid: uid, customer_id: customerAnonymousId, message: "[Tanya Produk]", is_product: true, product_img: gbrProduk, sender: 'customer', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        chatUnsubscribe = db.collection("chats").where("seller_uid", "==", uid).where("customer_id", "==", customerAnonymousId).orderBy("timestamp", "asc").onSnapshot(snap => {
+            const box = document.getElementById("chat-box-popup"); box.innerHTML = "";
+            snap.forEach(doc => {
+                const m = doc.data(); const isMe = m.sender === 'customer'; const align = isMe ? 'flex-end' : 'flex-start';
+                if (m.is_product) { box.innerHTML += `<div style="align-self: ${align}; width: 85%; margin-bottom:10px;"><div class="chat-product-attachment"><img src="${m.product_img}"><div class="chat-product-info"><b>Produk:</b><br>${namaToko}</div></div></div>`; }
+                else { const bg = isMe ? 'var(--navy)' : '#eee'; const color = isMe ? 'white' : '#333'; box.innerHTML += `<div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; margin-bottom:5px;">${m.message}</div>`; }
+            });
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    async function kirimPesanPopup() {
+        const input = document.getElementById("msg-input-popup");
+        if (!input.value.trim() || !currentSellerUid) return;
+        await db.collection("chats").add({ seller_uid: currentSellerUid, customer_id: customerAnonymousId, message: input.value.trim(), sender: 'customer', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        input.value = "";
+    }
+    function tutupChatPopup() { document.getElementById("chat-popup").style.display = "none"; if (chatUnsubscribe) chatUnsubscribe(); }
+
+    function shareWA(namaToko, nomorWA) {
+        const text = encodeURIComponent(`Halo, saya tertarik dengan produk *${namaToko}* di UMKM SIPAPUA.`);
+        window.open(`https://wa.me/${nomorWA}?text=${text}`, '_blank');
+    }
+
+    // --- INTEGRATED RENDER MARKET (Updated with Slider & Status Below Price) ---
     function muatMarket() {
         const container = document.getElementById("main-market");
         if(!container) return;
 
         db.collection("umkm_products").onSnapshot(snap => { 
-            container.innerHTML = ""; 
-            if(snap.empty) {
-                container.innerHTML = "<p style='text-align:center; color:gray;'>Belum ada produk di etalase.</p>";
-                return;
-            }
-
-            snap.forEach(async (doc) => {
+            container.innerHTML = "";
+            snap.forEach(doc => {
                 const produk = doc.data();
                 const docId = doc.id;
+                
+                const namaProduk = produk.nama || "Tanpa Nama";
+                const hargaProduk = produk.harga || 0;
+                const deskripsiProduk = produk.deskripsi || "-";
                 const sellerUid = produk.seller_uid || "";
-                const statusOrder = produk.status || "Closed";
-                const statusColorClass = (statusOrder.toLowerCase().includes("open") || statusOrder.toLowerCase().includes("ready")) ? "dot-online" : "dot-offline";
-                const daftarFoto = Array.isArray(produk.img_urls) && produk.img_urls.length > 0 ? produk.img_urls : [produk.img_primary || "https://via.placeholder.com/300"];
+                const statusOrder = produk.status || "Closed"; 
+                
+                // Slider Logic
+                let daftarFoto = [];
+                if (Array.isArray(produk.img_urls) && produk.img_urls.length > 0) {
+                    daftarFoto = produk.img_urls;
+                } else {
+                    daftarFoto = [produk.img_primary || ""];
+                }
 
-                db.collection("umkm_stores").doc(sellerUid).onSnapshot(storeDoc => {
-                    const storeData = storeDoc.exists ? storeDoc.data() : { nama_toko: "Lapak", whatsapp: "0", likes_count: 0, rating_level: 0 };
-                    
-                    const cardExist = document.getElementById(`card-${docId}`);
-                    const cardHTML = `
+                let statusColorClass = "dot-offline";
+                if(statusOrder.toLowerCase().includes("open") || statusOrder.toLowerCase().includes("ready")) { 
+                    statusColorClass = "dot-online"; 
+                }
+
+                container.innerHTML += `
+                    <div class="lapak-card" id="card-${docId}">
                         <div class="product-slider">
                             <div class="slider-wrapper" id="slider-${docId}">
                                 ${daftarFoto.map(img => `<img src="${img}">`).join('')}
                             </div>
                             ${daftarFoto.length > 1 ? `
-                                <button class="slide-btn prev" onclick="moveSlide('${docId}', -1)">&#10094;</button>
-                                <button class="slide-btn next" onclick="moveSlide('${docId}', 1)">&#10095;</button>
+                                <button class="slide-btn prev" onclick="moveSlide('${docId}', -1)" style="position: absolute; left: 5px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.3); border: none; color: white; border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">&#10094;</button>
+                                <button class="slide-btn next" onclick="moveSlide('${docId}', 1)" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.3); border: none; color: white; border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">&#10095;</button>
                             ` : ''}
                         </div>
+                        
                         <div class="lapak-info">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                                 <div>
                                     <span style="color: var(--navy); font-weight: 800; font-size: 1.1rem; display: block;">
-                                        Rp ${Number(produk.harga).toLocaleString('id-ID')}
+                                        Rp ${Number(hargaProduk).toLocaleString('id-ID')}
                                     </span>
                                     <div class="status-indicator">
                                         <div class="dot ${statusColorClass}"></div>
                                         <span style="font-size: 0.8rem;">${statusOrder}</span>
                                     </div>
                                 </div>
+
                                 <div class="action-group" style="padding:0; gap:8px;">
-                                    <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${sellerUid}', '${storeData.nama_toko}', '${daftarFoto[0]}')">
+                                    <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${sellerUid}', '${namaProduk}', '${daftarFoto[0]}')">
                                         <i class="fa-solid fa-comment-dots"></i>
                                     </button>
-                                    <button class="btn-icon btn-star" onclick="toggleStar(this)"><i class="fa-solid fa-star"></i></button>
-                                    <button class="btn-icon btn-thumb" onclick="toggleThumb(this, '${sellerUid}')">
-                                        <i class="fa-solid fa-thumbs-up"></i>
-                                    </button>
-                                    <button class="btn-icon btn-wa" onclick="shareWA('${produk.nama}', '${produk.harga}', '${storeData.nama_toko}', '${storeData.whatsapp}')">
+                                    <button class="btn-icon btn-star"><i class="fa-solid fa-star"></i></button>
+                                    <button class="btn-icon btn-thumb"><i class="fa-solid fa-thumbs-up"></i></button>
+                                    <button class="btn-icon btn-wa" onclick="shareWA('${namaProduk}', '081283393576')">
                                         <i class="fa-brands fa-whatsapp"></i>
                                     </button>
                                 </div>
                             </div>
+
                             <button class="btn-dropdown" onclick="toggleDetail('${docId}')">
                                 <i class="fa-solid fa-chevron-up" id="icon-${docId}"></i>
                             </button>
                         </div>
-                        <div class="detail-panel" id="detail-${docId}">
-                            <p><strong>Lapak:</strong> ${storeData.nama_toko}</p>
-                            <p><strong>Produk:</strong> ${produk.nama}</p>
-                            <p style="font-size: 12px; color: #555;"><strong>Deskripsi:</strong> ${produk.deskripsi || '-'}</p>
-                            <div class="rating-stats">
-                                <div class="stat-item">
-                                    <i class="fa-solid fa-star" style="color: #fbc02d;"></i>
-                                    <span>${storeData.rating_level || 0} Rating</span>
-                                </div>
-                                <div class="stat-item">
-                                    <i class="fa-solid fa-thumbs-up" style="color: #1976d2;"></i>
-                                    <span>${storeData.likes_count || 0} Like</span>
-                                </div>
-                            </div>
-                        </div>`;
 
-                    if (cardExist) {
-                        cardExist.innerHTML = cardHTML;
-                    } else {
-                        const newCard = document.createElement('div');
-                        newCard.className = 'lapak-card';
-                        newCard.id = `card-${docId}`;
-                        newCard.innerHTML = cardHTML;
-                        container.appendChild(newCard);
-                    }
-                });
+                        <div class="detail-panel" id="detail-${docId}">
+                            <p><strong>Produk:</strong> ${namaProduk}</p>
+                            <p style="font-size: 12px; color: #555;"><strong>Deskripsi:</strong> ${deskripsiProduk}</p>
+                        </div>
+                    </div>`;
             });
+            if(snap.empty) container.innerHTML = "<p style='text-align:center; color:gray;'>Belum ada produk di etalase.</p>";
         });
     }
 
@@ -554,11 +444,13 @@
     function moveSlide(docId, step) {
         const wrapper = document.getElementById(`slider-${docId}`);
         const slides = wrapper.getElementsByTagName("img");
+        const totalSlides = slides.length;
         if (!slideIndices[docId]) slideIndices[docId] = 0;
         slideIndices[docId] += step;
-        if (slideIndices[docId] >= slides.length) slideIndices[docId] = 0;
-        if (slideIndices[docId] < 0) slideIndices[docId] = slides.length - 1;
-        wrapper.style.transform = `translateX(${slideIndices[docId] * -100}%)`;
+        if (slideIndices[docId] >= totalSlides) slideIndices[docId] = 0;
+        if (slideIndices[docId] < 0) slideIndices[docId] = totalSlides - 1;
+        const offset = slideIndices[docId] * -100;
+        wrapper.style.transform = `translateX(${offset}%)`;
     }
 
     function toggleDetail(id) {
@@ -570,5 +462,6 @@
     }
 
     document.addEventListener("DOMContentLoaded", muatMarket);
-</script></body>
+</script>
+</body>
 </html>
