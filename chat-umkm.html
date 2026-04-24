@@ -132,90 +132,67 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-            authDomain: "boby-apps-project.firebaseapp.com",
-            projectId: "boby-apps-project",
-            storageBucket: "boby-apps-project.firebasestorage.app",
-            messagingSenderId: "125984859692",
-            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-        };
-        
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const db = firebase.firestore();
+   <script>
+    // Pastikan variabel 'message' konsisten digunakan
+    async function kirimPesanPopup() {
+        const input = document.getElementById("msg-input-popup");
+        const msg = input.value.trim();
+        if (!msg || !currentSellerUid) return;
 
-        // Ambil UID Penjual dari URL (?uid=xxxxx)
-        const urlParams = new URLSearchParams(window.location.search);
-        const sellerUid = urlParams.get('uid');
-        
-        // Buat ID unik sementara untuk pembeli agar tidak tertukar
-        const customerId = localStorage.getItem('chat_customer_id') || "GUEST_" + Math.random().toString(36).substr(2, 5);
-        localStorage.setItem('chat_customer_id', customerId);
-
-        // Ambil Nama Toko untuk Header
-        if (sellerUid) {
-            db.collection("umkm_stores").doc(sellerUid).get().then(doc => {
-                if(doc.exists) {
-                    document.getElementById("store-name").innerText = doc.data().nama_toko;
-                } else {
-                    document.getElementById("store-name").innerText = "Toko Tidak Ditemukan";
-                }
-            });
-        }
-
-        // Fungsi Kirim Pesan
-        function kirimPesan() {
-            const input = document.getElementById("msg-input");
-            const txt = input.value.trim();
-            
-            if(!txt || !sellerUid) return;
-
-            db.collection("chats").add({
-                seller_uid: sellerUid,
-                customer_id: customerId,
-                message: txt,
-                sender: 'customer', // Penanda bahwa ini pengirimnya pembeli
+        try {
+            await db.collection("chats").add({
+                seller_uid: currentSellerUid,
+                customer_id: customerAnonymousId,
+                message: msg, // Field utama pesan
+                sender: 'customer',
+                is_product: false,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                input.value = "";
-            }).catch(err => {
-                console.error("Gagal mengirim:", err);
             });
+            input.value = "";
+        } catch (e) { 
+            console.error("Gagal kirim:", e);
         }
+    }
 
-        // Support tekan Enter untuk kirim
-        function handleEnter(e) {
-            if (e.key === 'Enter') kirimPesan();
-        }
+    function listenChat(uid) {
+        if (chatUnsubscribe) chatUnsubscribe();
+        
+        chatUnsubscribe = db.collection("chats")
+            .where("seller_uid", "==", uid)
+            .where("customer_id", "==", customerAnonymousId)
+            .orderBy("timestamp", "asc") // Memanfaatkan indeks yang sudah Enabled
+            .onSnapshot(snap => {
+                const box = document.getElementById("chat-box-popup");
+                box.innerHTML = "";
+                snap.forEach(doc => {
+                    const m = doc.data();
+                    if (!m.timestamp) return; // Mencegah error saat render awal serverTimestamp
 
-        // Mendengarkan Pesan Masuk secara Real-time
-        if (sellerUid) {
-            db.collection("chats")
-                .where("seller_uid", "==", sellerUid)
-                .where("customer_id", "==", customerId)
-                .orderBy("timestamp", "asc")
-                .onSnapshot(snap => {
-                    const box = document.getElementById("chat-box");
-                    box.innerHTML = "";
+                    const isMe = m.sender === 'customer';
+                    const align = isMe ? 'flex-end' : 'flex-start';
+                    const bg = isMe ? 'var(--navy)' : '#eee';
+                    const color = isMe ? 'white' : '#333';
                     
-                    snap.forEach(doc => {
-                        const m = doc.data();
-                        const div = document.createElement("div");
-                        // Cek siapa pengirimnya untuk menentukan posisi bubble
-                        div.className = `msg ${m.sender === 'customer' ? 'sent' : 'received'}`;
-                        div.innerText = m.message;
-                        box.appendChild(div);
-                    });
-                    
-                    // Auto scroll ke pesan paling bawah
-                    box.scrollTop = box.scrollHeight;
-                }, err => {
-                    console.log("Error Chat:", err);
+                    // Gunakan fallback jika message kosong
+                    const konten = m.message || (m.is_product ? "Tanya Produk" : "...");
+
+                    if (m.is_product) {
+                        box.innerHTML += `
+                            <div style="align-self: ${align}; width: 85%; margin-bottom:10px;">
+                                <div class="chat-product-attachment">
+                                    <img src="${m.product_img}">
+                                    <div class="chat-product-info"><b>Produk:</b><br>${m.message}</div>
+                                </div>
+                            </div>`;
+                    } else {
+                        box.innerHTML += `
+                            <div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; margin-bottom:5px;">
+                                ${konten}
+                            </div>`;
+                    }
                 });
-        }
-    </script>
-</body>
+                box.scrollTop = box.scrollHeight;
+            });
+    }
+</script></body>
 </html>
