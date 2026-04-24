@@ -412,7 +412,7 @@
         }
     }
 
-    // --- LOGIKA REGISTRASI ---
+    // --- LOGIKA REGISTRASI (VERSI TERUPDATE) ---
     async function handleRegistrasi() {
         const btnSubmit = document.getElementById("btnSubmit");
         const lokasiKode = document.getElementById("lokasi").value; 
@@ -437,6 +437,7 @@
             let namaWilayahFull = lokasiKode;
             if (lokasiKode === "ABE") namaWilayahFull = "Abepura";
             if (lokasiKode === "STN") namaWilayahFull = "Sentani";
+            if (lokasiKode === "DYO") namaWilayahFull = "Doyo";
 
             const emailCheck = await db.collection("users").where("email", "==", rawEmail).get();
             if (!emailCheck.empty) throw new Error("Email sudah terdaftar!");
@@ -453,39 +454,46 @@
 
             const tahun = new Date().getFullYear();
             const finalNIJ = `NIJ-PPP-${lokasiKode}-${String(newNumber).padStart(3, '0')}-${tahun}`;
-            const userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
             
-            await db.collection("users").doc(userCredential.user.uid).set({
-                uid: userCredential.user.uid,
+            // 1. BUAT AKUN DI AUTHENTICATION
+            const userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
+            const user = userCredential.user;
+
+            // 2. KIRIM EMAIL VERIFIKASI (PENTING!)
+            // Ini akan mengirim link ke reset-password.html yang sudah kita setting di Console
+            await user.sendEmailVerification();
+
+            // 3. SIMPAN DATA KE FIRESTORE
+            await db.collection("users").doc(user.uid).set({
+                uid: user.uid,
                 nama: rawNama,
                 email: rawEmail,
                 nij: finalNIJ,
                 nij_number: newNumber,
                 whatsapp: rawHp,
                 wilayah: namaWilayahFull, 
-                // Data Alamat (Sesuai Struktur Anda)
                 provinsi: getTxt("provinsi"),
                 kabupaten_kota: getTxt("kota"),
                 kecamatan: getTxt("kecamatan"),
                 desa_kelurahan: getTxt("desa"),
                 alamat_detail: document.getElementById("alamat").value,
-                // Data Kelahiran (Penambahan Tanpa Pengurangan)
                 provinsi_lahir: getTxt("provinsi_lahir"),
                 kota_lahir: getTxt("kota_lahir"),
                 kecamatan_lahir: getTxt("kecamatan_lahir"),
                 desa_lahir: getTxt("desa_lahir"),
-                
                 komsel: document.getElementById("komsel").value,
                 jabatan: document.getElementById("jabatan_jemaat").value,
                 sub_jabatan: document.getElementById("sub_jabatan").value || "-",
                 pelayanan: document.getElementById("pelayanan").value,
                 detail_pelayanan: document.getElementById("pelayanan_spesifik_non").value || "-",
                 status_pernikahan: document.getElementById("status_pernikahan").value,
-                status_akun: "Aktif",
+                status_akun: "Menunggu Verifikasi", // Kita tandai agar admin tahu
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
 
+            // Tampilkan modal sukses
             document.getElementById("notif-email-sent").style.display = "flex";
+            
         } catch (e) {
             btnSubmit.disabled = false;
             btnSubmit.innerText = "FINALISASI & DAFTAR";
@@ -551,5 +559,5 @@
         if(kL) kL.addEventListener("change", () => loadKecamatan("lahir"));
         if(kcL) kcL.addEventListener("change", () => loadDesa("lahir"));
     });
-</script></body>
+</script>/body>
 </html>
