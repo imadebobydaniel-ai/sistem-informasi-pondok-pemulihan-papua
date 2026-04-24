@@ -310,23 +310,16 @@
     async function loginUser(role) {
         const email = role === 'admin' ? document.getElementById('admin-email').value : document.getElementById('log-email').value;
         const pass = role === 'admin' ? document.getElementById('admin-pass').value : document.getElementById('log-pass').value;
-
         if (!email || !pass) return notif("Email dan Password harus diisi!");
-
         try {
             notif("Sedang memverifikasi...");
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
-            
-            // Logika Admin
             if (role === 'admin' && email === 'boby.daniel4@gmail.com') {
                 notif("Login Admin Berhasil!");
                 setTimeout(() => { window.location.href = "admin-umkm.html"; }, 1000);
                 return;
             }
-
-            // Logika Reseller / Seller
             const doc = await db.collection("umkm_stores").doc(userCredential.user.uid).get();
-            
             if (doc.exists && doc.data().status === 'active') {
                 notif("Login Berhasil! Mengalihkan...");
                 setTimeout(() => { window.location.href = "dashboard-umkm.html"; }, 1000);
@@ -367,7 +360,16 @@
         document.getElementById("chat-popup").style.display = "flex";
         if (chatUnsubscribe) chatUnsubscribe();
         if (gbrProduk) {
-            db.collection("chats").add({ seller_uid: uid, customer_id: customerAnonymousId, message: "[Tanya Produk]", is_product: true, product_img: gbrProduk, sender: 'customer', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            db.collection("chats").add({ 
+                seller_uid: uid, 
+                customer_id: customerAnonymousId, 
+                message: "[Tanya Produk]", 
+                is_product: true, 
+                product_img: gbrProduk, 
+                sender: 'customer', 
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                is_read: false 
+            });
         }
         chatUnsubscribe = db.collection("chats").where("seller_uid", "==", uid).where("customer_id", "==", customerAnonymousId).orderBy("timestamp", "asc").onSnapshot(snap => {
             const box = document.getElementById("chat-box-popup"); box.innerHTML = "";
@@ -380,11 +382,27 @@
         });
     }
 
+    // FUNGSI KIRIM PESAN POPUP (DIPERBARUI)
     async function kirimPesanPopup() {
         const input = document.getElementById("msg-input-popup");
-        if (!input.value.trim() || !currentSellerUid) return;
-        await db.collection("chats").add({ seller_uid: currentSellerUid, customer_id: customerAnonymousId, message: input.value.trim(), sender: 'customer', timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        input.value = "";
+        const pesan = input.value.trim();
+        
+        if (!pesan || !currentSellerUid) return;
+
+        try {
+            await db.collection("chats").add({
+                seller_uid: currentSellerUid,
+                customer_id: customerAnonymousId,
+                message: pesan,
+                sender: 'customer',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                is_read: false // Digunakan untuk notifikasi di dashboard UMKM
+            });
+            input.value = ""; // Bersihkan input
+        } catch (error) {
+            console.error("Gagal mengirim pesan:", error);
+            notif("Gagal mengirim pesan.");
+        }
     }
     
     function tutupChatPopup() { document.getElementById("chat-popup").style.display = "none"; if (chatUnsubscribe) chatUnsubscribe(); }
