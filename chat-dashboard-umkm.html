@@ -2,66 +2,71 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chat Dashboard UMKM - Pondok Pemulihan Papua</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { --primary: #1a237e; --bg: #f0f2f5; --gold: #d4af37; --accent: #4CAF50; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         /* Sidebar Daftar Chat */
-        .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; background: var(--primary); color: white; border-bottom: 3px solid var(--gold); }
-        .customer-list { flex: 1; overflow-y: auto; }
-        .customer-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 12px; }
+        .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 20; }
+        .sidebar-header { padding: 20px; background: var(--primary); color: white; border-bottom: 3px solid var(--gold); flex-shrink: 0; }
+        .customer-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .customer-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
         .customer-item:hover { background: #f8f9fa; }
         .customer-item.active { background: #e8eaf6; border-left: 5px solid var(--gold); }
-        .avatar { width: 45px; height: 45px; background: #e0e0e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); font-size: 18px; }
+        .avatar { width: 45px; height: 45px; background: #e0e0e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); font-size: 18px; flex-shrink: 0; }
 
         /* Area Chat Utama */
-        .chat-main { flex: 1; display: flex; flex-direction: column; background: #efe7dd; position: relative; }
-        .chat-header { padding: 15px 25px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
-        .messages-window { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .chat-main { flex: 1; display: flex; flex-direction: column; background: #efe7dd; position: relative; transition: all 0.3s ease; }
+        .chat-header { padding: 15px 25px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; z-index: 10; height: 60px; box-sizing: border-box; }
+        .messages-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
         
         /* Bubble Chat */
-        .bubble { max-width: 65%; padding: 12px 18px; border-radius: 18px; font-size: 14px; line-height: 1.5; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .bubble { max-width: 75%; padding: 12px 18px; border-radius: 18px; font-size: 14px; line-height: 1.5; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
         .bubble-in { align-self: flex-start; background: white; border-bottom-left-radius: 4px; color: #333; }
         .bubble-out { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 4px; color: #333; }
         .timestamp { font-size: 10px; color: #888; margin-top: 6px; display: block; text-align: right; }
 
         /* Input Balasan */
-        .reply-box { padding: 20px; background: #f0f0f0; display: flex; gap: 12px; align-items: center; }
-        .reply-box input { flex: 1; padding: 14px 20px; border-radius: 30px; border: 1px solid #ccc; outline: none; font-size: 14px; }
-        .btn-send { background: var(--primary); color: var(--gold); border: none; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
-        .btn-send:hover { transform: scale(1.05); background: #283593; }
+        .reply-box { padding: 15px; background: #f0f0f0; display: flex; gap: 10px; align-items: center; border-top: 1px solid #ddd; }
+        .reply-box input { flex: 1; padding: 12px 18px; border-radius: 25px; border: 1px solid #ccc; outline: none; font-size: 14px; }
+        .btn-send { background: var(--primary); color: var(--gold); border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        
+        /* Mobile Specific & Smooth Transition */
+        #btn-back-list { display: none; margin-right: 15px; background: none; border: none; color: var(--primary); font-size: 18px; cursor: pointer; }
 
-        @media (max-width: 600px) {
-            .sidebar { width: 80px; }
-            .customer-info, .sidebar-header h3 { display: none; }
-            .avatar { margin: 0 auto; }
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; z-index: 30; }
+            .sidebar.mobile-hidden { transform: translateX(-100%); }
+            .chat-main { width: 100%; position: absolute; left: 0; top: 0; bottom: 0; }
+            #btn-back-list { display: block; }
+            .bubble { max-width: 85%; }
         }
     </style>
 </head>
 <body>
 
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <h3 style="margin:0;"><i class="fa-solid fa-comments"></i> Chat Masuk</h3>
     </div>
-    <div class="customer-list" id="list-container">
-        </div>
+    <div class="customer-list" id="list-container"></div>
 </div>
 
 <div class="chat-main">
     <div class="chat-header">
-        <div id="target-name" style="font-weight: 800; color: var(--primary); font-size: 16px;">Pilih percakapan...</div>
+        <div style="display: flex; align-items: center;">
+            <button id="btn-back-list" onclick="toggleMobileView(true)"><i class="fa-solid fa-arrow-left"></i></button>
+            <div id="target-name" style="font-weight: 800; color: var(--primary); font-size: 16px;">Pilih percakapan...</div>
+        </div>
         <button onclick="window.location.href='dashboard-umkm.html'" style="background:none; border:none; color: #999; cursor:pointer;">
             <i class="fa-solid fa-circle-xmark fa-xl"></i>
         </button>
     </div>
 
-    <div class="messages-window" id="chat-body">
-        </div>
+    <div class="messages-window" id="chat-body"></div>
 
     <div class="reply-box">
         <input type="text" id="input-chat" placeholder="Ketik pesan balasan..." onkeypress="if(event.key === 'Enter') kirimBalasan()">
@@ -74,6 +79,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // Konfigurasi & Inisialisasi (TIDAK DIUBAH)
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -89,7 +95,22 @@
     let curCustId = null;
     let myId = null;
 
-    // Listener Status Login
+    // Fungsi Mobile Toggle (Fungsi Baru untuk mendukung GUI Mobile)
+    function toggleMobileView(showList) {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth <= 768) {
+            if (showList) {
+                sidebar.classList.remove('mobile-hidden');
+            } else {
+                sidebar.classList.add('mobile-hidden');
+            }
+        }
+    }
+
+    // Inisialisasi tampilan mobile
+    window.addEventListener('resize', () => toggleMobileView(true));
+    window.addEventListener('load', () => toggleMobileView(true));
+
     auth.onAuthStateChanged(user => {
         if (user) {
             myId = user.uid;
@@ -99,7 +120,6 @@
         }
     });
 
-    // Mengambil daftar pembeli unik
     function muatDaftarChat() {
         db.collection("chats")
             .where("seller_uid", "==", myId)
@@ -110,14 +130,16 @@
 
                 snap.forEach(doc => {
                     const d = doc.data();
-                    // Simpan nama pembeli, jika tidak ada gunakan default
                     listUnik[d.customer_id] = d.customer_name || "Pembeli Umum";
                 });
 
                 Object.keys(listUnik).forEach(cid => {
                     const item = document.createElement("div");
                     item.className = `customer-item ${curCustId === cid ? 'active' : ''}`;
-                    item.onclick = () => bukaChat(cid, listUnik[cid]);
+                    item.onclick = () => {
+                        bukaChat(cid, listUnik[cid]);
+                        toggleMobileView(false); // Tutup list di mobile saat chat dibuka
+                    };
                     item.innerHTML = `
                         <div class="avatar">${listUnik[cid].charAt(0)}</div>
                         <div class="customer-info">
@@ -133,39 +155,30 @@
     function bukaChat(cid, cname) {
         curCustId = cid;
         document.getElementById("target-name").innerText = cname;
-        muatPesan(); // Memanggil fungsi muat history
-        muatDaftarChat(); // Refresh UI list agar class 'active' pindah
+        muatPesan();
+        muatDaftarChat();
     }
 
-    // Memuat history chat (SUDAH DIPERBAIKI)
     function muatPesan() {
         if (!curCustId) return;
-        
         db.collection("chats")
             .where("seller_uid", "==", myId)
             .where("customer_id", "==", curCustId)
-            .orderBy("timestamp", "asc") // Memanfaatkan indeks Enabled
+            .orderBy("timestamp", "asc")
             .onSnapshot(snap => {
                 const body = document.getElementById("chat-body");
                 body.innerHTML = "";
-                
                 snap.forEach(doc => {
                     const m = doc.data();
                     const isOut = m.sender === 'seller';
-                    
-                    // Konversi timestamp ke jam menit
                     const jam = m.timestamp ? new Date(m.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
-                    
-                    // PERBAIKAN: Gunakan m.message agar tidak undefined
                     const teksTampil = m.message || (m.is_product ? "Tanya Produk" : "Pesan kosong");
 
-                    // Cek jika ini adalah pesan produk
                     if (m.is_product) {
                         body.innerHTML += `
                             <div class="bubble ${isOut ? 'bubble-out' : 'bubble-in'}" style="max-width: 85%;">
-                                <div style="background: #f9f9f9; padding: 5px; border-radius: 5px; margin-bottom: 5px; color: #333;">
-                                    <small><b>Menanyakan Produk:</b></small><br>
-                                    ${teksTampil}
+                                <div style="background: rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; margin-bottom: 5px; color: #333;">
+                                    <small><b>Menanyakan Produk:</b></small><br>${teksTampil}
                                 </div>
                                 <span class="timestamp">${jam}</span>
                             </div>`;
@@ -177,30 +190,27 @@
                             </div>`;
                     }
                 });
-                body.scrollTop = body.scrollHeight; // Auto scroll ke bawah
+                body.scrollTop = body.scrollHeight;
             });
     }
 
-    // Fungsi Kirim Balasan (SUDAH DIPERBAIKI)
     async function kirimBalasan() {
         const input = document.getElementById("input-chat");
         const pesan = input.value.trim();
-        
         if (!pesan || !curCustId) return;
-
         try {
             await db.collection("chats").add({
                 seller_uid: myId,
                 customer_id: curCustId,
                 sender: 'seller', 
-                message: pesan, // Gunakan field 'message' agar sinkron
+                message: pesan,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            input.value = ""; // Kosongkan input setelah kirim
+            input.value = "";
         } catch (e) {
             console.error("Gagal kirim pesan:", e);
-            alert("Gagal mengirim pesan. Pastikan koneksi stabil.");
         }
     }
-</script></body>
+</script>
+</body>
 </html>
