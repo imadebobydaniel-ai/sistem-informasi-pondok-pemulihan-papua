@@ -86,7 +86,8 @@
         }
 
         .status-active { background: #e8f5e9; color: var(--success); }
-        .status-suspended { background: #ffebee; color: var(--danger); }
+        .status-suspended { background: #fff7ed; color: #f59e0b; }
+        .status-inactive { background: #ffebee; color: var(--danger); }
 
         .actions { display: flex; gap: 8px; }
         .btn-action {
@@ -126,11 +127,11 @@
 <div class="container">
     <div class="stats-grid">
         <div class="stat-card">
-            <h4>TOTAL LAPAK</h4>
+            <h4>TOTAL PENDAFTAR</h4>
             <p id="count-total">0</p>
         </div>
         <div class="stat-card">
-            <h4>AKTIF</h4>
+            <h4>LAPAK AKTIF</h4>
             <p id="count-active" style="color: var(--success);">0</p>
         </div>
     </div>
@@ -160,7 +161,7 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // Proteksi Halaman: Hanya email admin yang boleh akses
+    // Proteksi Halaman
     auth.onAuthStateChanged(user => {
         if (!user || user.email !== 'boby.daniel4@gmail.com') {
             alert("Akses Ditolak!");
@@ -172,9 +173,10 @@
 
     async function muatDataAdmin() {
         const list = document.getElementById("admin-list");
+        // Mengambil semua data untuk dipantau Admin
         db.collection("umkm_stores").orderBy("dibuat", "desc").onSnapshot(snap => {
             list.innerHTML = "";
-            let active = 0;
+            let activeCount = 0;
             
             if(snap.empty) {
                 list.innerHTML = "<p style='text-align:center'>Belum ada pendaftar UMKM.</p>";
@@ -183,24 +185,29 @@
 
             snap.forEach(doc => {
                 const data = doc.data();
-                if(data.status === 'active') active++;
+                if(data.status === 'active') activeCount++;
                 
+                // Menentukan badge class
+                let badgeClass = 'status-active';
+                if(data.status === 'suspended') badgeClass = 'status-suspended';
+                if(data.status === 'inactive') badgeClass = 'status-inactive';
+
                 const card = `
                     <div class="store-card">
                         <img src="${data.logo_url}" class="store-logo">
                         <div class="store-info">
                             <h3>${data.nama_toko}</h3>
                             <p><i class="fa-brands fa-whatsapp"></i> ${data.whatsapp}</p>
-                            <span class="status-badge ${data.status === 'active' ? 'status-active' : 'status-suspended'}">
+                            <span class="status-badge ${badgeClass}">
                                 ${data.status}
                             </span>
                         </div>
                         <div class="actions">
                             ${data.status === 'active' ? 
-                                `<button class="btn-action btn-suspend" onclick="updateStatus('${doc.id}', 'suspended')"><i class="fa-solid fa-ban"></i></button>` : 
-                                `<button class="btn-action btn-activate" onclick="updateStatus('${doc.id}', 'active')"><i class="fa-solid fa-check"></i></button>`
+                                `<button class="btn-action btn-suspend" title="Suspen" onclick="updateStatus('${doc.id}', 'suspended')"><i class="fa-solid fa-ban"></i></button>` : 
+                                `<button class="btn-action btn-activate" title="Aktifkan" onclick="updateStatus('${doc.id}', 'active')"><i class="fa-solid fa-check"></i></button>`
                             }
-                            <button class="btn-action btn-delete" onclick="hapusToko('${doc.id}')"><i class="fa-solid fa-trash"></i></button>
+                            <button class="btn-action btn-delete" title="Nonaktifkan (Soft Delete)" onclick="hapusToko('${doc.id}')"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </div>
                 `;
@@ -208,7 +215,7 @@
             });
 
             document.getElementById("count-total").innerText = snap.size;
-            document.getElementById("count-active").innerText = active;
+            document.getElementById("count-active").innerText = activeCount;
         });
     }
 
@@ -222,18 +229,19 @@
         }
     }
 
-    // FUNGSI HAPUS TOKO REALTIME DENGAN ERROR HANDLING
+    // FUNGSI SOFT DELETE (Mengubah status menjadi inactive)
     window.hapusToko = async (id) => {
-        if(confirm("Hapus permanen toko ini? Tindakan ini tidak bisa dibatalkan.")) {
+        if(confirm("Lapak ini akan dinonaktifkan dan hilang dari Marketplace. Email ini tetap bisa digunakan untuk mendaftar ulang di masa depan. Lanjutkan?")) {
             try {
-                // Melakukan penghapusan dokumen langsung ke koleksi Firestore
-                await db.collection("umkm_stores").doc(id).delete();
-                
-                // Karena menggunakan .onSnapshot(), tampilan akan otomatis terupdate secara realtime
-                alert("Lapak berhasil dihapus secara permanen dari database.");
+                // Jangan pakai .delete(), tapi pakai .update() agar email tidak tersangkut
+                await db.collection("umkm_stores").doc(id).update({ 
+                    status: 'inactive',
+                    deleted_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("Lapak berhasil dinonaktifkan (Status: Inactive).");
             } catch (error) {
-                console.error("Error saat menghapus:", error);
-                alert("Gagal menghapus data: " + error.message);
+                console.error("Error saat menonaktifkan:", error);
+                alert("Gagal memproses permintaan: " + error.message);
             }
         }
     }
