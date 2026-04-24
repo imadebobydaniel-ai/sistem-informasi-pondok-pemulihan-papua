@@ -317,10 +317,19 @@
     window.bukaModal = (id) => document.getElementById(id).style.display = 'flex';
     window.tutupModal = () => document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
     
+    // Fungsi Notifikasi dengan sistem Block Display
     function notif(m) {
         const n = document.getElementById("notif-container");
-        document.getElementById("notif-message").innerText = m;
-        n.style.display = "block"; setTimeout(() => n.style.display = "none", 3000);
+        const msgElement = document.getElementById("notif-message");
+        
+        // Mengubah ke block display sesuai instruksi
+        n.style.display = "block"; 
+        msgElement.innerText = m;
+        
+        // Menghilangkan notifikasi setelah 3 detik
+        setTimeout(() => {
+            n.style.display = "none";
+        }, 3000);
     }
 
     // --- LOGIKA AUTH (DAFTAR & LOGIN) ---
@@ -332,13 +341,20 @@
         const namaToko = document.getElementById("reg-toko").value;
         const noHp = document.getElementById("reg-hp").value;
 
-        if(!foto || !email || !pass) return notif("Data belum lengkap!");
+        // Sistem Notifikasi Validasi Berbasis Block
+        if(!namaToko) return notif("Nama UMKM wajib diisi!");
+        if(!foto) return notif("Logo UMKM belum diupload!");
+        if(!noHp) return notif("Nomor WhatsApp diperlukan!");
+        if(!email || !pass) return notif("Email dan Password tidak boleh kosong!");
 
         try {
             btn.innerText = "Memproses..."; btn.disabled = true;
             const fd = new FormData();
             fd.append("file", foto);
             fd.append("upload_preset", UPLOAD_PRESET);
+            
+            notif("Sedang mengupload logo..."); 
+            
             const resImg = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: "POST", body: fd });
             const dataImg = await resImg.json();
 
@@ -370,7 +386,7 @@
             notif("Lapak Berhasil Diaktifkan!");
             setTimeout(() => location.reload(), 1500);
         } catch (e) { 
-            notif("Gagal: " + e.message); 
+            notif("Gagal mendaftar: " + e.message); 
             btn.innerText = "DAFTARKAN LAPAK"; btn.disabled = false; 
         }
     }
@@ -378,21 +394,28 @@
     async function loginUser(role) {
         const email = role === 'admin' ? document.getElementById('admin-email').value : document.getElementById('log-email').value;
         const pass = role === 'admin' ? document.getElementById('admin-pass').value : document.getElementById('log-pass').value;
-        if(!email || !pass) return notif("Email dan Password harus diisi!");
+        
+        if(!email || !pass) return notif("Mohon masukkan Email dan Password!");
+
         try {
+            notif("Melakukan verifikasi login...");
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+            
             if (role === 'admin' && email === 'boby.daniel4@gmail.com') {
+                notif("Selamat Datang Admin!");
                 window.location.href = "admin-umkm.html";
                 return;
             }
+            
             const doc = await db.collection("umkm_stores").doc(userCredential.user.uid).get();
             if (doc.exists && doc.data().status === 'active') {
+                notif("Login Berhasil! Mengalihkan ke Dashboard...");
                 window.location.href = "dashboard-umkm.html"; 
             } else {
-                notif("Akses tidak dikenal atau lapak sudah dinonaktifkan.");
+                notif("Akses ditolak: Lapak Anda tidak aktif.");
             }
         } catch (e) { 
-            notif("Login Gagal: " + e.message); 
+            notif("Login Gagal: Periksa kembali akun Anda."); 
         }
     }
 
@@ -456,14 +479,19 @@
         const input = document.getElementById("msg-input-popup");
         const msg = input.value.trim();
         if (!msg || !currentSellerUid) return;
-        await db.collection("chats").add({
-            seller_uid: currentSellerUid,
-            customer_id: customerAnonymousId,
-            message: msg,
-            sender: 'customer',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        input.value = "";
+        
+        try {
+            await db.collection("chats").add({
+                seller_uid: currentSellerUid,
+                customer_id: customerAnonymousId,
+                message: msg,
+                sender: 'customer',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            input.value = "";
+        } catch (e) {
+            notif("Gagal mengirim pesan.");
+        }
     }
 
     function tutupChatPopup() {
@@ -473,12 +501,11 @@
 
     // --- LOGIKA GAMIFIKASI (LIKE & RATING) ---
     async function tambahLike(uid, currentLikes, element) {
-        // Efek cahaya
         element.classList.add('glow-active');
         setTimeout(() => element.classList.remove('glow-active'), 500);
 
         const newLikes = (currentLikes || 0) + 1;
-        const newRating = Math.floor(newLikes / 20); // Bintang 1 tiap 20 likes
+        const newRating = Math.floor(newLikes / 20); 
 
         await db.collection("umkm_stores").doc(uid).update({
             likes_count: newLikes,
@@ -487,7 +514,6 @@
     }
 
     function shareWA(nama, phone) {
-        // Pesan langsung berisi informasi produk
         const text = encodeURIComponent(`Halo ${nama}, saya melihat profil UMKM Anda di SIPAPUA dan ingin bertanya mengenai produk Anda.`);
         window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
     }
