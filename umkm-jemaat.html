@@ -405,6 +405,20 @@
         }
     }
 
+    // Fungsi Popup Chat Baru
+    window.bukaChatPopup = function(uid, namaToko, gbrProduk) {
+        const chatModal = document.getElementById("modal-chat"); 
+        if (chatModal) {
+            chatModal.style.display = 'flex';
+            console.log("Membuka chat untuk toko:", namaToko, "dengan UID:", uid);
+            
+            const chatHeader = document.getElementById("chat-header-name");
+            if(chatHeader) chatHeader.innerText = namaToko;
+        } else {
+            notif("Fitur Chat sedang dalam pemeliharaan.");
+        }
+    };
+
     function triggerTwister(element, uid, namaToko, gbrProduk) {
         const flash = document.createElement('div'); 
         flash.className = 'twister-effect';
@@ -418,7 +432,6 @@
         const container = document.getElementById("main-market");
         if(!container) return;
 
-        // Real-time listener untuk produk
         db.collection("umkm_products").onSnapshot(snap => { 
             container.innerHTML = ""; 
             if(snap.empty) {
@@ -434,7 +447,6 @@
                 const statusColorClass = (statusOrder.toLowerCase().includes("open") || statusOrder.toLowerCase().includes("ready")) ? "dot-online" : "dot-offline";
                 const daftarFoto = Array.isArray(produk.img_urls) && produk.img_urls.length > 0 ? produk.img_urls : [produk.img_primary || "https://via.placeholder.com/300"];
 
-                // Ambil data toko secara real-time untuk Rating/Like
                 db.collection("umkm_stores").doc(sellerUid).onSnapshot(storeDoc => {
                     const storeData = storeDoc.exists ? storeDoc.data() : { nama_toko: "Lapak", whatsapp: "0", likes_count: 0, rating_level: 0 };
                     
@@ -527,6 +539,5 @@
     }
 
     document.addEventListener("DOMContentLoaded", muatMarket);
-</script>
-</body>
+</script></body>
 </html>
