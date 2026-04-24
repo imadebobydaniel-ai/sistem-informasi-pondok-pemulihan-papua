@@ -156,6 +156,15 @@
 
         #notif-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 80%; display: none; }
         .notif-block { background: var(--navy); color: var(--gold); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid var(--gold); }
+
+        /* MODIFIKASI: CSS UNTUK KONTEKSTUAL CHAT */
+        .chat-product-attachment {
+            background: white; border-radius: 10px; padding: 8px; margin-bottom: 10px;
+            display: flex; gap: 10px; border: 1px solid #eee; align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .chat-product-attachment img { width: 45px; height: 45px; object-fit: cover; border-radius: 5px; }
+        .chat-product-info { font-size: 11px; color: #333; line-height: 1.2; flex: 1; }
     </style>
 </head>
 <body>
@@ -373,21 +382,37 @@
     let currentSellerUid = "";
     let chatUnsubscribe = null;
 
-    function triggerTwister(element, uid, namaToko) {
+    // MODIFIKASI: Menambahkan gbrProduk ke triggerTwister
+    function triggerTwister(element, uid, namaToko, gbrProduk) {
         const flash = document.createElement('div');
         flash.className = 'twister-effect';
         element.appendChild(flash);
         setTimeout(() => flash.remove(), 600);
-        setTimeout(() => bukaChatPopup(uid, namaToko), 200);
+        setTimeout(() => bukaChatPopup(uid, namaToko, gbrProduk), 200);
     }
 
-    function bukaChatPopup(uid, namaToko) {
+    // MODIFIKASI: Menambahkan logika lampiran produk otomatis saat buka chat
+    function bukaChatPopup(uid, namaToko, gbrProduk) {
         currentSellerUid = uid;
         document.getElementById("chat-title").innerText = "Chat: " + namaToko;
         document.getElementById("chat-popup").style.display = "flex";
         if (chatUnsubscribe) chatUnsubscribe();
+        
         const custId = localStorage.getItem('chat_customer_id') || "GUEST_" + Math.random().toString(36).substr(2, 5);
         localStorage.setItem('chat_customer_id', custId);
+
+        // Jika dipicu dari klik produk, kirim info produk secara otomatis ke DB
+        if (gbrProduk) {
+            db.collection("chats").add({
+                seller_uid: uid,
+                customer_id: custId,
+                message: "[INFO PRODUK]",
+                is_product: true,
+                product_img: gbrProduk,
+                sender: 'customer',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
 
         chatUnsubscribe = db.collection("chats")
             .where("seller_uid", "==", uid)
@@ -399,9 +424,25 @@
                 snap.forEach(doc => {
                     const m = doc.data();
                     const align = m.sender === 'customer' ? 'flex-end' : 'flex-start';
-                    const bg = m.sender === 'customer' ? 'var(--navy)' : '#fff';
-                    const color = m.sender === 'customer' ? 'white' : '#333';
-                    box.innerHTML += `<div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">${m.message}</div>`;
+                    
+                    if (m.is_product) {
+                        // Tampilan Riwayat Chat dalam bentuk Lampiran Produk
+                        box.innerHTML += `
+                            <div style="align-self: ${align}; width: 85%;">
+                                <div class="chat-product-attachment">
+                                    <img src="${m.product_img}">
+                                    <div class="chat-product-info">
+                                        <b style="color:var(--navy)">Tanya Produk:</b><br>
+                                        ${namaToko}
+                                    </div>
+                                </div>
+                            </div>`;
+                    } else {
+                        // Tampilan Riwayat Chat Pesan Teks Biasa
+                        const bg = m.sender === 'customer' ? 'var(--navy)' : '#fff';
+                        const color = m.sender === 'customer' ? 'white' : '#333';
+                        box.innerHTML += `<div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">${m.message}</div>`;
+                    }
                 });
                 box.scrollTop = box.scrollHeight;
             });
@@ -433,13 +474,14 @@
             container.innerHTML = "";
             snap.forEach(doc => {
                 const lapak = doc.data();
+                // MODIFIKASI: Menambahkan '${lapak.logo_url}' ke fungsi triggerTwister
                 container.innerHTML += `
                     <div class="lapak-card">
                         <div class="lapak-img-wrapper"><img src="${lapak.logo_url}" class="lapak-img"></div>
                         <div class="lapak-info">
                             <h3>${lapak.nama_toko}</h3>
                             <div class="action-group">
-                                <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${lapak.uid}', '${lapak.nama_toko}')" title="Chat">
+                                <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${lapak.uid}', '${lapak.nama_toko}', '${lapak.logo_url}')" title="Chat">
                                     <i class="fa-solid fa-comment-dots"></i>
                                 </button>
                                 <button class="btn-icon btn-star" title="Rating">
