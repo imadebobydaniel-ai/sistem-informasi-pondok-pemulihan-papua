@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Penjual - UMKM SIPAPUA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --navy: #1a237e; --gold: #d4af37; --bg: #f0f2f5; }
+        body { font-family: sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; height: 100vh; }
+        .chat-header { background: var(--navy); color: var(--gold); padding: 15px; display: flex; align-items: center; gap: 15px; }
+        .chat-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 10px; border-radius: 10px; font-size: 14px; }
+        .msg.sent { align-self: flex-end; background: var(--navy); color: white; }
+        .msg.received { align-self: flex-start; background: white; color: #333; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .chat-input { padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #ddd; }
+        .chat-input input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 25px; outline: none; }
+        .chat-input button { background: var(--gold); color: var(--navy); border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="chat-header">
+        <i class="fa-solid fa-arrow-left" onclick="history.back()"></i>
+        <div id="store-name">Memuat Penjual...</div>
+    </div>
+    <div class="chat-container" id="chat-box"></div>
+    <div class="chat-input">
+        <input type="text" id="msg-input" placeholder="Tulis pesan...">
+        <button onclick="kirimPesan()"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        // PAKAI CONFIG FIREBASE KAMU DI SINI
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.firebasestorage.app",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const sellerUid = urlParams.get('uid');
+        const customerId = "USER_" + Math.random().toString(36).substr(2, 5); // ID unik sementara pembeli
+
+        db.collection("umkm_stores").doc(sellerUid).get().then(doc => {
+            if(doc.exists) document.getElementById("store-name").innerText = doc.data().nama_toko;
+        });
+
+        function kirimPesan() {
+            const txt = document.getElementById("msg-input").value;
+            if(!txt) return;
+            db.collection("chats").add({
+                seller_uid: sellerUid,
+                customer_id: customerId,
+                message: txt,
+                sender: 'customer',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            document.getElementById("msg-input").value = "";
+        }
+
+        db.collection("chats").where("seller_uid", "==", sellerUid)
+          .orderBy("timestamp", "asc").onSnapshot(snap => {
+            const box = document.getElementById("chat-box");
+            box.innerHTML = "";
+            snap.forEach(doc => {
+                const m = doc.data();
+                const div = document.createElement("div");
+                div.className = `msg ${m.sender === 'customer' ? 'sent' : 'received'}`;
+                div.innerText = m.message;
+                box.appendChild(div);
+            });
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
+</body>
+</html>
