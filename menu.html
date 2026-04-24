@@ -36,29 +36,59 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .navbar h1 { font-size: 18px; font-weight: 800; margin: 0; color: var(--gold); letter-spacing: 1px; }
+        .navbar h1 { font-size: 18px; font-weight: 800; margin: 0; color: var(--gold); letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
 
-        .nav-actions { display: flex; gap: 15px; align-items: center; }
+        /* DROPDOWN MENU NAVIGATION */
+        .nav-actions { position: relative; display: inline-block; }
         
-        .login-btn {
+        .dropbtn {
             background: var(--gold);
             color: var(--navy);
-            padding: 8px 15px;
+            padding: 10px 18px;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 800;
-            text-decoration: none;
             border: none;
             cursor: pointer;
-            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .admin-login-link {
-            color: var(--gold-light);
-            font-size: 11px;
-            text-decoration: underline;
-            cursor: pointer;
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1001;
+            border-radius: 12px;
+            margin-top: 10px;
+            overflow: hidden;
+            border: 1px solid var(--gold);
         }
+
+        .dropdown-content a, .dropdown-content button {
+            color: var(--navy);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: left;
+            width: 100%;
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .dropdown-content a:hover, .dropdown-content button:hover {
+            background-color: var(--gold-light);
+        }
+
+        .nav-actions:hover .dropdown-content { display: block; }
 
         /* MARKET CONTAINER */
         .market-container { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
@@ -135,10 +165,14 @@
 <div id="notif-container"><div class="notif-block" id="notif-message"></div></div>
 
 <div class="navbar">
-    <h1>UMKM SIPAPUA</h1>
+    <h1><i class="fa-solid fa-bag-shopping"></i> UMKM SIPAPUA</h1>
     <div class="nav-actions">
-        <span class="admin-login-link" onclick="bukaModal('modal-login-admin')">Admin</span>
-        <button class="login-btn" onclick="bukaModal('modal-login-seller')">LOGIN SELLER</button>
+        <button class="dropbtn">MENU UMKM <i class="fa-solid fa-chevron-down"></i></button>
+        <div class="dropdown-content">
+            <button onclick="bukaModal('modal-login-admin')"><i class="fa-solid fa-user-shield"></i> Login Admin</button>
+            <button onclick="bukaModal('modal-login-seller')"><i class="fa-solid fa-store"></i> Login Reseller</button>
+            <a href="https://wa.me/6281283393576" target="_blank"><i class="fa-solid fa-headset"></i> Customer Support</a>
+        </div>
     </div>
 </div>
 
@@ -146,7 +180,7 @@
     </div>
 
 <button class="fab-add" onclick="bukaModal('modal-daftar')">
-    <i class="fa-solid fa-store"></i>
+    <i class="fa-solid fa-plus"></i>
 </button>
 
 <div id="modal-daftar" class="modal-overlay">
@@ -273,10 +307,9 @@
         
         try {
             const user = await auth.signInWithEmailAndPassword(email, pass);
-            // Cek role di firestore untuk memastikan akses
             const doc = await db.collection("umkm_stores").doc(user.user.uid).get();
             
-            if (role === 'admin' && email === 'admin@sipapua.com') { // Contoh login khusus admin
+            if (role === 'admin' && email === 'admin@sipapua.com') { 
                 window.location.href = "admin-panel.html";
             } else if (doc.exists && doc.data().role === 'seller') {
                 if(doc.data().status === 'suspended') return notif("Akun Anda sedang disuspen!");
