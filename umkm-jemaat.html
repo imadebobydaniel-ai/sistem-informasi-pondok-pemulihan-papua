@@ -353,47 +353,54 @@
         window.open(`https://wa.me/${nomorWA}?text=${text}`, '_blank');
     }
 
-    // --- INTEGRATED RENDER MARKET ---
+    // --- INTEGRATED RENDER MARKET (Updated to Match Your Firestore) ---
     function muatMarket() {
         const container = document.getElementById("main-market");
         if(!container) return;
 
-        db.collection("products").onSnapshot(snap => { 
+        // Menggunakan koleksi 'umkm_products' sesuai database Anda
+        db.collection("umkm_products").onSnapshot(snap => { 
             container.innerHTML = "";
             snap.forEach(doc => {
                 const produk = doc.data();
-                const uid_seller = produk.seller_uid || "";
                 
+                // Mapping field sesuai database Anda
+                const namaProduk = produk.nama || "Tanpa Nama";
+                const hargaProduk = produk.harga || 0;
+                const fotoUtama = produk.img_primary || ""; 
+                const deskripsiProduk = produk.deskripsi || "-";
+                const sellerUid = produk.seller_uid || "";
+                const statusOrder = produk.status || "Closed"; 
+
                 // Logika Warna Indikator
                 let statusColor = "dot-offline";
-                let statusText = "Offline";
-                if(produk.status_toko === "online") { statusColor = "dot-online"; statusText = "Online"; }
-                if(produk.status_toko === "suspend") { statusColor = "dot-suspend"; statusText = "Akun lapak sedang di suspen"; }
-
-                // Support slide foto
-                const fotoList = Array.isArray(produk.foto_url) ? produk.foto_url : [produk.foto_url];
+                if(statusOrder.toLowerCase().includes("open")) { 
+                    statusColor = "dot-online"; 
+                }
 
                 container.innerHTML += `
                     <div class="lapak-card" id="card-${doc.id}">
                         <div class="product-slider">
-                            ${fotoList.map(img => `<img src="${img}">`).join('')}
+                            <img src="${fotoUtama}" alt="${namaProduk}">
                         </div>
                         
                         <div class="lapak-info">
                             <div class="status-indicator">
                                 <div class="dot ${statusColor}"></div>
-                                <span>${statusText}</span>
+                                <span>${statusOrder}</span>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <span style="color: var(--navy); font-weight: 800; font-size: 1.1rem;">Rp ${Number(produk.harga).toLocaleString('id-ID')}</span>
+                                <span style="color: var(--navy); font-weight: 800; font-size: 1.1rem;">
+                                    Rp ${Number(hargaProduk).toLocaleString('id-ID')}
+                                </span>
                                 <div class="action-group" style="padding:0; gap:8px;">
-                                    <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${uid_seller}', '${produk.nama_produk}', '${fotoList[0]}')">
+                                    <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${sellerUid}', '${namaProduk}', '${fotoUtama}')">
                                         <i class="fa-solid fa-comment-dots"></i>
                                     </button>
                                     <button class="btn-icon btn-star"><i class="fa-solid fa-star"></i></button>
                                     <button class="btn-icon btn-thumb"><i class="fa-solid fa-thumbs-up"></i></button>
-                                    <button class="btn-icon btn-wa" onclick="shareWA('${produk.nama_produk}', '${produk.whatsapp}')">
+                                    <button class="btn-icon btn-wa" onclick="shareWA('${namaProduk}', '081283393576')">
                                         <i class="fa-brands fa-whatsapp"></i>
                                     </button>
                                 </div>
@@ -405,13 +412,12 @@
                         </div>
 
                         <div class="detail-panel" id="detail-${doc.id}">
-                            <p><strong>Toko:</strong> ${produk.nama_toko || 'N/A'}</p>
-                            <p><strong>Produk:</strong> ${produk.nama_produk}</p>
-                            <p style="font-size: 12px; color: #555;"><strong>Spek:</strong> ${produk.deskripsi || '-'}</p>
+                            <p><strong>Produk:</strong> ${namaProduk}</p>
+                            <p style="font-size: 12px; color: #555;"><strong>Deskripsi:</strong> ${deskripsiProduk}</p>
                         </div>
                     </div>`;
             });
-            if(snap.empty) container.innerHTML = "<p style='text-align:center; color:gray;'>Belum ada produk.</p>";
+            if(snap.empty) container.innerHTML = "<p style='text-align:center; color:gray;'>Belum ada produk di etalase.</p>";
         });
     }
 
