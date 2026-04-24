@@ -382,7 +382,6 @@
     let currentSellerUid = "";
     let chatUnsubscribe = null;
 
-    // MODIFIKASI: Menambahkan gbrProduk ke triggerTwister
     function triggerTwister(element, uid, namaToko, gbrProduk) {
         const flash = document.createElement('div');
         flash.className = 'twister-effect';
@@ -391,7 +390,6 @@
         setTimeout(() => bukaChatPopup(uid, namaToko, gbrProduk), 200);
     }
 
-    // MODIFIKASI: Menambahkan logika lampiran produk otomatis saat buka chat
     function bukaChatPopup(uid, namaToko, gbrProduk) {
         currentSellerUid = uid;
         document.getElementById("chat-title").innerText = "Chat: " + namaToko;
@@ -401,7 +399,7 @@
         const custId = localStorage.getItem('chat_customer_id') || "GUEST_" + Math.random().toString(36).substr(2, 5);
         localStorage.setItem('chat_customer_id', custId);
 
-        // Jika dipicu dari klik produk, kirim info produk secara otomatis ke DB
+        // Kirim info produk jika dipicu dari tombol market
         if (gbrProduk) {
             db.collection("chats").add({
                 seller_uid: uid,
@@ -414,19 +412,21 @@
             });
         }
 
+        // PERBAIKAN LOGIKA LISTENER CHAT (Agar Histori Tidak Kosong)
         chatUnsubscribe = db.collection("chats")
             .where("seller_uid", "==", uid)
             .where("customer_id", "==", custId)
             .orderBy("timestamp", "asc")
             .onSnapshot(snap => {
                 const box = document.getElementById("chat-box-popup");
-                box.innerHTML = "";
+                box.innerHTML = ""; // Bersihkan box sebelum memuat ulang histori
+                
                 snap.forEach(doc => {
                     const m = doc.data();
                     const align = m.sender === 'customer' ? 'flex-end' : 'flex-start';
                     
+                    // Logika 1: Menampilkan riwayat lampiran produk
                     if (m.is_product) {
-                        // Tampilan Riwayat Chat dalam bentuk Lampiran Produk
                         box.innerHTML += `
                             <div style="align-self: ${align}; width: 85%;">
                                 <div class="chat-product-attachment">
@@ -437,14 +437,22 @@
                                     </div>
                                 </div>
                             </div>`;
-                    } else {
-                        // Tampilan Riwayat Chat Pesan Teks Biasa
+                    } 
+                    // Logika 2: Menampilkan riwayat pesan teks manual
+                    else if (m.message) {
                         const bg = m.sender === 'customer' ? 'var(--navy)' : '#fff';
                         const color = m.sender === 'customer' ? 'white' : '#333';
-                        box.innerHTML += `<div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">${m.message}</div>`;
+                        box.innerHTML += `
+                            <div style="align-self: ${align}; background: ${bg}; color: ${color}; 
+                                        padding: 8px 12px; border-radius: 12px; max-width: 80%; 
+                                        font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                ${m.message}
+                            </div>`;
                     }
                 });
-                box.scrollTop = box.scrollHeight;
+                box.scrollTop = box.scrollHeight; // Auto-scroll ke bawah
+            }, err => {
+                console.error("Gagal memuat histori chat:", err);
             });
     }
 
@@ -474,7 +482,6 @@
             container.innerHTML = "";
             snap.forEach(doc => {
                 const lapak = doc.data();
-                // MODIFIKASI: Menambahkan '${lapak.logo_url}' ke fungsi triggerTwister
                 container.innerHTML += `
                     <div class="lapak-card">
                         <div class="lapak-img-wrapper"><img src="${lapak.logo_url}" class="lapak-img"></div>
