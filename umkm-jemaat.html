@@ -529,54 +529,50 @@
         }
     }
 
-    function shareWA(namaToko, uid) {
+    function shareWA(namaToko, nomorWA) {
         const urlLapak = window.location.href; 
         const text = encodeURIComponent(
-            `Cek lapak keren ini di UMKM SIPAPUA: *${namaToko}*\n\nLihat produknya di sini: ${urlLapak}`
+            `Halo, saya tertarik dengan produk *${namaToko}* di UMKM SIPAPUA.\n\nLihat di sini: ${urlLapak}`
         );
-        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        window.open(`https://wa.me/${nomorWA}?text=${text}`, '_blank');
     }
 
-    // --- RENDER MARKET DENGAN INTEGRASI DROPDOWN ---
+    // --- RENDER MARKET (VERSI TERBARU: AMBIL DATA PRODUK) ---
     function muatMarket() {
         const container = document.getElementById("main-market");
         if(!container) return;
 
-        db.collection("umkm_stores").where("status", "==", "active").onSnapshot(snap => {
+        // Mengambil data dari koleksi 'products'
+        db.collection("products").onSnapshot(snap => { 
             container.innerHTML = "";
             snap.forEach(doc => {
-                const lapak = doc.data();
-                const stars = lapak.rating_level || 0;
-                const likes = lapak.likes_count || 0;
-                const uid = doc.id;
+                const produk = doc.data();
+                const uid_seller = produk.seller_uid || ""; // Pastikan ada ID penjual untuk fitur chat
 
                 container.innerHTML += `
                     <div class="lapak-card">
-                        <div class="lapak-img-wrapper"><img src="${lapak.logo_url}" class="lapak-img"></div>
+                        <div class="lapak-img-wrapper">
+                            <img src="${produk.foto_url}" class="lapak-img">
+                        </div>
                         <div class="lapak-info">
-                            <h3>${lapak.nama_toko}</h3>
+                            <h3>${produk.nama_produk}</h3>
+                            <p style="color: #1a237e; font-weight: 800; margin-bottom: 10px;">Rp ${Number(produk.harga).toLocaleString('id-ID')}</p>
                             <div class="action-group">
-                                <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${uid}', '${lapak.nama_toko}', '${lapak.logo_url}')">
+                                <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${uid_seller}', '${produk.nama_produk}', '${produk.foto_url}')">
                                     <i class="fa-solid fa-comment-dots"></i>
                                 </button>
 
-                                <button class="btn-icon btn-star" onclick="this.classList.add('glow-active'); setTimeout(()=>this.classList.remove('glow-active'), 500)">
-                                    <i class="fa-solid fa-star"></i>
-                                    <div class="info-dropdown">Rating: ${stars} Bintang</div>
-                                </button>
-
-                                <button class="btn-icon btn-thumb" onclick="tambahLike('${uid}', ${likes}, this)">
-                                    <i class="fa-solid fa-thumbs-up"></i>
-                                    <div class="info-dropdown">${likes} Likes</div>
-                                </button>
-
-                                <button class="btn-icon btn-wa" onclick="shareWA('${lapak.nama_toko}', '${uid}')">
+                                <button class="btn-icon btn-wa" onclick="shareWA('${produk.nama_produk}', '${produk.whatsapp}')">
                                     <i class="fa-brands fa-whatsapp"></i>
                                 </button>
                             </div>
                         </div>
                     </div>`;
             });
+            
+            if(snap.empty) {
+                container.innerHTML = "<p style='text-align:center; color:gray;'>Belum ada produk jemaat yang diupload.</p>";
+            }
         });
     }
 
