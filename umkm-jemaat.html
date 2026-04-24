@@ -74,7 +74,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
 
-        /* Pengaturan Slider Sesuai Instruksi */
         .product-slider {
             width: 100%;
             height: 250px;
@@ -98,17 +97,17 @@
 
         .lapak-info { padding: 15px; }
 
-        /* STATUS INDICATOR - Updated Colors */
+        /* STATUS INDICATOR */
         .status-indicator {
             display: flex;
             align-items: center;
             gap: 6px;
             font-size: 10px;
             font-weight: 800;
-            margin-top: 4px; /* Dipindah ke bawah harga */
+            margin-top: 4px;
         }
         .dot { width: 8px; height: 8px; border-radius: 50%; }
-        .dot-online { background-color: #2ecc71 !important; box-shadow: 0 0 5px #2ecc71; } /* Warna Hijau */
+        .dot-online { background-color: #2ecc71 !important; box-shadow: 0 0 5px #2ecc71; }
         .dot-offline { background-color: #e74c3c !important; }
         .dot-suspend { background: #000000; }
 
@@ -123,7 +122,7 @@
             padding: 0 15px;
         }
         .detail-panel.active {
-            max-height: 200px;
+            max-height: 350px; /* Diperlebar untuk menampung statistik */
             padding: 15px;
             border-top: 1px solid var(--gold);
         }
@@ -135,6 +134,23 @@
             font-size: 18px;
             width: 100%;
             padding: 10px 0;
+        }
+
+        /* RATING & STATS DISPLAY */
+        .rating-stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--gold);
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--navy);
         }
 
         /* ACTION BUTTONS & EFFECTS */
@@ -149,7 +165,6 @@
         .btn-thumb { background: #e3f2fd; color: #1976d2; border: 1px solid #1976d2; }
         .btn-wa { background: var(--wa-green); color: white; }
 
-        /* TWISTER FLASH EFFECT */
         @keyframes twisterFlash {
             0% { transform: translate(-50%, -50%) rotate(0deg) scale(0); opacity: 1; border-radius: 50%; }
             50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); opacity: 0.5; }
@@ -264,7 +279,6 @@
     const CLOUD_NAME = "dxzllsbgi";
     const UPLOAD_PRESET = "sipapua_preset";
 
-    // UI Helper Functions
     function toggleView(inputId, icon) {
         const input = document.getElementById(inputId);
         if (input.type === "password") { input.type = "text"; icon.classList.replace("fa-eye", "fa-eye-slash"); }
@@ -278,7 +292,6 @@
         if(n) { n.style.display = "block"; msgElement.innerText = m; setTimeout(() => { n.style.display = "none"; }, 3000); }
     }
 
-    // Auth Logic
     async function prosesDaftar() {
         const btn = document.getElementById("btn-daftar");
         const foto = document.getElementById("reg-foto").files[0];
@@ -314,7 +327,6 @@
         } catch (e) { notif("Login Gagal."); }
     }
 
-    // Chat Logic
     let currentSellerUid = "";
     let chatUnsubscribe = null;
     let customerAnonymousId = localStorage.getItem('chat_customer_id') || 'cust_' + Math.random().toString(36).substr(2, 9);
@@ -354,40 +366,40 @@
     }
     function tutupChatPopup() { document.getElementById("chat-popup").style.display = "none"; if (chatUnsubscribe) chatUnsubscribe(); }
 
-    function shareWA(namaToko, nomorWA) {
-        const text = encodeURIComponent(`Halo, saya tertarik dengan produk *${namaToko}* di UMKM SIPAPUA.`);
+    // PERBAIKAN SHARE WA: Mengirimkan Profil Produk dan Lapak
+    function shareWA(namaProduk, harga, namaToko, nomorWA) {
+        const urlProduk = window.location.href;
+        const text = encodeURIComponent(
+            `*Halo, saya tertarik dengan produk ini:*\n\n` +
+            `📦 *Produk:* ${namaProduk}\n` +
+            `💰 *Harga:* Rp ${Number(harga).toLocaleString('id-ID')}\n` +
+            `🏪 *Lapak:* ${namaToko}\n\n` +
+            `Mohon info ketersediaan stoknya. Terima kasih.`
+        );
         window.open(`https://wa.me/${nomorWA}?text=${text}`, '_blank');
     }
 
-    // --- INTEGRATED RENDER MARKET (Updated with Slider & Status Below Price) ---
     function muatMarket() {
         const container = document.getElementById("main-market");
         if(!container) return;
 
         db.collection("umkm_products").onSnapshot(snap => { 
             container.innerHTML = "";
-            snap.forEach(doc => {
+            snap.forEach(async (doc) => {
                 const produk = doc.data();
                 const docId = doc.id;
-                
                 const namaProduk = produk.nama || "Tanpa Nama";
                 const hargaProduk = produk.harga || 0;
                 const deskripsiProduk = produk.deskripsi || "-";
                 const sellerUid = produk.seller_uid || "";
                 const statusOrder = produk.status || "Closed"; 
-                
-                // Slider Logic
-                let daftarFoto = [];
-                if (Array.isArray(produk.img_urls) && produk.img_urls.length > 0) {
-                    daftarFoto = produk.img_urls;
-                } else {
-                    daftarFoto = [produk.img_primary || ""];
-                }
 
-                let statusColorClass = "dot-offline";
-                if(statusOrder.toLowerCase().includes("open") || statusOrder.toLowerCase().includes("ready")) { 
-                    statusColorClass = "dot-online"; 
-                }
+                // Ambil data toko untuk nomor WA dan Nama Toko
+                const storeDoc = await db.collection("umkm_stores").doc(sellerUid).get();
+                const storeData = storeDoc.exists ? storeDoc.data() : { nama_toko: "Lapak Papua", whatsapp: "081283393576", likes_count: 0, rating_level: 0 };
+                
+                let daftarFoto = Array.isArray(produk.img_urls) && produk.img_urls.length > 0 ? produk.img_urls : [produk.img_primary || ""];
+                let statusColorClass = (statusOrder.toLowerCase().includes("open") || statusOrder.toLowerCase().includes("ready")) ? "dot-online" : "dot-offline";
 
                 container.innerHTML += `
                     <div class="lapak-card" id="card-${docId}">
@@ -419,7 +431,7 @@
                                     </button>
                                     <button class="btn-icon btn-star"><i class="fa-solid fa-star"></i></button>
                                     <button class="btn-icon btn-thumb"><i class="fa-solid fa-thumbs-up"></i></button>
-                                    <button class="btn-icon btn-wa" onclick="shareWA('${namaProduk}', '081283393576')">
+                                    <button class="btn-icon btn-wa" onclick="shareWA('${namaProduk}', '${hargaProduk}', '${storeData.nama_toko}', '${storeData.whatsapp}')">
                                         <i class="fa-brands fa-whatsapp"></i>
                                     </button>
                                 </div>
@@ -431,8 +443,20 @@
                         </div>
 
                         <div class="detail-panel" id="detail-${docId}">
+                            <p><strong>Lapak:</strong> ${storeData.nama_toko}</p>
                             <p><strong>Produk:</strong> ${namaProduk}</p>
                             <p style="font-size: 12px; color: #555;"><strong>Deskripsi:</strong> ${deskripsiProduk}</p>
+                            
+                            <div class="rating-stats">
+                                <div class="stat-item">
+                                    <i class="fa-solid fa-star" style="color: #fbc02d;"></i>
+                                    <span>${storeData.rating_level || 0} Rating</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fa-solid fa-thumbs-up" style="color: #1976d2;"></i>
+                                    <span>${storeData.likes_count || 0} Like</span>
+                                </div>
+                            </div>
                         </div>
                     </div>`;
             });
