@@ -8,26 +8,40 @@
     <style>
         :root { --primary: #1a237e; --bg: #f0f2f5; --gold: #d4af37; --accent: #4CAF50; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styles */
         .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 20; }
         .sidebar-header { padding: 20px; background: var(--primary); color: white; border-bottom: 3px solid var(--gold); flex-shrink: 0; }
         .customer-list { flex: 1; overflow-y: auto; }
-        .customer-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+        
+        .customer-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        .customer-item:hover { background: #f8f9fa; }
         .customer-item.active { background: #e8eaf6; border-left: 5px solid var(--gold); }
-        .avatar { width: 45px; height: 45px; background: #e0e0e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); }
+        
+        .avatar { width: 45px; height: 45px; background: #e0e0e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-shrink: 0; }
+        .customer-info { flex: 1; overflow: hidden; }
+        .p-name { font-weight: bold; font-size: 14px; color: #333; }
+        .p-msg { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Main Chat Area */
         .chat-main { flex: 1; display: flex; flex-direction: column; background: #efe7dd; position: relative; }
         .chat-header { padding: 15px 25px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box; }
+        
         .messages-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .bubble { max-width: 75%; padding: 12px 18px; border-radius: 18px; font-size: 14px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .bubble { max-width: 75%; padding: 12px 18px; border-radius: 18px; font-size: 14px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); line-height: 1.4; }
         .bubble-in { align-self: flex-start; background: white; border-bottom-left-radius: 4px; }
         .bubble-out { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 4px; }
-        .timestamp { font-size: 10px; color: #888; margin-top: 6px; display: block; }
+        
+        .timestamp { font-size: 10px; color: #888; margin-top: 6px; display: block; text-align: right; }
+        
         .reply-box { padding: 15px; background: #f0f0f0; display: flex; gap: 10px; border-top: 1px solid #ddd; }
         .reply-box input { flex: 1; padding: 12px 18px; border-radius: 25px; border: 1px solid #ccc; outline: none; }
         .btn-send { background: var(--primary); color: var(--gold); border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
         @media (max-width: 768px) {
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; }
             .sidebar.mobile-hidden { transform: translateX(-100%); }
-            #btn-back-list { display: block; }
+            #btn-back-list { display: block; margin-right: 10px; background: none; border: none; font-size: 18px; color: var(--primary); cursor: pointer; }
         }
     </style>
 </head>
@@ -37,7 +51,8 @@
     <div class="sidebar-header">
         <h3 style="margin:0;"><i class="fa-solid fa-comments"></i> Chat Masuk</h3>
     </div>
-    <div class="customer-list" id="list-container"></div>
+    <div class="customer-list" id="list-container">
+        </div>
 </div>
 
 <div class="chat-main">
@@ -50,10 +65,17 @@
             <i class="fa-solid fa-circle-xmark fa-xl"></i>
         </button>
     </div>
-    <div class="messages-window" id="chat-body"></div>
+    
+    <div class="messages-window" id="chat-body">
+        <div style="text-align:center; color:#888; margin-top:50px;">
+            <i class="fa-solid fa-message fa-3x" style="opacity:0.3; margin-bottom:15px;"></i>
+            <p>Klik salah satu pelanggan di samping<br>untuk mulai membalas pesan.</p>
+        </div>
+    </div>
+
     <div class="reply-box">
-        <input type="text" id="input-chat" placeholder="Ketik pesan balasan...">
-        <button class="btn-send" onclick="kirimBalasan()"><i class="fa-solid fa-paper-plane"></i></button>
+        <input type="text" id="input-chat" placeholder="Ketik pesan balasan..." disabled>
+        <button class="btn-send" id="btn-kirim" onclick="kirimBalasan()" disabled><i class="fa-solid fa-paper-plane"></i></button>
     </div>
 </div>
 
@@ -77,6 +99,7 @@
     let curCustId = null;
     let myId = null;
 
+    // Toggle tampilan list di HP
     function toggleMobileView(showList) {
         const sidebar = document.getElementById('sidebar');
         if (sidebar && window.innerWidth <= 768) {
@@ -93,35 +116,65 @@
         }
     });
 
+    // 1. Logika Muat Daftar Chat (Grouped by Customer)
     function muatDaftarChat() {
-        db.collection("chats").where("seller_uid", "==", myId).onSnapshot(snap => {
+        db.collection("chats")
+          .where("seller_uid", "==", myId)
+          .orderBy("timestamp", "desc")
+          .onSnapshot(snap => {
             const container = document.getElementById("list-container");
             if (!container) return;
-            const listUnik = {};
+            
             container.innerHTML = "";
+            const uniqueCustomers = [];
+
             snap.forEach(doc => {
-                const d = doc.data();
-                listUnik[d.customer_id] = d.customer_name || "Pembeli Umum";
+                const data = doc.data();
+                // Hanya render jika customer_id belum ada di list unik
+                if (!uniqueCustomers.includes(data.customer_id)) {
+                    uniqueCustomers.push(data.customer_id);
+                    renderUserItem(data);
+                }
             });
-            Object.keys(listUnik).forEach(cid => {
-                const item = document.createElement("div");
-                item.className = `customer-item ${curCustId === cid ? 'active' : ''}`;
-                item.onclick = () => {
-                    bukaChat(cid, listUnik[cid]);
-                    toggleMobileView(false);
-                };
-                item.innerHTML = `<div class="avatar">${listUnik[cid].charAt(0)}</div><div class="customer-info"><div style="font-weight:bold;">${listUnik[cid]}</div><div style="font-size:11px; color:#999;">Lihat pesan terbaru</div></div>`;
-                container.appendChild(item);
-            });
+
+            if (uniqueCustomers.length === 0) {
+                container.innerHTML = `<div style="padding:20px; text-align:center; color:#999; font-size:13px;">Belum ada pesan masuk.</div>`;
+            }
         });
     }
 
-    function bukaChat(cid, cname) {
-        curCustId = cid;
-        document.getElementById("target-name").innerText = cname;
-        muatPesan();
+    // 2. Render Sidebar Item
+    function renderUserItem(data) {
+        const container = document.getElementById("list-container");
+        const cName = data.customer_name || "Pembeli Umum";
+        const isActive = curCustId === data.customer_id ? 'active' : '';
+        
+        const html = `
+            <div class="customer-item ${isActive}" onclick="bukaPercakapan('${data.customer_id}', '${cName}')">
+                <div class="avatar">${cName.charAt(0)}</div>
+                <div class="customer-info">
+                    <div class="p-name">${cName}</div>
+                    <div class="p-msg">${data.message || ""}</div>
+                </div>
+            </div>`;
+        container.innerHTML += html;
     }
 
+    // 3. Buka Percakapan
+    function bukaPercakapan(cid, cname) {
+        curCustId = cid;
+        document.getElementById("target-name").innerText = cname;
+        document.getElementById("input-chat").disabled = false;
+        document.getElementById("btn-kirim").disabled = false;
+        
+        // Update visual active
+        document.querySelectorAll('.customer-item').forEach(el => el.classList.remove('active'));
+        
+        muatPesan();
+        toggleMobileView(false);
+    }
+
+    // 4. Muat Isi Pesan
     function muatPesan() {
         if (!curCustId) return;
         db.collection("chats")
@@ -130,35 +183,45 @@
           .orderBy("timestamp", "asc")
           .onSnapshot(snap => {
             const body = document.getElementById("chat-body");
-            if (!body) return;
             body.innerHTML = "";
+            
             snap.forEach(doc => {
                 const m = doc.data();
                 const isOut = m.sender === 'seller';
                 const jam = m.timestamp ? new Date(m.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
-                body.innerHTML += `<div class="bubble ${isOut ? 'bubble-out' : 'bubble-in'}">${m.message || "Pesan"} <span class="timestamp">${jam}</span></div>`;
+                
+                body.innerHTML += `
+                    <div class="bubble ${isOut ? 'bubble-out' : 'bubble-in'}">
+                        ${m.message}
+                        <span class="timestamp">${jam}</span>
+                    </div>`;
             });
             body.scrollTop = body.scrollHeight;
         });
     }
 
+    // 5. Kirim Balasan
     async function kirimBalasan() {
         const input = document.getElementById("input-chat");
         const pesan = input.value.trim();
         if (!pesan || !curCustId) return;
+
         try {
             await db.collection("chats").add({
                 seller_uid: myId,
                 customer_id: curCustId,
+                customer_name: document.getElementById("target-name").innerText, // Tetap simpan nama untuk grouping
                 sender: 'seller', 
                 message: pesan,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             input.value = "";
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error("Gagal kirim pesan:", e);
+        }
     }
 
-    // Perbaikan event listener Enter
+    // Listener tombol Enter
     document.getElementById("input-chat").addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
             e.preventDefault();
