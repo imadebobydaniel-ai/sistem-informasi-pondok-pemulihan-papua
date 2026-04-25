@@ -181,9 +181,14 @@
         html2pdf().set(opt).from(element).save().then(() => { btn.style.display = 'block'; });
     }
 
-    // FUNGSI FETCH DATA JEMAAT YANG SUDAH DIPERBAIKI
+    // FUNGSI FETCH DATA JEMAAT YANG SUDAH DISATUKAN & DIPERBAIKI
     function fetchDataJemaat() {
         const userEmail = localStorage.getItem('userEmail');
+        const displayNama = document.getElementById('display-nama');
+        const displayNij = document.getElementById('display-nij');
+        const displayJemaat = document.getElementById('display-jemaat');
+        const displayKomsel = document.getElementById('display-komsel-info');
+
         console.log("Mencari data untuk:", userEmail);
 
         if (userEmail) {
@@ -195,24 +200,24 @@
                     const key = Object.keys(userData)[0];
                     const data = userData[key];
                     
-                    // Masukkan ke tampilan HTML sesuai ID yang ada
-                    document.getElementById('display-nama').innerText = data.nama || data.nama_lengkap || 'Tidak Ada Nama';
-                    document.getElementById('display-nij').innerText = data.nij || '-';
-                    document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || 'Papua';
-                    document.getElementById('display-komsel-info').innerText = data.komsel || data.nama_komsel || '-';
+                    // Masukkan ke tampilan HTML dengan pengecekan elemen
+                    if(displayNama) displayNama.innerText = data.nama_lengkap || data.nama || 'Tidak Ada Nama';
+                    if(displayNij) displayNij.innerText = data.nij || '-';
+                    if(displayJemaat) displayJemaat.innerText = data.wilayah_jemaat || 'Papua';
+                    if(displayKomsel) displayKomsel.innerText = data.nama_komsel || data.komsel || '-';
                     
-                    console.log("Data berhasil dimuat:", data.nama);
+                    console.log("Data berhasil dimuat:", data.nama_lengkap || data.nama);
                 } else {
                     console.log("Data tidak ditemukan untuk email: " + userEmail);
-                    document.getElementById('display-nama').innerText = "Data Tidak Ditemukan";
+                    if(displayNama) displayNama.innerText = "Data Tidak Ditemukan";
                 }
             }, (error) => {
                 console.error("Gagal mengambil data Firebase: ", error);
-                document.getElementById('display-nama').innerText = "Izin Ditolak";
+                if(displayNama) displayNama.innerText = "Izin Ditolak";
             });
         } else {
             console.log("Sesi email tidak ditemukan di localStorage.");
-            document.getElementById('display-nama').innerText = "Silakan Login Kembali";
+            if(displayNama) displayNama.innerText = "Silakan Login Kembali";
         }
     }
 
@@ -221,12 +226,14 @@
         const excelTable = document.getElementById('excel-table-body');
         const excelTablePoin = document.getElementById('excel-table-body-poin');
         
-        cardsCont.innerHTML = "";
-        Object.keys(dataPribadi).forEach(key => {
-            const val = dataPribadi[key];
-            const kat = getKategori(val);
-            cardsCont.innerHTML += `<div class="stat-card ${kat.class}"><div style="font-size:11px; opacity:0.9;">${key}</div><div style="font-size:22px; font-weight:bold;">${val}%</div></div>`;
-        });
+        if(cardsCont) {
+            cardsCont.innerHTML = "";
+            Object.keys(dataPribadi).forEach(key => {
+                const val = dataPribadi[key];
+                const kat = getKategori(val);
+                cardsCont.innerHTML += `<div class="stat-card ${kat.class}"><div style="font-size:11px; opacity:0.9;">${key}</div><div style="font-size:22px; font-weight:bold;">${val}%</div></div>`;
+            });
+        }
 
         const listAnggota = [{ periode: "Minggu I" }, { periode: "Minggu II" }, { periode: "Minggu III" }, { periode: "Minggu IV" }];
         let tableHTML = "";
@@ -234,26 +241,33 @@
             tableHTML += `<tr><td>${user.periode}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         });
         
-        excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
-        excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        if(excelTable) excelTable.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
+        if(excelTablePoin) excelTablePoin.innerHTML = tableHTML + `<tr class="separator"><td colspan="10"></td></tr>`;
 
-        new Chart(document.getElementById('pieChart'), {
-            type: 'pie',
-            data: {
-                labels: Object.keys(dataPribadi),
-                datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
+        // Render Grafik
+        const pieCtx = document.getElementById('pieChart');
+        if(pieCtx) {
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(dataPribadi),
+                    datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+        }
 
-        new Chart(document.getElementById('barChart'), {
-            type: 'bar',
-            data: {
-                labels: Object.keys(dataPribadi),
-                datasets: [{ label: 'Capaian', data: Object.values(dataPribadi), backgroundColor: '#548235' }]
-            },
-            options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true, max: 100 } } }
-        });
+        const barCtx = document.getElementById('barChart');
+        if(barCtx) {
+            new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(dataPribadi),
+                    datasets: [{ label: 'Capaian', data: Object.values(dataPribadi), backgroundColor: '#548235' }]
+                },
+                options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        }
     }
 
     window.onload = function() {
