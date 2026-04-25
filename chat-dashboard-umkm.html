@@ -150,7 +150,12 @@
     }
 
     function muatDaftarChat() {
-        db.collection("chats").where("seller_uid", "==", myId).orderBy("timestamp", "desc").onSnapshot(snap => {
+        // FILTER: deleted_by_seller tidak boleh bernilai true
+        db.collection("chats")
+        .where("seller_uid", "==", myId)
+        .where("deleted_by_seller", "==", false)
+        .orderBy("timestamp", "desc")
+        .onSnapshot(snap => {
             const container = document.getElementById("list-container");
             if (!container) return;
             container.innerHTML = "";
@@ -185,40 +190,43 @@
         container.appendChild(item);
     }
 
+    // LOGIKA UPDATE: Mengganti batch.delete menjadi batch.update
     async function hapusChatTerpilih() {
         const selected = document.querySelectorAll('.chat-checkbox:checked');
         if (selected.length === 0) return;
-        if (!confirm(`Hapus ${selected.length} percakapan?`)) return;
+        if (!confirm(`Sembunyikan ${selected.length} percakapan dari dashboard Anda?`)) return;
 
         try {
             for (let cb of selected) {
-                const snapshot = await db.collection("chats").where("seller_uid", "==", myId).where("customer_id", "==", cb.value).get();
+                const snapshot = await db.collection("chats")
+                    .where("seller_uid", "==", myId)
+                    .where("customer_id", "==", cb.value)
+                    .get();
+                
                 const batch = db.batch();
-                snapshot.forEach(doc => batch.delete(doc.ref));
+                // Mengupdate status agar tidak terlihat di sisi seller
+                snapshot.forEach(doc => batch.update(doc.ref, { deleted_by_seller: true }));
                 await batch.commit();
             }
-            showToast("Percakapan berhasil dihapus");
+            showToast("Percakapan berhasil dibersihkan");
             document.getElementById('check-all').checked = false;
         } catch (e) { console.error(e); }
     }
 
-    // FUNGSI UTAMA: Buka Chat & Tandai sebagai Dibaca (is_read: true)
     async function bukaPercakapan(cid, cname) {
         curCustId = cid;
         document.getElementById("target-name").innerText = cname;
         document.getElementById("input-chat").disabled = false;
         document.getElementById("btn-kirim").disabled = false;
         
-        // 1. Muat Pesan Real-time
         muatPesan();
 
-        // 2. Logika Update: Tandai semua pesan dari customer ini sebagai 'sudah dibaca'
         try {
             const batch = db.batch();
             const pesanBelumDibaca = await db.collection("chats")
                 .where("seller_uid", "==", myId)
                 .where("customer_id", "==", cid)
-                .where("sender", "==", "customer") // Hanya pesan dari pembeli
+                .where("sender", "==", "customer") 
                 .where("is_read", "==", false)
                 .get();
 
@@ -227,7 +235,6 @@
                     batch.update(doc.ref, { is_read: true });
                 });
                 await batch.commit(); 
-                // Setelah commit, listener lencana di dashboard-umkm.html akan otomatis update angkanya
             }
         } catch (err) {
             console.error("Gagal update status baca:", err);
@@ -236,7 +243,13 @@
 
     function muatPesan() {
         if (!curCustId) return;
-        db.collection("chats").where("seller_uid", "==", myId).where("customer_id", "==", curCustId).orderBy("timestamp", "asc").onSnapshot(snap => {
+        // FILTER: deleted_by_seller tidak boleh bernilai true
+        db.collection("chats")
+        .where("seller_uid", "==", myId)
+        .where("customer_id", "==", curCustId)
+        .where("deleted_by_seller", "==", false)
+        .orderBy("timestamp", "asc")
+        .onSnapshot(snap => {
             const body = document.getElementById("chat-body");
             body.innerHTML = "";
             snap.forEach(doc => {
@@ -251,11 +264,15 @@
     async function kirimBalasan() {
         const input = document.getElementById("input-chat");
         if (!input.value.trim()) return;
+        
+        // Mengirim pesan baru dengan status deleted_by_seller: false 
+        // agar muncul kembali di dashboard jika sebelumnya pernah dihapus
         await db.collection("chats").add({
             seller_uid: myId, 
             customer_id: curCustId, 
             sender: 'seller', 
-            is_read: true, // Pesan seller otomatis dianggap sudah "dibaca" oleh sistem lokal
+            is_read: true,
+            deleted_by_seller: false,
             message: input.value.trim(), 
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
