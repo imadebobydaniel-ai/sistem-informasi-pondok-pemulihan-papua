@@ -167,7 +167,7 @@
     const db = firebase.firestore();
 
     let chartK, chartD;
-    let unsub1, unsub2;
+    let unsub1, unsub2, unsub3; // Tambahkan unsub3
 
     function openModal() { document.getElementById('infoModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('infoModal').style.display = 'none'; }
@@ -212,6 +212,7 @@
     function refreshData() {
         if (unsub1) unsub1();
         if (unsub2) unsub2();
+        if (unsub3) unsub3(); // Reset unsub3
 
         const selWilayah = document.getElementById('filter-wilayah').value;
         const selKomsel = document.getElementById('filter-komsel').value;
@@ -219,6 +220,7 @@
         const limitDate = new Date();
         limitDate.setMonth(limitDate.getMonth() - selBulan);
 
+        // --- 1. DATA JEMAAT & DARAH ---
         unsub1 = db.collection("users").onSnapshot(snap => {
             let rekap = { 'A': 0, 'B': 0, 'O': 0, 'AB': 0, 'LAIN': 0 };
             let namaGroup = { 'A': [], 'B': [], 'O': [], 'AB': [], 'LAIN': [] };
@@ -231,62 +233,78 @@
                 const userKomsel = d.komsel || d.Komsel || ""; 
                 const userDarah = (d.darah || d.Darah || "LAIN").toUpperCase().trim();
 
-                const matchWilayah = (selWilayah === "GLOBAL" || userWilayah === selWilayah);
-                const matchKomsel = (selKomsel === "ALL" || userKomsel === selKomsel);
-
-                if (matchWilayah && matchKomsel) {
+                if ((selWilayah === "GLOBAL" || userWilayah === selWilayah) && (selKomsel === "ALL" || userKomsel === selKomsel)) {
                     total++;
                     let targetKey = "LAIN";
                     if (userDarah.includes("AB")) targetKey = "AB";
                     else if (userDarah.includes("A")) targetKey = "A";
                     else if (userDarah.includes("B")) targetKey = "B";
                     else if (userDarah.includes("O")) targetKey = "O";
-
                     rekap[targetKey]++;
                     namaGroup[targetKey].push(userNama);
                 }
             });
-
             chartD.data.datasets[0].data = [rekap.A, rekap.B, rekap.O, rekap.AB, rekap.LAIN];
             chartD.update();
-
             document.getElementById('summary-darah').innerHTML = `
                 <div class="stat-card"><h3>${total}</h3><p>Total Jemaat</p></div>
                 <div class="stat-card"><h3>${rekap.O}</h3><p>Tipe O</p></div>`;
-
+            
             let listHtml = '<p style="font-size:12px; color:#1a73e8; font-weight:bold;"><i class="fas fa-list"></i> Daftar Nama Pemilik:</p>';
             for (const [gol, names] of Object.entries(namaGroup)) {
                 if (names.length > 0) {
-                    listHtml += `
-                        <div class="blood-group-title"><i class="fas fa-caret-right"></i> Golongan ${gol} (${names.length})</div>
-                        <div class="blood-names">${names.join(", ")}</div>
-                    `;
+                    listHtml += `<div class="blood-group-title"><i class="fas fa-caret-right"></i> Golongan ${gol} (${names.length})</div>
+                                 <div class="blood-names">${names.join(", ")}</div>`;
                 }
             }
             document.getElementById('list-pemilik-darah').innerHTML = listHtml;
         });
 
+        // --- 2. LOGIKA GABUNGAN KEHADIRAN & BACA ALKITAB ---
+        let totalRekapH = { 'Komsel Reguler': 0, 'Ibadah Raya': 0, 'Komsel Gabungan': 0, 'Doa': 0, 'KD': 0, 'Latihan': 0, 'Pelayanan': 0, 'Baca Alkitab': 0 };
+
+        // Sub-fungsi untuk update chart agar tidak bentrok
+        const updateChartK = () => {
+            chartK.data.datasets[0].data = Object.values(totalRekapH);
+            chartK.update();
+        };
+
+        // Ambil data Kehadiran
         unsub2 = db.collection("kehadiran").onSnapshot(snap => {
-            let rekapH = { 'Komsel Reguler': 0, 'Ibadah Raya': 0, 'Komsel Gabungan': 0, 'Doa': 0, 'KD': 0, 'Latihan': 0, 'Pelayanan': 0, 'Baca Alkitab': 0 };
+            // Reset kategori kehadiran (kecuali Baca Alkitab yang diurus unsub3)
+            for(let key in totalRekapH) if(key !== 'Baca Alkitab') totalRekapH[key] = 0;
+            
             snap.forEach(doc => {
                 const d = doc.data();
                 const tgl = d.tanggal?.toDate ? d.tanggal.toDate() : new Date(d.tanggal);
-                
-                const uWil = d.wilayah || d.Wilayah || "";
-                const uKom = d.komsel || d.Komsel || "";
-
-                if ((selWilayah === "GLOBAL" || uWil === selWilayah) && 
-                    (selKomsel === "ALL" || uKom === selKomsel) && 
+                if ((selWilayah === "GLOBAL" || (d.wilayah || d.Wilayah) === selWilayah) && 
+                    (selKomsel === "ALL" || (d.komsel || d.Komsel) === selKomsel) && 
                     (tgl >= limitDate) && d.status === "HADIR") {
-                    if (rekapH.hasOwnProperty(d.tipe)) rekapH[d.tipe]++;
+                    if (totalRekapH.hasOwnProperty(d.tipe)) totalRekapH[d.tipe]++;
                 }
             });
-            chartK.data.datasets[0].data = Object.values(rekapH);
-            chartK.update();
+            updateChartK();
+        });
+
+        // Ambil data Laporan Pembacaan Alkitab secara Realtime
+        unsub3 = db.collection("laporan_bacaan").onSnapshot(snap => {
+            totalRekapH['Baca Alkitab'] = 0; // Reset khusus alkitab
+            
+            snap.forEach(doc => {
+                const d = doc.data();
+                // Firestore timestamp handling
+                const tgl = d.tanggal?.toDate ? d.tanggal.toDate() : new Date(d.tanggal);
+                
+                if ((selWilayah === "GLOBAL" || d.wilayah === selWilayah) && 
+                    (selKomsel === "ALL" || d.komsel === selKomsel) && 
+                    (tgl >= limitDate)) {
+                    totalRekapH['Baca Alkitab']++;
+                }
+            });
+            updateChartK();
         });
     }
 
     window.onload = () => { initCharts(); refreshData(); };
-</script>
-</body>
+</script></body>
 </html>
