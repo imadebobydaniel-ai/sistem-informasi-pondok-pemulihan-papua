@@ -38,10 +38,25 @@
             cursor: pointer; font-size: 11px; text-decoration: none; 
             display: flex; align-items: center; gap: 6px; font-weight: bold;
             transition: 0.3s;
+            position: relative;
         }
         .btn-chat-nav { background: var(--gold); color: var(--primary); }
         .btn-logout-nav { background: transparent; color: var(--gold); }
         .btn-logout-nav:hover { background: rgba(212, 175, 55, 0.1); }
+
+        /* Badge Notification */
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 10px;
+            display: none;
+            border: 2px solid var(--primary);
+        }
 
         .container { max-width: 480px; margin: 0 auto; padding: 20px; }
         
@@ -157,6 +172,7 @@
     <div class="nav-actions">
         <a href="chat-dashboard-umkm.html" class="btn-nav btn-chat-nav">
             <i class="fa-solid fa-comments"></i> CHAT MASUK
+            <span id="chat-badge" class="badge">0</span>
         </a>
         <button class="btn-nav btn-logout-nav" onclick="logout()">
             <i class="fa-solid fa-power-off"></i> LOGOUT
@@ -295,6 +311,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
         authDomain: "boby-apps-project.firebaseapp.com",
@@ -306,53 +323,24 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // --- CLOUDINARY CONFIG ---
     const CLOUD_NAME = "dxzllsbgi";
     const UPLOAD_PRESET = "sipapua_preset";
 
+    // --- AUTH OBSERVER ---
     auth.onAuthStateChanged(user => {
         if (user) {
             fetchStore(user.uid);
             fetchProducts(user.uid);
             fetchRatings(user.uid);
-            // Aktifkan pemantauan chat masuk secara real-time
             hitungChatMasuk(user.uid); 
         } else {
             window.location.href = "umkm-jemaat.html";
         }
     });
 
-    // FUNGSI UNTUK MONITOR NOTIFIKASI CHAT
-    function hitungChatMasuk(uid) {
-        const badge = document.getElementById("chat-badge");
+    // --- CORE FUNCTIONS ---
 
-        // Listen secara real-time pada koleksi chats
-        db.collection("chats")
-            .where("seller_uid", "==", uid)
-            .where("sender", "==", "customer") // Hanya hitung pesan dari pelanggan
-            .onSnapshot(snapshot => {
-                // Menghitung jumlah pelanggan unik yang mengirim chat (percakapan aktif)
-                const uniqueCustomers = new Set();
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.customer_id) {
-                        uniqueCustomers.add(data.customer_id);
-                    }
-                });
-
-                const jumlahChat = uniqueCustomers.size;
-
-                if (jumlahChat > 0) {
-                    badge.innerText = jumlahChat;
-                    badge.style.display = "block";
-                } else {
-                    badge.style.display = "none";
-                }
-            }, error => {
-                console.error("Error monitoring chats: ", error);
-            });
-    }
-
-    // Logout Function
     function logout() {
         auth.signOut().then(() => {
             window.location.href = "umkm-jemaat.html";
@@ -383,6 +371,30 @@
         });
     }
 
+    function hitungChatMasuk(uid) {
+        const badge = document.getElementById("chat-badge");
+        db.collection("chats")
+            .where("seller_uid", "==", uid)
+            .where("sender", "==", "customer")
+            .onSnapshot(snapshot => {
+                const uniqueCustomers = new Set();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.customer_id) uniqueCustomers.add(data.customer_id);
+                });
+
+                const jumlahChat = uniqueCustomers.size;
+                if (jumlahChat > 0) {
+                    badge.innerText = jumlahChat;
+                    badge.style.display = "block";
+                } else {
+                    badge.style.display = "none";
+                }
+            });
+    }
+
+    // --- PRODUCT MANAGEMENT ---
+
     function handleMultiplePreview(input) {
         const container = document.getElementById("preview-container");
         container.innerHTML = "";
@@ -394,15 +406,15 @@
         });
     }
 
-    function toggleAll(source) {
-        const checkboxes = document.querySelectorAll('.prod-checkbox');
-        checkboxes.forEach(cb => cb.checked = source.checked);
-        updateDeleteButton();
-    }
-
-    function updateDeleteButton() {
-        const anyChecked = document.querySelectorAll('.prod-checkbox:checked').length > 0;
-        document.getElementById('btn-bulk-delete').style.display = anyChecked ? 'block' : 'none';
+    function handleEditPreview(input) {
+        const container = document.getElementById("edit-preview-container");
+        container.innerHTML = "";
+        Array.from(input.files).forEach(file => {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            img.className = "preview-img";
+            container.appendChild(img);
+        });
     }
 
     async function simpanProduk() {
@@ -447,14 +459,6 @@
         } finally {
             btn.disabled = false; btn.innerText = "TAYANGKAN PRODUK";
         }
-    }
-
-    function resetForm() {
-        document.getElementById("p-name").value = "";
-        document.getElementById("p-price").value = "";
-        document.getElementById("p-desc").value = "";
-        document.getElementById("p-files").value = "";
-        document.getElementById("preview-container").innerHTML = "";
     }
 
     function fetchProducts(uid) {
@@ -507,23 +511,6 @@
         document.body.style.overflow = "hidden"; 
     }
 
-    function tutupEdit() {
-        document.getElementById("modal-edit").style.display = "none";
-        document.body.style.overflow = "auto";
-        document.getElementById("edit-p-files").value = "";
-    }
-
-    function handleEditPreview(input) {
-        const container = document.getElementById("edit-preview-container");
-        container.innerHTML = "";
-        Array.from(input.files).forEach(file => {
-            const img = document.createElement("img");
-            img.src = URL.createObjectURL(file);
-            img.className = "preview-img";
-            container.appendChild(img);
-        });
-    }
-
     async function updateProduk() {
         const id = document.getElementById("edit-id").value;
         const name = document.getElementById("edit-p-name").value;
@@ -531,9 +518,11 @@
         const status = document.getElementById("edit-p-status").value;
         const desc = document.getElementById("edit-p-desc").value;
         const files = document.getElementById("edit-p-files").files;
+
         if(!name || !price) return munculkanNotif("Gagal", "Lengkapi Nama & Harga!", "warning");
         const btn = document.getElementById("btn-edit-save");
         btn.disabled = true; btn.innerText = "Memproses...";
+        
         try {
             let updateData = {
                 nama: name,
@@ -565,6 +554,8 @@
         }
     }
 
+    // --- UI & UTILS ---
+
     async function hapusSatu(id) {
         if(confirm("Hapus produk ini?")) await db.collection("umkm_products").doc(id).delete();
     }
@@ -583,6 +574,31 @@
         }
     }
 
+    function toggleAll(source) {
+        const checkboxes = document.querySelectorAll('.prod-checkbox');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+        updateDeleteButton();
+    }
+
+    function updateDeleteButton() {
+        const anyChecked = document.querySelectorAll('.prod-checkbox:checked').length > 0;
+        document.getElementById('btn-bulk-delete').style.display = anyChecked ? 'block' : 'none';
+    }
+
+    function resetForm() {
+        document.getElementById("p-name").value = "";
+        document.getElementById("p-price").value = "";
+        document.getElementById("p-desc").value = "";
+        document.getElementById("p-files").value = "";
+        document.getElementById("preview-container").innerHTML = "";
+    }
+
+    function tutupEdit() {
+        document.getElementById("modal-edit").style.display = "none";
+        document.body.style.overflow = "auto";
+        document.getElementById("edit-p-files").value = "";
+    }
+
     function munculkanNotif(title, desc, type) {
         const sheet = document.getElementById("notif-sheet");
         document.getElementById("notif-title").innerText = title;
@@ -595,5 +611,6 @@
     }
 
     function tutupNotif() { document.getElementById("notif-sheet").style.display = "none"; }
-</script></body>
+</script>
+</body>
 </html>
