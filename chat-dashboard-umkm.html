@@ -6,19 +6,27 @@
     <title>Chat Dashboard UMKM</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary: #1a237e; --bg: #f0f2f5; --gold: #d4af37; --accent: #4CAF50; }
+        :root { --primary: #1a237e; --bg: #f0f2f5; --gold: #d4af37; --accent: #4CAF50; --danger: #e53935; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
         /* Sidebar Styles */
-        .sidebar { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 20; }
-        .sidebar-header { padding: 20px; background: var(--primary); color: white; border-bottom: 3px solid var(--gold); flex-shrink: 0; }
-        .customer-list { flex: 1; overflow-y: auto; }
+        .sidebar { width: 340px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; transition: all 0.3s ease; z-index: 20; }
+        .sidebar-header { padding: 15px 20px; background: var(--primary); color: white; border-bottom: 3px solid var(--gold); flex-shrink: 0; }
         
-        .customer-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        /* Fitur Bulk Action */
+        .action-bar { padding: 10px 20px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .btn-delete-selected { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: none; }
+        .btn-delete-selected.show { display: block; }
+
+        .customer-list { flex: 1; overflow-y: auto; }
+        .customer-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; position: relative; }
         .customer-item:hover { background: #f8f9fa; }
         .customer-item.active { background: #e8eaf6; border-left: 5px solid var(--gold); }
         
-        .avatar { width: 45px; height: 45px; background: #e0e0e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-shrink: 0; }
+        /* Checkbox Styles */
+        .chat-checkbox { width: 18px; height: 18px; cursor: pointer; }
+
+        .avatar { width: 40px; height: 40px; background: #e0e0e0; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary); flex-shrink: 0; }
         .customer-info { flex: 1; overflow: hidden; }
         .p-name { font-weight: bold; font-size: 14px; color: #333; }
         .p-msg { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -51,8 +59,17 @@
     <div class="sidebar-header">
         <h3 style="margin:0;"><i class="fa-solid fa-comments"></i> Chat Masuk</h3>
     </div>
-    <div class="customer-list" id="list-container">
-        </div>
+    
+    <div class="action-bar">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="check-all" onclick="toggleAllCheckboxes(this)"> Semua
+        </label>
+        <button id="btn-hapus-massal" class="btn-delete-selected" onclick="hapusChatTerpilih()">
+            <i class="fa-solid fa-trash"></i> Hapus
+        </button>
+    </div>
+
+    <div class="customer-list" id="list-container"></div>
 </div>
 
 <div class="chat-main">
@@ -99,14 +116,6 @@
     let curCustId = null;
     let myId = null;
 
-    // Toggle tampilan list di HP
-    function toggleMobileView(showList) {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar && window.innerWidth <= 768) {
-            sidebar.classList.toggle('mobile-hidden', !showList);
-        }
-    }
-
     auth.onAuthStateChanged(user => {
         if (user) {
             myId = user.uid;
@@ -116,7 +125,26 @@
         }
     });
 
-    // 1. Logika Muat Daftar Chat (Grouped by Customer)
+    function toggleMobileView(showList) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && window.innerWidth <= 768) {
+            sidebar.classList.toggle('mobile-hidden', !showList);
+        }
+    }
+
+    // LOGIKA CHECKBOX
+    function toggleAllCheckboxes(source) {
+        const checkboxes = document.querySelectorAll('.chat-checkbox');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+        updateDeleteButtonVisibility();
+    }
+
+    function updateDeleteButtonVisibility() {
+        const anyChecked = document.querySelectorAll('.chat-checkbox:checked').length > 0;
+        document.getElementById('btn-hapus-massal').classList.toggle('show', anyChecked);
+    }
+
+    // 1. Muat Daftar Chat
     function muatDaftarChat() {
         db.collection("chats")
           .where("seller_uid", "==", myId)
@@ -130,7 +158,6 @@
 
             snap.forEach(doc => {
                 const data = doc.data();
-                // Hanya render jika customer_id belum ada di list unik
                 if (!uniqueCustomers.includes(data.customer_id)) {
                     uniqueCustomers.push(data.customer_id);
                     renderUserItem(data);
@@ -140,41 +167,68 @@
             if (uniqueCustomers.length === 0) {
                 container.innerHTML = `<div style="padding:20px; text-align:center; color:#999; font-size:13px;">Belum ada pesan masuk.</div>`;
             }
+            updateDeleteButtonVisibility();
         });
     }
 
-    // 2. Render Sidebar Item
+    // 2. Render Sidebar Item dengan Checkbox
     function renderUserItem(data) {
         const container = document.getElementById("list-container");
         const cName = data.customer_name || "Pembeli Umum";
         const isActive = curCustId === data.customer_id ? 'active' : '';
         
-        const html = `
-            <div class="customer-item ${isActive}" onclick="bukaPercakapan('${data.customer_id}', '${cName}')">
+        const item = document.createElement('div');
+        item.className = `customer-item ${isActive}`;
+        item.innerHTML = `
+            <input type="checkbox" class="chat-checkbox" value="${data.customer_id}" onclick="event.stopPropagation(); updateDeleteButtonVisibility();">
+            <div style="display:flex; align-items:center; gap:12px; flex:1;" onclick="bukaPercakapan('${data.customer_id}', '${cName}')">
                 <div class="avatar">${cName.charAt(0)}</div>
                 <div class="customer-info">
                     <div class="p-name">${cName}</div>
                     <div class="p-msg">${data.message || ""}</div>
                 </div>
-            </div>`;
-        container.innerHTML += html;
+            </div>
+        `;
+        container.appendChild(item);
     }
 
-    // 3. Buka Percakapan
+    // 3. Hapus Chat Terpilih (Satu Customer Sekaligus)
+    async function hapusChatTerpilih() {
+        const selected = document.querySelectorAll('.chat-checkbox:checked');
+        if (selected.length === 0) return;
+
+        if (!confirm(`Hapus ${selected.length} percakapan terpilih?`)) return;
+
+        for (let cb of selected) {
+            const customerId = cb.value;
+            // Ambil semua dokumen chat antara seller ini dan customer ini
+            const snapshot = await db.collection("chats")
+                .where("seller_uid", "==", myId)
+                .where("customer_id", "==", customerId)
+                .get();
+            
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+        }
+
+        document.getElementById('check-all').checked = false;
+        if (selected.length > 0) {
+            document.getElementById("chat-body").innerHTML = '<div style="text-align:center; color:#888; margin-top:50px;"><p>Percakapan dihapus.</p></div>';
+            document.getElementById("target-name").innerText = "Pilih percakapan...";
+        }
+    }
+
     function bukaPercakapan(cid, cname) {
         curCustId = cid;
         document.getElementById("target-name").innerText = cname;
         document.getElementById("input-chat").disabled = false;
         document.getElementById("btn-kirim").disabled = false;
-        
-        // Update visual active
         document.querySelectorAll('.customer-item').forEach(el => el.classList.remove('active'));
-        
         muatPesan();
         toggleMobileView(false);
     }
 
-    // 4. Muat Isi Pesan
     function muatPesan() {
         if (!curCustId) return;
         db.collection("chats")
@@ -184,12 +238,10 @@
           .onSnapshot(snap => {
             const body = document.getElementById("chat-body");
             body.innerHTML = "";
-            
             snap.forEach(doc => {
                 const m = doc.data();
                 const isOut = m.sender === 'seller';
                 const jam = m.timestamp ? new Date(m.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
-                
                 body.innerHTML += `
                     <div class="bubble ${isOut ? 'bubble-out' : 'bubble-in'}">
                         ${m.message}
@@ -200,33 +252,25 @@
         });
     }
 
-    // 5. Kirim Balasan
     async function kirimBalasan() {
         const input = document.getElementById("input-chat");
         const pesan = input.value.trim();
         if (!pesan || !curCustId) return;
-
         try {
             await db.collection("chats").add({
                 seller_uid: myId,
                 customer_id: curCustId,
-                customer_name: document.getElementById("target-name").innerText, // Tetap simpan nama untuk grouping
+                customer_name: document.getElementById("target-name").innerText,
                 sender: 'seller', 
                 message: pesan,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             input.value = "";
-        } catch (e) {
-            console.error("Gagal kirim pesan:", e);
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // Listener tombol Enter
-    document.getElementById("input-chat").addEventListener("keydown", function(e) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            kirimBalasan();
-        }
+    document.getElementById("input-chat").addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); kirimBalasan(); }
     });
 </script>
 </body>
