@@ -405,9 +405,11 @@
                     const d = s.docs[0].data();
                     document.getElementById('disp_nama').innerText = d.nama || "User";
                     document.getElementById('disp_email').innerText = userEmail;
-                    document.getElementById('disp_komsel').innerText = d.komsel ? "JC " + d.komsel : "KOMSEL JC";
                     
-                    localStorage.setItem("userKomsel", d.komsel ? "JC" + d.komsel : "Semua JC");
+                    // PERBAIKAN: Menghilangkan teks "JC" statis di depan agar tidak ganda sesuai permintaan
+                    document.getElementById('disp_komsel').innerText = d.komsel ? d.komsel : "KOMSEL";
+                    
+                    localStorage.setItem("userKomsel", d.komsel ? d.komsel : "Semua JC");
                     localStorage.setItem("userName", d.nama || "User SIPAPUA");
                     localStorage.setItem("userFoto", d.foto_profil || "");
 
@@ -564,7 +566,6 @@
                 document.getElementById('dnij').innerText = d.nij || "0000 0000";
                 const qrBox = document.getElementById("qrbox");
                 qrBox.innerHTML = "";
-                // Format QR Code disesuaikan untuk diparsing nantinya
                 new QRCode(qrBox, { text: userEmail, width: 200, height: 200, colorDark : "#003366", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
                 document.getElementById('modalKartuDigital').style.display = 'flex';
             }
@@ -576,9 +577,7 @@
     function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
     function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.href = "index.html"; }); }
 
-    // --- FITUR BARU: SCANNER HANDLER ---
     function onScanSuccess(decodedText, decodedResult) {
-        // Logika untuk mendeteksi email dari QR Code Sipapua
         let targetEmail = decodedText;
         if(decodedText.includes("email=")) {
             targetEmail = decodedText.split("email=")[1];
@@ -624,6 +623,5 @@
             });
         }
     };
-</script>
-</body>
+</script></body>
 </html>
