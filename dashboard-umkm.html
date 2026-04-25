@@ -314,10 +314,43 @@
             fetchStore(user.uid);
             fetchProducts(user.uid);
             fetchRatings(user.uid);
+            // Aktifkan pemantauan chat masuk secara real-time
+            hitungChatMasuk(user.uid); 
         } else {
             window.location.href = "umkm-jemaat.html";
         }
     });
+
+    // FUNGSI UNTUK MONITOR NOTIFIKASI CHAT
+    function hitungChatMasuk(uid) {
+        const badge = document.getElementById("chat-badge");
+
+        // Listen secara real-time pada koleksi chats
+        db.collection("chats")
+            .where("seller_uid", "==", uid)
+            .where("sender", "==", "customer") // Hanya hitung pesan dari pelanggan
+            .onSnapshot(snapshot => {
+                // Menghitung jumlah pelanggan unik yang mengirim chat (percakapan aktif)
+                const uniqueCustomers = new Set();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.customer_id) {
+                        uniqueCustomers.add(data.customer_id);
+                    }
+                });
+
+                const jumlahChat = uniqueCustomers.size;
+
+                if (jumlahChat > 0) {
+                    badge.innerText = jumlahChat;
+                    badge.style.display = "block";
+                } else {
+                    badge.style.display = "none";
+                }
+            }, error => {
+                console.error("Error monitoring chats: ", error);
+            });
+    }
 
     // Logout Function
     function logout() {
@@ -562,6 +595,5 @@
     }
 
     function tutupNotif() { document.getElementById("notif-sheet").style.display = "none"; }
-</script>
-</body>
+</script></body>
 </html>
