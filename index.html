@@ -145,6 +145,42 @@
         }
         .notif-block p { color: #fff; font-size: 18px; font-weight: bold; margin: 0; }
         .notif-block i { color: var(--emas-lux); font-size: 30px; margin-bottom: 10px; display: block; }
+
+        /* Efek Tekan pada Tombol Modal */
+        #sendReset {
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #sendReset:active {
+            transform: scale(0.95); /* Efek sedikit mengecil saat diklik */
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #sendReset:disabled {
+            background-color: #cccccc !important;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+
+        /* Animasi Spinner di dalam Tombol */
+        .spinner-btn {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin-notif 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin-notif {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -265,7 +301,7 @@
                localStorage.setItem("userEmail", user.email);
                window.location.replace("menu.html");
             }
-        }); // Penutup kurung ini sebelumnya hilang
+        }); 
 
         // FUNGSI TAMPIL NOTIFIKASI CUSTOM
         function showBlockNotif(message, duration = 2000) {
@@ -414,18 +450,37 @@
             }
         };
  
-        // FORGOT PASSWORD
+        // FORGOT PASSWORD (DIPERBARUI DENGAN EFEK DINAMIS)
         document.getElementById('btnForgot').onclick = () => document.getElementById('forgotModal').style.display = 'flex';
         document.getElementById('closeModal').onclick = () => document.getElementById('forgotModal').style.display = 'none';
-        document.getElementById('sendReset').onclick = async () => {
+
+        document.getElementById('sendReset').onclick = async function() {
             const email = document.getElementById('forgotEmail').value.trim();
+            const btn = this; // Referensi ke tombol Kirim
+
             if (!email) return showBlockNotif("Masukkan email!");
+
+            // --- Efek Dinamis Dimulai ---
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-btn"></span> MENGIRIM...';
+
             try {
                 await auth.sendPasswordResetEmail(email);
-               showBlockNotif("Link reset password telah dikirim.");
-               document.getElementById('forgotModal').style.display = 'none';
+                showBlockNotif("Link reset password telah dikirim.");
+                document.getElementById('forgotModal').style.display = 'none';
+                
+                // Kembalikan tombol ke asal setelah sukses (untuk penggunaan berikutnya)
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }, 1000);
+
             } catch (err) {
-               showBlockNotif("Error: " + err.message);
+                showBlockNotif("Error: " + err.message);
+                // Kembalikan tombol jika gagal
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         };
     </script></body>
