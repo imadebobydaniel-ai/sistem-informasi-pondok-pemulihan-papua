@@ -291,18 +291,54 @@
         document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
     };
 
-    // 3. Chat & Market Logic
+    // --- FUNGSI REALTIME RATING & LIKE (LOGIKA INTI) ---
+    window.tambahLike = async (docId) => {
+        try {
+            await db.collection("umkm_products").doc(docId).update({
+                total_likes: firebase.firestore.FieldValue.increment(1)
+            });
+            window.notif("Terima kasih! Anda menyukai produk ini.");
+        } catch (err) {
+            console.error("Like Error:", err);
+        }
+    };
+
+    window.tambahRating = async (docId) => {
+        // Simulasi input rating sederhana (misal setiap klik beri 5 bintang)
+        // Untuk sistem lebih kompleks, ini bisa diganti dengan pilihan angka
+        try {
+            const produkRef = db.collection("umkm_products").doc(docId);
+            const doc = await produkRef.get();
+            const data = doc.data();
+
+            const currentCount = data.rating_count || 0;
+            const currentAvg = parseFloat(data.rating_avg) || 0;
+            const newRating = 5; // Nilai rating yang diberikan
+
+            // Hitung rata-rata baru
+            const newCount = currentCount + 1;
+            const newAvg = ((currentAvg * currentCount) + newRating) / newCount;
+
+            await produkRef.update({
+                rating_count: newCount,
+                rating_avg: newAvg.toFixed(1)
+            });
+            window.notif("Rating bintang 5 berhasil dikirim!");
+        } catch (err) {
+            console.error("Rating Error:", err);
+        }
+    };
+
+    // 3. Chat Logic
     let currentSellerUid = "";
     let chatUnsubscribe = null;
     let customerAnonymousId = localStorage.getItem('chat_customer_id') || 'cust_' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('chat_customer_id', customerAnonymousId);
 
-    // FIX: Pastikan fungsi ini terdaftar secara global sebelum dipanggil UI
     window.kirimPesanPopup = async function() {
         const input = document.getElementById("msg-input-popup");
         if (!input) return;
         const pesan = input.value.trim();
-        
         if (!pesan || !currentSellerUid) return;
 
         try {
@@ -329,7 +365,6 @@
             setTimeout(() => flash.remove(), 600);
             setTimeout(() => window.bukaChatPopup(uid, namaToko, gbrProduk), 200);
         } catch (e) {
-            console.error("Twister Error:", e);
             window.bukaChatPopup(uid, namaToko, gbrProduk);
         }
     };
@@ -338,7 +373,6 @@
         currentSellerUid = uid;
         const titleEl = document.getElementById("chat-title");
         const popupEl = document.getElementById("chat-popup");
-        
         if(titleEl) titleEl.innerText = "Chat: " + namaToko;
         if(popupEl) popupEl.style.display = "flex";
 
@@ -354,7 +388,7 @@
                 sender: 'customer', 
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 is_read: false 
-            }).catch(e => console.error("Gagal kirim status produk:", e));
+            }).catch(e => console.error(e));
         }
 
         chatUnsubscribe = db.collection("chats")
@@ -378,7 +412,7 @@
                     }
                 });
                 box.scrollTop = box.scrollHeight;
-            }, err => console.error("Snapshot Error:", err));
+            });
     };
 
     window.tutupChatPopup = () => {
@@ -387,7 +421,7 @@
         if (chatUnsubscribe) chatUnsubscribe();
     };
 
-    // --- MARKET RENDERER (AKUMULASI DATA RATING & LIKES) ---
+    // --- MARKET RENDERER (DENGAN TOMBOL AKTIF REALTIME) ---
     window.muatMarket = () => {
         const container = document.getElementById("main-market");
         if(!container) return;
@@ -404,7 +438,6 @@
                     const statusOrder = produk.status || "Closed"; 
                     const deskripsi = produk.deskripsi || "-";
                     
-                    // Ambil hasil akumulasi rating & likes dari database
                     const hasilRating = produk.rating_avg || "0.0";
                     const hasilLikes = produk.total_likes || 0;
                     
@@ -437,8 +470,8 @@
                                         <button class="btn-icon btn-chat" onclick="triggerTwister(this, '${sellerUid}', '${namaProduk}', '${daftarFoto[0]}')">
                                             <i class="fa-solid fa-comment-dots"></i>
                                         </button>
-                                        <button class="btn-icon btn-star" onclick="window.notif('Gunakan panel detail untuk melihat rating')"><i class="fa-solid fa-star"></i></button>
-                                        <button class="btn-icon btn-thumb" onclick="window.notif('Anda menyukai ini!')"><i class="fa-solid fa-thumbs-up"></i></button>
+                                        <button class="btn-icon btn-star" onclick="window.tambahRating('${docId}')"><i class="fa-solid fa-star"></i></button>
+                                        <button class="btn-icon btn-thumb" onclick="window.tambahLike('${docId}')"><i class="fa-solid fa-thumbs-up"></i></button>
                                         <button class="btn-icon btn-wa" onclick="shareWA('${namaProduk}', '081283393576')">
                                             <i class="fa-brands fa-whatsapp"></i>
                                         </button>
@@ -455,11 +488,11 @@
                                 <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
                                     <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444;">
                                         <i class="fa-solid fa-star" style="color: #ffca08;"></i> 
-                                        <span><strong>${hasilRating}</strong> / 5.0</span>
+                                        <span><strong>${hasilRating}</strong> / 5.0 (Hasil Rating)</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444;">
                                         <i class="fa-solid fa-thumbs-up" style="color: var(--navy);"></i> 
-                                        <span><strong>${hasilLikes}</strong> Orang menyukai ini</span>
+                                        <span><strong>${hasilLikes}</strong> Orang menyukai ini (Hasil Like)</span>
                                     </div>
                                 </div>
                             </div>
@@ -477,11 +510,9 @@
         const slides = wrapper.getElementsByTagName("img");
         if(!window.slideIndices) window.slideIndices = {};
         if (!window.slideIndices[docId]) window.slideIndices[docId] = 0;
-        
         window.slideIndices[docId] += step;
         if (window.slideIndices[docId] >= slides.length) window.slideIndices[docId] = 0;
         if (window.slideIndices[docId] < 0) window.slideIndices[docId] = slides.length - 1;
-        
         wrapper.style.transform = `translateX(${window.slideIndices[docId] * -100}%)`;
     };
 
