@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
@@ -132,11 +133,8 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    // AKUN MASTER (Tetap dipertahankan sebagai backdoor)
-    const MASTER_USER = "admin";
-    const MASTER_PASS = "bukadong821";
 
     function togglePasswordVisibility() {
         const passInput = document.getElementById('cyberPass');
@@ -170,53 +168,58 @@
 
     document.getElementById('cyberLoginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const user = document.getElementById('cyberUser').value.trim();
-        const pass = document.getElementById('cyberPass').value.trim();
+
+        const email = document.getElementById('cyberUser').value.trim().toLowerCase();
+        const password = document.getElementById('cyberPass').value;
         const btn = document.getElementById('btnLogin');
 
         btn.innerText = "VERIFYING...";
         btn.disabled = true;
 
-        const handleSuccess = (msg) => {
-            localStorage.setItem("adminLoggedIn", "true");
-            localStorage.setItem("adminUser", user);
-            showCyberNotification('success', 'Access Granted', msg);
-            setTimeout(() => { window.location.href = "admin.html"; }, 1500);
-        };
-
-        // 1. CEK AKUN MASTER
-        if (user === MASTER_USER && pass === MASTER_PASS) {
-            handleSuccess('Master Administrator Verified. Loading Secure Environment...');
-            return;
-        }
-
         try {
-            // 2. CEK DATABASE (Koleksi: admin_users atau admins)
-            // Kita cek di admin_users terlebih dahulu
-            let snapshot = await db.collection("admin_users")
-                .where("email", "==", user)
-                .where("password", "==", pass)
-                .get();
+            const credential = await auth.signInWithEmailAndPassword(email, password);
+            const user = credential.user;
 
-            // Jika kosong di admin_users, coba cek di koleksi admins (fallback)
-            if (snapshot.empty) {
-                snapshot = await db.collection("admins")
-                    .where("username", "==", user)
-                    .where("password", "==", pass)
-                    .get();
+            if (!user.emailVerified) {
+                await auth.signOut();
+                throw new Error('EMAIL_NOT_VERIFIED');
             }
 
-            if (!snapshot.empty) {
-                handleSuccess('Administrator Access Verified. Loading Secure Environment...');
-            } else {
-                showCyberNotification('error', 'Access Denied', 'Username/Email atau Password tidak valid.');
-                document.getElementById('cyberPass').value = ''; 
-                btn.innerText = "VERIFY & LOG IN";
-                btn.disabled = false;
+            if (user.uid !== 'hXo6v5OKhkMVtRAAuUqcYcASplo2') {
+                await auth.signOut();
+                throw new Error('ADMIN_NOT_AUTHORIZED');
             }
+
+            showCyberNotification(
+                'success',
+                'Access Granted',
+                'Master Administrator Verified. Loading Secure Environment...'
+            );
+
+            setTimeout(() => {
+                window.location.href = "admin.html";
+            }, 1500);
         } catch (error) {
-            console.error("Database Error:", error);
-            showCyberNotification('error', 'System Error', 'Gagal terhubung ke Database. Cek koneksi Anda.');
+            console.error("Admin Authentication Error:", error);
+
+            let message = 'Email atau password tidak valid.';
+
+            if (error.message === 'EMAIL_NOT_VERIFIED') {
+                message = 'Email akun Master belum diverifikasi.';
+            } else if (error.message === 'ADMIN_NOT_AUTHORIZED') {
+                message = 'Akun ini tidak memiliki hak akses Admin.';
+            } else if (
+                error.code === 'auth/user-not-found' ||
+                error.code === 'auth/wrong-password' ||
+                error.code === 'auth/invalid-credential'
+            ) {
+                message = 'Email atau password tidak valid.';
+            } else if (error.code === 'auth/too-many-requests') {
+                message = 'Terlalu banyak percobaan login. Silakan coba lagi nanti.';
+            }
+
+            showCyberNotification('error', 'Access Denied', message);
+            document.getElementById('cyberPass').value = '';
             btn.innerText = "VERIFY & LOG IN";
             btn.disabled = false;
         }
