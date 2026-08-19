@@ -189,13 +189,148 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    auth.onAuthStateChanged(user => {
+    const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
+    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+    const IDLE_WARNING_MS = 29 * 60 * 1000;
+
+    let idleTimeoutId = null;
+    let idleWarningId = null;
+    let sessionWarningEl = null;
+
+    function hideSessionWarning() {
+        if (sessionWarningEl) {
+            sessionWarningEl.remove();
+            sessionWarningEl = null;
+        }
+    }
+
+    function showSessionWarning() {
+        hideSessionWarning();
+
+        sessionWarningEl = document.createElement("div");
+        sessionWarningEl.id = "adminSessionWarning";
+        sessionWarningEl.style.cssText = [
+            "position:fixed",
+            "top:20px",
+            "right:20px",
+            "z-index:99999",
+            "max-width:360px",
+            "padding:16px 18px",
+            "background:#fff3cd",
+            "color:#664d03",
+            "border:1px solid #ffecb5",
+            "border-radius:10px",
+            "box-shadow:0 8px 24px rgba(0,0,0,.18)",
+            "font-family:Segoe UI,sans-serif",
+            "font-size:14px",
+            "line-height:1.5"
+        ].join(";");
+
+        sessionWarningEl.innerHTML =
+            "<strong>Sesi Admin</strong><br>" +
+            "Sesi akan berakhir karena tidak ada aktivitas. " +
+            "Lakukan aktivitas untuk melanjutkan sesi.";
+
+        document.body.appendChild(sessionWarningEl);
+    }
+
+    function clearIdleTimers() {
+        if (idleTimeoutId) {
+            clearTimeout(idleTimeoutId);
+            idleTimeoutId = null;
+        }
+
+        if (idleWarningId) {
+            clearTimeout(idleWarningId);
+            idleWarningId = null;
+        }
+    }
+
+    function resetIdleTimer() {
+        if (!auth.currentUser) {
+            return;
+        }
+
+        clearIdleTimers();
+        hideSessionWarning();
+
+        idleWarningId = setTimeout(() => {
+            if (auth.currentUser) {
+                showSessionWarning();
+            }
+        }, IDLE_WARNING_MS);
+
+        idleTimeoutId = setTimeout(async () => {
+            if (!auth.currentUser) {
+                return;
+            }
+
+            try {
+                await auth.signOut();
+            } catch (error) {
+                console.error("Idle session sign-out error:", error);
+            } finally {
+                hideSessionWarning();
+                window.location.replace("login_cyber.html");
+            }
+        }, IDLE_TIMEOUT_MS);
+    }
+
+    function registerIdleActivity() {
+        resetIdleTimer();
+    }
+
+    ["click", "mousedown", "keydown", "scroll", "touchstart", "mousemove"].forEach((eventName) => {
+        window.addEventListener(eventName, registerIdleActivity, {passive: true});
+    });
+
+    auth.onAuthStateChanged(async (user) => {
         if (!user) {
             window.location.replace("login_cyber.html");
             return;
         }
 
-        loadMembersRealtime();
+        try {
+            const adminDoc = await db.collection("admin_users")
+                .doc(user.uid)
+                .get();
+
+            if (!adminDoc.exists) {
+                throw new Error("ADMIN_NOT_REGISTERED");
+            }
+
+            const adminData = adminDoc.data();
+            const role = adminData.role || "";
+            const status = adminData.status || "inactive";
+
+            if (!ADMIN_ROLES.has(role)) {
+                throw new Error("ADMIN_NOT_AUTHORIZED");
+            }
+
+            if (status !== "active") {
+                throw new Error("ADMIN_INACTIVE");
+            }
+
+            if (user.uid === MASTER_UID) {
+                if (role !== "master" || adminData.protected !== true) {
+                    throw new Error("MASTER_PROTECTION_INVALID");
+                }
+            }
+
+            loadMembersRealtime();
+            resetIdleTimer();
+        } catch (error) {
+            console.error("Admin dashboard authorization error:", error);
+
+            try {
+                await auth.signOut();
+            } catch (signOutError) {
+                console.error("Authorization sign-out error:", signOutError);
+            }
+
+            window.location.replace("login_cyber.html");
+        }
     });
 
     function loadMembersRealtime() {

@@ -46,7 +46,7 @@
             <i class="fas fa-user-plus"></i> Tambah Admin Baru
         </button>
         <button class="btn btn-edit" id="btnEdit" disabled onclick="editUser()"><i class="fas fa-edit"></i> Edit</button>
-        <button class="btn btn-delete" id="btnDelete" disabled onclick="hapusUser()"><i class="fas fa-trash"></i> Hapus</button>
+        <button class="btn btn-delete" id="btnDelete" disabled onclick="nonaktifkanUser()"><i class="fas fa-user-slash"></i> Nonaktifkan</button>
         <button class="btn btn-log" onclick="openLogModal()">
             <i class="fas fa-history"></i> Log Aktivitas Login
         </button>
@@ -60,7 +60,7 @@
                 <th>Email (Username Login)</th>
                 <th>Nomor HP</th>
                 <th>Jenis Admin</th>
-                <th>Password</th>
+                <th>Role / Status</th>
             </tr>
         </thead>
         <tbody id="user-list"></tbody>
@@ -94,6 +94,14 @@
                 <option value="Viewer">Viewer</option>
             </select>
         </div>
+        <div class="form-group">
+            <label>Security Role</label>
+            <select id="popSecurityRole">
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+                <option value="viewer">Viewer</option>
+            </select>
+        </div>
         <div class="modal-footer">
             <button class="btn btn-delete btn-full" onclick="closeModal('modalUser')">Batal</button>
             <button class="btn btn-add btn-full" id="btnSave" onclick="saveData()">Simpan Akun Admin</button>
@@ -124,6 +132,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script>
     const firebaseConfig = {
@@ -137,89 +146,253 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
+
     let currentEditId = null;
+    const auth = firebase.auth();
+
+    const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") ||
+        firebase.initializeApp(firebaseConfig, "adminCreator");
+    const adminCreatorAuth = adminCreatorApp.auth();
 
     function openModal(id, isEdit = false) {
-        document.getElementById(id).style.display = 'flex';
-        if(id === 'modalUser') {
-            document.getElementById('modalTitle').innerText = isEdit ? "Edit Data User Admin" : "Tambah User Admin Baru";
-            if(!isEdit) resetForm();
+        document.getElementById(id).style.display = "flex";
+
+        if (id === "modalUser") {
+            document.getElementById("modalTitle").innerText =
+                isEdit ? "Edit Data User Admin" : "Tambah User Admin Baru";
+
+            document.getElementById("popPass").value = "";
+            document.getElementById("popPass").disabled = isEdit;
+
+            if (!isEdit) {
+                resetForm();
+            }
         }
     }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = "none";
+    }
 
     function resetForm() {
         currentEditId = null;
-        document.querySelectorAll('#modalUser input').forEach(i => i.value = "");
+        document.querySelectorAll("#modalUser input").forEach((input) => {
+            input.value = "";
+        });
+
+        document.getElementById("popPass").disabled = false;
+        document.getElementById("popSecurityRole").value = "admin";
     }
 
-    // --- LOGIKA UTAMA: MENGGUNAKAN KOLEKSI admin_users ---
+    async function saveData() {
+        const nama = document.getElementById("popNama").value.trim();
+        const email = document.getElementById("popEmail").value.trim().toLowerCase();
+        const hp = document.getElementById("popHp").value.trim();
+        const password = document.getElementById("popPass").value;
+        const jabatan = document.getElementById("popRole").value;
+        const role = document.getElementById("popSecurityRole").value;
 
-    function saveData() {
-        const data = {
-            nama: document.getElementById('popNama').value,
-            email: document.getElementById('popEmail').value,
-            hp: document.getElementById('popHp').value,
-            password: document.getElementById('popPass').value,
-            jabatan: document.getElementById('popRole').value,
-            updatedAt: new Date()
-        };
-        if(!data.nama || !data.email || !data.password) return alert("Lengkapi data!");
+        if (!nama || !email || !jabatan) {
+            return alert("Lengkapi data admin terlebih dahulu.");
+        }
 
-        if(currentEditId) {
-            // Update khusus ke koleksi admin_users
-            db.collection("admin_users").doc(currentEditId).update(data).then(() => {
-                alert("Akun Admin berhasil diperbarui!"); 
-                closeModal('modalUser');
-            });
-        } else {
-            data.createdAt = new Date();
-            // Simpan khusus ke koleksi admin_users
-            db.collection("admin_users").add(data).then(() => {
-                alert("Akun Admin baru berhasil dibuat!"); 
-                closeModal('modalUser');
-            });
+        if (!currentEditId && password.length < 6) {
+            return alert("Password akun baru minimal 6 karakter.");
+        }
+
+        try {
+            if (currentEditId) {
+                const ref = db.collection("admin_users").doc(currentEditId);
+                const snapshot = await ref.get();
+
+                if (!snapshot.exists) {
+                    throw new Error("Dokumen admin tidak ditemukan.");
+                }
+
+                const existing = snapshot.data();
+
+                if (currentEditId === MASTER_UID) {
+                    if (role !== "master") {
+                        return alert("Role Master tidak boleh diturunkan.");
+                    }
+                }
+
+                await ref.update({
+                    nama,
+                    email,
+                    hp,
+                    jabatan,
+                    role: currentEditId === MASTER_UID ? "master" : role,
+                    status: existing.status || "active",
+                    protected: currentEditId === MASTER_UID || existing.protected === true,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+
+                alert("Data admin berhasil diperbarui.");
+            } else {
+                if (role === "master") {
+                    return alert("Akun Master hanya dapat ditetapkan pada akun Master yang sudah dilindungi.");
+                }
+
+                const credential = await adminCreatorAuth.createUserWithEmailAndPassword(
+                    email,
+                    password,
+                );
+
+                const uid = credential.user.uid;
+
+                await db.collection("admin_users").doc(uid).set({
+                    nama,
+                    email,
+                    hp,
+                    jabatan,
+                    role,
+                    status: "active",
+                    protected: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+
+                await adminCreatorAuth.signOut();
+
+                alert("Akun Admin berhasil dibuat di Firebase Authentication.");
+            }
+
+            closeModal("modalUser");
+            loadUsers();
+        } catch (error) {
+            console.error("Admin management error:", error);
+
+            if (error.code === "auth/email-already-in-use") {
+                alert("Email tersebut sudah terdaftar di Firebase Authentication.");
+            } else if (error.code === "auth/invalid-email") {
+                alert("Format email tidak valid.");
+            } else if (error.code === "auth/weak-password") {
+                alert("Password terlalu lemah.");
+            } else {
+                alert("Gagal menyimpan data admin: " + error.message);
+            }
+
+            try {
+                await adminCreatorAuth.signOut();
+            } catch (_) {
+                // Abaikan error logout secondary app.
+            }
         }
     }
 
     function loadUsers() {
-        // Ambil data hanya dari admin_users
-        db.collection("admin_users").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+        db.collection("admin_users").onSnapshot((snapshot) => {
             let html = "";
-            snapshot.forEach(doc => {
+
+            snapshot.forEach((doc) => {
                 const u = doc.data();
-                html += `<tr>
-                    <td><input type="checkbox" class="user-checkbox" value="${doc.id}" onclick="updateButtons()"></td>
-                    <td><b>${u.nama}</b></td>
-                    <td>${u.email}</td>
-                    <td>${u.hp}</td>
-                    <td><span style="background:#eee; padding:3px 8px; border-radius:4px; font-size:11px;">${u.jabatan}</span></td>
-                    <td><span style="color:#aaa; font-style:italic;">******</span></td>
-                </tr>`;
+                const role = u.role || "admin";
+                const status = u.status || "active";
+                const protectedLabel = u.protected ? " | Protected" : "";
+
+                html += `
+                    <tr>
+                        <td>
+                            <input
+                                type="checkbox"
+                                class="user-checkbox"
+                                value="${doc.id}"
+                                onclick="updateButtons()"
+                            >
+                        </td>
+                        <td><b>${u.nama || "-"}</b></td>
+                        <td>${u.email || "-"}</td>
+                        <td>${u.hp || "-"}</td>
+                        <td>
+                            <span style="background:#eee;padding:3px 8px;border-radius:4px;font-size:11px;">
+                                ${u.jabatan || "-"}
+                            </span>
+                        </td>
+                        <td>
+                            <strong>${role}</strong>
+                            <small style="display:block;color:${status === "active" ? "#28a745" : "#dc3545"};">
+                                ${status}${protectedLabel}
+                            </small>
+                        </td>
+                    </tr>
+                `;
             });
-            document.getElementById('user-list').innerHTML = html;
+
+            document.getElementById("user-list").innerHTML = html;
         });
     }
 
-    function hapusUser() {
-        const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-        if(confirm(`Hapus ${ids.length} akun administrator? Tindakan ini tidak menghapus data anggota di Dashboard.`)) {
-            // Hapus hanya dari koleksi admin_users
-            ids.forEach(id => db.collection("admin_users").doc(id).delete());
+    async function nonaktifkanUser() {
+        const ids = Array.from(
+            document.querySelectorAll(".user-checkbox:checked"),
+        ).map((checkbox) => checkbox.value);
+
+        if (!ids.length) {
+            return;
         }
+
+        if (!confirm(`Nonaktifkan ${ids.length} akun administrator?`)) {
+            return;
+        }
+
+        for (const id of ids) {
+            const ref = db.collection("admin_users").doc(id);
+            const snapshot = await ref.get();
+
+            if (!snapshot.exists) {
+                continue;
+            }
+
+            const data = snapshot.data();
+
+            if (id === MASTER_UID || data.role === "master" || data.protected === true) {
+                alert("Akun Master dilindungi dan tidak dapat dinonaktifkan.");
+                continue;
+            }
+
+            await ref.update({
+                status: "inactive",
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
+        alert("Proses penonaktifan selesai.");
     }
 
     function editUser() {
-        const id = document.querySelector('.user-checkbox:checked').value;
+        const selected = document.querySelector(".user-checkbox:checked");
+
+        if (!selected) {
+            return;
+        }
+
+        const id = selected.value;
         currentEditId = id;
-        db.collection("admin_users").doc(id).get().then(doc => {
+
+        db.collection("admin_users").doc(id).get().then((doc) => {
+            if (!doc.exists) {
+                return alert("Data admin tidak ditemukan.");
+            }
+
             const u = doc.data();
-            document.getElementById('popNama').value = u.nama;
-            document.getElementById('popEmail').value = u.email;
-            document.getElementById('popHp').value = u.hp;
-            document.getElementById('popPass').value = u.password;
-            document.getElementById('popRole').value = u.jabatan;
-            openModal('modalUser', true);
+
+            document.getElementById("popNama").value = u.nama || "";
+            document.getElementById("popEmail").value = u.email || "";
+            document.getElementById("popHp").value = u.hp || "";
+            document.getElementById("popPass").value = "";
+            document.getElementById("popRole").value = u.jabatan || "Administrator Super Apps";
+            document.getElementById("popSecurityRole").value =
+                u.role === "master" ? "admin" : (u.role || "admin");
+
+            document.getElementById("popEmail").readOnly = true;
+            document.getElementById("popSecurityRole").disabled = id === MASTER_UID;
+
+            openModal("modalUser", true);
+        }).catch((error) => {
+            console.error("Edit admin error:", error);
+            alert("Gagal mengambil data admin: " + error.message);
         });
     }
 

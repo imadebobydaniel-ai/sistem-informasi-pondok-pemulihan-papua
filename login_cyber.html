@@ -104,7 +104,7 @@
                 <label>Access Key</label>
                 <div class="input-wrapper">
                     <i class="fa-solid fa-lock-keyhole field-icon"></i>
-                    <input type="password" id="cyberPass" placeholder="•••••" required>
+                    <input type="password" id="cyberPass" placeholder="Enter password..." required>
                     <i class="fa-solid fa-eye toggle-password" id="toggleEye" onclick="togglePasswordVisibility()"></i>
                 </div>
             </div>
@@ -166,34 +166,68 @@
 
     document.getElementById('closeModal').onclick = () => document.getElementById('cyberModal').style.display = 'none';
 
-    document.getElementById('cyberLoginForm').addEventListener('submit', async function(e) {
+    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+
+    document.getElementById("cyberLoginForm").addEventListener("submit", async function(e) {
         e.preventDefault();
 
-        const email = document.getElementById('cyberUser').value.trim().toLowerCase();
-        const password = document.getElementById('cyberPass').value;
-        const btn = document.getElementById('btnLogin');
+        const email = document.getElementById("cyberUser").value.trim().toLowerCase();
+        const password = document.getElementById("cyberPass").value;
+        const btn = document.getElementById("btnLogin");
 
         btn.innerText = "VERIFYING...";
         btn.disabled = true;
 
         try {
+            await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
             const credential = await auth.signInWithEmailAndPassword(email, password);
             const user = credential.user;
 
             if (!user.emailVerified) {
                 await auth.signOut();
-                throw new Error('EMAIL_NOT_VERIFIED');
+                throw new Error("EMAIL_NOT_VERIFIED");
             }
 
-            if (user.uid !== 'hXo6v5OKhkMVtRAAuUqcYcASplo2') {
+            const adminDoc = await firebase.firestore()
+                .collection("admin_users")
+                .doc(user.uid)
+                .get();
+
+            if (!adminDoc.exists) {
                 await auth.signOut();
-                throw new Error('ADMIN_NOT_AUTHORIZED');
+                throw new Error("ADMIN_NOT_REGISTERED");
             }
+
+            const adminData = adminDoc.data();
+            const role = adminData.role || "";
+            const status = adminData.status || "inactive";
+
+            if (!ADMIN_ROLES.has(role)) {
+                await auth.signOut();
+                throw new Error("ADMIN_NOT_AUTHORIZED");
+            }
+
+            if (status !== "active") {
+                await auth.signOut();
+                throw new Error("ADMIN_INACTIVE");
+            }
+
+            localStorage.setItem("adminLoggedIn", "true");
+            localStorage.setItem("adminUser", user.email || email);
+            localStorage.setItem("adminUid", user.uid);
+            localStorage.setItem("adminRole", role);
+
+            const isMaster =
+                user.uid === "hXo6v5OKhkMVtRAAuUqcYcASplo2" &&
+                role === "master";
 
             showCyberNotification(
-                'success',
-                'Access Granted',
-                'Master Administrator Verified. Loading Secure Environment...'
+                "success",
+                "Access Granted",
+                isMaster
+                    ? "Master Administrator Verified. Loading Secure Environment..."
+                    : "Administrator Access Verified. Loading Secure Environment..."
             );
 
             setTimeout(() => {
@@ -202,24 +236,28 @@
         } catch (error) {
             console.error("Admin Authentication Error:", error);
 
-            let message = 'Email atau password tidak valid.';
+            let message = "Email atau password tidak valid.";
 
-            if (error.message === 'EMAIL_NOT_VERIFIED') {
-                message = 'Email akun Master belum diverifikasi.';
-            } else if (error.message === 'ADMIN_NOT_AUTHORIZED') {
-                message = 'Akun ini tidak memiliki hak akses Admin.';
+            if (error.message === "EMAIL_NOT_VERIFIED") {
+                message = "Email akun belum diverifikasi.";
+            } else if (error.message === "ADMIN_NOT_REGISTERED") {
+                message = "Akun belum terdaftar sebagai administrator.";
+            } else if (error.message === "ADMIN_NOT_AUTHORIZED") {
+                message = "Akun tidak memiliki role administrator yang sah.";
+            } else if (error.message === "ADMIN_INACTIVE") {
+                message = "Akun administrator sedang dinonaktifkan.";
             } else if (
-                error.code === 'auth/user-not-found' ||
-                error.code === 'auth/wrong-password' ||
-                error.code === 'auth/invalid-credential'
+                error.code === "auth/user-not-found" ||
+                error.code === "auth/wrong-password" ||
+                error.code === "auth/invalid-credential"
             ) {
-                message = 'Email atau password tidak valid.';
-            } else if (error.code === 'auth/too-many-requests') {
-                message = 'Terlalu banyak percobaan login. Silakan coba lagi nanti.';
+                message = "Email atau password tidak valid.";
+            } else if (error.code === "auth/too-many-requests") {
+                message = "Terlalu banyak percobaan login. Silakan coba lagi nanti.";
             }
 
-            showCyberNotification('error', 'Access Denied', message);
-            document.getElementById('cyberPass').value = '';
+            showCyberNotification("error", "Access Denied", message);
+            document.getElementById("cyberPass").value = "";
             btn.innerText = "VERIFY & LOG IN";
             btn.disabled = false;
         }
