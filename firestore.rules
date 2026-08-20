@@ -1,0 +1,201 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myAdminDoc() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+    }
+
+    function myRole() {
+      return myAdminDoc()
+        ? get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    function isMaster() {
+      return myRole() == "master";
+    }
+
+    function isSuperAdmin() {
+      return myRole() == "super_admin";
+    }
+
+    function isAdminManager() {
+      return isMaster() || isSuperAdmin();
+    }
+
+    function targetIsMaster() {
+      return resource.data.role == "master"
+        || resource.data.protected == true;
+    }
+
+    function newTargetIsMaster() {
+      return request.resource.data.role == "master"
+        || request.resource.data.protected == true;
+    }
+
+    // =========================================================
+    // ADMIN USERS - SECURED PHASE 1
+    // =========================================================
+    match /admin_users/{uid} {
+
+      // Dashboard admin management membutuhkan daftar admin.
+      allow read: if signedIn() && (uid == request.auth.uid || isAdminManager());
+
+      // Membuat akun admin baru:
+      // Master boleh membuat semua non-master.
+      // Super Admin hanya boleh membuat admin/viewer.
+      allow create: if
+        (
+          isMaster()
+          && request.resource.data.role in ["super_admin", "admin", "viewer"]
+          && request.resource.data.protected == false
+        )
+        ||
+        (
+          isSuperAdmin()
+          && request.resource.data.role in ["admin", "viewer"]
+          && request.resource.data.protected == false
+        );
+
+      // Update:
+      // Master boleh mengelola akun non-master.
+      // Master sendiri hanya boleh mempertahankan role master/protected.
+      // Super Admin tidak boleh menyentuh Master.
+      allow update: if
+        (
+          isMaster()
+          && uid == request.auth.uid
+          && resource.data.role == "master"
+          && request.resource.data.role == "master"
+          && request.resource.data.protected == true
+          && request.resource.data.status == "active"
+        )
+        ||
+        (
+          isMaster()
+          && uid != request.auth.uid
+          && !targetIsMaster()
+          && !newTargetIsMaster()
+        )
+        ||
+        (
+          isSuperAdmin()
+          && !targetIsMaster()
+          && !newTargetIsMaster()
+          && request.resource.data.role in ["admin", "viewer"]
+        );
+
+      // Hapus langsung dari admin_users kita tahan dulu.
+      // Modul sekarang menggunakan status inactive.
+      allow delete: if false;
+    }
+
+    // =========================================================
+    // EXISTING COLLECTIONS - TEMPORARY COMPATIBILITY
+    // =========================================================
+
+    match /jemaat/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /portal_media/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /config/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /users/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /login_logs/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /agenda_tahunan/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /saran_masukan/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /umkm_stores/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /umkm_products/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /rating_toko/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /chats/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /friend_requests/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /friends/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /game_scores/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /pengumuman_komsel/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /laporan_bacaan/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /kehadiran_jemaat/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /laporan_komsel_umum/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /statistik_jemaat_pusat/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /laporan_pelayanan/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /kehadiran/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /kesaksian/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /running_text_history/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
