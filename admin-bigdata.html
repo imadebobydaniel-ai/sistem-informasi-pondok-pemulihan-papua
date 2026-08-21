@@ -86,8 +86,11 @@
 
     <div class="tab-menu">
         <div class="tab-btns-wrapper">
-            <button class="tab-btn active" onclick="switchTab('ibadah', this)"><i class="fas fa-church"></i> Ibadah Raya</button>
-            <button class="tab-btn" onclick="switchTab('arso1', this)"><i class="fas fa-map-marker-alt"></i> Ibadah Arso 1</button>
+            <button class="tab-btn" onclick="switchTab('ibadah_abepura', this)"><i class="fas fa-church"></i> Ibadah Abepura</button>
+            <button class="tab-btn" onclick="switchTab('ibadah_sentani', this)"><i class="fas fa-church"></i> Ibadah Sentani</button>
+            <button class="tab-btn" onclick="switchTab('ibadah_doyo', this)"><i class="fas fa-church"></i> Ibadah Doyo</button>
+            <button class="tab-btn" onclick="switchTab('ibadah_arso1', this)"><i class="fas fa-map-marker-alt"></i> Ibadah Arso 1</button>
+            <button class="tab-btn" onclick="switchTab('ibadah_arso2', this)"><i class="fas fa-map-marker-alt"></i> Ibadah Arso 2</button>
             <button class="tab-btn" onclick="switchTab('komsel', this)"><i class="fas fa-users"></i> Komsel Reguler</button>
             <button class="tab-btn" onclick="switchTab('komsel_gabungan', this)"><i class="fas fa-layer-group"></i> Komsel Gabungan</button>
             <button class="tab-btn" onclick="switchTab('absen_kd', this)"><i class="fas fa-graduation-cap"></i> Absen KD</button>
@@ -176,16 +179,19 @@
     const db = firebase.firestore();
 
     let myCharts = { pie: null, line: null, bar: null };
-    let currentType = 'ibadah';
+    let currentType = 'ibadah_abepura';
     let currentListener = null;
 
     const menuConfig = {
-        ibadah: { title: 'Ibadah Raya', col: 'kehadiran', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
-        arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_arso1', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Keterangan'] },
-        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel', fields: ['Nama', 'JC', 'Tanggal', 'Status', 'Materi', 'Lokasi GPS'] },
-        komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
+        ibadah_abepura: { title: 'Ibadah Abepura', col: 'kehadiran_jemaat', wilayah: 'Abepura', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+        ibadah_sentani: { title: 'Ibadah Sentani', col: 'kehadiran_jemaat', wilayah: 'Sentani', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+        ibadah_doyo: { title: 'Ibadah Doyo', col: 'kehadiran_jemaat', wilayah: 'Doyo', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+        ibadah_arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_jemaat', wilayah: 'Arso 1', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+        ibadah_arso2: { title: 'Ibadah Arso 2', col: 'kehadiran_jemaat', wilayah: 'Arso 2', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+        komsel: { title: 'Komsel Reguler', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Reguler', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
+        komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
-        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Pasal', 'Tanggal', 'Hikmat'] },
+        bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Bacaan', 'Tanggal', 'Hikmat'] },
         doa_komsel: { title: 'Doa Komsel', col: 'laporan_doa', fields: ['Nama', 'JC', 'Tgl Doa', 'Status Doa', 'Pokok Doa'] },
         peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
         saran: { title: 'Saran & Tiket', col: 'saran_masukan', fields: ['Pengirim', 'Komsel', 'Kategori', 'Isi Pesan', 'Tanggal'] }
@@ -195,6 +201,7 @@
 
     function switchTab(type, btn) {
         currentType = type;
+        localStorage.setItem("adminBigDataLastTab", type);
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         loadDataRealtime(type);
@@ -218,7 +225,16 @@
         
         if (currentListener) currentListener();
 
-        let query = db.collection(cfg.col).orderBy("timestamp", "desc");
+        let query = db.collection(cfg.col);
+
+        if (cfg.wilayah) {
+            query = query.where("wilayah_ibadah", "==", cfg.wilayah);
+        }
+
+        if (cfg.kegiatan) {
+            query = query.where("kegiatan", "==", cfg.kegiatan);
+        }
+        query = query.orderBy("timestamp", "desc");
         const now = new Date();
 
         if (periodVal === "this_month") {
@@ -269,16 +285,23 @@
 
             let row = [];
             if (type === 'bacaan') {
-                html += `<tr><td>${nama}</td><td>${jc}</td><td>${d.pasal_utama || "-"}</td><td>${tglTampil}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
-                row = [nama, jc, d.pasal_utama || "-", tglTampil, d.pasal_hikmat || "-"];
+                const bacaanUtama = d.pasal_utama_full || "-";
+                html += `<tr><td>${nama}</td><td>${jc}</td><td>${bacaanUtama}</td><td>${tglTampil}</td><td>${d.pasal_hikmat || "-"}</td></tr>`;
+                row = [nama, jc, bacaanUtama, tglTampil, d.pasal_hikmat || "-"];
             } else if (type === 'peringkat_jc') {
                 html += `<tr><td>#${d.ranking || '-'}</td><td>${d.nama_jc}</td><td>${d.poin}</td><td>${d.periode}</td><td>AKTIF</td></tr>`;
                 row = [`#${d.ranking || '-'}`, d.nama_jc, d.poin, d.periode, "AKTIF"];
             } else if (type === 'komsel') {
-                let materi = d.materi || "-";
-                let alamat = d.lokasi_alamat || "Lokasi tidak terdeteksi";
-                html += `<tr><td>${nama}</td><td>${jc}</td><td>${tglTampil}</td><td>${status}</td><td>${materi}</td><td style="font-size: 10px; color: #555;"><i class="fas fa-map-marker-alt"></i> ${alamat}</td></tr>`;
-                row = [nama, jc, tglTampil, status, materi, alamat];
+                const keteranganKomsel = d.keterangan || "-";
+                const lokasiKomsel = d.alamat_fisik || d.lokasi_koordinat || "-";
+                html += `<tr><td>${nama}</td><td>${tglTampil}</td><td>${status}</td><td>${keteranganKomsel}</td><td style="font-size:10px; color: #555;"><i class="fas fa-map-marker-alt"></i> ${lokasiKomsel}</td></tr>`;
+                row = [nama, tglTampil, status, keteranganKomsel, lokasiKomsel];
+            } else if (type === 'komsel_gabungan') {
+                const tanggalGabungan = d.gabungan_tanggal_pelaksanaan || tglTampil;
+                const lokasiGabungan = d.gabungan_lokasi || "-";
+                const namaGabungan = d.gabungan_nama_komsel || d.komsel || "Umum";
+                html += `<tr><td>${nama}</td><td>${namaGabungan}</td><td>${tanggalGabungan}</td><td>${status}</td><td>${lokasiGabungan}</td></tr>`;
+                row = [nama, namaGabungan, tanggalGabungan, status, lokasiGabungan];
             } else {
                 let ket = d.alasan || d.keterangan || d.materi || d.lokasi || d.pokok_doa || d.isi_pesan || "-";
                 html += `<tr><td>${nama}</td><td>${jc}</td><td>${tglTampil}</td><td>${status}</td><td>${ket}</td></tr>`;
@@ -358,7 +381,19 @@
         document.getElementById('pdfDropdown').classList.remove('show');
     }
 
-    window.onload = () => loadDataRealtime('ibadah');
+    window.onload = () => {
+        const savedTab = localStorage.getItem("adminBigDataLastTab") || "ibadah_abepura";
+        const savedButton = document.querySelector(`.tab-btn[onclick*="switchTab('${savedTab}'"]`);
+
+        if (savedButton) {
+            switchTab(savedTab, savedButton);
+        } else {
+            const defaultButton = document.querySelector(`.tab-btn[onclick*="switchTab('ibadah_abepura'"]`);
+            if (defaultButton) {
+                switchTab("ibadah_abepura", defaultButton);
+            }
+        }
+    };
 </script>
 </body>
 </html>
