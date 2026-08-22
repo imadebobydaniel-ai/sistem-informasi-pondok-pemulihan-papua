@@ -403,6 +403,13 @@
                     <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
+
+            <button
+                id="sipapua-popup-dismiss"
+                type="button"
+                onclick="dismissSipapuaPopup(); return false;">
+                Jangan tampilkan lagi
+            </button>
         </div>
     </div>
 
@@ -770,7 +777,7 @@
     function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
     function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
     function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-    function executeLogout() { auth.signOut().then(() => { localStorage.clear(); window.location.href = "index.html"; }); }
+    function executeLogout() { auth.signOut().then(() => { sessionStorage.removeItem("sipapua_popup_dismissed"); localStorage.clear(); window.location.href = "index.html"; }); }
 
     function onScanSuccess(decodedText, decodedResult) {
         let targetEmail = decodedText;
@@ -828,6 +835,29 @@
     let sipapuaPopups = [];
     let sipapuaPopupIndex = 0;
 
+    // Dipertahankan saat berpindah menu dalam tab yang sama.
+    // Dihapus saat refresh/reload atau logout.
+    const SIPAPUA_POPUP_DISMISSED_KEY =
+        "sipapua_popup_dismissed";
+
+    const sipapuaNavigation =
+        performance.getEntriesByType("navigation")[0];
+
+    const sipapuaIsReload =
+        sipapuaNavigation &&
+        sipapuaNavigation.type === "reload";
+
+    if (sipapuaIsReload) {
+        sessionStorage.removeItem(
+            SIPAPUA_POPUP_DISMISSED_KEY
+        );
+    }
+
+    let sipapuaPopupDismissed =
+        sessionStorage.getItem(
+            SIPAPUA_POPUP_DISMISSED_KEY
+        ) === "1";
+
     function sipapuaPopupSafeUrl(value) {
         const raw = String(value || "").trim();
 
@@ -862,6 +892,12 @@
     }
 
     function renderSipapuaPopup(index) {
+
+        if (sipapuaPopupDismissed) {
+            sipapuaPopupShow(false);
+            return;
+        }
+
         if (!sipapuaPopups.length) {
             sipapuaPopupShow(false);
             return;
@@ -937,6 +973,18 @@
 
     function closeSipapuaPopup() {
         sipapuaPopupShow(false);
+    }
+
+    function dismissSipapuaPopup() {
+
+        sipapuaPopupDismissed = true;
+
+        sessionStorage.setItem(
+            SIPAPUA_POPUP_DISMISSED_KEY,
+            "1"
+        );
+
+        closeSipapuaPopup();
     }
 
     function loadSipapuaPopups() {
