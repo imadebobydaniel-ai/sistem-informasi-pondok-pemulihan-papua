@@ -49,14 +49,55 @@
             <option value="Absen Komsel Reguler">Komsel Reguler</option>
             <option value="Absen Komsel Gabungan">Komsel Gabungan</option>
             <option value="Absen Doa">Absen Doa</option>
+            <option value="Doa Puasa Jemaat">Doa Puasa Jemaat</option>
             <option value="Absen KD">Absen KD</option>
             <option value="Absen Pertemuan Pemimpin">Pertemuan Pemimpin</option>
             <option value="Absen Latihan PW">Semua Jenis Latihan </option>
             <option value="Absen Pelayanan PW">Semua Jenis Pelayanan PW</option>
+            <option value="Pelayanan Non PW">Pelayanan Non PW</option>
             <option value="Absen Extention">KEGIATAN EXTENTION (Lainnya)</option>
         </select>
     </div>
 
+    <div id="wilayah-ibadah-container" style="display:block;">
+        <label><i class="fa-solid fa-location-dot"></i> Pilih Wilayah:</label>
+        <select id="wilayah-ibadah">
+            <option value="">-- Pilih Wilayah --</option>
+            <option value="Abepura">Ibadah Abepura</option>
+            <option value="Sentani">Ibadah Sentani</option>
+            <option value="Doyo">Ibadah Doyo</option>
+            <option value="Arso 1">Ibadah Arso 1</option>
+            <option value="Arso 2">Ibadah Arso 2</option>
+        </select>
+    </div>
+
+    <div id="pelayanan-pw-container" class="extra-form" style="display:none;">
+        <label><i class="fa-solid fa-hands-helping"></i> Pilihan Pelayanan PW:</label>
+        <select id="pelayanan-pw">
+            <option value="">-- Pilih Pelayanan PW --</option>
+            <option value="WL">WL</option>
+            <option value="Pemusik">Pemusik</option>
+            <option value="Singers">Singers</option>
+            <option value="Choirs">Choirs</option>
+        </select>
+    </div>
+
+    <div id="pelayanan-nonpw-container" class="extra-form" style="display:none;">
+        <label><i class="fa-solid fa-people-group"></i> Pilihan Pelayanan Non PW:</label>
+        <select id="pelayanan-nonpw">
+            <option value="">-- Pilih Pelayanan Non PW --</option>
+            <option value="Soundman">Soundman</option>
+            <option value="Operator Live Streaming">Operator Live Streaming</option>
+            <option value="Operator Media">Operator Media</option>
+            <option value="Crew Floor">Crew Floor</option>
+            <option value="Tamborin">Tamborin</option>
+            <option value="Flag / Banner">Flag / Banner</option>
+            <option value="Desk User">Desk User</option>
+            <option value="Gate User">Gate User</option>
+            <option value="Parking">Parking</option>
+            <option value="General Affairs">General Affairs</option>
+        </select>
+    </div>
     <div id="gabungan-container">
         <label>Lokasi Komsel :</label>
         <input type="text" id="gab-lokasi" placeholder="Nama Tempat / Alamat">
@@ -130,7 +171,18 @@
     function cekJenisMenu() {
         const menu = document.getElementById("jenis-kegiatan").value;
         document.getElementById("extention-container").style.display = (menu === "Absen Extention") ? "block" : "none";
+        document.getElementById("pelayanan-pw-container").style.display = (menu === "Absen Pelayanan PW") ? "block" : "none";
+        document.getElementById("pelayanan-nonpw-container").style.display = (menu === "Pelayanan Non PW") ? "block" : "none";
         document.getElementById("gabungan-container").style.display = (menu === "Absen Komsel Gabungan") ? "block" : "none";
+        document.getElementById("wilayah-ibadah-container").style.display = (menu === "Absen Ibadah Raya" || menu === "Doa Puasa Jemaat") ? "block" : "none";
+
+        const wilayahOptions = document.querySelectorAll("#wilayah-ibadah option");
+        const prefix = (menu === "Doa Puasa Jemaat") ? "Doa Puasa " : "Ibadah ";
+
+        wilayahOptions.forEach(option => {
+            if (!option.value) return;
+            option.textContent = prefix + option.value;
+        });
     }
 
     function tampilkanInputAlasan() { 
@@ -172,8 +224,11 @@
             const checkB = await db.collection("laporan_komsel_umum")
                             .where("nama", "==", userName)
                             .where("tanggal", "==", today).get();
+            const checkC = await db.collection("laporan_doa")
+                            .where("nama", "==", userName)
+                            .where("tanggal", "==", today).get();
 
-            if (!checkA.empty || !checkB.empty) {
+            if (!checkA.empty || !checkB.empty || !checkC.empty) {
                 showLockDisplay('error', 'Akses Terkunci', 'Anda sudah melakukan pelaporan hari ini. Laporan (Hadir/Tidak Hadir) hanya diizinkan satu kali dalam 24 jam.');
                 return;
             }
@@ -211,6 +266,10 @@
 
     async function saveData(tipe, koordinat, alamat) {
         const menu = document.getElementById("jenis-kegiatan").value;
+        if (menu === "Absen Ibadah Raya" && !document.getElementById("wilayah-ibadah").value) {
+            alert("Mohon pilih wilayah Ibadah Raya terlebih dahulu!");
+            return;
+        }
         const now = new Date();
         const tglHariIni = now.toISOString().split('T')[0];
         
@@ -218,6 +277,8 @@
         let targetColl = "kehadiran_jemaat";
         if (menu === "Absen Komsel Reguler" || menu === "Absen Komsel Gabungan") {
             targetColl = "laporan_komsel_umum";
+        } else if (menu === "Doa Puasa Jemaat") {
+            targetColl = "laporan_doa";
         }
 
         let payload = {
@@ -227,9 +288,33 @@
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             kegiatan: menu,
             lokasi_koordinat: koordinat,
+            ...(menu === "Absen Ibadah Raya" || menu === "Doa Puasa Jemaat" ? { wilayah_ibadah: document.getElementById("wilayah-ibadah").value } : {}),
             alamat_fisik: alamat, // Menyimpan alamat hasil pelacakan
-            keterangan: (tipe === 'TIDAK HADIR') ? document.getElementById("alasan").value : "Hadir di Lokasi"
+            keterangan: (tipe === 'TIDAK HADIR') ? document.getElementById("alasan").value : "Hadir di Lokasi",
+            ...(menu === "Doa Puasa Jemaat" ? {
+                status_doa: tipe,
+                pokok_doa: (tipe === "TIDAK HADIR") ? document.getElementById("alasan").value : "Hadir di Doa Puasa Jemaat"
+            } : {})
         };
+
+        // Data khusus Pelayanan PW / Non PW
+        if (menu === "Absen Pelayanan PW") {
+            const pelayananPW = document.getElementById("pelayanan-pw").value;
+            if (!pelayananPW) {
+                alert("Mohon pilih jenis Pelayanan PW terlebih dahulu!");
+                return;
+            }
+            payload.pelayanan_pw = pelayananPW;
+        }
+
+        if (menu === "Pelayanan Non PW") {
+            const pelayananNonPW = document.getElementById("pelayanan-nonpw").value;
+            if (!pelayananNonPW) {
+                alert("Mohon pilih jenis Pelayanan Non PW terlebih dahulu!");
+                return;
+            }
+            payload.pelayanan_nonpw = pelayananNonPW;
+        }
 
         // Data khusus Extension
         if (menu === "Absen Extention") {
