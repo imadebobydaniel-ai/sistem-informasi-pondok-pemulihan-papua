@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popup Banner - Admin Portal</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --primary: #003366;
+            --secondary: #005bbb;
+            --success: #198754;
+            --warning: #d89b00;
+            --danger: #c62828;
+            --purple: #6f42c1;
+            --bg: #f4f7fb;
+            --card: #ffffff;
+            --text: #203246;
+            --muted: #6b7b8d;
+            --border: #dfe7ef;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .topbar {
+            background: var(--primary);
+            color: white;
+        }
+
+        .topbar-inner {
+            max-width: 1250px;
+            margin: auto;
+            min-height: 64px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .brand {
+            font-size: 19px;
+            font-weight: 900;
+        }
+
+        .back {
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: auto;
+            padding: 22px 20px 50px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar h1 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 26px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 15px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .btn-primary { background: var(--secondary); color: #fff; }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-warning { background: var(--warning); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-secondary { background: #e9eef4; color: var(--primary); }
+
+        .notice {
+            display: none;
+            margin-bottom: 18px;
+            border-radius: 10px;
+            padding: 13px 15px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .notice.ok {
+            display: block;
+            background: #e7f6ec;
+            color: #147a39;
+        }
+
+        .notice.error {
+            display: block;
+            background: #ffe9e9;
+            color: #a40000;
+        }
+
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .slot {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.06);
+            overflow: hidden;
+        }
+
+        .slot-header {
+            padding: 16px 18px;
+            background: #f6f8fb;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .slot-header h2 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .slot-body {
+            padding: 18px;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid #cfd9e4;
+            border-radius: 10px;
+            padding: 11px 12px;
+            font: inherit;
+            color: var(--text);
+            background: #fff;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .preview {
+            min-height: 140px;
+            margin-bottom: 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #edf4ff, #f7f9fb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            overflow: hidden;
+        }
+
+        .preview img {
+            width: 100%;
+            max-height: 220px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .badge {
+            display: inline-flex;
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .badge-published {
+            background: #e7f6ec;
+            color: #147a39;
+        }
+
+        .badge-draft {
+            background: #fff4d6;
+            color: #8d6400;
+        }
+
+        .badge-empty {
+            background: #eef2f6;
+            color: #66788a;
+        }
+
+        .slot-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 850px) {
+            .slot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .topbar-inner {
+                min-height: auto;
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .container {
+                padding: 16px 12px 40px;
+            }
+
+            .toolbar h1 {
+                font-size: 22px;
+            }
+
+            .toolbar,
+            .actions {
+                width: 100%;
+            }
+
+            .actions button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <i class="fa-solid fa-bullhorn"></i>
+            Popup Banner
+        </div>
+
+        <a class="back" href="admin.html">
+            <i class="fa-solid fa-arrow-left"></i>
+            Kembali ke Admin Portal
+        </a>
+    </div>
+</header>
+
+<main class="container">
+
+    <div id="notice" class="notice"></div>
+
+    <div class="toolbar">
+        <h1>Manajemen Popup Banner</h1>
+
+        <div class="actions">
+            <button class="btn-primary" type="button" onclick="saveAllDrafts()">
+                <i class="fa-solid fa-floppy-disk"></i>
+                Simpan Semua
+            </button>
+
+            <button class="btn-success" type="button" onclick="publishAll()">
+                <i class="fa-solid fa-bullhorn"></i>
+                Publish Semua
+            </button>
+        </div>
+    </div>
+
+    <section id="slotGrid" class="slot-grid">
+        <!-- generated by JavaScript -->
+    </section>
+
+</main>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
+    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+
+    const SLOT_IDS = [
+        "popup_1",
+        "popup_2",
+        "popup_3",
+        "popup_4",
+        "popup_5"
+    ];
+
+    let currentUser = null;
+    let currentAdmin = null;
+    let popupCache = {};
+    let popupExists = {};
+
+    function showNotice(message, type = "ok") {
+        const el = document.getElementById("notice");
+        el.className = "notice " + type;
+        el.textContent = message;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function renderSlots() {
+        const grid = document.getElementById("slotGrid");
+
+        grid.innerHTML = SLOT_IDS.map(slotId => {
+            const item = popupCache[slotId] || {};
+
+            const status = item.status || "draft";
+
+            const badge =
+                status === "published"
+                    ? '<span class="badge badge-published">PUBLISHED</span>'
+                    : '<span class="badge badge-draft">DRAFT</span>';
+
+            const imagePreview = item.imageUrl
+                ? `<img src="${escapeHtml(item.imageUrl)}" alt="Popup Banner">`
+                : `<span><i class="fa-regular fa-image fa-2x"></i><br>Belum ada gambar</span>`;
+
+            return `
+                <article class="slot">
+                    <div class="slot-header">
+                        <h2>${slotId.replace("_", " ").toUpperCase()}</h2>
+                        ${badge}
+                    </div>
+
+                    <div class="slot-body">
+
+                        <div class="preview">
+                            ${imagePreview}
+                        </div>
+
+                        <div class="field">
+                            <label>Jenis Popup</label>
+                            <select data-field="type" data-slot="${slotId}">
+                                <option value="banner" ${item.type === "banner" ? "selected" : ""}>Banner</option>
+                                <option value="redaksi" ${item.type === "redaksi" ? "selected" : ""}>Redaksi Informasi</option>
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label>Judul</label>
+                            <input
+                                type="text"
+                                maxlength="180"
+                                data-field="title"
+                                data-slot="${slotId}"
+                                value="${escapeHtml(item.title || "")}">
+                        </div>
+
+                        <div class="field">
+                            <label>Isi Informasi</label>
+                            <textarea
+                                maxlength="1500"
+                                data-field="content"
+                                data-slot="${slotId}">${escapeHtml(item.content || "")}</textarea>
+                        </div>
+
+                                                <div class="field">
+                            <label>Gambar Banner</label>
+
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                                <button
+                                    type="button"
+                                    class="btn-primary"
+                                    data-action="upload"
+                                    data-slot="${slotId}">
+                                    <i class="fa-solid fa-upload"></i>
+                                    Upload 1 Gambar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="btn-secondary"
+                                    data-action="clear-image"
+                                    data-slot="${slotId}">
+                                    <i class="fa-solid fa-xmark"></i>
+                                    Hapus Gambar
+                                </button>
+                            </div>
+
+                            <small style="display:block;margin-top:7px;color:var(--muted);">
+                                Maksimal 1 gambar untuk setiap popup.
+                                Upload berikutnya akan mengganti gambar sebelumnya.
+                            </small>
+
+                            <input
+                                type="url"
+                                data-field="imageUrl"
+                                data-slot="${slotId}"
+                                value="${escapeHtml(item.imageUrl || "")}"
+                                placeholder="URL gambar otomatis dari Cloudinary"
+                                readonly
+                                style="margin-top:10px;">
+                        </div><div class="field">
+                            <label>Link Tujuan (opsional)</label>
+                            <input
+                                type="url"
+                                data-field="targetUrl"
+                                data-slot="${slotId}"
+                                value="${escapeHtml(item.targetUrl || "")}"
+                                placeholder="https://...">
+                        </div>
+
+                        <div class="slot-actions">
+
+                            <button
+                                class="btn-secondary"
+                                type="button"
+                                data-action="save"
+                                data-slot="${slotId}">
+                                Simpan
+                            </button>
+
+                            <button
+                                class="btn-success"
+                                type="button"
+                                data-action="publish"
+                                data-slot="${slotId}">
+                                Publish
+                            </button>
+
+                            <button
+                                class="btn-warning"
+                                type="button"
+                                data-action="draft"
+                                data-slot="${slotId}">
+                                Draft
+                            </button>
+
+                            ${
+                                ["master", "super_admin"].includes(currentAdmin?.role || "")
+                                ? `<button
+                                    class="btn-danger"
+                                    type="button"
+                                    data-action="delete"
+                                    data-slot="${slotId}">
+                                    Hapus
+                                   </button>`
+                                : ""
+                            }
+
+                        </div>
+
+                    </div>
+                </article>
+            `;
+        }).join("");
+    }
+
+    function bukaUploadPopup(slotId) {
+        if (!window.cloudinary) {
+            showNotice(
+                "Upload widget Cloudinary belum siap.",
+                "error"
+            );
+            return;
+        }
+
+        cloudinary.openUploadWidget(
+            {
+                cloudName: "jgihr3lv",
+                uploadPreset: "sipapua_popup_banner",
+
+                multiple: false,
+                maxFiles: 1,
+
+                resourceType: "image",
+                sources: ["local", "url"],
+
+                clientAllowedFormats: [
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "webp"
+                ],
+
+                showAdvancedOptions: false,
+                cropping: false,
+
+                folder: "sipapua/popup-banner"
+            },
+
+            (error, result) => {
+
+                if (error) {
+                    console.error(
+                        "Cloudinary upload error:",
+                        error
+                    );
+
+                    showNotice(
+                        error.message ||
+                        "Upload gambar gagal.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+                if (
+                    result &&
+                    result.event === "success" &&
+                    result.info &&
+                    result.info.secure_url
+                ) {
+
+                    const input =
+                        document.querySelector(
+                            `[data-field="imageUrl"][data-slot="${slotId}"]`
+                        );
+
+                    if (!input) {
+                        showNotice(
+                            "Field gambar popup tidak ditemukan.",
+                            "error"
+                        );
+                        return;
+                    }
+
+                    input.value =
+                        result.info.secure_url;
+
+                    const popup =
+                        popupCache[slotId] || {};
+
+                    popup.imageUrl =
+                        result.info.secure_url;
+
+                    popupCache[slotId] =
+                        popup;
+
+                    const slot =
+                        input.closest(".slot");
+
+                    const preview =
+                        slot
+                            ? slot.querySelector(".preview")
+                            : null;
+
+                    if (preview) {
+                        preview.innerHTML =
+                            `<img
+                                src="${escapeHtml(result.info.secure_url)}"
+                                alt="Popup Banner">`;
+                    }
+
+                    showNotice(
+                        `${slotId}: gambar berhasil diupload.`
+                    );
+                }
+            }
+        );
+    }
+    function getSlotData(slotId) {
+        const getValue = field => {
+            const element = document.querySelector(
+                `[data-field="${field}"][data-slot="${slotId}"]`
+            );
+
+            return element ? element.value.trim() : "";
+        };
+
+        return {
+            type: getValue("type") || "banner",
+            title: getValue("title"),
+            content: getValue("content"),
+            imageUrl: getValue("imageUrl"),
+            targetUrl: getValue("targetUrl")
+        };
+    }
+
+    async function saveSlot(slotId, status = "draft") {
+        const data = getSlotData(slotId);
+
+        if (!data.title && !data.content && !data.imageUrl) {
+            showNotice(
+                `${slotId} masih kosong.`,
+                "error"
+            );
+            return;
+        }
+
+        try {
+            const ref = db.collection("sipapua_popups").doc(slotId);
+
+            const exists = popupExists[slotId] === true;
+
+            if (!exists) {
+                await ref.set({
+                    type: data.type,
+                    title: data.title,
+                    content: data.content,
+                    imageUrl: data.imageUrl,
+                    targetUrl: data.targetUrl,
+                    status,
+                    createdBy: currentUser.uid,
+                    updatedBy: currentUser.uid,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                const updateData = {
+                    type: data.type,
+                    title: data.title,
+                    content: data.content,
+                    imageUrl: data.imageUrl,
+                    targetUrl: data.targetUrl,
+                    status,
+                    updatedBy: currentUser.uid,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await ref.update(updateData);
+            }
+
+            showNotice(
+                status === "published"
+                    ? `${slotId} berhasil dipublish.`
+                    : `${slotId} berhasil disimpan sebagai draft.`
+            );
+        } catch (error) {
+            console.error(error);
+            showNotice(
+                `${slotId}: ${error.message || "Gagal menyimpan."}`,
+                "error"
+            );
+        }
+    }
+
+    async function saveAllDrafts() {
+        for (const slotId of SLOT_IDS) {
+            const data = getSlotData(slotId);
+
+            if (!data.title && !data.content && !data.imageUrl) {
+                continue;
+            }
+
+            await saveSlot(slotId, "draft");
+        }
+
+        showNotice("Semua popup terisi berhasil disimpan sebagai draft.");
+    }
+
+    async function publishAll() {
+        const filled = SLOT_IDS.filter(slotId => {
+            const data = getSlotData(slotId);
+
+            return data.title || data.content || data.imageUrl;
+        });
+
+        if (!filled.length) {
+            showNotice("Belum ada popup yang dapat dipublish.", "error");
+            return;
+        }
+
+        if (filled.length > 5) {
+            showNotice("Maksimal 5 popup yang dapat dipublish.", "error");
+            return;
+        }
+
+        for (const slotId of filled) {
+            await saveSlot(slotId, "published");
+        }
+
+        showNotice(`Berhasil publish ${filled.length} popup.`);
+    }
+
+    async function deleteSlot(slotId) {
+        if (!["master", "super_admin"].includes(currentAdmin.role)) {
+            showNotice("Role Anda tidak memiliki izin menghapus popup.", "error");
+            return;
+        }
+
+        if (!confirm(`Hapus permanen ${slotId}?`)) {
+            return;
+        }
+
+        try {
+            await db.collection("sipapua_popups").doc(slotId).delete();
+            showNotice(`${slotId} berhasil dihapus.`);
+        } catch (error) {
+            console.error(error);
+            showNotice("Gagal menghapus popup.", "error");
+        }
+    }
+
+    document.addEventListener("click", event => {
+
+        const button =
+            event.target.closest(
+                "[data-action][data-slot]"
+            );
+
+        if (!button) return;
+
+        const slotId =
+            button.dataset.slot;
+
+        const action =
+            button.dataset.action;
+
+        if (action === "upload") {
+            bukaUploadPopup(slotId);
+            return;
+        }
+
+        if (action === "clear-image") {
+
+            const input =
+                document.querySelector(
+                    `[data-field="imageUrl"][data-slot="${slotId}"]`
+                );
+
+            if (input) {
+                input.value = "";
+            }
+
+            const popup =
+                popupCache[slotId] || {};
+
+            popup.imageUrl = "";
+
+            popupCache[slotId] =
+                popup;
+
+            const slot =
+                input
+                    ? input.closest(".slot")
+                    : null;
+
+            const preview =
+                slot
+                    ? slot.querySelector(".preview")
+                    : null;
+
+            if (preview) {
+                preview.innerHTML =
+                    '<span><i class="fa-regular fa-image fa-2x"></i><br>Belum ada gambar</span>';
+            }
+
+            showNotice(
+                `${slotId}: gambar dihapus dari form.`
+            );
+
+            return;
+        }
+
+        if (action === "save") {
+            saveSlot(slotId, "draft");
+            return;
+        }
+
+        if (action === "publish") {
+            saveSlot(slotId, "published");
+            return;
+        }
+
+        if (action === "draft") {
+            saveSlot(slotId, "draft");
+            return;
+        }
+
+        if (action === "delete") {
+            deleteSlot(slotId);
+        }
+    });
+
+
+    function startPopupListener() {
+        const refs = SLOT_IDS.map(
+            slotId => db.collection("sipapua_popups").doc(slotId)
+        );
+
+        refs.forEach(ref => {
+            ref.onSnapshot(snapshot => {
+                popupExists[snapshot.id] = snapshot.exists;
+
+                popupCache[snapshot.id] = snapshot.exists
+                    ? snapshot.data()
+                    : {};
+
+                renderSlots();
+            }, error => {
+                console.error(error);
+                showNotice(
+                    "Gagal memuat Popup Banner: " + error.message,
+                    "error"
+                );
+            });
+        });
+    }
+
+    auth.onAuthStateChanged(async user => {
+        if (!user) {
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        try {
+            const adminSnap = await db
+                .collection("admin_users")
+                .doc(user.uid)
+                .get();
+
+            if (!adminSnap.exists) {
+                throw new Error("ADMIN_NOT_FOUND");
+            }
+
+            const adminData = adminSnap.data() || {};
+            const role = adminData.role || "";
+            const status = adminData.status || "inactive";
+
+            if (!ADMIN_ROLES.has(role)) {
+                throw new Error("ADMIN_NOT_AUTHORIZED");
+            }
+
+            if (status !== "active") {
+                throw new Error("ADMIN_INACTIVE");
+            }
+
+            if (
+                user.uid === MASTER_UID &&
+                (role !== "master" || adminData.protected !== true)
+            ) {
+                throw new Error("MASTER_PROTECTION_INVALID");
+            }
+
+            currentUser = user;
+            currentAdmin = {
+                role,
+                name: adminData.name || adminData.nama || ""
+            };
+
+            renderSlots();
+            startPopupListener();
+
+        } catch (error) {
+            console.error("Popup authorization error:", error);
+            window.location.replace("login_cyber.html");
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -96,8 +96,96 @@ service cloud.firestore {
       // Modul sekarang menggunakan status inactive.
       allow delete: if false;
     }
-
     // =========================================================
+    // SIPAPUA NEWS - SECURED
+    // =========================================================
+
+    function isNewsAdmin() {
+      return signedIn()
+        && myRole() in ["master", "super_admin", "admin", "viewer"];
+    }
+
+    function isNewsEditor() {
+      return signedIn()
+        && myRole() in ["master", "super_admin", "admin"];
+    }
+
+    match /sipapua_news/{newsId} {
+      allow read: if
+        resource.data.status == "published"
+        || isNewsAdmin();
+
+      allow create: if
+        isNewsEditor()
+        && request.resource.data.status in ["draft", "published"]
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if
+        isNewsEditor()
+        && request.resource.data.status in ["draft", "published"]
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if
+        signedIn()
+        && myRole() in ["master", "super_admin"];
+    }
+    // =========================================================
+    // SIPAPUA POPUP BANNER - SECURED
+    // =========================================================
+
+    function isPopupAdmin() {
+      return signedIn()
+        && myRole() in ["master", "super_admin", "admin", "viewer"];
+    }
+
+    function isPopupEditor() {
+      return signedIn()
+        && myRole() in ["master", "super_admin", "admin"];
+    }
+
+    function isValidPopupSlot(slotId) {
+      return slotId in [
+        "popup_1",
+        "popup_2",
+        "popup_3",
+        "popup_4",
+        "popup_5"
+      ];
+    }
+
+    match /sipapua_popups/{popupId} {
+      allow read: if
+        isValidPopupSlot(popupId)
+        && (
+          resource.data.status == "published"
+          || isPopupAdmin()
+        );
+
+      allow create: if
+        isValidPopupSlot(popupId)
+        && isPopupEditor()
+        && request.resource.data.status in ["draft", "published"]
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if
+        isValidPopupSlot(popupId)
+        && isPopupEditor()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ["draft", "published"];
+
+      allow delete: if
+        isValidPopupSlot(popupId)
+        && signedIn()
+        && myRole() in ["master", "super_admin"];
+    }
     // EXISTING COLLECTIONS - TEMPORARY COMPATIBILITY
     // =========================================================
 

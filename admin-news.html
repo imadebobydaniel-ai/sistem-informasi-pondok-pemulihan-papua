@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News SIPAPUA - Admin Portal</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root {
+            --primary: #003366;
+            --secondary: #005bbb;
+            --success: #198754;
+            --warning: #d89b00;
+            --danger: #c62828;
+            --bg: #f4f7fb;
+            --card: #fff;
+            --text: #203246;
+            --muted: #6b7b8d;
+            --border: #dfe7ef;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        a { text-decoration: none; }
+
+        .topbar {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .topbar-inner {
+            max-width: 1280px;
+            margin: auto;
+            min-height: 64px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .brand {
+            font-weight: 900;
+            font-size: 19px;
+        }
+
+        .back {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: auto;
+            padding: 22px 20px 50px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .stat {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 7px 20px rgba(0,0,0,.05);
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .stat-value {
+            margin-top: 6px;
+            font-size: 30px;
+            font-weight: 900;
+            color: var(--primary);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 7px 20px rgba(0,0,0,.05);
+            overflow: hidden;
+        }
+
+        .panel-head {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            border: 1px solid #cfd9e4;
+            border-radius: 10px;
+            padding: 11px 12px;
+            font: inherit;
+            color: var(--text);
+            background: #fff;
+        }
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        .field { margin-bottom: 15px; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 15px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .btn-primary { background: var(--secondary); color: #fff; }
+        .btn-secondary { background: #e9eef4; color: var(--primary); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-warning { background: var(--warning); color: #fff; }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 920px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px 13px;
+            border-bottom: 1px solid #edf1f5;
+            text-align: left;
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        th {
+            background: #f4f7fb;
+            color: var(--primary);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .badge {
+            display: inline-flex;
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .badge-published {
+            background: #e7f6ec;
+            color: #147a39;
+        }
+
+        .badge-draft {
+            background: #fff4d6;
+            color: #8d6400;
+        }
+
+        .badge-video {
+            background: #ffe9e9;
+            color: #b00000;
+        }
+
+        .thumb {
+            width: 72px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #eaf0f6;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .empty {
+            padding: 50px 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .notice {
+            margin-bottom: 18px;
+            padding: 13px 15px;
+            border-radius: 10px;
+            display: none;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .notice.ok {
+            display: block;
+            background: #e7f6ec;
+            color: #147a39;
+        }
+
+        .notice.error {
+            display: block;
+            background: #ffe9e9;
+            color: #a40000;
+        }
+
+        @media (max-width: 950px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 600px) {
+            .topbar-inner {
+                min-height: auto;
+                padding: 14px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .container {
+                padding: 16px 12px 40px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <i class="fa-solid fa-newspaper"></i>
+            News SIPAPUA
+        </div>
+
+        <a class="back" href="admin.html">
+            <i class="fa-solid fa-arrow-left"></i>
+            Kembali ke Admin Portal
+        </a>
+    </div>
+</header>
+
+<main class="container">
+
+    <div id="notice" class="notice"></div>
+
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-label">Total Berita</div>
+            <div class="stat-value" id="totalCount">0</div>
+        </div>
+
+        <div class="stat">
+            <div class="stat-label">Published</div>
+            <div class="stat-value" id="publishedCount">0</div>
+        </div>
+
+        <div class="stat">
+            <div class="stat-label">Draft</div>
+            <div class="stat-value" id="draftCount">0</div>
+        </div>
+
+        <div class="stat">
+            <div class="stat-label">Video</div>
+            <div class="stat-value" id="videoCount">0</div>
+        </div>
+    </section>
+
+    <section class="layout">
+
+        <article class="panel">
+            <div class="panel-head">
+                <h2 id="formTitle">Tambah Berita</h2>
+            </div>
+
+            <div class="panel-body">
+
+                <div class="field">
+                    <label for="title">Judul Berita</label>
+                    <input id="title" type="text" maxlength="180">
+                </div>
+
+                <div class="field">
+                    <label for="slug">Slug</label>
+                    <input id="slug" type="text" maxlength="180">
+                </div>
+
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="category">Kategori</label>
+                        <select id="category">
+                            <option value="Pelayanan">Pelayanan</option>
+                            <option value="Kegiatan">Kegiatan</option>
+                            <option value="Jemaat">Jemaat</option>
+                            <option value="Komunitas">Komunitas</option>
+                            <option value="Obat Iman">Obat Iman</option>
+                            <option value="Pengumuman">Pengumuman</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="status">Status</label>
+                        <select id="status">
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="excerpt">Ringkasan</label>
+                    <textarea id="excerpt" maxlength="400"></textarea>
+                </div>
+
+                <div class="field">
+                    <label for="content">Isi Berita</label>
+                    <textarea id="content"></textarea>
+                </div>
+
+                                <div class="field">
+                    <label>Foto Berita</label>
+
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button
+                            type="button"
+                            class="btn-primary"
+                            id="btnUploadNewsImages">
+                            <i class="fa-solid fa-images"></i>
+                            Upload Foto
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            id="btnClearNewsImages">
+                            <i class="fa-solid fa-xmark"></i>
+                            Hapus Semua Foto
+                        </button>
+                    </div>
+
+                    <small style="display:block;margin-top:7px;color:var(--muted);">
+                        Maksimal 5 foto untuk setiap berita.
+                    </small>
+
+                    <div id="newsImageCount"
+                         style="margin-top:10px;font-weight:800;color:var(--primary);">
+                        0 / 5 foto
+                    </div>
+
+                    <div id="newsImagePreview"
+                         style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:10px;">
+                    </div>
+                </div>
+
+                <input type="hidden" id="coverImage">
+
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="mediaType">Jenis Media</label>
+                        <select id="mediaType">
+                            <option value="none">Tanpa Media</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="video">Video</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="mediaUrl">URL Media</label>
+                        <input
+                            id="mediaUrl"
+                            type="url"
+                            placeholder="https://...">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button
+                        class="btn-success"
+                        type="button"
+                        onclick="saveNews('published')">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Publish
+                    </button>
+
+                    <button
+                        class="btn-primary"
+                        type="button"
+                        id="saveBtn"
+                        onclick="saveNews('draft')">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Simpan / Draft
+                    </button>
+
+                    <button
+                        class="btn-secondary"
+                        type="button"
+                        onclick="resetForm()">
+                        <i class="fa-solid fa-ban"></i>
+                        Batal
+                    </button>
+                </div>
+
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-head">
+                <h2>Daftar Berita</h2>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Media</th>
+                            <th>Judul</th>
+                            <th>Kategori</th>
+                            <th>Status</th>
+                            <th>Penulis</th>
+                            <th>Tanggal</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="newsTableBody">
+                        <tr>
+                            <td colspan="7" class="empty">Memuat data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+    </section>
+
+</main>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
+    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+
+    let currentUser = null;
+    let currentAdmin = null;
+    let editingId = null;
+    let newsCache = [];
+    let newsImages = [];
+
+    function showNotice(message, type = "ok") {
+        const el = document.getElementById("notice");
+        el.className = "notice " + type;
+        el.textContent = message;
+    }
+
+    function hideNotice() {
+        const el = document.getElementById("notice");
+        el.className = "notice";
+        el.textContent = "";
+    }
+
+    function slugify(value) {
+        return String(value || "")
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-");
+    }
+
+    function formatDate(value) {
+        if (!value) return "-";
+
+        const date = value.toDate
+            ? value.toDate()
+            : new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return "-";
+        }
+
+        return new Intl.DateTimeFormat("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        }).format(date);
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function youtubeId(value) {
+        const input = String(value || "").trim();
+
+        const patterns = [
+            /youtu\.be\/([A-Za-z0-9_-]{11})/,
+            /youtube\.com\/watch\?v=([A-Za-z0-9_-]{11})/,
+            /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/
+        ];
+
+        for (const pattern of patterns) {
+            const match = input.match(pattern);
+            if (match) return match[1];
+        }
+
+        if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
+            return input;
+        }
+
+        return "";
+    }
+
+    function validateMedia() {
+        const mediaType = document.getElementById("mediaType").value;
+        const mediaUrl = document.getElementById("mediaUrl").value.trim();
+
+        if (mediaType === "youtube" && mediaUrl && !youtubeId(mediaUrl)) {
+            throw new Error("URL YouTube tidak valid.");
+        }
+
+        if (mediaType !== "none" && !mediaUrl) {
+            throw new Error("URL media wajib diisi untuk jenis media yang dipilih.");
+        }
+    }
+
+    function resetForm() {
+        editingId = null;
+
+        document.getElementById("formTitle").textContent = "Tambah Berita";
+        document.getElementById("saveBtn").innerHTML =
+            '<i class="fa-solid fa-floppy-disk"></i> Simpan';
+
+        document.getElementById("title").value = "";
+        document.getElementById("slug").value = "";
+        document.getElementById("category").value = "Pelayanan";
+        document.getElementById("status").value = "draft";
+        document.getElementById("excerpt").value = "";
+        document.getElementById("content").value = "";
+        newsImages = [];
+        renderNewsImages();
+        document.getElementById("mediaType").value = "none";
+        document.getElementById("mediaUrl").value = "";
+
+        hideNotice();
+    }
+
+    function fillForm(item) {
+        editingId = item.id;
+
+        document.getElementById("formTitle").textContent = "Edit Berita";
+        document.getElementById("saveBtn").innerHTML =
+            '<i class="fa-solid fa-pen"></i> Update Berita';
+
+        document.getElementById("title").value = item.title || "";
+        document.getElementById("slug").value = item.slug || "";
+        document.getElementById("category").value = item.category || "Pelayanan";
+        document.getElementById("status").value = item.status || "draft";
+        document.getElementById("excerpt").value = item.excerpt || "";
+        document.getElementById("content").value = item.content || "";
+        newsImages = Array.isArray(item.images) ? item.images.slice(0, 5) : (item.coverImage ? [item.coverImage] : []);
+        renderNewsImages();
+        document.getElementById("mediaType").value = item.mediaType || "none";
+        document.getElementById("mediaUrl").value = item.mediaUrl || "";
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderNewsImages() {
+        const preview = document.getElementById("newsImagePreview");
+        const count = document.getElementById("newsImageCount");
+
+        if (!preview || !count) return;
+
+        count.textContent = `${newsImages.length} / 5 foto`;
+
+        preview.innerHTML = newsImages.map((url, index) => `
+            <div style="
+                position:relative;
+                border-radius:8px;
+                overflow:hidden;
+                background:#eef2f6;
+                aspect-ratio:1/1;">
+                <img
+                    src="${escapeHtml(url)}"
+                    alt="Foto berita ${index + 1}"
+                    style="width:100%;height:100%;object-fit:cover;">
+                <button
+                    type="button"
+                    data-remove-news-image="${index}"
+                    style="
+                        position:absolute;
+                        top:4px;
+                        right:4px;
+                        width:28px;
+                        height:28px;
+                        border:0;
+                        border-radius:50%;
+                        background:rgba(0,0,0,.65);
+                        color:#fff;
+                        cursor:pointer;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        `).join("");
+
+        const cover = document.getElementById("coverImage");
+
+        if (cover) {
+            cover.value = newsImages[0] || "";
+        }
+    }
+
+    function bukaUploadNewsImages() {
+        if (!window.cloudinary) {
+            showNotice("Cloudinary Upload Widget belum siap.", "error");
+            return;
+        }
+
+        const remaining = 5 - newsImages.length;
+
+        if (remaining <= 0) {
+            showNotice("Maksimal 5 foto per berita.", "error");
+            return;
+        }
+
+        cloudinary.openUploadWidget(
+            {
+                cloudName: "jgihr3lv",
+                uploadPreset: "sipapua_news_images",
+                sources: ["local", "url"],
+                multiple: true,
+                maxFiles: remaining,
+                resourceType: "image",
+                clientAllowedFormats: [
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "webp"
+                ],
+                folder: "sipapua/news",
+                showAdvancedOptions: false,
+                cropping: false
+            },
+            (error, result) => {
+                if (error) {
+                    console.error(
+                        "NEWS CLOUDINARY UPLOAD ERROR:",
+                        error
+                    );
+
+                    console.error(
+                        "NEWS CLOUDINARY UPLOAD ERROR JSON:",
+                        JSON.stringify(error, null, 2)
+                    );
+
+                    const errorMessage =
+                        error?.message ||
+                        error?.statusText ||
+                        error?.error?.message ||
+                        error?.error?.status ||
+                        "HTTP 400 / Cloudinary menolak upload.";
+
+                    showNotice(
+                        "Upload News gagal: " + errorMessage,
+                        "error"
+                    );
+
+                    return;
+                }
+
+                if (
+                    result &&
+                    result.event === "success" &&
+                    result.info &&
+                    result.info.secure_url
+                ) {
+                    if (newsImages.length >= 5) {
+                        return;
+                    }
+
+                    newsImages.push(result.info.secure_url);
+                    newsImages = newsImages.slice(0, 5);
+
+                    renderNewsImages();
+
+                    showNotice(
+                        `Foto berhasil ditambahkan. ${newsImages.length}/5 foto.`
+                    );
+                }
+            }
+        );
+    }
+
+    function clearNewsImages() {
+        newsImages = [];
+        renderNewsImages();
+    }
+    async function saveNews() {
+        hideNotice();
+
+        const title = document.getElementById("title").value.trim();
+        const slug = slugify(
+            document.getElementById("slug").value.trim() || title
+        );
+        const category = document.getElementById("category").value;
+        const status = document.getElementById("status").value;
+        const excerpt = document.getElementById("excerpt").value.trim();
+        const content = document.getElementById("content").value.trim();
+        const coverImage = document.getElementById("coverImage").value.trim();
+        const mediaType = document.getElementById("mediaType").value;
+        const mediaUrl = document.getElementById("mediaUrl").value.trim();
+
+        if (!title) {
+            showNotice("Judul berita wajib diisi.", "error");
+            return;
+        }
+
+        if (!content) {
+            showNotice("Isi berita wajib diisi.", "error");
+            return;
+        }
+
+        try {
+            validateMedia();
+
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+
+            if (!editingId) {
+                await db.collection("sipapua_news").add({
+                    title,
+                    slug,
+                    excerpt,
+                    content,
+                    category,
+                    coverImage,
+                    mediaType,
+                    mediaUrl,
+                    status,
+                    authorUid: currentUser.uid,
+                    authorName: currentAdmin.name || currentUser.email || "Admin",
+                    createdAt: now,
+                    updatedAt: now,
+                    publishedAt: status === "published" ? now : null
+                });
+
+                showNotice("Berita berhasil dibuat.");
+            } else {
+                const existing = newsCache.find(item => item.id === editingId);
+
+                const updateData = {
+                    title,
+                    slug,
+                    excerpt,
+                    content,
+                    category,
+                    coverImage,
+                    mediaType,
+                    mediaUrl,
+                    status,
+                    updatedAt: now
+                };
+
+                if (
+                    status === "published" &&
+                    (!existing || existing.status !== "published")
+                ) {
+                    updateData.publishedAt = now;
+                }
+
+                if (
+                    status === "draft" &&
+                    existing &&
+                    existing.status === "published"
+                ) {
+                    updateData.publishedAt = null;
+                }
+
+                await db.collection("sipapua_news")
+                    .doc(editingId)
+                    .update(updateData);
+
+                showNotice("Berita berhasil diperbarui.");
+            }
+
+            resetForm();
+        } catch (error) {
+            console.error(error);
+            showNotice(
+                error.message || "Gagal menyimpan berita.",
+                "error"
+            );
+        }
+    }
+
+    async function deleteNews(id) {
+        if (!["master", "super_admin"].includes(currentAdmin.role)) {
+            showNotice("Role Anda tidak memiliki izin menghapus berita.", "error");
+            return;
+        }
+
+        const item = newsCache.find(news => news.id === id);
+
+        if (!item) {
+            showNotice("Data berita tidak ditemukan.", "error");
+            return;
+        }
+
+        if (!confirm("Hapus berita ini secara permanen?")) {
+            return;
+        }
+
+        try {
+            await db.collection("sipapua_news").doc(id).delete();
+            showNotice("Berita berhasil dihapus.");
+        } catch (error) {
+            console.error(error);
+            showNotice("Gagal menghapus berita.", "error");
+        }
+    }
+
+    function renderStats() {
+        const total = newsCache.length;
+        const published = newsCache.filter(
+            item => item.status === "published"
+        ).length;
+        const draft = newsCache.filter(
+            item => item.status === "draft"
+        ).length;
+        const video = newsCache.filter(
+            item => ["youtube", "video"].includes(item.mediaType)
+        ).length;
+
+        document.getElementById("totalCount").textContent = total;
+        document.getElementById("publishedCount").textContent = published;
+        document.getElementById("draftCount").textContent = draft;
+        document.getElementById("videoCount").textContent = video;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("newsTableBody");
+
+        if (!newsCache.length) {
+            tbody.innerHTML =
+                '<tr><td colspan="7" class="empty">Belum ada berita.</td></tr>';
+            renderStats();
+            return;
+        }
+
+        tbody.innerHTML = newsCache.map(item => {
+            const badgeClass =
+                item.status === "published"
+                    ? "badge badge-published"
+                    : "badge badge-draft";
+
+            const mediaBadge =
+                item.mediaType && item.mediaType !== "none"
+                    ? '<span class="badge badge-video">MEDIA</span>'
+                    : "";
+
+            const image = item.coverImage
+                ? `<img class="thumb" src="${escapeHtml(item.coverImage)}" alt="">`
+                : `<div class="thumb"></div>`;
+
+            return `
+                <tr>
+                    <td>
+                        ${image}
+                        <div style="margin-top:6px">${mediaBadge}</div>
+                    </td>
+
+                    <td>
+                        <strong>${escapeHtml(item.title || "-")}</strong>
+                        <div class="muted">${escapeHtml(item.slug || "")}</div>
+                    </td>
+
+                    <td>${escapeHtml(item.category || "-")}</td>
+
+                    <td>
+                        <span class="${badgeClass}">
+                            ${escapeHtml(item.status || "-")}
+                        </span>
+                    </td>
+
+                    <td>${escapeHtml(item.authorName || "-")}</td>
+
+                    <td>${formatDate(item.publishedAt || item.createdAt)}</td>
+
+                    <td>
+                        <div class="actions">
+                            <button
+                                class="btn-secondary"
+                                type="button"
+                                data-action="edit"
+                                data-id="${escapeHtml(item.id)}">
+                                Edit
+                            </button>
+
+                            ${
+                                item.status === "draft"
+                                ? `<button
+                                    class="btn-success"
+                                    type="button"
+                                    data-action="publish"
+                                    data-id="${escapeHtml(item.id)}">
+                                    Publish
+                                   </button>`
+                                : `<button
+                                    class="btn-warning"
+                                    type="button"
+                                    data-action="draft"
+                                    data-id="${escapeHtml(item.id)}">
+                                    Draft
+                                   </button>`
+                            }
+
+                            ${
+                                ["master", "super_admin"].includes(currentAdmin.role)
+                                ? `<button
+                                    class="btn-danger"
+                                    type="button"
+                                    data-action="delete"
+                                    data-id="${escapeHtml(item.id)}">
+                                    Hapus
+                                   </button>`
+                                : ""
+                            }
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        renderStats();
+    }
+
+    async function quickPublish(id) {
+        await updateStatus(id, "published");
+    }
+
+    async function quickDraft(id) {
+        await updateStatus(id, "draft");
+    }
+
+    async function updateStatus(id, status) {
+        const item = newsCache.find(news => news.id === id);
+
+        if (!item) return;
+
+        try {
+            const updateData = {
+                status,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (
+                status === "published" &&
+                item.status !== "published"
+            ) {
+                updateData.publishedAt =
+                    firebase.firestore.FieldValue.serverTimestamp();
+            }
+
+            if (status === "draft") {
+                updateData.publishedAt = null;
+            }
+
+            await db.collection("sipapua_news")
+                .doc(id)
+                .update(updateData);
+
+            showNotice(
+                status === "published"
+                    ? "Berita dipublikasikan."
+                    : "Berita dikembalikan ke draft."
+            );
+        } catch (error) {
+            console.error(error);
+            showNotice("Gagal mengubah status berita.", "error");
+        }
+    }
+
+    document.addEventListener("click", event => {
+        const button = event.target.closest("button[data-action][data-id]");
+
+        if (!button) return;
+
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+        const item = newsCache.find(news => news.id === id);
+
+        if (!item) {
+            showNotice("Data berita tidak ditemukan.", "error");
+            return;
+        }
+
+        if (action === "edit") {
+            fillForm(item);
+            return;
+        }
+
+        if (action === "publish") {
+            quickPublish(id);
+            return;
+        }
+
+        if (action === "draft") {
+            quickDraft(id);
+            return;
+        }
+
+        if (action === "delete") {
+            deleteNews(id);
+        }
+    });
+    document.getElementById("btnUploadNewsImages")
+        ?.addEventListener("click", bukaUploadNewsImages);
+
+    document.getElementById("btnClearNewsImages")
+        ?.addEventListener("click", clearNewsImages);
+
+    document.addEventListener("click", event => {
+        const button = event.target.closest("[data-remove-news-image]");
+
+        if (!button) return;
+
+        const index = Number(button.dataset.removeNewsImage);
+
+        if (!Number.isInteger(index)) return;
+
+        newsImages.splice(index, 1);
+        renderNewsImages();
+    });
+    function startNewsListener() {
+        db.collection("sipapua_news")
+            .orderBy("createdAt", "desc")
+            .limit(100)
+            .onSnapshot(snapshot => {
+                newsCache = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                renderTable();
+            }, error => {
+                console.error(error);
+                showNotice(
+                    "Gagal memuat News SIPAPUA: " + error.message,
+                    "error"
+                );
+            });
+    }
+
+    auth.onAuthStateChanged(async user => {
+        if (!user) {
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        try {
+            const adminSnap = await db
+                .collection("admin_users")
+                .doc(user.uid)
+                .get();
+
+            if (!adminSnap.exists) {
+                throw new Error("ADMIN_NOT_FOUND");
+            }
+
+            const adminData = adminSnap.data() || {};
+            const role = adminData.role || "";
+            const status = adminData.status || "inactive";
+
+            if (!ADMIN_ROLES.has(role)) {
+                throw new Error("ADMIN_NOT_AUTHORIZED");
+            }
+
+            if (status !== "active") {
+                throw new Error("ADMIN_INACTIVE");
+            }
+
+            if (
+                user.uid === MASTER_UID &&
+                (role !== "master" || adminData.protected !== true)
+            ) {
+                throw new Error("MASTER_PROTECTION_INVALID");
+            }
+
+            currentUser = user;
+            currentAdmin = {
+                role,
+                name: adminData.name || adminData.nama || ""
+            };
+
+            startNewsListener();
+
+        } catch (error) {
+            console.error("News authorization error:", error);
+            window.location.replace("login_cyber.html");
+        }
+    });
+</script>
+
+</body>
+</html>
