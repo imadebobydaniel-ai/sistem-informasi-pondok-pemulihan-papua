@@ -46,7 +46,7 @@
 
 <nav class="navbar navbar-dark bg-primary mb-4 no-print">
     <div class="container-fluid">
-        <span class="navbar-brand mb-0 h1"><i class="fas fa-ticket-alt me-2"></i> Portal Tiket Masuk</span>
+        <span class="navbar-brand mb-0 h1"><i class="fas fa-headset me-2"></i> Call Center</span>
         <a href="admin.html" class="btn btn-light btn-sm"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
     </div>
 </nav>
@@ -83,11 +83,14 @@
         <div class="card-body d-flex justify-content-between align-items-center">
             <div class="d-flex gap-2">
                 <select class="form-select w-auto" id="filterKategori" onchange="loadTickets()">
-                    <option value="">Semua Kategori</option>
-                    <option value="Permohonan Doa">Permohonan Doa</option>
-                    <option value="Masalah Aplikasi">Masalah Aplikasi</option>
-                    <option value="Saran & Masukan">Saran & Masukan</option>
-                </select>
+    <option value="">Semua Kategori</option>
+    <option value="Call Operator">Call Operator</option>
+    <option value="Kritik dan Saran">Kritik dan Saran</option>
+    <option value="Permohonan Doa">Permohonan Doa</option>
+    <option value="Appointment">Appointment</option>
+    <option value="Pelayanan Pastoral">Pelayanan Pastoral</option>
+    <option value="Gangguan Aplikasi">Gangguan Aplikasi</option>
+</select>
                 <button class="btn btn-outline-primary" onclick="loadTickets()"><i class="fas fa-sync"></i> Refresh</button>
             </div>
             <div class="btn-group">
@@ -103,6 +106,14 @@
             <table class="table table-hover align-middle mb-0" id="tiketTable">
                 <thead class="table-light">
                     <tr>
+                        <th style="width: 45px;" class="no-print text-center">
+                            <input
+                                type="checkbox"
+                                id="selectAllTickets"
+                                class="form-check-input"
+                                onchange="toggleSelectAll(this)"
+                                title="Pilih semua tiket yang tampil">
+                        </th>
                         <th>No Tiket</th>
                         <th>Kategori</th>
                         <th>Tanggal Masuk</th>
@@ -156,50 +167,177 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
 
+    let ticketListener = null;
+
     function loadTickets() {
         const filterVal = document.getElementById('filterKategori').value;
-        db.collection("saran_masukan").orderBy("timestamp", "desc").onSnapshot(snap => {
-            const tbody = document.getElementById('tiketData');
-            tbody.innerHTML = "";
-            let cDoa = 0, cProb = 0, cSaran = 0, total = 0;
 
-            snap.forEach((doc) => {
-                const t = doc.data();
-                const id = doc.id;
+        if (ticketListener) {
+            ticketListener();
+            ticketListener = null;
+        }
 
-                if(t.kategori === "Permohonan Doa") cDoa++;
-                if(t.kategori === "Masalah Aplikasi") cProb++;
-                if(t.kategori === "Saran & Masukan") cSaran++;
-                total++;
+        const selectAll = document.getElementById('selectAllTickets');
+        if (selectAll) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+        }
 
-                if(filterVal !== "" && t.kategori !== filterVal) return;
+        ticketListener = db.collection("saran_masukan")
+            .orderBy("timestamp", "desc")
+            .onSnapshot(snap => {
+                const tbody = document.getElementById('tiketData');
+                tbody.innerHTML = "";
 
-                const statusClass = t.status === 'Selesai' ? 'badge-selesai' : 'badge-proses';
+                let total = 0;
+                let cCallOperator = 0;
+                let cKritikSaran = 0;
+                let cDoa = 0;
+                let cAppointment = 0;
+                let cPastoral = 0;
+                let cGangguan = 0;
 
-                tbody.innerHTML += `
-                    <tr>
-                        <td><small class="text-muted">${t.nomor_tiket || '-'}</small></td>
-                        <td class="clickable-cat" onclick="showDetail('${id}')">
-                            <span class="badge bg-info text-dark shadow-sm">${t.kategori}</span>
-                        </td>
-                        <td>${t.tanggal_kirim} <br><small>${t.jam_kirim || ''}</small></td>
-                        <td><b>${t.nama}</b><br><small>${t.jc || '-'}</small></td>
-                        <td><span class="badge ${statusClass}">${(t.status || 'PROSES').toUpperCase()}</span></td>
-                        <td class="no-print">
-                            <div class="d-flex gap-1">
-                                <button class="btn-view" onclick="showDetail('${id}')" title="Lihat Detail"><i class="fas fa-eye"></i></button>
-                                ${t.status !== 'Selesai' ? `<button class="btn-update" onclick="updateStatus('${id}')" title="Selesaikan"><i class="fas fa-check"></i></button>` : ''}
-                                <button class="btn-delete" onclick="deleteTicket('${id}')" title="Hapus"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>`;
+                snap.forEach((doc) => {
+                    const t = doc.data();
+                    const id = doc.id;
+
+                    total++;
+
+                    if (t.kategori === "Call Operator") cCallOperator++;
+                    if (t.kategori === "Kritik dan Saran") cKritikSaran++;
+                    if (t.kategori === "Permohonan Doa") cDoa++;
+                    if (t.kategori === "Appointment") cAppointment++;
+                    if (t.kategori === "Pelayanan Pastoral") cPastoral++;
+                    if (t.kategori === "Gangguan Aplikasi") cGangguan++;
+
+                    if (filterVal !== "" && t.kategori !== filterVal) {
+                        return;
+                    }
+
+                    const statusClass =
+                        t.status === 'Selesai'
+                            ? 'badge-selesai'
+                            : 'badge-proses';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="no-print text-center">
+                                <input
+                                    type="checkbox"
+                                    class="form-check-input ticket-check"
+                                    value="${id}"
+                                    onchange="syncSelectAll()"
+                                    title="Pilih tiket">
+                            </td>
+
+                            <td>
+                                <small class="text-muted">
+                                    ${t.nomor_tiket || '-'}
+                                </small>
+                            </td>
+
+                            <td class="clickable-cat"
+                                onclick="showDetail('${id}')">
+                                <span class="badge bg-info text-dark shadow-sm">
+                                    ${t.kategori || '-'}
+                                </span>
+                            </td>
+
+                            <td>
+                                ${t.tanggal_kirim || '-'}
+                                <br>
+                                <small>${t.jam_kirim || ''}</small>
+                            </td>
+
+                            <td>
+                                <b>${t.nama || '-'}</b>
+                                <br>
+                                <small>${t.jc || '-'}</small>
+                            </td>
+
+                            <td>
+                                <span class="badge ${statusClass}">
+                                    ${(t.status || 'PROSES').toUpperCase()}
+                                </span>
+                            </td>
+
+                            <td class="no-print">
+                                <div class="d-flex gap-1">
+                                    <button
+                                        class="btn-view"
+                                        onclick="showDetail('${id}')"
+                                        title="Lihat Detail">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+
+                                    ${t.status !== 'Selesai'
+                                        ? `<button
+                                            class="btn-update"
+                                            onclick="updateStatus('${id}')"
+                                            title="Selesaikan">
+                                            <i class="fas fa-check"></i>
+                                           </button>`
+                                        : ''}
+
+                                    <button
+                                        class="btn-delete"
+                                        onclick="deleteTicket('${id}')"
+                                        title="Hapus">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                document.getElementById('totalTiket').innerText = total;
+                document.getElementById('countDoa').innerText = cDoa;
+                document.getElementById('countProblem').innerText = cGangguan;
+                document.getElementById('countSaran').innerText = cKritikSaran;
+
+                syncSelectAll();
             });
+    }
 
-            document.getElementById('totalTiket').innerText = total;
-            document.getElementById('countDoa').innerText = cDoa;
-            document.getElementById('countProblem').innerText = cProb;
-            document.getElementById('countSaran').innerText = cSaran;
+    function toggleSelectAll(source) {
+        const checkboxes = document.querySelectorAll('.ticket-check');
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.checked = source.checked;
         });
+
+        syncSelectAll();
+    }
+
+    function syncSelectAll() {
+        const selectAll = document.getElementById('selectAllTickets');
+        const checkboxes = Array.from(
+            document.querySelectorAll('.ticket-check')
+        );
+
+        if (!selectAll || checkboxes.length === 0) {
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            return;
+        }
+
+        const checkedCount =
+            checkboxes.filter(checkbox => checkbox.checked).length;
+
+        selectAll.checked =
+            checkedCount === checkboxes.length;
+
+        selectAll.indeterminate =
+            checkedCount > 0 &&
+            checkedCount < checkboxes.length;
+    }
+
+    function getSelectedTicketIds() {
+        return Array.from(
+            document.querySelectorAll('.ticket-check:checked')
+        ).map(checkbox => checkbox.value);
     }
 
     function showDetail(id) {

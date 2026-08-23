@@ -104,16 +104,16 @@
     </div>
 
     <div style="margin-top: 25px;">
-        <a href="profil.html" class="btn-back" style="text-decoration: none;">
+        <a href="menu.html" class="btn-back" style="text-decoration:none;">
             <button style="width: 100%; padding: 10px; background: white; border: 2px solid red; color: red; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                ← Kembali ke Profil
+                ← Kembali ke Home
             </button>
         </a>
     </div>
-</div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -127,6 +127,23 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
+    const auth = firebase.auth();
+    let authenticatedUser = null;
+
+    auth.onAuthStateChanged(function(user) {
+        if (!user) {
+            authenticatedUser = null;
+            localStorage.removeItem("userEmail");
+            window.location.replace("index.html");
+            return;
+        }
+
+        authenticatedUser = user;
+
+        if (user.email) {
+            localStorage.setItem("userEmail", user.email);
+        }
+    });
     const userEmail = localStorage.getItem("userEmail");
 
     window.onload = function() {
@@ -159,21 +176,96 @@
     }
 
     async function updateAkun() {
-        const nEmail = document.getElementById("newEmail").value;
+        const nEmail = document.getElementById("newEmail").value.trim();
         const nPass = document.getElementById("newPassword").value;
-        if (!nEmail || !nPass) { 
-            jalankanNotif("fa-circle-exclamation", "#f1c40f", "Data Kosong", "Harap isi Email dan Password!"); 
-            return; 
+
+        if (!nEmail || !nPass) {
+            jalankanNotif(
+                "fa-circle-exclamation",
+                "#f1c40f",
+                "Data Kosong",
+                "Harap isi Email dan Password!"
+            );
+            return;
         }
-        
+
+        const currentUser = auth.currentUser;
+
+        if (!currentUser) {
+            jalankanNotif(
+                "fa-circle-xmark",
+                "#dc3545",
+                "Sesi Berakhir",
+                "Silakan login kembali untuk mengubah data akun."
+            );
+            return;
+        }
+
         try {
-            const snap = await db.collection("users").where("email", "==", userEmail).get();
-            if (!snap.empty) {
-                await db.collection("users").doc(snap.docs[0].id).update({ email: nEmail, password: nPass });
-                jalankanNotif("fa-user-check", "#2ecc71", "Update Berhasil", "Silakan login ulang dengan data baru.");
-                setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3000);
+            const oldEmail = currentUser.email;
+            const emailChanged = nEmail !== oldEmail;
+
+            if (emailChanged) {
+                await currentUser.updateEmail(nEmail);
             }
-        } catch (e) { jalankanNotif("fa-circle-xmark", "#dc3545", "Gagal", e.message); }
+
+            await currentUser.updatePassword(nPass);
+
+            const snap = await db
+                .collection("users")
+                .where("email", "==", oldEmail)
+                .get();
+
+            if (!snap.empty) {
+                await db
+                    .collection("users")
+                    .doc(snap.docs[0].id)
+                    .update({
+                        email: nEmail
+                    });
+            }
+
+            localStorage.setItem("userEmail", nEmail);
+
+            jalankanNotif(
+                "fa-user-check",
+                "#2ecc71",
+                "Update Berhasil",
+                "Email dan password Firebase Authentication berhasil diperbarui. Silakan login ulang dengan data baru."
+            );
+
+            setTimeout(() => {
+                auth.signOut().finally(() => {
+                    sessionStorage.removeItem("sipapua_session_started_at");
+                    localStorage.removeItem("userEmail");
+                    localStorage.removeItem("userUid");
+                    window.location.replace("index.html");
+                });
+            }, 3000);
+
+        } catch (e) {
+            let pesan = e.message;
+
+            if (
+                e.code === "auth/requires-recent-login" ||
+                e.code === "auth/user-token-expired"
+            ) {
+                pesan = "Demi keamanan, silakan login ulang terlebih dahulu sebelum mengubah email atau password.";
+            } else if (e.code === "auth/email-already-in-use") {
+                pesan = "Email tersebut sudah digunakan oleh akun lain.";
+            } else if (e.code === "auth/invalid-email") {
+                pesan = "Format email tidak valid.";
+            } else if (e.code === "auth/weak-password") {
+                pesan = "Password terlalu lemah. Gunakan password yang lebih kuat.";
+            }
+
+            jalankanNotif(
+                "fa-circle-xmark",
+                "#dc3545",
+                "Gagal",
+                pesan
+            );
+        }
     }
 
     function konfirmasiHapus() {
@@ -182,19 +274,84 @@
 
     async function eksekusiHapus() {
         const inputVerif = prompt("Untuk memverifikasi, ketik kata 'HAPUS':");
-        if (inputVerif === "HAPUS") {
-            try {
-                const snap = await db.collection("users").where("email", "==", userEmail).get();
-                if (!snap.empty) {
-                    await db.collection("users").doc(snap.docs[0].id).delete();
-                    tutupNotif();
-                    jalankanNotif("fa-trash-can", "#dc3545", "Akun Dihapus", "Seluruh data Anda telah dihapus.");
-                    setTimeout(() => { localStorage.clear(); window.location.replace("index.html"); }, 3000);
-                }
-            } catch (e) { alert("Gagal: " + e.message); }
-        } else {
+
+        if (inputVerif !== "HAPUS") {
             alert("Verifikasi gagal.");
             tutupNotif();
+            return;
+        }
+
+        const currentUser = auth.currentUser;
+
+        if (!currentUser) {
+            tutupNotif();
+            jalankanNotif(
+                "fa-circle-xmark",
+                "#dc3545",
+                "Sesi Berakhir",
+                "Silakan login kembali sebelum menghapus akun."
+            );
+            return;
+        }
+
+        try {
+            const currentEmail = currentUser.email;
+
+            const snap = currentEmail
+                ? await db.collection("users")
+                    .where("email", "==", currentEmail)
+                    .get()
+                : null;
+
+            /*
+             * Hapus akun Firebase Authentication terlebih dahulu.
+             * Jika operasi ini gagal karena recent-login, data Firestore
+             * sengaja TIDAK dihapus agar data tidak menjadi orphan.
+             */
+            await currentUser.delete();
+
+            if (snap && !snap.empty) {
+                await Promise.all(
+                    snap.docs.map(doc => doc.ref.delete())
+                );
+            }
+
+            tutupNotif();
+
+            jalankanNotif(
+                "fa-trash-can",
+                "#dc3545",
+                "Akun Dihapus",
+                "Akun dan data profil Anda telah dihapus secara permanen."
+            );
+
+            setTimeout(() => {
+                sessionStorage.removeItem("sipapua_session_started_at");
+                sessionStorage.removeItem("sipapua_popup_dismissed");
+                localStorage.removeItem("userEmail");
+                localStorage.removeItem("userUid");
+                localStorage.removeItem("setSuara");
+                localStorage.removeItem("setTimer");
+                window.location.replace("index.html");
+            }, 3000);
+
+        } catch (e) {
+            let pesan = e.message;
+
+            if (e.code === "auth/requires-recent-login") {
+                pesan = "Demi keamanan, silakan login ulang terlebih dahulu sebelum menghapus akun.";
+            } else if (e.code === "auth/user-token-expired") {
+                pesan = "Sesi keamanan telah berakhir. Silakan login ulang terlebih dahulu.";
+            }
+
+            tutupNotif();
+
+            jalankanNotif(
+                "fa-circle-xmark",
+                "#dc3545",
+                "Gagal Menghapus Akun",
+                pesan
+            );
         }
     }
 

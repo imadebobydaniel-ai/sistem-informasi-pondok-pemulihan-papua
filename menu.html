@@ -488,6 +488,7 @@
     <div class="container">
         <div class="menu-grid">
             <a href="profil.html" class="menu-box"><i class="fa-solid fa-user-shield"></i>PROFIL</a>
+            <a href="setting.html" class="menu-box"><i class="fa-solid fa-gear"></i>PENGATURAN</a>
             <a href="kehadiran.html" class="menu-box"><i class="fa-solid fa-calendar-check"></i>LAPORAN KEHADIRAN</a>
             <a href="baca-alkitab.html" class="menu-box"><i class="fa-solid fa-book-bible"></i>LAPORAN PEMBACAAN ALKITAB</a>
             <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>STATISTIK</a>
@@ -501,6 +502,7 @@
             <a href="umkm-jemaat.html" class="menu-box"><i class="fa-solid fa-shop"></i>UMKM SIPAPUA</a>
             <a href="sipapua-news.html" class="menu-box"><i class="fa-solid fa-newspaper"></i>SIPAPUA NEWS</a>
             <a href="readme-sipapua.html" class="menu-box"><i class="fa-solid fa-book-open"></i>README</a>
+            <a href="call-center.html" class="menu-box"><i class="fa-solid fa-headset"></i>CALL CENTER</a>
     </div>
 
     <nav class="bottom-nav">
@@ -565,6 +567,69 @@
     const auth = firebase.auth();
     const userEmail = localStorage.getItem("userEmail");
     const userUid = localStorage.getItem("userUid");
+
+    let memberSessionTimerId = null;
+
+    auth.onAuthStateChanged((user) => {
+        if (!user) {
+            if (memberSessionTimerId) {
+                clearTimeout(memberSessionTimerId);
+                memberSessionTimerId = null;
+            }
+            return;
+        }
+
+        startMemberSessionTimer();
+    });
+
+    function startMemberSessionTimer() {
+        if (memberSessionTimerId) {
+            clearTimeout(memberSessionTimerId);
+            memberSessionTimerId = null;
+        }
+
+        const timerMinutes = parseInt(
+            localStorage.getItem("setTimer") || "0",
+            10
+        );
+
+        if (!Number.isFinite(timerMinutes) || timerMinutes <= 0) {
+            return;
+        }
+
+        const sessionKey = "sipapua_session_started_at";
+        let startedAt = parseInt(
+            sessionStorage.getItem(sessionKey) || "0",
+            10
+        );
+
+        if (!startedAt || !Number.isFinite(startedAt)) {
+            startedAt = Date.now();
+            sessionStorage.setItem(sessionKey, String(startedAt));
+        }
+
+        const expiresAt = startedAt + (timerMinutes * 60 * 1000);
+        const remaining = expiresAt - Date.now();
+
+        if (remaining <= 0) {
+            auth.signOut().finally(() => {
+                sessionStorage.removeItem(sessionKey);
+                localStorage.removeItem("userEmail");
+                localStorage.removeItem("userUid");
+                window.location.replace("index.html");
+            });
+            return;
+        }
+
+        memberSessionTimerId = setTimeout(() => {
+            auth.signOut().finally(() => {
+                sessionStorage.removeItem(sessionKey);
+                localStorage.removeItem("userEmail");
+                localStorage.removeItem("userUid");
+                window.location.replace("index.html");
+            });
+        }, remaining);
+    }
 
     let ytPlayer;
     let isYtReady = false;
@@ -777,7 +842,15 @@
     function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
     function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
     function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-    function executeLogout() { auth.signOut().then(() => { sessionStorage.removeItem("sipapua_popup_dismissed"); localStorage.clear(); window.location.href = "index.html"; }); }
+    function executeLogout() {
+        auth.signOut().then(() => {
+            sessionStorage.removeItem("sipapua_popup_dismissed");
+            sessionStorage.removeItem("sipapua_session_started_at");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("userUid");
+            window.location.href = "index.html";
+        });
+    }
 
     function onScanSuccess(decodedText, decodedResult) {
         let targetEmail = decodedText;
