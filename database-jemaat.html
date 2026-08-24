@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>DATA BASE JEMAAT - SIPAPUA</title>
+
+    <style>
+        :root {
+            --primary: #003366; --accent: #007bff; --dark: #333;
+            --light: #f4f7f6; --success: #28a745; --emas: #D4AF37;
+            --danger: #dc3545; --purple: #6f42c1; --orange: #fd7e14; --cyan: #17a2b8;
+            --teal: #008080;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 15px; color: var(--dark); }
+        .admin-container { max-width: 100%; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); }
+
+        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--emas); padding-bottom: 15px; margin-bottom: 25px; }
+        .btn-logout { background: var(--danger); color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; transition: 0.3s; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stats-grid a { text-decoration: none; }
+        .stat-card { padding: 20px; border-radius: 12px; color: white; position: relative; overflow: hidden; transition: 0.3s; display: flex; align-items: center; min-height: 80px; }
+        .stat-card h4 { margin: 0; font-size: 12px; text-transform: uppercase; z-index: 2; position: relative; }
+        .stat-card i { position: absolute; right: 15px; font-size: 2rem; opacity: 0.2; z-index: 1; }
+
+        #actionMenu { display: none; gap: 10px; margin-bottom: 15px; padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 10px; align-items: center; }
+
+        .table-controls { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+        .search-container { position: relative; flex: 1; min-width: 300px; display: flex; align-items: center; }
+        .search-container input { width: 100%; padding: 12px 20px 12px 45px; border: 2px solid #eee; border-radius: 12px; font-size: 14px; outline: none; transition: 0.3s; }
+        .search-container input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,123,255,0.1); }
+        .search-container i { position: absolute; left: 18px; color: #aaa; font-size: 16px; }
+
+        .btn-cetak-kartu-main { background: var(--teal); color: white; border: none; padding: 12px 25px; border-radius: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
+        .btn-cetak-kartu-main:hover { background: #006666; transform: translateY(-2px); }
+
+        .table-responsive { overflow-x: auto; border-radius: 12px; border: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; min-width: 1500px; }
+        table th { background: var(--primary); color: white; padding: 15px; font-size: 12px; text-align: left; }
+        table td { padding: 12px 15px; border-bottom: 1px solid #f8f9fa; font-size: 13px; color: #555; }
+
+        .nij-col { color: var(--accent); font-weight: bold; font-family: 'Courier New', monospace; }
+        .badge-aktif { background: #d4edda; color: #155724; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-pending { background: #ffefc1; color: #856404; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+
+        .btn-action { padding: 8px; border: none; border-radius: 6px; color: white; cursor: pointer; margin-right: 5px; }
+
+        /* --- CSS KARTU DIGITAL POPUP --- */
+        .modal-card-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .digital-card-box {
+            width: 380px; height: 230px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%);
+            border-radius: 15px; position: relative; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            color: #fff; font-family: 'Arial', sans-serif; border: 1px solid rgba(255,255,255,0.4); overflow: hidden;
+        }
+        .card-logo-right { position: absolute; top: 15px; right: 15px; width: 55px; height: 55px; object-fit: contain; }
+        .card-header-title { font-size: 13px; font-weight: 800; color: #003366; margin-bottom: 20px; text-transform: uppercase; }
+        .card-data-row { margin-bottom: 8px; }
+        .card-data-label { font-size: 8px; opacity: 0.9; text-transform: uppercase; color: #fdfdfd; }
+        .card-data-value { font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); text-transform: uppercase; }
+        .card-nij-atm {
+            position: absolute; bottom: 25px; left: 20px; font-family: 'Courier New', Courier, monospace;
+            font-size: 22px; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 3px rgba(0,0,0,0.6);
+        }
+        .card-qrcode-box { position: absolute; bottom: 15px; right: 20px; background: white; padding: 4px; border-radius: 5px; }
+        .btn-close-card { position: absolute; top: -40px; right: 0; color: white; font-size: 16px; cursor: pointer; }
+    </style>
+
+    <style>
+        .database-header {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:15px;
+            margin-bottom:20px;
+            padding-bottom:15px;
+            border-bottom:3px solid var(--emas);
+            flex-wrap:wrap;
+        }
+
+        .database-title h2 {
+            margin:0;
+            color:var(--primary);
+            font-size:22px;
+        }
+
+        .database-title small {
+            color:#666;
+        }
+
+        .database-back {
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+            text-decoration:none;
+            background:var(--primary);
+            color:#fff;
+            padding:10px 16px;
+            border-radius:8px;
+            font-size:12px;
+            font-weight:700;
+        }
+
+        .database-back:hover {
+            opacity:.92;
+        }
+
+        @media (max-width:700px) {
+            body {
+                padding:8px;
+            }
+
+            .admin-container {
+                padding:12px;
+            }
+
+            .database-title h2 {
+                font-size:18px;
+            }
+
+            .database-back {
+                width:100%;
+                justify-content:center;
+            }
+        }
+    </style>
+    <style id="database-jemaat-table-alignment">
+        #memberTable th,
+        #memberTable td {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        #memberTable th:first-child,
+        #memberTable td:first-child {
+            text-align: center !important;
+        }
+
+        #memberTable th:nth-child(2),
+        #memberTable td:nth-child(2) {
+            text-align: left !important;
+        }
+
+        #memberTable td {
+            padding: 12px 8px !important;
+        }
+    </style>
+    <style id="database-jemaat-horizontal-actions">
+        #memberTable th:nth-child(2),
+        #memberTable td:nth-child(2) {
+            min-width: 150px !important;
+            width: 150px !important;
+            white-space: nowrap !important;
+            text-align: left !important;
+        }
+
+        #memberTable th:last-child,
+        #memberTable td:last-child {
+            min-width: 135px !important;
+            width: 135px !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+        }
+
+        #memberTable td:last-child .btn-action {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            vertical-align: middle !important;
+            margin: 2px !important;
+            flex: 0 0 auto !important;
+        }
+
+        #memberTable td:last-child {
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+        }
+    </style>
+    <style id="database-jemaat-name-column">
+        #memberTable th:nth-child(3),
+        #memberTable td:nth-child(3) {
+            min-width: 180px !important;
+            width: 180px !important;
+            white-space: normal !important;
+            text-align: center !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="admin-container">
+
+    <div class="database-header">
+        <div class="database-title">
+            <h2>
+                <i class="fas fa-users"></i>
+                DATA BASE JEMAAT
+            </h2>
+            <small>
+                Manajemen seluruh data jemaat secara real-time
+            </small>
+        </div>
+
+        <a href="admin.html" class="database-back">
+            <i class="fas fa-arrow-left"></i>
+            KEMBALI KE DASHBOARD
+        </a>
+    </div>
+
+    <div id="actionMenu">
+        <span style="font-size: 13px; font-weight: bold; margin-right: 20px;" id="selectedCount">0 Terpilih</span>
+        <button class="btn-action" style="background: var(--danger);" onclick="bulkDelete()">Hapus Terpilih</button>
+        <button class="btn-action" style="background: var(--teal);" onclick="generateMemberCards()">Cetak Terpilih</button>
+        <button class="btn-action" style="background: var(--orange);" onclick="extractToPDF()">
+            <i class="fas fa-file-pdf"></i> Extract PDF
+        </button>
+    </div>
+
+    <div class="table-controls">
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Cari berdasarkan nama, NIJ, atau lokasi...">
+        </div>
+        <button class="btn-cetak-kartu-main" onclick="generateMemberCards()">
+            <i class="fas fa-print"></i> CETAK KARTU JEMAAT
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table id="memberTable">
+            <thead>
+    <tr>
+        <th style="width:30px;">
+            <input
+                type="checkbox"
+                id="checkAll"
+                onclick="toggleAll(this)"
+            >
+        </th>
+
+        <th>NIJ</th>
+        <th>Nama Lengkap</th>
+        <th>Email</th>
+        <th>Tgl Lahir</th>
+        <th>Gol. Darah</th>
+        <th>Pekerjaan</th>
+        <th>WhatsApp</th>
+
+        <th>Provinsi</th>
+        <th>Kab/Kota</th>
+        <th>Kecamatan</th>
+        <th>Desa/Kelurahan</th>
+        <th>Alamat</th>
+
+        <th>Status Pernikahan</th>
+        <th>Pasangan</th>
+        <th>Jumlah Anak</th>
+        <th>Nama Ayah</th>
+        <th>Nama Ibu</th>
+
+        <th>Wilayah</th>
+        <th>Komsel</th>
+        <th>Jabatan</th>
+        <th>Sub Jabatan</th>
+        <th>Pelayanan</th>
+        <th>Detail Pelayanan</th>
+
+        <th style="text-align:center;">KTP</th>
+        <th>Status Akun</th>
+        <th>Navigasi</th>
+    </tr>
+</thead>
+            <tbody id="memberData">
+                <tr><td colspan="27" style="text-align:center; padding:50px;">Memuat data jemaat...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalKartuDigital" class="modal-card-overlay">
+    <div style="position: relative;">
+        <div class="btn-close-card" onclick="tutupKartuDigital()"><i class="fas fa-times"></i> Tutup</div>
+        <div class="digital-card-box">
+            <img src="logo_pondok.png" class="card-logo-right" onerror="this.src='https://via.placeholder.com/60'">
+            <div class="card-header-title">Kartu Digital Jemaat</div>
+            <div class="card-data-row">
+                <div class="card-data-label">Nama Lengkap</div>
+                <div class="card-data-value" id="dnama">Memuat...</div>
+            </div>
+            <div style="display: flex; gap: 40px;">
+                <div class="card-data-row">
+                    <div class="card-data-label">Jemaat</div>
+                    <div class="card-data-value" id="djemaat">-</div>
+                </div>
+                <div class="card-data-row">
+                    <div class="card-data-label">Komsel</div>
+                    <div class="card-data-value" id="dkomsel">-</div>
+                </div>
+            </div>
+            <div class="card-nij-atm" id="dnij">0000 0000 0000</div>
+            <div class="card-qrcode-box" id="qrbox"></div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
+
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
+    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+    const IDLE_WARNING_MS = 29 * 60 * 1000;
+
+    let idleTimeoutId = null;
+    let idleWarningId = null;
+    let sessionWarningEl = null;
+
+    function hideSessionWarning() {
+        if (sessionWarningEl) {
+            sessionWarningEl.remove();
+            sessionWarningEl = null;
+        }
+    }
+
+    function showSessionWarning() {
+        hideSessionWarning();
+
+        sessionWarningEl = document.createElement("div");
+        sessionWarningEl.id = "adminSessionWarning";
+        sessionWarningEl.style.cssText = [
+            "position:fixed",
+            "top:20px",
+            "right:20px",
+            "z-index:99999",
+            "max-width:360px",
+            "padding:16px 18px",
+            "background:#fff3cd",
+            "color:#664d03",
+            "border:1px solid #ffecb5",
+            "border-radius:10px",
+            "box-shadow:0 8px 24px rgba(0,0,0,.18)",
+            "font-family:Segoe UI,sans-serif",
+            "font-size:14px",
+            "line-height:1.5"
+        ].join(";");
+
+        sessionWarningEl.innerHTML =
+            "<strong>Sesi Admin</strong><br>" +
+            "Sesi akan berakhir karena tidak ada aktivitas. " +
+            "Lakukan aktivitas untuk melanjutkan sesi.";
+
+        document.body.appendChild(sessionWarningEl);
+    }
+
+    function clearIdleTimers() {
+        if (idleTimeoutId) {
+            clearTimeout(idleTimeoutId);
+            idleTimeoutId = null;
+        }
+
+        if (idleWarningId) {
+            clearTimeout(idleWarningId);
+            idleWarningId = null;
+        }
+    }
+
+    function resetIdleTimer() {
+        if (!auth.currentUser) {
+            return;
+        }
+
+        clearIdleTimers();
+        hideSessionWarning();
+
+        idleWarningId = setTimeout(() => {
+            if (auth.currentUser) {
+                showSessionWarning();
+            }
+        }, IDLE_WARNING_MS);
+
+        idleTimeoutId = setTimeout(async () => {
+            if (!auth.currentUser) {
+                return;
+            }
+
+            try {
+                await auth.signOut();
+            } catch (error) {
+                console.error("Idle session sign-out error:", error);
+            } finally {
+                hideSessionWarning();
+                window.location.replace("login_cyber.html");
+            }
+        }, IDLE_TIMEOUT_MS);
+    }
+
+    function registerIdleActivity() {
+        resetIdleTimer();
+    }
+
+    ["click", "mousedown", "keydown", "scroll", "touchstart", "mousemove"].forEach((eventName) => {
+        window.addEventListener(eventName, registerIdleActivity, {passive: true});
+    });
+
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        try {
+            const adminDoc = await db.collection("admin_users")
+                .doc(user.uid)
+                .get();
+
+            if (!adminDoc.exists) {
+                throw new Error("ADMIN_NOT_REGISTERED");
+            }
+
+            const adminData = adminDoc.data();
+            const role = adminData.role || "";
+            const status = adminData.status || "inactive";
+
+            if (!ADMIN_ROLES.has(role)) {
+                throw new Error("ADMIN_NOT_AUTHORIZED");
+            }
+
+            if (status !== "active") {
+                throw new Error("ADMIN_INACTIVE");
+            }
+
+            if (user.uid === MASTER_UID) {
+                if (role !== "master" || adminData.protected !== true) {
+                    throw new Error("MASTER_PROTECTION_INVALID");
+                }
+            }
+
+            loadMembersRealtime();
+            resetIdleTimer();
+        } catch (error) {
+            console.error("Admin dashboard authorization error:", error);
+
+            try {
+                await auth.signOut();
+            } catch (signOutError) {
+                console.error("Authorization sign-out error:", signOutError);
+            }
+
+            window.location.replace("login_cyber.html");
+        }
+    });
+
+    function loadMembersRealtime() {
+        db.collection("users").onSnapshot(snapshot => {
+            const tableBody = document.getElementById("memberData");
+            if(!tableBody) return;
+            tableBody.innerHTML = "";
+
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                const id = doc.id;
+
+                const escapeHtml = (value) =>
+                    String(value ?? "-")
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+
+                const nama =
+                    d.nama ||
+                    d.nama_lengkap ||
+                    "Tanpa Nama";
+
+                const email =
+                    d.email ||
+                    "-";
+
+                const nij =
+                    d.nij ||
+                    "-";
+
+                const tglLahir =
+                    d.tgl_lahir ||
+                    d.tanggal_lahir_murni ||
+                    d.tanggal_lahir ||
+                    "-";
+
+                const darah =
+                    d.darah ||
+                    d.gol_darah ||
+                    "-";
+
+                const pekerjaan =
+                    d.pekerjaan ||
+                    "-";
+
+                const whatsapp =
+                    d.whatsapp ||
+                    "-";
+
+                const provinsi =
+                    d.provinsi ||
+                    "-";
+
+                const kabupatenKota =
+                    d.kabupaten_kota ||
+                    d.kota ||
+                    "-";
+
+                const kecamatan =
+                    d.kecamatan ||
+                    "-";
+
+                const desa =
+                    d.desa_kelurahan ||
+                    d.desa ||
+                    "-";
+
+                const alamat =
+                    d.alamat_detail ||
+                    d.alamat ||
+                    "-";
+
+                const statusPernikahan =
+                    d.status_pernikahan ||
+                    "-";
+
+                const pasangan =
+                    d.nama_pasangan ||
+                    "-";
+
+                const jumlahAnak =
+                    Number.isFinite(Number(d.jumlah_anak))
+                        ? Number(d.jumlah_anak)
+                        : 0;
+
+                const namaAyah =
+                    d.nama_ayah ||
+                    "-";
+
+                const namaIbu =
+                    d.nama_ibu ||
+                    "-";
+
+                const wilayah =
+                    d.wilayah ||
+                    d.lokasi_berjemaat ||
+                    d.jemaat ||
+                    "-";
+
+                const komsel =
+                    d.komsel ||
+                    "-";
+
+                const jabatan =
+                    d.jabatan ||
+                    "Anggota Jemaat";
+
+                const subJabatan =
+                    d.sub_jabatan ||
+                    d.sub_bidang ||
+                    "-";
+
+                const pelayanan =
+                    d.pelayanan ||
+                    d.fungsi_spesifik ||
+                    "-";
+
+                const detailPelayanan =
+                    d.detail_pelayanan ||
+                    "-";
+
+                const statusAkun =
+                    d.status_akun ||
+                    "Pending";
+
+                const statusClass =
+                    statusAkun === "Aktif"
+                        ? "badge-aktif"
+                        : "badge-pending";
+
+                tableBody.innerHTML += `
+                <tr>
+                    <td>
+                        <input
+                            type="checkbox"
+                            class="user-checkbox"
+                            value="${escapeHtml(id)}"
+                            onclick="updateActionMenu()"
+                        >
+                    </td>
+
+                    <td class="nij-col">
+                        ${escapeHtml(nij)}
+                    </td>
+
+                    <td>
+                        <strong>
+                            ${escapeHtml(nama)}
+                        </strong>
+                    </td>
+
+                    <td>
+                        <small>
+                            ${escapeHtml(email)}
+                        </small>
+                    </td>
+
+                    <td>
+                        ${escapeHtml(tglLahir)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(darah)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(pekerjaan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(whatsapp)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(provinsi)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(kabupatenKota)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(kecamatan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(desa)}
+                    </td>
+
+                    <td>
+                        <small>
+                            ${escapeHtml(alamat)}
+                        </small>
+                    </td>
+
+                    <td>
+                        ${escapeHtml(statusPernikahan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(pasangan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(jumlahAnak)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(namaAyah)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(namaIbu)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(wilayah)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(komsel)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(jabatan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(subJabatan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(pelayanan)}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(detailPelayanan)}
+                    </td>
+
+                    <td style="text-align:center;">
+                        ${
+                            d.url_ktp
+                                ? `
+                                    <a
+                                        href="${escapeHtml(d.url_ktp)}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Lihat KTP"
+                                    >
+                                        <i class="fas fa-id-card"></i>
+                                    </a>
+                                `
+                                : "-"
+                        }
+                    </td>
+
+                    <td>
+                        <span class="${statusClass}">
+                            ${escapeHtml(statusAkun)}
+                        </span>
+                    </td>
+
+                    <td style="white-space:nowrap; text-align:center;">
+                        <button
+                            onclick="lihatKartuIndividu('${escapeHtml(id)}')"
+                            class="btn-action"
+                            style="background:var(--emas); color:#333"
+                            title="Lihat Kartu Digital"
+                        >
+                            <i class="fas fa-eye"></i>
+                        </button><button
+                            onclick="openEditModal('${escapeHtml(id)}')"
+                            class="btn-action"
+                            style="background:var(--accent)"
+                            title="Edit Jemaat"
+                        >
+                            <i class="fas fa-edit"></i>
+                        </button><button
+                            onclick="deleteUser('${escapeHtml(id)}')"
+                            class="btn-action"
+                            style="background:var(--danger)"
+                            title="Hapus Jemaat"
+                        >
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+        });
+    }
+
+    /* LOGIK KARTU DIGITAL */
+    async function lihatKartuIndividu(uid) {
+        const res = await db.collection("users").doc(uid).get();
+        if(res.exists) {
+            const d = res.data();
+            document.getElementById('dnama').innerText = d.nama_lengkap || d.nama || "-";
+            document.getElementById('djemaat').innerText = d.lokasi_berjemaat || "-";
+            document.getElementById('dkomsel').innerText = d.komsel || "-";
+            document.getElementById('dnij').innerText = d.nij || "0000 0000";
+
+            const qrBox = document.getElementById("qrbox");
+            qrBox.innerHTML = "";
+            new QRCode(qrBox, {
+                text: window.location.origin + "/profil.html?id=" + (d.nij || uid),
+                width: 60, height: 60, colorDark : "#003366"
+            });
+            document.getElementById('modalKartuDigital').style.display = 'flex';
+        }
+    }
+
+    function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
+
+    // Fungsi placeholder jika klik icon kartu di header tanpa pilih user (melihat kartu admin sendiri atau info)
+    function bukaKartuDigitalDinamis() { alert("Silakan klik icon Mata (Kuning) di baris tabel untuk melihat Kartu Digital jemaat tersebut."); }
+
+    async function loadPdfImageData(url) {
+
+        const response =
+            await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(
+                `Logo PDF gagal dimuat: ${url}`
+            );
+        }
+
+        const blob =
+            await response.blob();
+
+        const dataUrl =
+            await new Promise(
+                (resolve, reject) => {
+
+                    const reader =
+                        new FileReader();
+
+                    reader.onload = () =>
+                        resolve(
+                            reader.result
+                        );
+
+                    reader.onerror = () =>
+                        reject(
+                            new Error(
+                                `Logo PDF gagal dibaca: ${url}`
+                            )
+                        );
+
+                    reader.readAsDataURL(blob);
+                }
+            );
+
+        const dimensions =
+            await new Promise(
+                (resolve, reject) => {
+
+                    const img =
+                        new Image();
+
+                    img.onload = () => {
+                        resolve({
+                            width:
+                                img.naturalWidth ||
+                                img.width,
+                            height:
+                                img.naturalHeight ||
+                                img.height
+                        });
+                    };
+
+                    img.onerror = () =>
+                        reject(
+                            new Error(
+                                `Dimensi logo gagal dibaca: ${url}`
+                            )
+                        );
+
+                    img.src = dataUrl;
+                }
+            );
+
+        return {
+            dataUrl,
+            width: dimensions.width,
+            height: dimensions.height
+        };
+    }
+
+    function addPdfLogoFitted(
+        doc,
+        imageInfo,
+        x,
+        y,
+        maxWidth,
+        maxHeight
+    ) {
+
+        if (!imageInfo) {
+            return;
+        }
+
+        const sourceWidth =
+            Number(imageInfo.width) || 1;
+
+        const sourceHeight =
+            Number(imageInfo.height) || 1;
+
+        const ratio =
+            Math.min(
+                maxWidth / sourceWidth,
+                maxHeight / sourceHeight
+            );
+
+        const width =
+            sourceWidth * ratio;
+
+        const height =
+            sourceHeight * ratio;
+
+        const drawX =
+            x +
+            (maxWidth - width) / 2;
+
+        const drawY =
+            y +
+            (maxHeight - height) / 2;
+
+        doc.addImage(
+            imageInfo.dataUrl,
+            "PNG",
+            drawX,
+            drawY,
+            width,
+            height
+        );
+    }
+    async function extractToPDF() {
+
+        const checkboxes =
+            Array.from(
+                document.querySelectorAll(
+                    '.user-checkbox:checked'
+                )
+            );
+
+        if (checkboxes.length === 0) {
+            alert(
+                "Pilih jemaat terlebih dahulu untuk Extract PDF."
+            );
+            return;
+        }
+
+        const ids =
+            checkboxes.map(
+                checkbox => checkbox.value
+            );
+
+        try {
+
+            const rows = [];
+
+            for (const id of ids) {
+
+                const snap =
+                    await db
+                        .collection("users")
+                        .doc(id)
+                        .get();
+
+                if (!snap.exists) {
+                    continue;
+                }
+
+                const d =
+                    snap.data();
+
+                rows.push([
+                    d.nij || "-",
+
+                    d.nama ||
+                        d.nama_lengkap ||
+                        "-",
+
+                    d.email ||
+                        "-",
+
+                    d.tgl_lahir ||
+                        d.tanggal_lahir_murni ||
+                        d.tanggal_lahir ||
+                        "-",
+
+                    d.darah ||
+                        d.gol_darah ||
+                        "-",
+
+                    d.pekerjaan ||
+                        "-",
+
+                    d.whatsapp ||
+                        "-",
+
+                    d.provinsi ||
+                        "-",
+
+                    d.kabupaten_kota ||
+                        d.kota ||
+                        "-",
+
+                    d.kecamatan ||
+                        "-",
+
+                    d.desa_kelurahan ||
+                        d.desa ||
+                        "-",
+
+                    d.alamat_detail ||
+                        d.alamat ||
+                        "-",
+
+                    d.status_pernikahan ||
+                        "-",
+
+                    d.nama_pasangan ||
+                        "-",
+
+                    Number(
+                        d.jumlah_anak || 0
+                    ),
+
+                    d.nama_ayah ||
+                        "-",
+
+                    d.nama_ibu ||
+                        "-",
+
+                    d.wilayah ||
+                        d.lokasi_berjemaat ||
+                        d.jemaat ||
+                        "-",
+
+                    d.komsel ||
+                        "-",
+
+                    d.jabatan ||
+                        "-",
+
+                    d.sub_jabatan ||
+                        d.sub_bidang ||
+                        "-",
+
+                    d.pelayanan ||
+                        d.fungsi_spesifik ||
+                        "-",
+
+                    d.detail_pelayanan ||
+                        "-",
+
+                    d.status_akun ||
+                        "-"
+                ]);
+            }
+
+            if (rows.length === 0) {
+                alert(
+                    "Tidak ada data jemaat yang dapat diekspor."
+                );
+                return;
+            }
+
+            const jsPDF =
+                window.jspdf &&
+                window.jspdf.jsPDF
+                    ? window.jspdf.jsPDF
+                    : null;
+
+            if (!jsPDF) {
+                throw new Error(
+                    "Library jsPDF tidak tersedia."
+                );
+            }
+
+            const doc =
+                new jsPDF({
+                    orientation: "landscape",
+                    unit: "mm",
+                    format: "a3"
+                });
+
+            /*
+             * =====================================================
+             * KOP PDF DATABASE JEMAAT
+             * =====================================================
+             */
+
+            const pageWidth =
+                doc.internal.pageSize.getWidth();
+
+            const logoBoxY = 9;
+            const logoBoxWidth = 34;
+            const logoBoxHeight = 30;
+
+            const logoGbiX = 12;
+            const logoIbnX =
+                pageWidth -
+                logoBoxWidth -
+                12;
+
+            let logoGbi = null;
+            let logoIbn = null;
+
+            try {
+
+                logoGbi =
+                    await loadPdfImageData(
+                        "Logo gbi.png"
+                    );
+
+                logoIbn =
+                    await loadPdfImageData(
+                        "logo ibn.png"
+                    );
+
+            } catch (logoError) {
+
+                console.warn(
+                    "Logo PDF tidak dapat dimuat:",
+                    logoError
+                );
+            }
+
+            /*
+             * Logo dipasang dengan rasio asli.
+             */
+            addPdfLogoFitted(
+                doc,
+                logoGbi,
+                logoGbiX,
+                logoBoxY,
+                logoBoxWidth,
+                logoBoxHeight
+            );
+
+            addPdfLogoFitted(
+                doc,
+                logoIbn,
+                logoIbnX,
+                logoBoxY,
+                logoBoxWidth,
+                logoBoxHeight
+            );
+
+            /*
+             * =====================================================
+             * KOP TENGAH
+             * =====================================================
+             */
+
+            doc.setTextColor(
+                0,
+                51,
+                102
+            );
+
+            doc.setFont(
+                "helvetica",
+                "bold"
+            );
+
+            doc.setFontSize(18);
+
+            doc.text(
+                "GEREJA BETHEL INDONESIA",
+                pageWidth / 2,
+                14,
+                {
+                    align: "center"
+                }
+            );
+
+            doc.setFontSize(15);
+
+            doc.text(
+                "Pondok Pemulihan Papua",
+                pageWidth / 2,
+                22,
+                {
+                    align: "center"
+                }
+            );
+
+            doc.setFontSize(13);
+
+            doc.text(
+                "Database Jemaat",
+                pageWidth / 2,
+                29,
+                {
+                    align: "center"
+                }
+            );
+
+            /*
+             * Garis kop.
+             */
+            doc.setDrawColor(
+                0,
+                51,
+                102
+            );
+
+            doc.setLineWidth(0.7);
+
+            doc.line(
+                12,
+                42,
+                pageWidth - 12,
+                42
+            );
+
+            /*
+             * =====================================================
+             * INFORMASI DOKUMEN
+             * =====================================================
+             */
+
+            const adminUser =
+                auth.currentUser;
+
+            const namaAdmin =
+                (
+                    adminUser?.displayName ||
+                    adminUser?.email ||
+                    "Administrator"
+                ).trim();
+
+            const tanggalCetak =
+                new Date().toLocaleDateString(
+                    "id-ID",
+                    {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric"
+                    }
+                );
+
+            const metaLabelX = 14;
+            const metaColonX = 42;
+            const metaValueX = 46;
+
+            doc.setTextColor(
+                40,
+                40,
+                40
+            );
+
+            doc.setFont(
+                "helvetica",
+                "normal"
+            );
+
+            doc.setFontSize(8.5);
+
+            doc.text(
+                "Nama Admin",
+                metaLabelX,
+                49
+            );
+
+            doc.text(
+                ":",
+                metaColonX,
+                49
+            );
+
+            doc.text(
+                namaAdmin,
+                metaValueX,
+                49
+            );
+
+            doc.text(
+                "Tanggal Cetak",
+                metaLabelX,
+                54
+            );
+
+            doc.text(
+                ":",
+                metaColonX,
+                54
+            );
+
+            doc.text(
+                tanggalCetak,
+                metaValueX,
+                54
+            );
+
+            doc.text(
+                "Sumber",
+                metaLabelX,
+                59
+            );
+
+            doc.text(
+                ":",
+                metaColonX,
+                59
+            );
+
+            doc.text(
+                "Database Jemaat SIPAPUA",
+                metaValueX,
+                59
+            );
+
+            doc.setFont(
+                "helvetica",
+                "bold"
+            );
+
+            doc.setFontSize(9);
+
+            doc.text(
+                `Jumlah Data : ${rows.length} Jemaat`,
+                pageWidth - 14,
+                54,
+                {
+                    align: "right"
+                }
+            );
+/*
+             * =====================================================
+             * TABEL
+             * =====================================================
+             */
+
+            doc.autoTable({
+                startY: 66,
+
+                head: [[
+                    "NIJ",
+                    "Nama",
+                    "Email",
+                    "Tgl Lahir",
+                    "Darah",
+                    "Pekerjaan",
+                    "WhatsApp",
+                    "Provinsi",
+                    "Kab/Kota",
+                    "Kecamatan",
+                    "Desa/Kel.",
+                    "Alamat",
+                    "Status Nikah",
+                    "Pasangan",
+                    "Anak",
+                    "Ayah",
+                    "Ibu",
+                    "Wilayah",
+                    "Komsel",
+                    "Jabatan",
+                    "Sub Jabatan",
+                    "Pelayanan",
+                    "Detail Pelayanan",
+                    "Status Akun"
+                ]],
+
+                body:
+                    rows,
+
+                theme:
+                    "grid",
+
+                styles: {
+                    fontSize: 5.5,
+                    cellPadding: 1.5,
+                    overflow: "linebreak",
+                    valign: "middle",
+                    halign: "center",
+                    textColor: [
+                        30,
+                        30,
+                        30
+                    ]
+                },
+
+                headStyles: {
+                    fontSize: 5.5,
+                    fontStyle: "bold",
+                    halign: "center",
+                    valign: "middle",
+                    fillColor: [
+                        0,
+                        51,
+                        102
+                    ],
+                    textColor: [
+                        255,
+                        255,
+                        255
+                    ]
+                },
+
+                columnStyles: {
+                    0: {
+                        halign: "left"
+                    }
+                },
+
+                margin: {
+                    top: 66,
+                    right: 8,
+                    bottom: 14,
+                    left: 8
+                },
+
+                didDrawPage:
+                    function(data) {
+
+                        const pageNumber =
+                            doc.internal
+                                .getNumberOfPages();
+
+                        const pageHeight =
+                            doc.internal
+                                .pageSize
+                                .getHeight();
+
+                        doc.setFont(
+                            "helvetica",
+                            "normal"
+                        );
+
+                        doc.setFontSize(7);
+
+                        doc.setTextColor(
+                            90,
+                            90,
+                            90
+                        );
+
+                        doc.text(
+                            "Database Jemaat SIPAPUA",
+                            14,
+                            pageHeight - 7
+                        );
+
+                        doc.text(
+                            `Halaman ${pageNumber}`,
+                            pageWidth - 14,
+                            pageHeight - 7,
+                            {
+                                align: "right"
+                            }
+                        );
+                    }
+            });
+
+            doc.save(
+                `database-jemaat-${new Date()
+                    .toISOString()
+                    .slice(0, 10)}.pdf`
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Gagal Extract PDF:",
+                error
+            );
+
+            alert(
+                "Gagal membuat PDF. Periksa Console untuk detail."
+            );
+        }
+    }
+    async function bulkDelete() {
+
+        const checkboxes =
+            Array.from(
+                document.querySelectorAll(
+                    '.user-checkbox:checked'
+                )
+            );
+
+        if (checkboxes.length === 0) {
+            alert("Pilih jemaat yang ingin dihapus terlebih dahulu.");
+            return;
+        }
+
+        const confirmed =
+            confirm(
+                `Hapus ${checkboxes.length} data jemaat yang dipilih secara permanen?`
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const ids =
+            checkboxes.map(
+                checkbox => checkbox.value
+            );
+
+        try {
+
+            const batch =
+                db.batch();
+
+            ids.forEach(id => {
+                batch.delete(
+                    db.collection("users").doc(id)
+                );
+            });
+
+            await batch.commit();
+
+            const checkAll =
+                document.getElementById("checkAll");
+
+            if (checkAll) {
+                checkAll.checked = false;
+            }
+
+            updateActionMenu();
+
+            alert(
+                `${ids.length} data jemaat berhasil dihapus.`
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Gagal menghapus data terpilih:",
+                error
+            );
+
+            alert(
+                "Gagal menghapus data jemaat. Silakan coba lagi."
+            );
+        }
+    }
+    function generateMemberCards() {
+        const checkboxes = document.querySelectorAll('.user-checkbox:checked');
+        if (checkboxes.length === 0) { alert("Pilih jemaat terlebih dahulu!"); return; }
+        const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+        window.open(`cetak-kartu.html?ids=${selectedIds.join(',')}`, '_blank');
+    }
+
+    function updateActionMenu() {
+        const count = document.querySelectorAll('.user-checkbox:checked').length;
+        document.getElementById('actionMenu').style.display = count > 0 ? 'flex' : 'none';
+        document.getElementById('selectedCount').innerText = `${count} Terpilih`;
+    }
+
+    function toggleAll(source) {
+        document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
+        updateActionMenu();
+    }
+
+    function filterTable() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        document.querySelectorAll("#memberData tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(query) ? "" : "none";
+        });
+    }
+
+    async function logoutAdmin() {
+        try {
+            await auth.signOut();
+            window.location.replace("login_cyber.html");
+        } catch (error) {
+            console.error("Logout error:", error);
+            alert("Gagal keluar dari sistem. Silakan coba lagi.");
+        }
+    }
+
+    function openEditModal(uid) { window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; }
+    function deleteUser(id) { if(confirm("Hapus data ini secara permanen?")) db.collection("users").doc(id).delete(); }
+</script>
+
+</body>
+</html>

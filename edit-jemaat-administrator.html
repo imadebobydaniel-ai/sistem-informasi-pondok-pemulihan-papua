@@ -61,6 +61,62 @@
         </div>
 
         <div class="form-group">
+            <label>Provinsi Kelahiran</label>
+            <input type="text" id="provinsi_lahir">
+        </div>
+
+        <div class="form-group">
+            <label>Kota / Kabupaten Kelahiran</label>
+            <input type="text" id="kota_lahir">
+        </div>
+
+        <div class="form-group">
+            <label>Kecamatan Kelahiran</label>
+            <input type="text" id="kecamatan_lahir">
+        </div>
+
+        <div class="form-group">
+            <label>Desa / Kelurahan Kelahiran</label>
+            <input type="text" id="desa_lahir">
+        </div>
+
+        <div class="form-group">
+            <label>Pekerjaan</label>
+            <input type="text" id="pekerjaan">
+        </div>
+
+        <div class="form-group">
+            <label>Status Pernikahan</label>
+            <select id="status_pernikahan">
+                <option value="">-- Pilih --</option>
+                <option value="Menikah">Menikah</option>
+                <option value="Single">Single</option>
+                <option value="Duda">Duda</option>
+                <option value="Janda">Janda</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Nama Istri / Suami</label>
+            <input type="text" id="nama_pasangan">
+        </div>
+
+        <div class="form-group">
+            <label>Jumlah Anak</label>
+            <input type="number" id="jumlah_anak" min="0">
+        </div>
+
+        <div class="form-group">
+            <label>Nama Ayah</label>
+            <input type="text" id="nama_ayah">
+        </div>
+
+        <div class="form-group">
+            <label>Nama Ibu</label>
+            <input type="text" id="nama_ibu">
+        </div>
+
+        <div class="form-group">
             <label>WhatsApp</label>
             <input type="text" id="whatsapp">
         </div>
@@ -164,6 +220,11 @@
             <select id="fungsi_spesifik">
                 <option value="">-- Pilih Fungsi --</option>
             </select>
+        </div>
+
+        <div class="form-group">
+            <label>Detail Pelayanan Non-Struktural</label>
+            <input type="text" id="detail_pelayanan">
         </div>
 
         <div class="form-group">
@@ -346,21 +407,83 @@
             const doc = await db.collection("users").doc(userId).get();
             if (doc.exists) {
                 const data = doc.data();
-                document.getElementById('nama_lengkap').value = data.nama_lengkap || '';
+                const existingData = data;
+
+                document.getElementById('nama_lengkap').value =
+                    data.nama ||
+                    data.nama_lengkap ||
+                    '';
                 document.getElementById('nij').value = data.nij || '';
                 document.getElementById('tanggal_lahir_murni').value = data.tanggal_lahir_murni || '';
-                document.getElementById('gol_darah').value = data.darah || '-';
-                document.getElementById('whatsapp').value = data.whatsapp || '';
-                document.getElementById('email').value = data.email || '';
-                document.getElementById('password_user').value = data.password || '';
-                document.getElementById('alamat').value = data.alamat || '';
+                document.getElementById('gol_darah').value =
+                    data.darah ||
+                    data.gol_darah ||
+                    '-';
+
+                document.getElementById('provinsi_lahir').value =
+                    data.provinsi_lahir || '';
+
+                document.getElementById('kota_lahir').value =
+                    data.kota_lahir || '';
+
+                document.getElementById('kecamatan_lahir').value =
+                    data.kecamatan_lahir || '';
+
+                document.getElementById('desa_lahir').value =
+                    data.desa_lahir || '';
+
+                document.getElementById('pekerjaan').value =
+                    data.pekerjaan || '';
+
+                document.getElementById('status_pernikahan').value =
+                    data.status_pernikahan || '';
+
+                document.getElementById('nama_pasangan').value =
+                    data.nama_pasangan || '';
+
+                document.getElementById('jumlah_anak').value =
+                    data.jumlah_anak || 0;
+
+                document.getElementById('nama_ayah').value =
+                    data.nama_ayah || '';
+
+                document.getElementById('nama_ibu').value =
+                    data.nama_ibu || '';
+
+                document.getElementById('detail_pelayanan').value =
+                    data.detail_pelayanan ||
+                    data.fungsi_spesifik ||
+                    '';
+
+                document.getElementById('whatsapp').value =
+                    data.whatsapp || '';
+
+                document.getElementById('email').value =
+                    data.email || '';
+                /*
+                 * Password tidak pernah dibaca dari Firestore.
+                 * Field ini hanya boleh digunakan untuk proses perubahan
+                 * password melalui Firebase Authentication.
+                 */
+                document.getElementById('password_user').value = '';
+                document.getElementById('alamat').value =
+                    data.alamat_detail ||
+                    data.alamat ||
+                    '';
                 document.getElementById('status_akun').value = data.status_akun || 'Pending';
                 
                 document.getElementById('wilayah').value = data.wilayah || '';
                 updateKomsel(data.komsel);
                 document.getElementById('jabatan').value = data.jabatan || 'Anggota Jemaat';
-                document.getElementById('sub_bidang').value = data.sub_bidang || 'Anggota Jemaat Ordinari';
-                updateFungsiPelayanan(data.fungsi_spesifik);
+                document.getElementById('sub_bidang').value =
+                    data.sub_jabatan ||
+                    data.sub_bidang ||
+                    'Anggota Jemaat Ordinari';
+                updateFungsiPelayanan(
+                    data.pelayanan ||
+                    data.fungsi_spesifik ||
+                    ''
+                );
 
                 if (data.url_ktp) {
                     document.getElementById('info_ktp').innerHTML = `File ada: <a href="${data.url_ktp}" target="_blank">Lihat KTP</a>`;
@@ -406,24 +529,113 @@
             const storageRef = firebase.storage().ref();
 
             const updateData = {
-                nama_lengkap: document.getElementById('nama_lengkap').value,
-                tanggal_lahir_murni: document.getElementById('tanggal_lahir_murni').value,
-                darah: document.getElementById('gol_darah').value,
-                whatsapp: document.getElementById('whatsapp').value,
-                email: document.getElementById('email').value,
-                password: document.getElementById('password_user').value,
-                provinsi: txtProv,
-                kota: txtKota,
-                kecamatan: txtKec,
-                desa: txtDesa,
-                alamat: document.getElementById('alamat').value,
-                wilayah: document.getElementById('wilayah').value,
-                komsel: document.getElementById('komsel').value,
-                jabatan: document.getElementById('jabatan').value,
-                sub_bidang: document.getElementById('sub_bidang').value,
-                fungsi_spesifik: document.getElementById('fungsi_spesifik').value,
-                status_akun: document.getElementById('status_akun').value,
-                last_update: new Date().toISOString()
+                nama:
+                    document.getElementById('nama_lengkap').value,
+
+                /*
+                 * Alias kompatibilitas untuk record lama.
+                 */
+                nama_lengkap:
+                    document.getElementById('nama_lengkap').value,
+
+                tgl_lahir:
+                    document.getElementById('tanggal_lahir_murni').value,
+
+                tanggal_lahir_murni:
+                    document.getElementById('tanggal_lahir_murni').value,
+
+                darah:
+                    document.getElementById('gol_darah').value,
+
+                whatsapp:
+                    document.getElementById('whatsapp').value,
+
+                email:
+                    document.getElementById('email').value,
+
+                provinsi:
+                    txtProv,
+
+                kabupaten_kota:
+                    txtKota,
+
+                kota:
+                    txtKota,
+
+                kecamatan:
+                    txtKec,
+
+                desa_kelurahan:
+                    txtDesa,
+
+                desa:
+                    txtDesa,
+
+                alamat_detail:
+                    document.getElementById('alamat').value,
+
+                alamat:
+                    document.getElementById('alamat').value,
+
+                provinsi_lahir:
+                    document.getElementById('provinsi_lahir').value,
+
+                kota_lahir:
+                    document.getElementById('kota_lahir').value,
+
+                kecamatan_lahir:
+                    document.getElementById('kecamatan_lahir').value,
+
+                desa_lahir:
+                    document.getElementById('desa_lahir').value,
+
+                pekerjaan:
+                    document.getElementById('pekerjaan').value,
+
+                status_pernikahan:
+                    document.getElementById('status_pernikahan').value,
+
+                nama_pasangan:
+                    document.getElementById('nama_pasangan').value.trim(),
+
+                jumlah_anak:
+                    parseInt(
+                        document.getElementById('jumlah_anak').value || '0',
+                        10
+                    ) || 0,
+
+                nama_ayah:
+                    document.getElementById('nama_ayah').value.trim(),
+
+                nama_ibu:
+                    document.getElementById('nama_ibu').value.trim(),
+
+                wilayah:
+                    document.getElementById('wilayah').value,
+
+                komsel:
+                    document.getElementById('komsel').value,
+
+                jabatan:
+                    document.getElementById('jabatan').value,
+
+                sub_jabatan:
+                    document.getElementById('sub_bidang').value,
+
+                sub_bidang:
+                    document.getElementById('sub_bidang').value,
+
+                pelayanan:
+                    document.getElementById('fungsi_spesifik').value,
+
+                detail_pelayanan:
+                    document.getElementById('detail_pelayanan').value,
+
+                status_akun:
+                    document.getElementById('status_akun').value,
+
+                last_update:
+                    new Date().toISOString()
             };
 
             if (fileKtp) {
