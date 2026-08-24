@@ -484,7 +484,7 @@
             <div class="photo-wrap">
                 <img
                     id="view-foto"
-                    src="https://via.placeholder.com/300"
+                    src="logo_pondok.png"
                     alt="Foto Profil Anggota"
                 >
             </div>
@@ -660,6 +660,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="sipapua-config.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -720,7 +721,7 @@
             .join(", ");
     }
 
-    tampilkanAyatRandom();
+
 
     auth.onAuthStateChanged((user) => {
         currentProfileUser = user;
@@ -738,185 +739,448 @@
         loadProfile(user);
     });
 
-    function tampilkanAyatRandom() {
+        /*
+         * =====================================================
+         * AYAT RENUNGAN SIPAPUA
+         * =====================================================
+         *
+         * Penting:
+         * - Data lokal hanya menyimpan REFERENSI.
+         * - Teks ayat diambil lengkap dari sumber.
+         * - Tidak ada substring/slice.
+         * - Jika sumber gagal, JANGAN tampilkan potongan.
+         */
+
+        /*
+         * =====================================================
+         * AYAT RENUNGAN SIPAPUA
+         * =====================================================
+         *
+         * Penting:
+         * - Data lokal hanya menyimpan REFERENSI.
+         * - Teks ayat diambil lengkap dari sumber.
+         * - Tidak ada substring/slice.
+         * - Jika sumber gagal, JANGAN tampilkan potongan.
+         */
+
         const ayatList = [
             {
-                teks: "Janganlah takut, sebab Aku menyertai engkau.",
-                referensi: "— Yesaya 41:10"
-            },
-            {
-                teks: "Tuhan adalah gembalaku, takkan kekurangan aku.",
-                referensi: "— Mazmur 23:1"
-            },
-            {
-                teks: "Segala perkara dapat kutanggung di dalam Dia.",
-                referensi: "— Filipi 4:13"
-            },
-            {
-                teks: "Percayalah kepada Tuhan dengan segenap hatimu.",
-                referensi: "— Amsal 3:5"
-            },
-            {
-                teks: "Aku sekali-kali tidak akan membiarkan engkau.",
-                referensi: "— Ibrani 13:5"
-            },
-            {
-                teks: "Bersyukurlah senantiasa dalam segala hal.",
-                referensi: "— 1 Tesalonika 5:18"
-            },
-            {
-                teks: "Kasihilah seorang akan yang lain.",
-                referensi: "— Yohanes 13:34"
-            },
-            {
-                teks: "Sebab bagi Allah tidak ada yang mustahil.",
-                referensi: "— Lukas 1:37"
-            },
-            {
-                teks: "Tuhan itu baik; kasih setianya untuk selama-lamanya.",
-                referensi: "— Mazmur 100:5"
-            },
-            {
-                teks: "Serahkanlah segala kekuatiranmu kepada-Nya.",
-                referensi: "— 1 Petrus 5:7"
-            },
-            {
-                teks: "Diamlah dan ketahuilah, bahwa Akulah Allah.",
-                referensi: "— Mazmur 46:11"
-            },
-            {
-                teks: "Hendaklah kamu kuat di dalam Tuhan.",
-                referensi: "— Efesus 6:10"
+                referensi: "Ibrani 13:5"
+            }        ];
+
+        function setAyatTampilan(
+            teks,
+            referensi
+        ) {
+            const teksEl =
+                document.getElementById(
+                    "ayat-teks"
+                );
+
+            const refEl =
+                document.getElementById(
+                    "ayat-referensi"
+                );
+
+            if (!teksEl || !refEl) {
+                return;
             }
-        ];
 
-        const index = Math.floor(Math.random() * ayatList.length);
-        const ayat = ayatList[index];
+            teksEl.textContent =
+                "“" + teks + "”";
 
-        const teks = document.getElementById("ayat-teks");
-        const referensi = document.getElementById("ayat-referensi");
-
-        if (teks) {
-            teks.innerText = "“" + ayat.teks + "”";
+            refEl.textContent =
+                referensi;
         }
 
-        if (referensi) {
-            referensi.innerText = ayat.referensi;
+        function setAyatError(
+            referensi
+        ) {
+            const teksEl =
+                document.getElementById(
+                    "ayat-teks"
+                );
+
+            const refEl =
+                document.getElementById(
+                    "ayat-referensi"
+                );
+
+            if (!teksEl || !refEl) {
+                return;
+            }
+
+            /*
+             * Jangan pernah menampilkan
+             * potongan ayat lama.
+             */
+            teksEl.textContent =
+                "Ayat renungan sedang diperbarui.";
+
+            refEl.textContent =
+                referensi || "Sumber ayat";
         }
-    }
-    function loadProfile(user) {
-        if (!user || !user.email) {
+
+        async function ambilAyatLengkap(item) {
+
+            /*
+             * DATA LOKAL TERVERIFIKASI
+             *
+             * Jangan gunakan substring/slice.
+             * Jangan fallback ke teks parsial.
+             */
+
+            const ayatLokal = {
+
+                "Ibrani 13:5":
+                    "Janganlah kamu menjadi hamba uang dan cukupkanlah dirimu dengan apa yang ada padamu. Karena Allah telah berfirman: 'Aku sekali-kali tidak akan membiarkan engkau dan Aku sekali-kali tidak akan meninggalkan engkau.'"
+
+            };
+
+            const referensi =
+                item.referensi ||
+                "";
+
+            const teks =
+                ayatLokal[referensi];
+
+            if (
+                !teks ||
+                !teks.trim()
+            ) {
+                throw new Error(
+                    "Teks ayat lengkap belum tersedia untuk " +
+                    referensi
+                );
+            }
+
+            return teks.trim();
+        }
+        async function tampilkanAyatRandom() {
+
+            const index =
+                Math.floor(
+                    Math.random() *
+                    ayatList.length
+                );
+
+            const ayat =
+                ayatList[index];
+
+            const teksEl =
+                document.getElementById(
+                    "ayat-teks"
+                );
+
+            const refEl =
+                document.getElementById(
+                    "ayat-referensi"
+                );
+
+            if (!teksEl || !refEl) {
+                return;
+            }
+
+            /*
+             * Kondisi awal.
+             */
+            teksEl.textContent =
+                "Memuat ayat renungan...";
+
+            refEl.textContent =
+                ayat.referensi;
+
+            try {
+
+                const teksLengkap =
+                    await ambilAyatLengkap(
+                        ayat
+                    );
+
+                /*
+                 * Hanya teks yang berhasil
+                 * didapat secara lengkap
+                 * yang boleh ditampilkan.
+                 */
+                setAyatTampilan(
+                    teksLengkap,
+                    ayat.referensi
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Gagal memuat ayat lengkap:",
+                    ayat.referensi,
+                    error
+                );
+
+                setAyatError(
+                    ayat.referensi
+                );
+            }
+        }
+    tampilkanAyatRandom();
+    async function loadProfile(user) {
+
+        if (!user) {
             window.location.replace("index.html");
             return;
         }
 
+        /*
+         * Hentikan listener lama bila masih ada.
+         * Profile tidak membutuhkan realtime listener.
+         */
         if (profileUnsubscribe) {
             profileUnsubscribe();
             profileUnsubscribe = null;
         }
 
-        const email = user.email.toLowerCase().trim();
+        const uid =
+            String(user.uid || "").trim();
 
-        profileUnsubscribe = db
-            .collection("users")
-            .where("email", "==", email)
-            .limit(1)
-            .onSnapshot((querySnapshot) => {
+        if (!uid) {
+            if (debug) {
+                debug.innerText =
+                    "Sesi pengguna tidak valid.";
+                debug.style.color =
+                    "#dc3545";
+            }
+            return;
+        }
 
-                if (querySnapshot.empty) {
-                    setProfileValue("nama_lengkap", "Data tidak ditemukan");
-                    setProfileValue("no_komsel", "-");
-                    setProfileValue("jabatan", "-");
-                    setProfileValue("lokasi_berjemaat", "-");
-                    setProfileValue("lokasi_komsel", "-");
-                    setProfileValue("gol_darah", "-");
-                    setProfileValue("status_pernikahan", "-");
-                    setProfileValue("pekerjaan", "-");
-                    setProfileValue("email_aktif", user.email);
-                    setProfileValue("no_hp", "-");
-                    setProfileValue("alamat", "Data alamat belum tersedia.");
-                    return;
+        if (debug) {
+            debug.innerText =
+                "Memuat data profil...";
+            debug.style.color =
+                "#075fb5";
+        }
+
+        try {
+
+            /*
+             * PRIMARY:
+             * langsung ambil users/{Firebase UID}
+             */
+            let snap =
+                await db
+                    .collection("users")
+                    .doc(uid)
+                    .get();
+
+            /*
+             * COMPATIBILITY FALLBACK:
+             * bila dokumen belum memakai UID
+             * sebagai document ID, baru cari
+             * berdasarkan email sekali saja.
+             */
+            if (!snap.exists) {
+
+                const email =
+                    String(
+                        user.email || ""
+                    )
+                    .toLowerCase()
+                    .trim();
+
+                if (email) {
+
+                    const fallback =
+                        await db
+                            .collection("users")
+                            .where(
+                                "email",
+                                "==",
+                                email
+                            )
+                            .limit(1)
+                            .get();
+
+                    if (!fallback.empty) {
+                        snap =
+                            fallback.docs[0];
+                    }
                 }
+            }
 
-                const d = querySnapshot.docs[0].data();
+            if (!snap.exists) {
 
                 setProfileValue(
                     "nama_lengkap",
-                    d.nama_lengkap || d.nama
+                    "Data tidak ditemukan"
                 );
 
                 setProfileValue(
                     "no_komsel",
-                    d.nij
+                    "-"
                 );
 
                 setProfileValue(
                     "jabatan",
-                    d.jabatan
+                    "-"
                 );
 
                 setProfileValue(
                     "lokasi_berjemaat",
-                    d.wilayah || d.lokasi_berjemaat
+                    "-"
                 );
 
                 setProfileValue(
                     "lokasi_komsel",
-                    d.komsel
+                    "-"
                 );
 
                 setProfileValue(
                     "gol_darah",
-                    d.darah
+                    "-"
                 );
 
                 setProfileValue(
                     "status_pernikahan",
-                    d.status_pernikahan
+                    "-"
                 );
 
                 setProfileValue(
                     "pekerjaan",
-                    d.pekerjaan
+                    "-"
                 );
 
                 setProfileValue(
                     "email_aktif",
-                    d.email || user.email
+                    user.email ||
+                    "-"
                 );
 
                 setProfileValue(
                     "no_hp",
-                    d.whatsapp
+                    "-"
                 );
-
-                const alamatLengkap = buildAlamatLengkap(d);
 
                 setProfileValue(
                     "alamat",
-                    alamatLengkap,
-                    "Alamat belum tersedia."
+                    "Data alamat belum tersedia."
                 );
 
-                const foto = d.foto_profil || d.url_berkas;
+                if (debug) {
+                    debug.innerText =
+                        "Data anggota tidak ditemukan.";
+                    debug.style.color =
+                        "#dc3545";
+                }
+
+                return;
+            }
+
+            const d =
+                snap.data();
+
+            setProfileValue(
+                "nama_lengkap",
+                d.nama_lengkap ||
+                d.nama
+            );
+
+            setProfileValue(
+                "no_komsel",
+                d.nij
+            );
+
+            setProfileValue(
+                "jabatan",
+                d.jabatan
+            );
+
+            setProfileValue(
+                "lokasi_berjemaat",
+                d.wilayah ||
+                d.lokasi_berjemaat
+            );
+
+            setProfileValue(
+                "lokasi_komsel",
+                d.komsel
+            );
+
+            setProfileValue(
+                "gol_darah",
+                d.darah
+            );
+
+            setProfileValue(
+                "status_pernikahan",
+                d.status_pernikahan
+            );
+
+            setProfileValue(
+                "pekerjaan",
+                d.pekerjaan
+            );
+
+            setProfileValue(
+                "email_aktif",
+                d.email ||
+                user.email
+            );
+
+            setProfileValue(
+                "no_hp",
+                d.whatsapp
+            );
+
+            const alamatLengkap =
+                buildAlamatLengkap(d);
+
+            setProfileValue(
+                "alamat",
+                alamatLengkap,
+                "Alamat belum tersedia."
+            );
+
+            const foto =
+                d.foto_profil ||
+                d.url_berkas ||
+                "";
+
+            const fotoEl =
+                document.getElementById(
+                    "view-foto"
+                );
+
+            if (fotoEl) {
 
                 if (foto) {
-                    document.getElementById("view-foto").src = foto;
+                    fotoEl.src = foto;
+                } else {
+                    /*
+                     * Jangan memanggil
+                     * placeholder.com.
+                     */
+                    fotoEl.removeAttribute(
+                        "src"
+                    );
                 }
+            }
 
-                if (debug) {
-                    debug.innerText = "";
-                }
-            }, (error) => {
-                console.error("Gagal memuat profil:", error);
+            if (debug) {
+                debug.innerText = "";
+            }
 
-                if (debug) {
-                    debug.innerText = "Gagal memuat data profil.";
-                    debug.style.color = "#dc3545";
-                }
-            });
+        } catch (error) {
+
+            console.error(
+                "Gagal memuat profil:",
+                error
+            );
+
+            if (debug) {
+                debug.innerText =
+                    "Gagal memuat data profil.";
+                debug.style.color =
+                    "#dc3545";
+            }
+        }
     }
-
     async function uploadFoto(input) {
         const file = input.files && input.files[0];
 

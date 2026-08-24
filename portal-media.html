@@ -225,7 +225,163 @@
         </div>
     </div>
 
+        <div class="card-modern">
+        <div class="card-header-gradient" style="background: linear-gradient(135deg, #003366, #075fb5);">
+            <span>
+                <i class="fas fa-paper-plane"></i>
+                Broadcast Informasi Jemaat
+            </span>
+
+            <span style="font-size:11px; background:rgba(255,255,255,.16); padding:5px 10px; border-radius:999px;">
+                ADMIN → SEMUA USER
+            </span>
+        </div>
+
+        <div class="card-body">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px;">
+                <div>
+                    <label>Judul Informasi</label>
+                    <input
+                        type="text"
+                        id="broadcast_judul"
+                        placeholder="Contoh: Informasi Ibadah Minggu"
+                    >
+                </div>
+
+                <div>
+                    <label>Prioritas</label>
+                    <select id="broadcast_prioritas">
+                        <option value="normal">Normal</option>
+                        <option value="penting">Penting</option>
+                        <option value="darurat">Darurat</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top:18px;">
+                <label>Isi Informasi</label>
+                <textarea
+                    id="broadcast_isi"
+                    rows="6"
+                    placeholder="Tuliskan informasi yang akan diterima seluruh pengguna SIPAPUA..."
+                ></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; margin-top:18px;">
+                <button
+                    type="button"
+                    onclick="kirimBroadcast()"
+                    class="btn-submit"
+                    style="width:auto; min-width:190px;"
+                >
+                    <i class="fas fa-paper-plane"></i>
+                    KIRIM BROADCAST
+                </button>
+            </div>
+
+            <div
+                id="broadcast_status"
+                style="margin-top:12px; font-size:12px; font-weight:700;"
+            ></div>
+        </div>
+    </div>
     <div class="card-modern">
+        <div
+            class="card-header-gradient"
+            style="background:linear-gradient(135deg,#0f172a,#334155);"
+        >
+            <span>
+                <i class="fas fa-inbox"></i>
+                Riwayat Broadcast Terkirim
+            </span>
+
+            <span
+                id="broadcastHistoryCount"
+                style="
+                    font-size:11px;
+                    background:rgba(255,255,255,.14);
+                    padding:5px 10px;
+                    border-radius:999px;
+                "
+            >
+                0 pesan
+            </span>
+        </div>
+
+        <div class="card-body">
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    gap:12px;
+                    flex-wrap:wrap;
+                    margin-bottom:14px;
+                "
+            >
+                <label
+                    style="
+                        display:flex;
+                        align-items:center;
+                        gap:8px;
+                        margin:0;
+                        font-size:12px;
+                        font-weight:800;
+                        color:#334155;
+                        cursor:pointer;
+                    "
+                >
+                    <input
+                        type="checkbox"
+                        id="broadcastSelectAll"
+                        onchange="toggleBroadcastSelectAll()"
+                    >
+                    Pilih Semua
+                </label>
+
+                <button
+                    type="button"
+                    id="btnDeleteBroadcastSelected"
+                    onclick="hapusBroadcastTerpilih()"
+                    class="btn-submit"
+                    disabled
+                    style="
+                        width:auto;
+                        min-width:170px;
+                        background:#dc3545;
+                        opacity:.55;
+                        cursor:not-allowed;
+                    "
+                >
+                    <i class="fas fa-trash"></i>
+                    HAPUS TERPILIH
+                </button>
+            </div>
+
+            <div
+                id="broadcastHistoryList"
+                style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:10px;
+                "
+            >
+                <div
+                    style="
+                        text-align:center;
+                        padding:28px 15px;
+                        color:#94a3b8;
+                        font-size:12px;
+                    "
+                >
+                    Memuat riwayat broadcast...
+                </div>
+            </div>
+
+        </div>
+    </div>
+<div class="card-modern">
         <div class="card-header-gradient" style="background: #1e293b;">
             <span><i class="fas fa-list-ul"></i> Playlist Konten Aktif</span>
             <div style="font-size: 12px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px;">
@@ -284,7 +440,582 @@
     }
     const db = firebase.firestore();
     let playlistData = [];
+    async function kirimBroadcast() {
+        const judulEl =
+            document.getElementById("broadcast_judul");
 
+        const isiEl =
+            document.getElementById("broadcast_isi");
+
+        const prioritasEl =
+            document.getElementById("broadcast_prioritas");
+
+        const statusEl =
+            document.getElementById("broadcast_status");
+
+        if (
+            !judulEl ||
+            !isiEl ||
+            !prioritasEl ||
+            !statusEl
+        ) {
+            console.error(
+                "Elemen Broadcast tidak ditemukan."
+            );
+            return;
+        }
+
+        const judul =
+            judulEl.value.trim();
+
+        const isi =
+            isiEl.value.trim();
+
+        const prioritas =
+            prioritasEl.value;
+
+        if (!judul || !isi) {
+            statusEl.innerText =
+                "Judul dan isi informasi wajib diisi.";
+
+            statusEl.style.color =
+                "#dc3545";
+
+            return;
+        }
+
+        statusEl.innerText =
+            "Mengirim broadcast...";
+
+        statusEl.style.color =
+            "#075fb5";
+
+        try {
+            await db
+                .collection("pengumuman_komsel")
+                .add({
+                    judul: judul,
+                    isi: isi,
+                    kategori:
+                        "Broadcast Portal Media",
+                    prioritas: prioritas,
+                    target_jc:
+                        "Semua JC",
+                    aktif: true,
+                    readBy: [],
+                    timestamp:
+                        firebase.firestore
+                            .FieldValue
+                            .serverTimestamp()
+                });
+
+            judulEl.value = "";
+            isiEl.value = "";
+            prioritasEl.value = "normal";
+
+            statusEl.innerText =
+                "✓ Broadcast berhasil dikirim ke semua pengguna SIPAPUA.";
+
+            statusEl.style.color =
+                "#218c55";
+
+            setTimeout(() => {
+                statusEl.innerText = "";
+            }, 4000);
+
+        } catch (error) {
+            console.error(
+                "Gagal mengirim broadcast:",
+                error
+            );
+
+            statusEl.innerText =
+                "Gagal mengirim broadcast. Periksa koneksi dan Firestore Rules.";
+
+            statusEl.style.color =
+                "#dc3545";
+        }
+    }
+
+    function escapeBroadcastHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function formatBroadcastDate(timestamp) {
+        if (
+            !timestamp ||
+            typeof timestamp.toDate !== "function"
+        ) {
+            return "-";
+        }
+
+        return timestamp
+            .toDate()
+            .toLocaleString(
+                "id-ID",
+                {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            );
+    }
+
+    function updateBroadcastDeleteState() {
+        const checked =
+            document.querySelectorAll(
+                ".broadcast-check:checked"
+            );
+
+        const btn =
+            document.getElementById(
+                "btnDeleteBroadcastSelected"
+            );
+
+        const selectAll =
+            document.getElementById(
+                "broadcastSelectAll"
+            );
+
+        const total =
+            document.querySelectorAll(
+                ".broadcast-check"
+            ).length;
+
+        if (btn) {
+            btn.disabled =
+                checked.length === 0;
+
+            btn.style.opacity =
+                checked.length === 0
+                    ? "0.55"
+                    : "1";
+
+            btn.style.cursor =
+                checked.length === 0
+                    ? "not-allowed"
+                    : "pointer";
+        }
+
+        if (selectAll) {
+            selectAll.checked =
+                total > 0 &&
+                checked.length === total;
+        }
+    }
+
+    function toggleBroadcastSelectAll() {
+        const selectAll =
+            document.getElementById(
+                "broadcastSelectAll"
+            );
+
+        document
+            .querySelectorAll(
+                ".broadcast-check"
+            )
+            .forEach(checkbox => {
+                checkbox.checked =
+                    selectAll.checked;
+            });
+
+        updateBroadcastDeleteState();
+    }
+
+    function muatRiwayatBroadcast() {
+        const list =
+            document.getElementById(
+                "broadcastHistoryList"
+            );
+
+        const countLabel =
+            document.getElementById(
+                "broadcastHistoryCount"
+            );
+
+        if (!list) {
+            return;
+        }
+
+        db.collection("pengumuman_komsel")
+            .orderBy("timestamp", "desc")
+            .onSnapshot(
+                snapshot => {
+
+                    list.innerHTML = "";
+
+                    if (countLabel) {
+                        countLabel.innerText =
+                            `${snapshot.size} pesan`;
+                    }
+
+                    if (snapshot.empty) {
+                        list.innerHTML = `
+                            <div
+                                style="
+                                    text-align:center;
+                                    padding:30px 15px;
+                                    color:#94a3b8;
+                                    font-size:12px;
+                                "
+                            >
+                                <i
+                                    class="fas fa-inbox"
+                                    style="
+                                        font-size:28px;
+                                        margin-bottom:10px;
+                                    "
+                                ></i>
+                                <div>
+                                    Belum ada broadcast terkirim.
+                                </div>
+                            </div>
+                        `;
+
+                        updateBroadcastDeleteState();
+                        return;
+                    }
+
+                    snapshot.forEach(doc => {
+
+                        const data =
+                            doc.data();
+
+                        const judul =
+                            escapeBroadcastHtml(
+                                data.judul ||
+                                "Tanpa Judul"
+                            );
+
+                        const isi =
+                            escapeBroadcastHtml(
+                                data.isi ||
+                                ""
+                            );
+
+                        const priority =
+                            data.prioritas ||
+                            "normal";
+
+                        const priorityColor =
+                            priority === "darurat"
+                                ? "#dc3545"
+                                : priority === "penting"
+                                    ? "#f59e0b"
+                                    : "#0ea5e9";
+
+                        const priorityLabel =
+                            priority === "darurat"
+                                ? "DARURAT"
+                                : priority === "penting"
+                                    ? "PENTING"
+                                    : "NORMAL";
+
+                        const aktif =
+                            data.aktif !== false;
+
+                        const row =
+                            document.createElement(
+                                "div"
+                            );
+
+                        row.style.cssText = `
+                            display:flex;
+                            align-items:center;
+                            gap:12px;
+                            padding:14px;
+                            border:1px solid #e2e8f0;
+                            border-radius:14px;
+                            background:#ffffff;
+                        `;
+
+                        row.innerHTML = `
+                            <input
+                                type="checkbox"
+                                class="broadcast-check"
+                                value="${doc.id}"
+                                onchange="updateBroadcastDeleteState()"
+                                style="
+                                    width:17px;
+                                    height:17px;
+                                    flex:0 0 17px;
+                                    cursor:pointer;
+                                "
+                            >
+
+                            <div
+                                style="
+                                    width:40px;
+                                    height:40px;
+                                    flex:0 0 40px;
+                                    display:flex;
+                                    align-items:center;
+                                    justify-content:center;
+                                    border-radius:11px;
+                                    background:#003366;
+                                    color:#D4AF37;
+                                "
+                            >
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+
+                            <div
+                                style="
+                                    flex:1;
+                                    min-width:0;
+                                "
+                            >
+                                <div
+                                    style="
+                                        display:flex;
+                                        align-items:center;
+                                        gap:7px;
+                                        flex-wrap:wrap;
+                                    "
+                                >
+                                    <strong
+                                        style="
+                                            color:#0f172a;
+                                            font-size:13px;
+                                        "
+                                    >
+                                        ${judul}
+                                    </strong>
+
+                                    <span
+                                        style="
+                                            font-size:9px;
+                                            font-weight:900;
+                                            color:#fff;
+                                            background:${priorityColor};
+                                            padding:3px 7px;
+                                            border-radius:999px;
+                                        "
+                                    >
+                                        ${priorityLabel}
+                                    </span>
+
+                                    <span
+                                        style="
+                                            font-size:9px;
+                                            font-weight:800;
+                                            color:${
+                                                aktif
+                                                    ? "#15803d"
+                                                    : "#64748b"
+                                            };
+                                            background:${
+                                                aktif
+                                                    ? "#dcfce7"
+                                                    : "#f1f5f9"
+                                            };
+                                            padding:3px 7px;
+                                            border-radius:999px;
+                                        "
+                                    >
+                                        ${
+                                            aktif
+                                                ? "AKTIF"
+                                                : "ARSIP"
+                                        }
+                                    </span>
+                                </div>
+
+                                <div
+                                    style="
+                                        margin-top:4px;
+                                        color:#64748b;
+                                        font-size:11px;
+                                    "
+                                >
+                                    ${formatBroadcastDate(
+                                        data.timestamp
+                                    )}
+                                </div>
+
+                                <div
+                                    style="
+                                        margin-top:5px;
+                                        color:#475569;
+                                        font-size:11px;
+                                        overflow:hidden;
+                                        text-overflow:ellipsis;
+                                        white-space:nowrap;
+                                        max-width:100%;
+                                    "
+                                >
+                                    ${isi}
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                title="Hapus broadcast"
+                                onclick="hapusBroadcast('${doc.id}')"
+                                style="
+                                    width:36px;
+                                    height:36px;
+                                    border:0;
+                                    border-radius:10px;
+                                    background:#fee2e2;
+                                    color:#dc2626;
+                                    cursor:pointer;
+                                    flex:0 0 36px;
+                                "
+                            >
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+
+                        list.appendChild(row);
+                    });
+
+                    updateBroadcastDeleteState();
+                },
+                error => {
+                    console.error(
+                        "Gagal memuat riwayat broadcast:",
+                        error
+                    );
+
+                    list.innerHTML = `
+                        <div
+                            style="
+                                padding:20px;
+                                text-align:center;
+                                color:#dc3545;
+                                font-size:12px;
+                            "
+                        >
+                            Gagal memuat riwayat broadcast.
+                        </div>
+                    `;
+                }
+            );
+    }
+
+    async function hapusBroadcast(docId) {
+        if (!docId) {
+            return;
+        }
+
+        const result =
+            await Swal.fire({
+                title: "Hapus Broadcast?",
+                text:
+                    "Pesan akan dihapus dari riwayat Portal Media dan tidak dapat dipulihkan.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dc3545",
+                cancelButtonColor: "#64748b",
+                confirmButtonText: "Ya, Hapus",
+                cancelButtonText: "Batal",
+                heightAuto: false
+            });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        try {
+            await db
+                .collection(
+                    "pengumuman_komsel"
+                )
+                .doc(docId)
+                .delete();
+
+        } catch (error) {
+            console.error(
+                "Gagal menghapus broadcast:",
+                error
+            );
+
+            Swal.fire({
+                title: "Gagal",
+                text:
+                    "Broadcast tidak dapat dihapus.",
+                icon: "error",
+                confirmButtonColor: "#003366",
+                heightAuto: false
+            });
+        }
+    }
+
+    async function hapusBroadcastTerpilih() {
+        const selected =
+            Array.from(
+                document.querySelectorAll(
+                    ".broadcast-check:checked"
+                )
+            ).map(
+                checkbox => checkbox.value
+            );
+
+        if (!selected.length) {
+            return;
+        }
+
+        const result =
+            await Swal.fire({
+                title:
+                    `Hapus ${selected.length} broadcast?`,
+                text:
+                    "Pesan terpilih akan dihapus dari Portal Media.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dc3545",
+                cancelButtonColor: "#64748b",
+                confirmButtonText: "Ya, Hapus",
+                cancelButtonText: "Batal",
+                heightAuto: false
+            });
+
+        if (!result.isConfirmed) {
+            return;
+        }
+
+        try {
+            const batch =
+                db.batch();
+
+            selected.forEach(id => {
+                batch.delete(
+                    db
+                        .collection(
+                            "pengumuman_komsel"
+                        )
+                        .doc(id)
+                );
+            });
+
+            await batch.commit();
+
+        } catch (error) {
+            console.error(
+                "Gagal menghapus broadcast terpilih:",
+                error
+            );
+
+            Swal.fire({
+                title: "Gagal",
+                text:
+                    "Sebagian atau seluruh broadcast gagal dihapus.",
+                icon: "error",
+                confirmButtonColor: "#003366",
+                heightAuto: false
+            });
+        }
+    }
+
+    muatRiwayatBroadcast();
     // --- 2. LOGIKA RUNNING TEXT ---
     
     // Fungsi Validasi & Render Baris Running Text

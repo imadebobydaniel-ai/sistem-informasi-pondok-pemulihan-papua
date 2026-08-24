@@ -1,0 +1,4 @@
+﻿window.SIPAPUA_CONFIG = {
+    ALKITAB_API_BASE: "",
+    ALKITAB_API_KEY: ""
+};
