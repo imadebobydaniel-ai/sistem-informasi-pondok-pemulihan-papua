@@ -71,8 +71,29 @@
         .btn-cancel-db { background: #dc3545; color: white; }
 
         /* Modal Editor */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-box { background: white; padding: 20px; border-radius: 10px; width: 400px; }
+        .modal-overlay {
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:16px;
+    box-sizing:border-box;
+    overflow-y:auto;
+    background:rgba(0,0,0,.72);
+}
+        .modal-box {
+    width:min(460px, 100%);
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+    box-sizing:border-box;
+    margin:auto;
+    padding:18px;
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 15px 40px rgba(0,0,0,.25);
+}
         .modal-box label { font-size: 12px; font-weight: bold; color: #444; }
         .modal-box input { width: 100%; padding: 8px; margin: 5px 0 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .btn-ok { background: #003366; color: white; width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -84,7 +105,37 @@
         .btn-download-all { background: #ffc107; color: #333; }
 
         @media print { .action-bar, .btn-edit-trigger, .footer-controls { display: none !important; } body { background: white; } }
-    </style>
+            .photo-placeholder {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            box-sizing:border-box;
+            width:115px;
+            height:140px;
+            border:1px solid #9aa7b4;
+            background:#eef3f7;
+            color:#7b8794;
+            font-size:11px;
+            font-weight:700;
+            letter-spacing:1px;
+            text-align:center;
+        }
+        .modal-box .btn-footer {
+            min-height:40px;
+            border:0;
+            border-radius:7px;
+            cursor:pointer;
+            font-weight:700;
+        }
+
+        .modal-box .btn-footer:disabled {
+            opacity:.7;
+            cursor:wait;
+        }
+
+        #editFotoPreview {
+            flex-shrink:0;
+        }</style>
 </head>
 <body>
 
@@ -97,20 +148,103 @@
 
 <div id="editModal" class="modal-overlay">
     <div class="modal-box">
-        <h3 style="margin-top:0;"><i class="fas fa-edit"></i> Editor Kartu</h3>
+
+        <h3 style="margin-top:0;">
+            <i class="fas fa-edit"></i>
+            Editor Kartu
+        </h3>
+
         <input type="hidden" id="editCardId">
+
         <label>NIJ (Terkunci)</label>
-        <input type="text" id="editNIJ" readonly style="background:#f0f0f0;">
-        <label>Nama Lengkap</label><input type="text" id="editNama">
-        <label>TTL</label><input type="text" id="editTTL">
-        <label>Alamat</label><input type="text" id="editAlamat">
-        <label>Jabatan</label><input type="text" id="editJabatan">
-        <label>Jemaat</label><input type="text" id="editJemaat">
-        <label>Komsel</label><input type="text" id="editKomsel">
-        <button class="btn-ok" onclick="applyToCard()">OK</button>
+        <input
+            type="text"
+            id="editNIJ"
+            readonly
+            style="background:#f0f0f0;"
+        >
+
+        <label>Nama Lengkap</label>
+        <input type="text" id="editNama">
+
+        <label>TTL</label>
+        <input type="text" id="editTTL">
+
+        <label>Alamat</label>
+        <input type="text" id="editAlamat">
+
+        <label>Jabatan</label>
+        <input type="text" id="editJabatan">
+
+        <label>Jemaat</label>
+        <input type="text" id="editJemaat">
+
+        <label>Komsel</label>
+        <input type="text" id="editKomsel">
+
+        <label>Foto Profil</label>
+
+        <input
+            type="file"
+            id="editFoto"
+            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+            onchange="previewEditorPhoto(this)"
+            style="
+                width:100%;
+                box-sizing:border-box;
+                margin-bottom:8px;
+            "
+        >
+
+        <div
+            id="editFotoPreview"
+            style="
+                width:115px;
+                height:140px;
+                margin:10px auto 12px;
+                border:1px solid #b8c2cc;
+                border-radius:4px;
+                background:#eef3f7;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                overflow:hidden;
+                color:#7b8794;
+                font-size:11px;
+                font-weight:700;
+            "
+        >
+            FOTO
+        </div>
+
+        <div style="
+            display:flex;
+            gap:8px;
+            margin-top:10px;
+        ">
+            <button
+                type="button"
+                class="btn-footer btn-cancel-db"
+                onclick="cancelEditorPhoto()"
+                style="flex:1;"
+            >
+                <i class="fas fa-times"></i>
+                BATAL
+            </button>
+
+            <button
+                type="button"
+                class="btn-footer btn-save-db"
+                onclick="saveEditorChanges()"
+                style="flex:1;"
+            >
+                <i class="fas fa-save"></i>
+                SIMPAN
+            </button>
+        </div>
+
     </div>
 </div>
-
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -123,29 +257,487 @@
     const db = firebase.firestore();
     const originalDataStore = {};
 
-    function openEditor(id) {
-        document.getElementById('editCardId').value = id;
-        document.getElementById('editNIJ').value = document.getElementById(`v-nij-${id}`).innerText.replace(': ', '');
-        document.getElementById('editNama').value = document.getElementById(`v-nama-${id}`).innerText.replace(': ', '');
-        document.getElementById('editTTL').value = document.getElementById(`v-ttl-${id}`).innerText.replace(': ', '');
-        document.getElementById('editAlamat').value = document.getElementById(`v-alamat-${id}`).innerText.replace(': ', '');
-        document.getElementById('editJabatan').value = document.getElementById(`v-jabatan-${id}`).innerText.replace(': ', '');
-        document.getElementById('editJemaat').value = document.getElementById(`v-jemaat-${id}`).innerText.replace(': ', '');
-        document.getElementById('editKomsel').value = document.getElementById(`v-komsel-${id}`).innerText.replace(': ', '');
-        document.getElementById('editModal').style.display = 'flex';
+    function previewEditorPhoto(input) {
+        const file =
+            input?.files?.[0];
+
+        const preview =
+            document.getElementById(
+                "editFotoPreview"
+            );
+
+        if (!preview) {
+            return;
+        }
+
+        if (!file) {
+            preview.innerHTML =
+                "FOTO";
+            return;
+        }
+
+        const allowedTypes = [
+            "image/png",
+            "image/jpeg",
+            "image/webp"
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            alert(
+                "Format foto harus PNG, JPG, JPEG, atau WEBP."
+            );
+
+            input.value = "";
+            preview.innerHTML =
+                "FOTO";
+
+            return;
+        }
+
+        const reader =
+            new FileReader();
+
+        reader.onload =
+            function(event) {
+                preview.innerHTML = `
+                    <img
+                        src="${event.target.result}"
+                        alt="Preview Foto"
+                        style="
+                            width:100%;
+                            height:100%;
+                            object-fit:cover;
+                            display:block;
+                        "
+                    >
+                `;
+            };
+
+        reader.readAsDataURL(file);
+    }
+
+    async function processEditorPhoto(
+        file
+    ) {
+        if (!file) {
+            return "";
+        }
+
+        const allowedTypes = [
+            "image/png",
+            "image/jpeg",
+            "image/webp"
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error(
+                "Format foto harus PNG, JPG, JPEG, atau WEBP."
+            );
+        }
+
+        const reader =
+            new FileReader();
+
+        const dataUrl =
+            await new Promise(
+                (resolve, reject) => {
+                    reader.onload =
+                        () =>
+                            resolve(
+                                reader.result
+                            );
+
+                    reader.onerror =
+                        () =>
+                            reject(
+                                new Error(
+                                    "Gagal membaca foto."
+                                )
+                            );
+
+                    reader.readAsDataURL(
+                        file
+                    );
+                }
+            );
+
+        const img =
+            new Image();
+
+        await new Promise(
+            (resolve, reject) => {
+                img.onload = resolve;
+
+                img.onerror =
+                    () =>
+                        reject(
+                            new Error(
+                                "Foto tidak dapat diproses."
+                            )
+                        );
+
+                img.src = dataUrl;
+            }
+        );
+
+        let width =
+            img.width;
+
+        let height =
+            img.height;
+
+        const maxSize = 400;
+
+        if (
+            width > maxSize ||
+            height > maxSize
+        ) {
+            const scale =
+                Math.min(
+                    maxSize / width,
+                    maxSize / height
+                );
+
+            width =
+                Math.round(
+                    width * scale
+                );
+
+            height =
+                Math.round(
+                    height * scale
+                );
+        }
+
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx =
+            canvas.getContext(
+                "2d"
+            );
+
+        if (!ctx) {
+            throw new Error(
+                "Browser tidak mendukung pemrosesan foto."
+            );
+        }
+
+        ctx.drawImage(
+            img,
+            0,
+            0,
+            width,
+            height
+        );
+
+        return canvas.toDataURL(
+            "image/jpeg",
+            0.8
+        );
+    }
+
+    async function openEditor(id) {
+        document.getElementById("editCardId").value = id;
+
+        document.getElementById("editNIJ").value =
+            document.getElementById(`v-nij-${id}`)
+                .innerText.replace(": ", "");
+
+        document.getElementById("editNama").value =
+            document.getElementById(`v-nama-${id}`)
+                .innerText.replace(": ", "");
+
+        document.getElementById("editTTL").value =
+            document.getElementById(`v-ttl-${id}`)
+                .innerText.replace(": ", "");
+
+        document.getElementById("editAlamat").value =
+            document.getElementById(`v-alamat-${id}`)
+                .innerText.replace(": ", "");
+
+        document.getElementById("editJabatan").value =
+            document.getElementById(`v-jabatan-${id}`)
+                .innerText.replace(": ", "");
+
+        document.getElementById("editJemaat").value =
+            document.getElementById(`v-jemaat-${id}`)
+                .innerText.replace(": ", "");
+
+        document.getElementById("editKomsel").value =
+            document.getElementById(`v-komsel-${id}`)
+                .innerText.replace(": ", "");
+
+        const fotoInput =
+            document.getElementById("editFoto");
+
+        if (fotoInput) {
+            fotoInput.value = "";
+        }
+
+        let currentPhoto =
+            originalDataStore[id]?.foto || "";
+
+        try {
+            const snapshot =
+                await db
+                    .collection("users")
+                    .doc(id)
+                    .get();
+
+            if (snapshot.exists) {
+                const d =
+                    snapshot.data();
+
+                currentPhoto =
+                    String(
+                        d.foto_profil ||
+                        d.url_berkas ||
+                        currentPhoto ||
+                        ""
+                    ).trim();
+            }
+        } catch (error) {
+            console.warn(
+                "Foto database tidak dapat dimuat:",
+                error
+            );
+        }
+
+        if (!originalDataStore[id]) {
+            originalDataStore[id] = {};
+        }
+
+        originalDataStore[id].foto =
+            currentPhoto;
+
+        const preview =
+            document.getElementById(
+                "editFotoPreview"
+            );
+
+        if (preview) {
+            if (currentPhoto) {
+                preview.innerHTML = `
+                    <img
+                        src="${currentPhoto}"
+                        alt="Foto Profil"
+                        style="
+                            width:100%;
+                            height:100%;
+                            object-fit:cover;
+                            display:block;
+                        "
+                        onerror="
+                            this.style.display='none';
+                            this.parentElement.textContent='FOTO';
+                        "
+                    >
+                `;
+            } else {
+                preview.textContent = "FOTO";
+            }
+        }
+
+        document.getElementById(
+            "editModal"
+        ).style.display = "flex";
     }
 
     function applyToCard() {
-        const id = document.getElementById('editCardId').value;
-        document.getElementById(`v-nama-${id}`).innerText = ': ' + document.getElementById('editNama').value;
-        document.getElementById(`v-ttl-${id}`).innerText = ': ' + document.getElementById('editTTL').value;
-        document.getElementById(`v-alamat-${id}`).innerText = ': ' + document.getElementById('editAlamat').value;
-        document.getElementById(`v-jabatan-${id}`).innerText = ': ' + document.getElementById('editJabatan').value;
-        document.getElementById(`v-jemaat-${id}`).innerText = ': ' + document.getElementById('editJemaat').value;
-        document.getElementById(`v-komsel-${id}`).innerText = ': ' + document.getElementById('editKomsel').value;
-        
-        document.getElementById(`controls-${id}`).style.display = 'flex';
-        document.getElementById('editModal').style.display = 'none';
+        const id =
+            document.getElementById(
+                "editCardId"
+            ).value;
+
+        document.getElementById(
+            `v-nama-${id}`
+        ).innerText =
+            ": " +
+            document.getElementById(
+                "editNama"
+            ).value;
+
+        document.getElementById(
+            `v-ttl-${id}`
+        ).innerText =
+            ": " +
+            document.getElementById(
+                "editTTL"
+            ).value;
+
+        document.getElementById(
+            `v-alamat-${id}`
+        ).innerText =
+            ": " +
+            document.getElementById(
+                "editAlamat"
+            ).value;
+
+        document.getElementById(
+            `v-jabatan-${id}`
+        ).innerText =
+            ": " +
+            document.getElementById(
+                "editJabatan"
+            ).value;
+
+        document.getElementById(
+            `v-jemaat-${id}`
+        ).innerText =
+            ": " +
+            document.getElementById(
+                "editJemaat"
+            ).value;
+
+        document.getElementById(
+            `v-komsel-${id}`
+        ).innerText =
+            ": " +
+            document.getElementById(
+                "editKomsel"
+            ).value;
+
+        document.getElementById(
+            `controls-${id}`
+        ).style.display = "flex";
+    }
+
+    async function saveEditorChanges() {
+        const id =
+            document.getElementById(
+                "editCardId"
+            ).value;
+
+        const fotoInput =
+            document.getElementById(
+                "editFoto"
+            );
+
+        const saveButton =
+            document.querySelector(
+                '#editModal .btn-save-db'
+            );
+
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.innerHTML =
+                '<i class="fas fa-spinner fa-spin"></i> MENYIMPAN...';
+        }
+
+        try {
+            let newPhoto =
+                originalDataStore[id]?.foto || "";
+
+            if (
+                fotoInput?.files?.[0]
+            ) {
+                newPhoto =
+                    await processEditorPhoto(
+                        fotoInput.files[0]
+                    );
+            }
+
+            if (!originalDataStore[id]) {
+                originalDataStore[id] = {};
+            }
+
+            originalDataStore[id].foto =
+                newPhoto;
+
+            applyToCard();
+
+            await savePermanently(id);
+
+            const cardPhoto =
+                document.querySelector(
+                    `#card-obj-${id} .photo-frame`
+                );
+
+            if (cardPhoto && newPhoto) {
+                cardPhoto.src =
+                    newPhoto;
+            }
+
+            document.getElementById(
+                "editModal"
+            ).style.display = "none";
+
+            if (fotoInput) {
+                fotoInput.value = "";
+            }
+
+        } catch (error) {
+            console.error(
+                "Gagal menyimpan perubahan kartu:",
+                error
+            );
+
+            /*
+             * Fallback:
+             * perubahan tetap diterapkan ke tampilan kartu,
+             * tetapi database belum berubah.
+             */
+            applyToCard();
+
+            document.getElementById(
+                "editModal"
+            ).style.display = "none";
+
+            alert(
+                "Perubahan diterapkan pada kartu, tetapi belum tersimpan ke database."
+            );
+
+        } finally {
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML =
+                    '<i class="fas fa-save"></i> SIMPAN';
+            }
+        }
+    }
+
+    function cancelEditorPhoto() {
+        const id =
+            document.getElementById(
+                "editCardId"
+            ).value;
+
+        const original =
+            originalDataStore[id];
+
+        if (original) {
+            const cardPhoto =
+                document.querySelector(
+                    `#card-obj-${id} .photo-frame`
+                );
+
+            if (
+                cardPhoto &&
+                original.foto
+            ) {
+                cardPhoto.src =
+                    original.foto;
+            }
+        }
+
+        const input =
+            document.getElementById(
+                "editFoto"
+            );
+
+        if (input) {
+            input.value = "";
+        }
+
+        document.getElementById(
+            "editModal"
+        ).style.display = "none";
     }
 
     async function savePermanently(id) {
