@@ -31,6 +31,88 @@
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
         .btn-full { flex: 1; justify-content: center; }
+
+        .user-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+        }
+
+        .user-status-active {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .user-status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .user-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .user-status-active .user-status-dot {
+            background: #16a34a;
+        }
+
+        .user-status-inactive .user-status-dot {
+            background: #dc2626;
+        }
+
+        .protected-label {
+            display: block;
+            margin-top: 4px;
+            color: #6b7280;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .status-active td {
+            background: #f0fff4;
+        }
+
+        .status-inactive td {
+            background: #fff5f5;
+        }
+
+        .status-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 4px 9px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .protected-label {
+            display: block;
+            margin-top: 4px;
+            color: #6c757d;
+            font-size: 11px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -46,8 +128,13 @@
             <i class="fas fa-user-plus"></i> Tambah Admin Baru
         </button>
         <button class="btn btn-edit" id="btnEdit" disabled onclick="editUser()"><i class="fas fa-edit"></i> Edit</button>
-        <button class="btn btn-delete" id="btnDelete" disabled onclick="nonaktifkanUser()"><i class="fas fa-user-slash"></i> Nonaktifkan</button>
-        <button class="btn btn-log" onclick="openLogModal()">
+        <button class="btn btn-delete" id="btnDelete" disabled onclick="toggleUserStatus()"><i class="fas fa-user-slash"></i> Nonaktifkan</button>
+                <button class="btn btn-delete"
+            id="btnHardDelete"
+            disabled
+            onclick="deleteUser()">
+            <i class="fas fa-trash"></i> Hapus
+        </button><button class="btn btn-log" onclick="openLogModal()">
             <i class="fas fa-history"></i> Log Aktivitas Login
         </button>
     </div>
@@ -67,6 +154,47 @@
     </table>
 </div>
 
+<div class="modal-overlay" id="managementSecurityGate" style="display:flex;z-index:5000;">
+    <div class="modal-box">
+        <h3><i class="fas fa-shield-halved"></i> Security Verification</h3>
+
+        <p style="font-size:13px;color:#555;">
+            Manajemen User hanya dapat dibuka oleh Super Admin aktif.
+            Masukkan ulang password Super Admin untuk membuka menu ini.
+        </p>
+
+
+        <div class="form-group">
+            <label>Password Super Admin</label>
+            <input
+                type="password"
+                id="managementSecurityPassword"
+                autocomplete="current-password"
+                placeholder="Password Super Admin"
+                onkeydown="if (event.key === 'Enter') { event.preventDefault(); verifyManagementSecurity(); }"
+            >
+        </div>
+
+        <div class="modal-footer">
+            <button
+                type="button"
+                class="btn btn-delete btn-full"
+                onclick="exitManagementSecurity()"
+            >
+                Keluar
+            </button>
+
+            <button
+                type="button"
+                class="btn btn-add btn-full"
+                id="btnManagementSecurity"
+                onclick="verifyManagementSecurity()"
+            >
+                <i class="fas fa-unlock"></i> Buka
+            </button>
+        </div>
+    </div>
+</div>
 <div class="modal-overlay" id="modalUser">
     <div class="modal-box">
         <h3 id="modalTitle">Tambah User Baru</h3>
@@ -109,6 +237,34 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="modalSecurity">
+    <div class="modal-box">
+        <h3><i class="fas fa-shield-halved"></i> Security Approval Super Admin</h3>
+
+        <div class="form-group">
+            <label>Email Super Admin</label>
+            <input type="email" id="securityEmail" autocomplete="username" placeholder="Email Super Admin">
+        </div>
+
+        <div class="form-group">
+            <label>Password Super Admin</label>
+            <input type="password" id="securityPassword" autocomplete="current-password" placeholder="Masukkan password Super Admin">
+        </div>
+
+        <div id="securityTarget" style="background:#f8f9fa;padding:10px;border-radius:6px;font-size:13px;margin-bottom:15px;">
+            Target: -
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-delete btn-full" onclick="closeModal('modalSecurity')">
+                Batal
+            </button>
+            <button class="btn btn-add btn-full" id="btnSecurityApprove" onclick="approveDeleteSecurity()">
+                <i class="fas fa-shield-halved"></i> Otorisasi Hapus
+            </button>
+        </div>
+    </div>
+</div>
 <div class="modal-overlay" id="modalLog">
     <div class="modal-box modal-lrg">
         <h3><i class="fas fa-history"></i> Log Aktivitas Login</h3>
@@ -134,6 +290,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
 <script>
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -150,8 +307,25 @@
 
     let currentEditId = null;
     const auth = firebase.auth();
+const functions = firebase.functions(
+        firebase.app(),
+        "asia-southeast2"
+    );
 
-    const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") ||
+    const securityApp =
+        firebase.apps.find(app => app.name === "securityApproval") ||
+        firebase.initializeApp(
+            firebaseConfig,
+            "securityApproval"
+        );
+
+    const securityAuth = securityApp.auth();
+
+    const securityFunctions = firebase.functions(
+        securityApp,
+        "asia-southeast2"
+    );
+const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") ||
         firebase.initializeApp(firebaseConfig, "adminCreator");
     const adminCreatorAuth = adminCreatorApp.auth();
 
@@ -163,7 +337,7 @@
                 isEdit ? "Edit Data User Admin" : "Tambah User Admin Baru";
 
             document.getElementById("popPass").value = "";
-            document.getElementById("popPass").disabled = isEdit;
+            document.getElementById("popPass").disabled = false;
 
             if (!isEdit) {
                 resetForm();
@@ -203,18 +377,31 @@
 
         try {
             if (currentEditId) {
-                const ref = db.collection("admin_users").doc(currentEditId);
-                const snapshot = await ref.get();
+                const ref =
+                    db.collection("admin_users").doc(currentEditId);
+
+                const snapshot =
+                    await ref.get();
 
                 if (!snapshot.exists) {
-                    throw new Error("Dokumen admin tidak ditemukan.");
+                    throw new Error(
+                        "Dokumen admin tidak ditemukan."
+                    );
                 }
 
                 const existing = snapshot.data();
 
                 if (currentEditId === MASTER_UID) {
                     if (role !== "master") {
-                        return alert("Role Master tidak boleh diturunkan.");
+                        return alert(
+                            "Role Master tidak boleh diturunkan."
+                        );
+                    }
+
+                    if (password) {
+                        return alert(
+                            "Password akun Master tidak dapat diubah dari menu ini."
+                        );
                     }
                 }
 
@@ -223,13 +410,42 @@
                     email,
                     hp,
                     jabatan,
-                    role: currentEditId === MASTER_UID ? "master" : role,
-                    status: existing.status || "active",
-                    protected: currentEditId === MASTER_UID || existing.protected === true,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    role:
+                        currentEditId === MASTER_UID
+                            ? "master"
+                            : role,
+                    status:
+                        existing.status || "active",
+                    protected:
+                        currentEditId === MASTER_UID ||
+                        existing.protected === true,
+                    updatedAt:
+                        firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                alert("Data admin berhasil diperbarui.");
+                if (password) {
+                    if (password.length < 6) {
+                        throw new Error(
+                            "Password baru minimal 6 karakter."
+                        );
+                    }
+
+                    const updatePasswordFn =
+                        functions.httpsCallable(
+                            "adminUpdateUserPassword"
+                        );
+
+                    await updatePasswordFn({
+                        uid: currentEditId,
+                        password
+                    });
+                }
+
+                alert(
+                    password
+                        ? "Data admin dan password berhasil diperbarui."
+                        : "Data admin berhasil diperbarui."
+                );
             } else {
                 if (role === "master") {
                     return alert("Akun Master hanya dapat ditetapkan pada akun Master yang sudah dilindungi.");
@@ -241,6 +457,15 @@
                 );
 
                 const uid = credential.user.uid;
+
+                try {
+                    await credential.user.sendEmailVerification();
+                } catch (verificationError) {
+                    console.warn(
+                        "Email verification gagal dikirim:",
+                        verificationError
+                    );
+                }
 
                 await db.collection("admin_users").doc(uid).set({
                     nama,
@@ -289,7 +514,11 @@
             snapshot.forEach((doc) => {
                 const u = doc.data();
                 const role = u.role || "admin";
-                const status = u.status || "active";
+                const status =
+                    String(u.status || "active").trim().toLowerCase();
+
+                const isActive =
+                    status === "active";
                 const protectedLabel = u.protected ? " | Protected" : "";
 
                 html += `
@@ -311,11 +540,13 @@
                             </span>
                         </td>
                         <td>
-                            <strong>${role}</strong>
-                            <small style="display:block;color:${status === "active" ? "#28a745" : "#dc3545"};">
-                                ${status}${protectedLabel}
-                            </small>
-                        </td>
+                    <strong>${role}</strong>
+                    <span class="user-status ${isActive ? "user-status-active" : "user-status-inactive"}">
+                        <span class="user-status-dot"></span>
+                        ${isActive ? "ACTIVE" : "INACTIVE"}
+                    </span>
+                    ${protectedLabel ? `<small class="protected-label">${protectedLabel.substring(3)}</small>` : ""}
+                </td>
                     </tr>
                 `;
             });
@@ -324,43 +555,94 @@
         });
     }
 
-    async function nonaktifkanUser() {
+    async function toggleUserStatus() {
         const ids = Array.from(
-            document.querySelectorAll(".user-checkbox:checked"),
+            document.querySelectorAll(".user-checkbox:checked")
         ).map((checkbox) => checkbox.value);
 
         if (!ids.length) {
             return;
         }
 
-        if (!confirm(`Nonaktifkan ${ids.length} akun administrator?`)) {
-            return;
-        }
+        const selectedData = [];
 
         for (const id of ids) {
-            const ref = db.collection("admin_users").doc(id);
-            const snapshot = await ref.get();
+            const snap =
+                await db.collection("admin_users")
+                    .doc(id)
+                    .get();
 
-            if (!snapshot.exists) {
+            if (!snap.exists) {
                 continue;
             }
 
-            const data = snapshot.data();
-
-            if (id === MASTER_UID || data.role === "master" || data.protected === true) {
-                alert("Akun Master dilindungi dan tidak dapat dinonaktifkan.");
-                continue;
-            }
-
-            await ref.update({
-                status: "inactive",
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            selectedData.push({
+                id,
+                ...snap.data()
             });
         }
 
-        alert("Proses penonaktifan selesai.");
-    }
+        if (!selectedData.length) {
+            return;
+        }
 
+        const protectedAccount =
+            selectedData.find(
+                (user) =>
+                    user.id === MASTER_UID ||
+                    user.role === "master" ||
+                    user.protected === true
+            );
+
+        if (protectedAccount) {
+            alert(
+                "Akun Master dilindungi dan tidak dapat diubah statusnya."
+            );
+            return;
+        }
+
+        const allActive =
+            selectedData.every(
+                (user) =>
+                    (user.status || "active") === "active"
+            );
+
+        const nextStatus =
+            allActive
+                ? "inactive"
+                : "active";
+
+        const actionText =
+            nextStatus === "active"
+                ? "mengaktifkan"
+                : "menonaktifkan";
+
+        if (
+            !confirm(
+                `Yakin ${actionText} ${selectedData.length} akun?`
+            )
+        ) {
+            return;
+        }
+
+        for (const user of selectedData) {
+            await db.collection("admin_users")
+                .doc(user.id)
+                .update({
+                    status: nextStatus,
+                    updatedAt:
+                        firebase.firestore.FieldValue.serverTimestamp()
+                });
+        }
+
+        updateButtons();
+
+        alert(
+            nextStatus === "active"
+                ? "Akun berhasil diaktifkan kembali."
+                : "Akun berhasil dinonaktifkan."
+        );
+    }
     function editUser() {
         const selected = document.querySelector(".user-checkbox:checked");
 
@@ -421,17 +703,390 @@
         });
     }
 
-    function updateButtons() {
-        const checked = document.querySelectorAll('.user-checkbox:checked');
-        document.getElementById('btnEdit').disabled = checked.length !== 1;
-        document.getElementById('btnDelete').disabled = checked.length === 0;
+    let pendingDeleteUid = null;
+
+    async function deleteUser() {
+        const checked = Array.from(
+            document.querySelectorAll(".user-checkbox:checked")
+        );
+
+        if (checked.length !== 1) {
+            alert("Untuk menghapus akun, pilih tepat satu administrator.");
+            return;
+        }
+
+        const targetUid = checked[0].value;
+
+        if (targetUid === MASTER_UID) {
+            alert("Akun Master tidak dapat dihapus.");
+            return;
+        }
+
+        const row = checked[0].closest("tr");
+        const targetName =
+            row?.querySelector("td:nth-child(2)")?.innerText?.trim() ||
+            targetUid;
+        const targetEmail =
+            row?.querySelector("td:nth-child(3)")?.innerText?.trim() ||
+            "";
+
+        pendingDeleteUid = targetUid;
+
+        document.getElementById("securityEmail").value = "";
+        document.getElementById("securityPassword").value = "";
+
+        document.getElementById("securityTarget").textContent =
+            `Target: ${targetName} — ${targetEmail}`;
+
+        openModal("modalSecurity");
+        document.getElementById("securityEmail").focus();
     }
-    
+
+    async function approveDeleteSecurity() {
+        if (!pendingDeleteUid) {
+            alert("Target penghapusan tidak ditemukan.");
+            return;
+        }
+
+        const email =
+            document.getElementById("securityEmail").value
+                .trim()
+                .toLowerCase();
+
+        const password =
+            document.getElementById("securityPassword").value;
+
+        if (!password) {
+            alert("Password Super Admin wajib diisi.");
+            return;
+        }
+
+        const button =
+            document.getElementById("btnSecurityApprove");
+
+        button.disabled = true;
+
+        try {
+            const requester =
+                auth.currentUser;
+
+            if (!requester) {
+                throw new Error(
+                    "Sesi administrator pemohon sudah tidak aktif."
+                );
+            }
+
+            const requesterUid =
+                requester.uid;
+
+            const superAdminUser = auth.currentUser;
+
+            if (!superAdminUser) {
+                throw new Error("Sesi Super Admin tidak ditemukan.");
+            }
+
+            const currentAdminDoc =
+                await db.collection("admin_users")
+                    .doc(superAdminUser.uid)
+                    .get();
+
+            if (!currentAdminDoc.exists) {
+                throw new Error("Data Super Admin tidak ditemukan.");
+            }
+
+            const currentAdminData = currentAdminDoc.data();
+
+            const currentRole =
+                String(currentAdminData.role || "")
+                    .trim()
+                    .toLowerCase();
+
+            const currentStatus =
+                String(currentAdminData.status || "inactive")
+                    .trim()
+                    .toLowerCase();
+
+            if (
+                currentStatus !== "active" ||
+                (currentRole !== "master" &&
+                 currentRole !== "super_admin")
+            ) {
+                throw new Error(
+                    "Hanya Super Admin aktif yang dapat membuka menu ini."
+                );
+            }
+
+            const credential =
+                firebase.auth.EmailAuthProvider.credential(
+                    superAdminUser.email,
+                    password
+                );
+
+            await superAdminUser.reauthenticateWithCredential(
+                credential
+            );
+
+            const securityUser =
+                securityAuth.currentUser;
+
+            if (!securityUser) {
+                throw new Error(
+                    "Autentikasi Super Admin gagal."
+                );
+            }
+
+            const securityDoc =
+                await db
+                    .collection("admin_users")
+                    .doc(securityUser.uid)
+                    .get();
+
+            if (!securityDoc.exists) {
+                throw new Error(
+                    "Akun Super Admin tidak ditemukan."
+                );
+            }
+
+            const securityData =
+                securityDoc.data();
+
+            const securityRole =
+                String(securityData.role || "")
+                    .trim()
+                    .toLowerCase();
+
+            if (
+                securityRole !== "master" &&
+                securityRole !== "super_admin"
+            ) {
+                throw new Error(
+                    "Akun tersebut bukan Super Admin."
+                );
+            }
+
+            const approvalFn =
+                securityFunctions.httpsCallable(
+                    "adminCreateDeleteApproval"
+                );
+
+            const approvalResult =
+                await approvalFn({
+                    requesterUid,
+                    targetUid: pendingDeleteUid
+                });
+
+            const approvalId =
+                approvalResult.data?.approvalId;
+
+            if (!approvalId) {
+                throw new Error(
+                    "Server tidak memberikan approval ID."
+                );
+            }
+
+            await securityAuth.signOut();
+
+            const deleteFn =
+                functions.httpsCallable(
+                    "adminDeleteUser"
+                );
+
+            await deleteFn({
+                uid: pendingDeleteUid,
+                approvalId
+            });
+
+            closeModal("modalSecurity");
+
+            alert(
+                "Akun administrator berhasil dihapus."
+            );
+
+            pendingDeleteUid = null;
+
+            loadUsers();
+            updateButtons();
+        } catch (error) {
+            console.error(
+                "Administrator delete security error:",
+                error
+            );
+
+            try {
+                await securityAuth.signOut();
+            } catch (_) {
+                // Abaikan kegagalan logout secondary auth.
+            }
+
+            alert(
+                error?.details?.message ||
+                error?.message ||
+                "Penghapusan akun gagal."
+            );
+        } finally {
+            button.disabled = false;
+        }
+    }
+    function updateButtons() {
+        const checked = Array.from(
+            document.querySelectorAll(".user-checkbox:checked")
+        );
+
+        document.getElementById("btnEdit").disabled =
+            checked.length !== 1;
+
+        document.getElementById("btnDelete").disabled =
+            checked.length === 0;
+
+        const hardDeleteButton =
+            document.getElementById("btnHardDelete");
+
+        if (hardDeleteButton) {
+            const containsMaster =
+                checked.some(
+                    (checkbox) => checkbox.value === MASTER_UID
+                );
+
+            hardDeleteButton.disabled =
+                checked.length !== 1 ||
+                containsMaster;
+        }
+    }
     function toggleAll(source) {
         document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = source.checked);
         updateButtons();
     }
 
+    async function initializeManagementAccess() {
+        const user = auth.currentUser;
+
+        if (!user) {
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+
+
+        document.getElementById(
+            "managementSecurityPassword"
+        ).value = "";
+
+        document.getElementById(
+            "managementSecurityGate"
+        ).style.display = "flex";
+    }
+
+    async function verifyManagementSecurity() {
+        const superAdminUser = auth.currentUser;
+
+        if (!superAdminUser) {
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        const password =
+            document.getElementById(
+                "managementSecurityPassword"
+            ).value;
+
+        if (!password) {
+            alert("Password Super Admin wajib diisi.");
+            return;
+        }
+
+        const button =
+            document.getElementById(
+                "btnManagementSecurity"
+            );
+
+        button.disabled = true;
+
+        try {
+            const currentAdminDoc =
+                await db.collection("admin_users")
+                    .doc(superAdminUser.uid)
+                    .get();
+
+            if (!currentAdminDoc.exists) {
+                throw new Error(
+                    "Data administrator tidak ditemukan."
+                );
+            }
+
+            const currentAdminData =
+                currentAdminDoc.data();
+
+            const currentRole =
+                String(currentAdminData.role || "")
+                    .trim()
+                    .toLowerCase();
+
+            const currentStatus =
+                String(currentAdminData.status || "inactive")
+                    .trim()
+                    .toLowerCase();
+
+            if (
+                currentStatus !== "active" ||
+                (
+                    currentRole !== "master" &&
+                    currentRole !== "super_admin"
+                )
+            ) {
+                throw new Error(
+                    "Hanya Super Admin aktif yang dapat membuka menu ini."
+                );
+            }
+
+            const credential =
+                firebase.auth.EmailAuthProvider.credential(
+                    superAdminUser.email,
+                    password
+                );
+
+            await superAdminUser.reauthenticateWithCredential(
+                credential
+            );
+
+            document.getElementById(
+                "managementSecurityGate"
+            ).style.display = "none";
+
+            document.getElementById(
+                "managementSecurityPassword"
+            ).value = "";
+
+            loadUsers();
+        } catch (error) {
+            console.error(
+                "Management Super Admin verification error:",
+                error
+            );
+
+            alert(
+                error.code === "auth/wrong-password" ||
+                error.code === "auth/invalid-credential"
+                    ? "Password Super Admin salah."
+                    : error.message ||
+                      "Verifikasi Super Admin gagal."
+            );
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function exitManagementSecurity() {
+        window.location.replace("admin.html");
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        await initializeManagementAccess();
+    });
     // Jalankan load data admin saat halaman dibuka
     loadUsers();
 </script>
