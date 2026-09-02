@@ -6,6 +6,7 @@ const {
 } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { HttpsError } = require("firebase-functions/v2/https");
+const { buildRaporStatistics } = require("./rapor-stats");
 
 initializeApp();
 
@@ -168,144 +169,6 @@ const ADMIN_LIMITS = {
     admin: 6,
     viewer: 10
 };
-
-async function getCallerAdmin(request) {
-    if (!request.auth) {
-        throw new HttpsError(
-            "unauthenticated",
-            "Autentikasi administrator diperlukan."
-        );
-    }
-
-    const uid =
-        String(
-            request.auth.uid || ""
-        ).trim();
-
-    const snapshot =
-        await db
-            .collection("admin_users")
-            .doc(uid)
-            .get();
-
-    if (!snapshot.exists) {
-        throw new HttpsError(
-            "permission-denied",
-            "Akun tidak terdaftar sebagai administrator."
-        );
-    }
-
-    const data =
-        snapshot.data();
-
-    const role =
-        String(
-            data.role || ""
-        )
-            .trim()
-            .toLowerCase();
-
-    const status =
-        String(
-            data.status || "inactive"
-        )
-            .trim()
-            .toLowerCase();
-
-    if (
-        ![
-            "master",
-            "super_admin",
-            "admin"
-        ].includes(role)
-    ) {
-        throw new HttpsError(
-            "permission-denied",
-            "Akses administrator tidak sah."
-        );
-    }
-
-    if (
-        status !== "active"
-    ) {
-        throw new HttpsError(
-            "permission-denied",
-            "Akun administrator sedang tidak aktif."
-        );
-    }
-
-    return {
-        uid,
-        role,
-        data
-    };
-}
-
-exports.adminGetRoleCounts = onCall(
-    {
-        region: "asia-southeast2",
-        enforceAppCheck:
-            process.env.FUNCTIONS_EMULATOR !== "true"
-    },
-    async (request) => {
-        await getCallerAdmin(request);
-
-        const snapshot =
-            await db
-                .collection("admin_users")
-                .get();
-
-        const counts = {
-            super_admin: 0,
-            admin: 0,
-            viewer: 0
-        };
-
-        snapshot.forEach(
-            (doc) => {
-                const data =
-                    doc.data();
-
-                const role =
-                    String(
-                        data.role || ""
-                    )
-                        .trim()
-                        .toLowerCase();
-
-                const status =
-                    String(
-                        data.status || "inactive"
-                    )
-                        .trim()
-                        .toLowerCase();
-
-                if (
-                    status === "active" &&
-                    Object.prototype.hasOwnProperty.call(
-                        counts,
-                        role
-                    )
-                ) {
-                    counts[role]++;
-                }
-            }
-        );
-
-        return {
-            counts,
-            limits: ADMIN_LIMITS
-        };
-    }
-);
-
-function normalizeAdminRole(value) {
-    return String(
-        value || ""
-    )
-        .trim()
-        .toLowerCase();
-}
 
 async function getCallerAdmin(request) {
     if (!request.auth) {
@@ -839,5 +702,253 @@ exports.adminDeleteUser = onCall(
             ok: true,
             uid: targetUid
         };
+    }
+);
+
+exports.adminPreviewReportUidMigration = onCall(
+    {
+        region: "asia-southeast2",
+        enforceAppCheck: false,
+        timeoutSeconds: 60,
+        memory: "256MiB"
+    },
+    async (request) => {
+        const caller =
+            await getCallerAdmin(
+                request
+            );
+
+        if (
+            ![
+                "master",
+                "super_admin"
+            ].includes(caller.role)
+        ) {
+            throw new HttpsError(
+                "permission-denied",
+                "Hanya Master atau Super Admin yang dapat menjalankan preview migrasi UID."
+            );
+        }
+
+        const userSnapshot =
+            await db
+                .collection("users")
+                .get();
+
+        const users = [];
+        const usersByEmail = new Map();
+        const usersByName = new Map();
+
+        userSnapshot.forEach(
+            doc => {
+                const data =
+                    doc.data() || {};
+
+                const uid =
+                    String(
+                        doc.id || ""
+                    ).trim();
+
+                const email =
+                    normalizeEmail(
+                        data.email
+                    );
+
+                const name =
+                    String(
+                        data.nama ||
+                        data.nama_lengkap ||
+                        ""
+                    )
+                    .trim()
+                    .toLowerCase();
+
+                const entry = {
+                    uid,
+                    email,
+                    name
+                };
+
+                users.push(
+                    entry
+                );
+
+                if (email) {
+                    const list =
+                        usersByEmail.get(
+                            email
+                        ) || [];
+
+                    list.push(
+                        entry
+                    );
+
+                    usersByEmail.set(
+                        email,
+                        list
+                    );
+                }
+
+                if (name) {
+                    const list =
+                        usersByName.get(
+                            name
+                        ) || [];
+
+                    list.push(
+                        entry
+                    );
+
+                    usersByName.set(
+                        name,
+                        list
+                    );
+                }
+            }
+        );
+
+        const collections = [
+            "kehadiran_jemaat",
+            "laporan_komsel_umum",
+            "laporan_doa",
+            "laporan_bacaan",
+            "laporan_pelayanan"
+        ];
+
+        const summary = {};
+
+        for (
+            const collectionName
+            of collections
+        ) {
+            const snapshot =
+                await db
+                    .collection(
+                        collectionName
+                    )
+                    .get();
+
+            const result = {
+                total: snapshot.size,
+                already_uid: 0,
+                email_match: 0,
+                name_match: 0,
+                ambiguous: 0,
+                unmatched: 0
+            };
+
+            snapshot.forEach(
+                doc => {
+                    const data =
+                        doc.data() || {};
+
+                    const existingUid =
+                        String(
+                            data.uid || ""
+                        ).trim();
+
+                    if (
+                        existingUid
+                    ) {
+                        result.already_uid++;
+                        return;
+                    }
+
+                    const email =
+                        normalizeEmail(
+                            data.email
+                        );
+
+                    const name =
+                        String(
+                            data.nama ||
+                            data.nama_lengkap ||
+                            ""
+                        )
+                        .trim()
+                        .toLowerCase();
+
+                    if (email) {
+                        const matches =
+                            usersByEmail.get(
+                                email
+                            ) || [];
+
+                        if (
+                            matches.length === 1
+                        ) {
+                            result.email_match++;
+                            return;
+                        }
+
+                        if (
+                            matches.length > 1
+                        ) {
+                            result.ambiguous++;
+                            return;
+                        }
+                    }
+
+                    if (name) {
+                        const matches =
+                            usersByName.get(
+                                name
+                            ) || [];
+
+                        if (
+                            matches.length === 1
+                        ) {
+                            result.name_match++;
+                            return;
+                        }
+
+                        if (
+                            matches.length > 1
+                        ) {
+                            result.ambiguous++;
+                            return;
+                        }
+                    }
+
+                    result.unmatched++;
+                }
+            );
+
+            summary[
+                collectionName
+            ] = result;
+        }
+
+        return {
+            ok: true,
+            mode: "PREVIEW_ONLY",
+            generatedAt:
+                new Date().toISOString(),
+            userCount:
+                users.length,
+            collections:
+                summary
+        };
+    }
+);
+exports.getRaporStatistics = onCall(
+    {
+        region: "asia-southeast2",
+        enforceAppCheck: false,
+        timeoutSeconds: 60,
+        memory: "256MiB"
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "Autentikasi diperlukan untuk membaca Rapor."
+            );
+        }
+
+        return buildRaporStatistics(
+            db,
+            request.auth.uid
+        );
     }
 );

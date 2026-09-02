@@ -30,6 +30,12 @@ service cloud.firestore {
       return isMaster() || isSuperAdmin();
     }
 
+    function isActiveAdmin() {
+      return signedIn()
+        && myAdminDoc()
+        && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.status == "active"
+        && myRole() in ["master", "super_admin", "admin", "viewer"];
+    }
     function targetIsMaster() {
       return resource.data.role == "master"
         || resource.data.protected == true;
@@ -250,27 +256,73 @@ service cloud.firestore {
     }
 
     match /laporan_doa/{document=**} {
-      allow read, write: if true;
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
     }
 
     match /laporan_bacaan/{document=**} {
-      allow read, write: if true;
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
     }
 
     match /kehadiran_jemaat/{document=**} {
-      allow read, write: if true;
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
     }
 
     match /laporan_komsel_umum/{document=**} {
-      allow read, write: if true;
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
     }
 
     match /statistik_jemaat_pusat/{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
     }
 
     match /laporan_pelayanan/{document=**} {
-      allow read, write: if true;
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
     }
 
     match /kehadiran/{document=**} {
