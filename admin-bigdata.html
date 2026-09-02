@@ -337,6 +337,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -355,6 +356,143 @@
     let currentType = 'ibadah_abepura';
     let currentListener = null;
 
+    /*
+     * ============================================================
+     * MASTER POPULASI JEMAAT
+     * ============================================================
+     *
+     * Denominator Big Data berasal dari users yang:
+     * status_akun = "Aktif"
+     *
+     * Bukan dari jumlah nama pada laporan.
+     */
+    let activeMembersCache = null;
+    let activeMembersPromise = null;
+
+    function normalizeLocationValue(value) {
+        return String(value || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
+    }
+
+    function loadActiveMembers() {
+        if (activeMembersCache) {
+            return Promise.resolve(
+                activeMembersCache
+            );
+        }
+
+        if (activeMembersPromise) {
+            return activeMembersPromise;
+        }
+
+        activeMembersPromise =
+            db.collection("users")
+                .where(
+                    "status_akun",
+                    "==",
+                    "Aktif"
+                )
+                .get()
+                .then(snapshot => {
+                    activeMembersCache =
+                        snapshot.docs.map(
+                            doc => ({
+                                id: doc.id,
+                                ...doc.data()
+                            })
+                        );
+
+                    return activeMembersCache;
+                })
+                .catch(error => {
+                    console.error(
+                        "Gagal memuat populasi jemaat aktif:",
+                        error
+                    );
+
+                    activeMembersCache = [];
+
+                    return [];
+                });
+
+        return activeMembersPromise;
+    }
+
+    function getActivePopulation(
+        members,
+        cfg
+    ) {
+        if (!cfg?.wilayah) {
+            return members.length;
+        }
+
+        const target =
+            normalizeLocationValue(
+                cfg.wilayah
+            );
+
+        return members.filter(
+            member => {
+                const wilayah =
+                    member.wilayah ||
+                    member.lokasi_berjemaat ||
+                    member.jemaat ||
+                    "";
+
+                return (
+                    normalizeLocationValue(
+                        wilayah
+                    ) === target
+                );
+            }
+        ).length;
+    }
+
+    function getUniquePresentCount(
+        snapshot
+    ) {
+        const uniqueMembers =
+            new Set();
+
+        snapshot.forEach(doc => {
+            const data =
+                doc.data() || {};
+
+            const status =
+                String(
+                    data.status ||
+                    data.status_doa ||
+                    "HADIR"
+                )
+                    .trim()
+                    .toUpperCase();
+
+            if (status !== "HADIR") {
+                return;
+            }
+
+            const identity =
+                data.uid ||
+                data.email_normalized ||
+                data.email ||
+                data.nama ||
+                data.Nama ||
+                doc.id;
+
+            if (identity) {
+                uniqueMembers.add(
+                    String(identity)
+                        .trim()
+                        .toLowerCase()
+                );
+            }
+        });
+
+        return uniqueMembers.size;
+    }
+
     const menuConfig = {
         ibadah_abepura: { title: 'Ibadah Abepura', col: 'kehadiran_jemaat', wilayah: 'Abepura', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
         ibadah_sentani: { title: 'Ibadah Sentani', col: 'kehadiran_jemaat', wilayah: 'Sentani', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
@@ -365,7 +503,7 @@
         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
         absen_doa: { title: 'Absen Doa', col: 'kehadiran_jemaat', kegiatan: 'Absen Doa', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
-        pertemuan_pemimpin: { title: 'Pertemuan Pemimpin', col: 'kehadiran_jemaat', kegiatan: 'Absen Pertemuan Pemimpin', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
+        pertemuan_pemimpin: { title: 'Pertemuan Pemimpin', col: 'kehadiran_jemaat', kegiatan: 'Absen Pertemuan Pemimpin', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi Kehadiran'] },
         latihan_pw: { title: 'Latihan PW', col: 'kehadiran_jemaat', kegiatan: 'Absen Latihan PW', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
         pelayanan_pw: { title: 'Pelayanan PW', col: 'kehadiran_jemaat', kegiatan: 'Absen Pelayanan PW', serviceField: 'pelayanan_pw', fields: ['Nama', 'Pelayanan', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
         pelayanan_nonpw: { title: 'Pelayanan Non PW', col: 'kehadiran_jemaat', kegiatan: 'Pelayanan Non PW', serviceField: 'pelayanan_nonpw', fields: ['Nama', 'Pelayanan', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
@@ -521,7 +659,18 @@
             const { html, pData, bData, lData } = formatTableData(type, filteredDocs);
 
             document.getElementById("data-list").innerHTML = html;
-            renderCharts(pData, lData, bData);
+            loadActiveMembers().then(
+    activeMembers => {
+        renderCharts(
+            pData,
+            lData,
+            bData,
+            filteredDocs,
+            activeMembers,
+            cfg
+        );
+    }
+);
         });
     }
 
@@ -570,6 +719,36 @@
                 const namaGabungan = d.gabungan_nama_komsel || d.komsel || "Umum";
                 html += `<tr><td>${nama}</td><td>${namaGabungan}</td><td>${tanggalGabungan}</td><td>${status}</td><td>${lokasiGabungan}</td></tr>`;
                 row = [nama, namaGabungan, tanggalGabungan, status, lokasiGabungan];
+            } else if (
+                type === 'ibadah_abepura' ||
+                type === 'ibadah_sentani' ||
+                type === 'ibadah_doyo' ||
+                type === 'ibadah_arso1' ||
+                type === 'ibadah_arso2'
+            ) {
+                const namaIbadah = d.nama || d.Nama || "-";
+                const wilayahIbadah = d.wilayah_ibadah || "-";
+                const tanggalIbadah = d.tanggal || tglTampil;
+                const statusIbadah =
+                    (d.status || "").toUpperCase() || "-";
+                const keteranganIbadah =
+                    d.keterangan || "-";
+
+                html += `<tr>
+                    <td>${namaIbadah}</td>
+                    <td>${wilayahIbadah}</td>
+                    <td>${tanggalIbadah}</td>
+                    <td>${statusIbadah}</td>
+                    <td>${keteranganIbadah}</td>
+                </tr>`;
+
+                row = [
+                    namaIbadah,
+                    wilayahIbadah,
+                    tanggalIbadah,
+                    statusIbadah,
+                    keteranganIbadah
+                ];
             } else if (type === 'absen_doa') {
                 const namaDoa = d.nama || d.Nama || "-";
                 const wilayahDoa = d.wilayah_ibadah || "-";
@@ -585,7 +764,7 @@
                 const tanggalPemimpin = d.tanggal || tglTampil;
                 const statusPemimpin = (d.status || "").toUpperCase() || "-";
                 const keteranganPemimpin = d.keterangan || "-";
-                const lokasiGPSPemimpin = d.alamat_fisik || d.lokasi_koordinat || "-";
+                const lokasiGPSPemimpin = d.lokasi_kehadiran || "-";
 
                 html += `<tr><td>${namaPemimpin}</td><td>${tanggalPemimpin}</td><td>${statusPemimpin}</td><td>${keteranganPemimpin}</td><td style="font-size:10px; color:#555;"><i class="fas fa-map-marker-alt"></i> ${lokasiGPSPemimpin}</td></tr>`;
                 row = [namaPemimpin, tanggalPemimpin, statusPemimpin, keteranganPemimpin, lokasiGPSPemimpin];
@@ -656,120 +835,637 @@
         return { html, pData, bData, lData, tableRows };
     }
 
-    function renderCharts(p, l, b) {
-        const hadir = Number(p["HADIR"] || 0);
-        const tidakHadir = Number(p["TIDAK HADIR"] || 0);
-        const total = hadir + tidakHadir;
+   function renderCharts(
+    p,
+    l,
+    b,
+    snapshot,
+    activeMembers,
+    cfg
+) {
+    const hadir =
+        Number(
+            p["HADIR"] || 0
+        );
 
-        const positif = total > 0 ? Number(((hadir / total) * 100).toFixed(1)) : 0;
-        const negatif = total > 0 ? Number(((tidakHadir / total) * 100).toFixed(1)) : 0;
+    const tidakHadir =
+        Number(
+            p["TIDAK HADIR"] || 0
+        );
 
-        if (myCharts.pie) myCharts.pie.destroy();
-        myCharts.pie = new Chart(document.getElementById("pieChart"), {
-            type: "doughnut",
-            data: {
-                labels: ["Hadir", "Tidak Hadir"],
-                datasets: [{
-                    data: [hadir, tidakHadir],
-                    backgroundColor: ["#007bff", "#dc3545"]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: "bottom" },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw || 0;
-                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return `${context.label}: ${value} (${percent}%)`;
+    const total =
+        hadir +
+        tidakHadir;
+
+    /*
+     * ============================================================
+     * POPULASI JEMAAT AKTIF
+     * ============================================================
+     */
+    const activePopulation =
+        getActivePopulation(
+            activeMembers,
+            cfg
+        );
+
+    const isPertemuanPemimpin =
+        cfg?.kegiatan ===
+        "Absen Pertemuan Pemimpin";
+
+    /*
+     * ============================================================
+     * IDENTITAS ANGGOTA AKTIF
+     * ============================================================
+     */
+    const activeIdentitySet =
+        new Set();
+
+    activeMembers.forEach(
+        member => {
+            const identities = [
+                member.uid,
+                member.email_normalized,
+                member.email,
+                member.nama,
+                member.nama_lengkap
+            ];
+
+            identities.forEach(
+                identity => {
+                    if (!identity) {
+                        return;
+                    }
+
+                    activeIdentitySet.add(
+                        String(identity)
+                            .trim()
+                            .toLowerCase()
+                    );
+                }
+            );
+        }
+    );
+
+    /*
+     * ============================================================
+     * STATISTIK PERTEMUAN PEMIMPIN
+     * ============================================================
+     *
+     * Pertemuan Pemimpin adalah kegiatan AD HOC.
+     *
+     * Siapa pun yang melakukan absensi kegiatan ini dianggap
+     * sebagai peserta pertemuan. Jabatan pada master users
+     * tidak digunakan untuk menentukan peserta.
+     *
+     * Satu event ditentukan dari kombinasi tanggal + lokasi.
+     */
+    const pemimpinEventSet =
+        new Set();
+
+    const pemimpinHadirEventSet =
+        new Set();
+
+    const pemimpinTidakHadirEventSet =
+        new Set();
+
+    const pemimpinParticipantSet =
+        new Set();
+
+    /*
+     * ============================================================
+     * ANGGOTA UNIK YANG HADIR
+     * ============================================================
+     */
+    const presentIdentitySet =
+        new Set();
+
+    snapshot.forEach(
+        (doc, docIndex) => {
+            const data =
+                typeof doc.data === "function"
+                    ? doc.data() || {}
+                    : doc || {};
+
+            const status =
+                String(
+                    data.status ||
+                    data.status_doa ||
+                    "HADIR"
+                )
+                    .trim()
+                    .toUpperCase();
+
+            const identity =
+                data.uid ||
+                data.email_normalized ||
+                data.email ||
+                data.nama ||
+                data.Nama ||
+                "";
+
+            /*
+             * ----------------------------------------------------
+             * KHUSUS PERTEMUAN PEMIMPIN
+             * ----------------------------------------------------
+             */
+            if (isPertemuanPemimpin) {
+                const tanggal =
+                    String(
+                        data.tanggal ||
+                        data.created_at ||
+                        docIndex
+                    )
+                        .trim();
+
+                const lokasi =
+                    String(
+                        data.lokasi_kehadiran ||
+                        ""
+                    )
+                        .trim()
+                        .toLowerCase();
+
+                const eventKey =
+                    tanggal +
+                    "|" +
+                    lokasi;
+
+                pemimpinEventSet.add(
+                    eventKey
+                );
+
+                if (status === "HADIR") {
+                    pemimpinHadirEventSet.add(
+                        eventKey
+                    );
+
+                    if (identity) {
+                        pemimpinParticipantSet.add(
+                            String(identity)
+                                .trim()
+                                .toLowerCase()
+                        );
+                    }
+                }
+
+                if (status === "TIDAK HADIR") {
+                    pemimpinTidakHadirEventSet.add(
+                        eventKey
+                    );
+                }
+
+                return;
+            }
+
+            /*
+             * ----------------------------------------------------
+             * MODE NORMAL
+             * ----------------------------------------------------
+             */
+            if (status !== "HADIR") {
+                return;
+            }
+
+            if (!identity) {
+                return;
+            }
+
+            const normalizedIdentity =
+                String(identity)
+                    .trim()
+                    .toLowerCase();
+
+            if (
+                activeIdentitySet.size > 0 &&
+                !activeIdentitySet.has(
+                    normalizedIdentity
+                )
+            ) {
+                return;
+            }
+
+            if (cfg?.wilayah) {
+                const recordRegion =
+                    data.wilayah_ibadah ||
+                    data.wilayah ||
+                    data.lokasi_berjemaat ||
+                    data.jemaat ||
+                    "";
+
+                if (
+                    normalizeLocationValue(
+                        recordRegion
+                    ) !==
+                    normalizeLocationValue(
+                        cfg.wilayah
+                    )
+                ) {
+                    return;
+                }
+            }
+
+            presentIdentitySet.add(
+                normalizedIdentity
+            );
+        }
+    );
+
+    const uniquePresent =
+        isPertemuanPemimpin
+            ? pemimpinParticipantSet.size
+            : presentIdentitySet.size;
+
+    const actualLeaderEvents =
+        pemimpinEventSet.size;
+
+    const attendedLeaderEvents =
+        pemimpinHadirEventSet.size;
+
+    const absentLeaderEvents =
+        pemimpinTidakHadirEventSet.size;
+
+    /*
+     * ============================================================
+     * PERSENTASE PARTISIPASI
+     * ============================================================
+     */
+    const positif =
+        isPertemuanPemimpin
+            ? (
+                actualLeaderEvents > 0
+                    ? Number(
+                        (
+                            attendedLeaderEvents /
+                            actualLeaderEvents
+                        ) * 100
+                    ).toFixed(1)
+                    : "0.0"
+            )
+            : (
+                activePopulation > 0
+                    ? Number(
+                        (
+                            uniquePresent /
+                            activePopulation
+                        ) * 100
+                    ).toFixed(1)
+                    : "0.0"
+            );
+
+    /*
+     * Ketidakhadiran normal tetap berdasarkan laporan
+     * eksplisit TIDAK HADIR.
+     *
+     * Pertemuan Pemimpin menggunakan event yang memiliki
+     * laporan eksplisit TIDAK HADIR.
+     */
+    const negatif =
+        isPertemuanPemimpin
+            ? (
+                actualLeaderEvents > 0
+                    ? Number(
+                        (
+                            absentLeaderEvents /
+                            actualLeaderEvents
+                        ) * 100
+                    ).toFixed(1)
+                    : "0.0"
+            )
+            : (
+                activePopulation > 0
+                    ? Number(
+                        (
+                            tidakHadir /
+                            activePopulation
+                        ) * 100
+                    ).toFixed(1)
+                    : "0.0"
+            );
+
+    /*
+     * ============================================================
+     * PIE CHART
+     * ============================================================
+     *
+     * Pie tetap menunjukkan komposisi laporan aktual,
+     * bukan populasi jemaat.
+     */
+    if (myCharts.pie) {
+        myCharts.pie.destroy();
+    }
+
+    myCharts.pie =
+        new Chart(
+            document.getElementById(
+                "pieChart"
+            ),
+            {
+                type: "doughnut",
+                data: {
+                    labels: [
+                        "Hadir",
+                        "Tidak Hadir"
+                    ],
+                    datasets: [{
+                        data: [
+                            hadir,
+                            tidakHadir
+                        ],
+                        backgroundColor: [
+                            "#007bff",
+                            "#dc3545"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: "bottom"
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label:
+                                    function(
+                                        context
+                                    ) {
+                                        const value =
+                                            Number(
+                                                context.raw ||
+                                                0
+                                            );
+
+                                        const reportPercent =
+                                            total > 0
+                                                ? (
+                                                    value /
+                                                    total
+                                                ) * 100
+                                                : 0;
+
+                                        return (
+                                            `${context.label}: ` +
+                                            `${value} laporan ` +
+                                            `(${reportPercent.toFixed(1)}%)`
+                                        );
+                                    }
                             }
                         }
                     }
                 }
             }
-        });
+        );
 
-        if (myCharts.line) myCharts.line.destroy();
-        myCharts.line = new Chart(document.getElementById("lineChart"), {
-            type: "bar",
-            data: {
-                labels: ["Kehadiran"],
-                datasets: [{
-                    label: "Positif",
-                    data: [positif],
-                    backgroundColor: "#007bff"
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: true, max: 100, ticks: { callback: value => value + "%" } }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: context => `${context.raw}%` } }
-                }
-            }
-        });
-
-        if (myCharts.bar) myCharts.bar.destroy();
-        myCharts.bar = new Chart(document.getElementById("barChart"), {
-            type: "bar",
-            data: {
-                labels: ["Ketidakhadiran"],
-                datasets: [{
-                    label: "Negatif",
-                    data: [negatif],
-                    backgroundColor: "#dc3545"
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: true, max: 100, ticks: { callback: value => value + "%" } }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { callbacks: { label: context => `${context.raw}%` } }
-                }
-            }
-        });
-
-        const statusDescription = document.getElementById("statusDescription");
-        const positiveDescription = document.getElementById("positiveDescription");
-        const negativeDescription = document.getElementById("negativeDescription");
-        const aiInsightContent = document.getElementById("aiInsightContent");
-
-        statusDescription.innerHTML = total > 0
-            ? `Total laporan <b>${total}</b>. Hadir <b>${hadir}</b> dan tidak hadir <b>${tidakHadir}</b>.`
-            : "Belum ada data pada periode yang dipilih.";
-
-        positiveDescription.innerHTML = total > 0
-            ? `Kehadiran jemaat mencapai <b>${positif}%</b> dari seluruh laporan pada periode ini.`
-            : "Belum ada data kehadiran pada periode ini.";
-
-        negativeDescription.innerHTML = total > 0
-            ? `Ketidakhadiran jemaat berada pada <b>${negatif}%</b> dari seluruh laporan pada periode ini.`
-            : "Belum ada data ketidakhadiran pada periode ini.";
-
-        let insight = "";
-
-        if (total === 0) {
-            insight = "Belum terdapat data pada periode yang dipilih. Belum ada rekomendasi yang dapat diberikan.";
-        } else if (negatif === 0) {
-            insight = `Kondisi sangat positif. Seluruh ${total} laporan menunjukkan kehadiran. Pertahankan konsistensi partisipasi jemaat.`;
-        } else if (positif >= 80) {
-            insight = `Tingkat kehadiran sebesar ${positif}% tergolong baik. Fokus berikutnya adalah menjaga konsistensi agar ketidakhadiran ${negatif}% dapat ditekan lebih rendah.`;
-        } else if (positif >= 60) {
-            insight = `Tingkat kehadiran berada pada ${positif}%. Disarankan melakukan perhatian khusus kepada jemaat yang belum hadir agar partisipasi periode berikutnya meningkat.`;
-        } else {
-            insight = `Tingkat kehadiran hanya ${positif}%. Diperlukan evaluasi dan tindak lanjut lebih aktif untuk meningkatkan partisipasi jemaat pada periode berikutnya.`;
-        }
-
-        aiInsightContent.innerHTML = insight;
+    /*
+     * ============================================================
+     * BAR PARTISIPASI
+     * ============================================================
+     */
+    if (myCharts.line) {
+        myCharts.line.destroy();
     }
+
+    myCharts.line =
+        new Chart(
+            document.getElementById(
+                "lineChart"
+            ),
+            {
+                type: "bar",
+                data: {
+                    labels: [
+                        "Partisipasi Jemaat"
+                    ],
+                    datasets: [{
+                        label:
+                            "Partisipasi",
+                        data: [
+                            Number(
+                                positif
+                            )
+                        ],
+                        backgroundColor:
+                            "#007bff"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback:
+                                    value =>
+                                        value +
+                                        "%"
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label:
+                                    context =>
+                                        `${context.raw}%`
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+    /*
+     * ============================================================
+     * BAR KETIDAKHADIRAN TERLAPOR
+     * ============================================================
+     */
+    if (myCharts.bar) {
+        myCharts.bar.destroy();
+    }
+
+    myCharts.bar =
+        new Chart(
+            document.getElementById(
+                "barChart"
+            ),
+            {
+                type: "bar",
+                data: {
+                    labels: [
+                        "Ketidakhadiran Terlapor"
+                    ],
+                    datasets: [{
+                        label:
+                            "Tidak Hadir",
+                        data: [
+                            Number(
+                                negatif
+                            )
+                        ],
+                        backgroundColor:
+                            "#dc3545"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback:
+                                    value =>
+                                        value +
+                                        "%"
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label:
+                                    context =>
+                                        `${context.raw}%`
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+    /*
+     * ============================================================
+     * DESKRIPSI
+     * ============================================================
+     */
+    const statusDescription =
+        document.getElementById(
+            "statusDescription"
+        );
+
+    const positiveDescription =
+        document.getElementById(
+            "positiveDescription"
+        );
+
+    const negativeDescription =
+        document.getElementById(
+            "negativeDescription"
+        );
+
+    const aiInsightContent =
+        document.getElementById(
+            "aiInsightContent"
+        );
+
+    statusDescription.innerHTML =
+        isPertemuanPemimpin
+            ? (
+                actualLeaderEvents > 0
+                    ? `Pertemuan aktual <b>${actualLeaderEvents}</b>. ` +
+                      `Peserta yang hadir <b>${uniquePresent}</b>. ` +
+                      `Total laporan <b>${total}</b>. ` +
+                      `Hadir <b>${hadir}</b> dan tidak hadir <b>${tidakHadir}</b>.`
+                    : "NIHIL — belum ada pertemuan pada periode ini."
+            )
+            : (
+                activePopulation > 0
+                    ? `Anggota aktif <b>${activePopulation}</b>. ` +
+                      `Jemaat unik yang hadir <b>${uniquePresent}</b>. ` +
+                      `Total laporan <b>${total}</b>. ` +
+                      `Hadir <b>${hadir}</b> dan tidak hadir <b>${tidakHadir}</b>.`
+                    : "Populasi anggota aktif belum tersedia."
+            );
+
+    positiveDescription.innerHTML =
+        isPertemuanPemimpin
+            ? (
+                actualLeaderEvents > 0
+                    ? `Partisipasi pertemuan mencapai <b>${positif}%</b> ` +
+                      `(${attendedLeaderEvents} dari ${actualLeaderEvents} event memiliki peserta hadir).`
+                    : "NIHIL — belum ada event pertemuan pada periode ini."
+            )
+            : (
+                activePopulation > 0
+                    ? `Partisipasi jemaat mencapai <b>${positif}%</b> ` +
+                      `(${uniquePresent} dari ${activePopulation} anggota aktif).`
+                    : "Belum dapat menghitung partisipasi jemaat."
+            );
+
+    negativeDescription.innerHTML =
+        isPertemuanPemimpin
+            ? (
+                actualLeaderEvents > 0
+                    ? `Event dengan laporan tidak hadir mencapai <b>${negatif}%</b> ` +
+                      `(${absentLeaderEvents} dari ${actualLeaderEvents} event).`
+                    : "NIHIL — belum ada event pertemuan pada periode ini."
+            )
+            : (
+                activePopulation > 0
+                    ? `Laporan tidak hadir mencapai <b>${negatif}%</b> ` +
+                      `dari populasi anggota aktif.`
+                    : "Belum dapat menghitung ketidakhadiran."
+            );
+
+    /*
+     * ============================================================
+     * INSIGHT
+     * ============================================================
+     */
+    let insight = "";
+
+    if (isPertemuanPemimpin) {
+        if (actualLeaderEvents === 0) {
+            insight =
+                "NIHIL — belum ada pertemuan pemimpin pada periode yang dipilih.";
+        } else if (Number(positif) >= 90) {
+            insight =
+                `Partisipasi pertemuan sangat baik, yaitu ` +
+                `<b>${positif}%</b> dari ${actualLeaderEvents} event aktual.`;
+        } else if (Number(positif) >= 70) {
+            insight =
+                `Partisipasi pertemuan tergolong baik, yaitu ` +
+                `<b>${positif}%</b> dari ${actualLeaderEvents} event aktual.`;
+        } else if (Number(positif) >= 50) {
+            insight =
+                `Partisipasi pertemuan berada pada <b>${positif}%</b>. ` +
+                `Perlu perhatian pada event yang belum memiliki kehadiran.`;
+        } else {
+            insight =
+                `Partisipasi pertemuan masih <b>${positif}%</b>. ` +
+                `Perlu tindak lanjut terhadap kehadiran pada event yang telah berlangsung.`;
+        }
+    } else if (activePopulation === 0) {
+        insight =
+            "Populasi anggota aktif belum tersedia sehingga persentase partisipasi belum dapat dihitung.";
+    } else if (Number(positif) >= 90) {
+        insight =
+            `Partisipasi jemaat sangat tinggi, yaitu ` +
+            `<b>${positif}%</b> dari ${activePopulation} anggota aktif.`;
+    } else if (Number(positif) >= 70) {
+        insight =
+            `Partisipasi jemaat tergolong baik, yaitu ` +
+            `<b>${positif}%</b> dari ${activePopulation} anggota aktif.`;
+    } else if (Number(positif) >= 50) {
+        insight =
+            `Partisipasi jemaat berada pada <b>${positif}%</b>. ` +
+            `Masih ada ruang untuk meningkatkan keterlibatan anggotaaktif.`;
+    } else {
+        insight =
+            `Partisipasi jemaat masih <b>${positif}%</b>. ` +
+            `Perlu tindak lanjut terhadap anggota aktif yang belum berpartisipasi.`;
+    }
+
+    aiInsightContent.innerHTML =
+        insight;
+}
 
     async function loadPdfImage(src) {
         return new Promise((resolve, reject) => {
@@ -2343,18 +3039,90 @@
     }
 
     window.onload = () => {
-        initializePeriodSelector();
-        const savedTab = localStorage.getItem("adminBigDataLastTab") || "ibadah_abepura";
-        const savedButton = document.querySelector(`.tab-btn[onclick*="switchTab('${savedTab}'"]`);
+        const authInstance = firebase.auth();
 
-        if (savedButton) {
-            switchTab(savedTab, savedButton);
-        } else {
-            const defaultButton = document.querySelector(`.tab-btn[onclick*="switchTab('ibadah_abepura'"]`);
-            if (defaultButton) {
-                switchTab("ibadah_abepura", defaultButton);
+        authInstance.onAuthStateChanged(async (user) => {
+            if (!user || !user.uid) {
+                window.location.replace("login_cyber.html");
+                return;
             }
-        }
+
+            try {
+                const adminDoc = await db
+                    .collection("admin_users")
+                    .doc(user.uid)
+                    .get();
+
+                if (!adminDoc.exists) {
+                    throw new Error("ADMIN_NOT_REGISTERED");
+                }
+
+                const adminData = adminDoc.data() || {};
+                const role = String(adminData.role || "").trim();
+                const status = String(
+                    adminData.status || "inactive"
+                ).trim();
+
+                const allowedRoles = [
+                    "master",
+                    "super_admin",
+                    "admin",
+                    "viewer"
+                ];
+
+                if (!allowedRoles.includes(role)) {
+                    throw new Error("ADMIN_NOT_AUTHORIZED");
+                }
+
+                if (status !== "active") {
+                    throw new Error("ADMIN_INACTIVE");
+                }
+
+                initializePeriodSelector();
+
+                const savedTab =
+                    localStorage.getItem(
+                        "adminBigDataLastTab"
+                    ) || "ibadah_abepura";
+
+                const savedButton =
+                    document.querySelector(
+                        `.tab-btn[onclick*="switchTab('${savedTab}'"]`
+                    );
+
+                if (savedButton) {
+                    switchTab(
+                        savedTab,
+                        savedButton
+                    );
+                } else {
+                    const defaultButton =
+                        document.querySelector(
+                            `.tab-btn[onclick*="switchTab('ibadah_abepura'"]`
+                        );
+
+                    if (defaultButton) {
+                        switchTab(
+                            "ibadah_abepura",
+                            defaultButton
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error(
+                    "Admin Big Data authorization failed:",
+                    error
+                );
+
+                alert(
+                    "Akun tidak memiliki akses ke Big Data."
+                );
+
+                window.location.replace(
+                    "login_cyber.html"
+                );
+            }
+        });
     };
 </script>
 </body>
