@@ -1,46 +1,135 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rapor Anda - Lengkap</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f7f9; padding: 20px; margin: 0; }
-        .dashboard-container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        
-        .header-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .stat-card { padding: 15px; border-radius: 12px; color: white; text-align: center; }
-        
-        .chart-section { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #f4f7f9;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .dashboard-container {
+            max-width: 1100px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+        }
+
+        .chart-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-bottom: 40px; 
+            margin-bottom: 40px;
             margin-top: 50px;
         }
 
-        .bg-sangat-kurang { background: #ff0000 !important; color: white; }
-        .bg-kurang { background: #ed7d31 !important; color: white; }
-        .bg-cukup { background: #548235 !important; color: white; }
-        .bg-sangat-baik { background: #00FF00 !important; color: black !important; }
+        .bg-sangat-kurang {
+            background: #ff0000 !important;
+            color: white;
+        }
 
-        .excel-table-container { overflow-x: auto; margin-top: 20px; border-top: 3px solid #000; padding-top: 20px; margin-bottom: 30px; position: relative; -webkit-overflow-scrolling: touch; }
-        .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; color: #000; min-width: 800px; }
-        .excel-table th, .excel-table td { border: 1px solid #000; padding: 6px; text-align: center; }
-        .excel-table th { background: #f2f2f2; text-transform: uppercase; }
-        
-        .separator { background-color: #000; color: #000; height: 12px !important; }
-        .separator td { border: none; }
+        .bg-kurang {
+            background: #ed7d31 !important;
+            color: white;
+        }
 
-        .info-jemaat-box { margin-bottom: 20px; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6; color: #000; }
-        .info-row { display: flex; align-items: flex-start; margin-bottom: 2px; }
-        .info-label { width: 120px; display: inline-block; font-weight: bold; }
+        .bg-cukup {
+            background: #548235 !important;
+            color: white;
+        }
+
+        .bg-sangat-baik {
+            background: #00FF00 !important;
+            color: black !important;
+        }
+
+        .excel-table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-top: 3px solid #000;
+            padding-top: 20px;
+            margin-bottom: 30px;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            color: #000;
+            min-width: 800px;
+        }
+
+        .excel-table th,
+        .excel-table td {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .excel-table th {
+            background: #f2f2f2;
+            text-transform: uppercase;
+        }
+
+        .separator {
+            background-color: #000;
+            color: #000;
+            height: 12px !important;
+        }
+
+        .separator td {
+            border: none;
+        }
+
+        .info-jemaat-box {
+            margin-bottom: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #000;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 2px;
+        }
+
+        .info-label {
+            width: 120px;
+            display: inline-block;
+            font-weight: bold;
+        }
 
         .pdf-export-btn {
             position: absolute;
@@ -58,260 +147,2308 @@
             z-index: 10;
         }
 
-        @media (max-width: 768px) { 
-            body { padding: 10px; }
-            .dashboard-container { padding: 15px; border-radius: 10px; }
-            .chart-section { grid-template-columns: 1fr; margin-top: 20px; } 
-            .header-stats { grid-template-columns: 1fr 1fr; gap: 10px; }
-            .pdf-export-btn { position: relative; width: 100%; top: 0; margin-bottom: 15px; }
-            .info-label { width: 80px; }
-            h2 { font-size: 18px; }
+        .period-controls {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) minmax(220px, 2fr);
+            gap: 12px;
+            margin: 12px 0 4px;
+        }
+
+        .period-control {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .period-control label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #555;
+        }
+
+        .period-control select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 9px 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 12px;
+        }
+
+        .excel-table-container {
+            overflow-x: auto;
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 768px) {
+            .period-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .period-control select {
+                min-height: 42px;
+            }
+
+            body {
+                padding: 10px;
+            }
+
+            .dashboard-container {
+                padding: 15px;
+                border-radius: 10px;
+            }
+
+            .chart-section {
+                grid-template-columns: 1fr;
+                margin-top: 20px;
+            }
+
+            .header-stats {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .pdf-export-btn {
+                position: relative;
+                width: 100%;
+                top: 0;
+                margin-bottom: 15px;
+            }
+
+            .info-label {
+                width: 80px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+    <style id="chart-layout-override">
+        .chart-section {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+            align-items: start;
+        }
+
+        .chart-card {
+            min-width: 0;
+            padding: 14px;
+        }
+
+        .chart-card h3 {
+            margin: 0 0 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .chart-canvas {
+            position: relative;
+            width: 100%;
+            height: 260px;
+        }
+
+        .chart-canvas canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        @media (max-width: 768px) {
+            .chart-section {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
+
 <body>
 
-<div class="dashboard-container" id="report-content">
-    <h2 style="text-align:center; margin-bottom:0;">REKAPITULASI RAPOR ANDA</h2>
-    <p id="periode-rapor" style="text-align:center; color:#666; margin-top:5px;">Periode: Memuat...</p>
+    <div class="dashboard-container" id="report-content">
+        <h2 style="text-align:center; margin-bottom:0;">REKAPITULASI RAPOR ANDA</h2>
+        <p id="periode-rapor" style="text-align:center; color:#666; margin-top:5px;">Periode: Memuat...</p>
 
-    <div class="excel-table-container">
-        <button class="pdf-export-btn" onclick="exportToPDF()">
-            <i class="fas fa-file-pdf"></i> EXTRACT PDF
-       </button>
+        <div class="period-controls" id="period-controls">
+            <div class="period-control">
+                <label for="period-mode">Tampilan Periode</label>
+                <select id="period-mode">
+                    <option value="WEEK">Per Minggu</option>
+                    <option value="MONTH">Per Bulan</option>
+                    <option value="YEAR">Per Tahun</option>
+                </select>
+            </div>
 
-        <div id="info-jemaat" class="info-jemaat-box">
-            <div class="info-row"><span class="info-label">NAMA</span> : <span id="display-nama" style="margin-left: 10px; font-weight: bold;">Memuat...</span></div>
-            <div class="info-row"><span class="info-label">NIJ</span> : <span id="display-nij" style="margin-left: 10px;">Memuat...</span></div>
-            <div class="info-row"><span class="info-label">JEMAAT</span> : <span id="display-jemaat" style="margin-left: 10px;">Memuat...</span></div>
-            <div class="info-row"><span class="info-label">KOMSEL</span> : <span id="display-komsel-info" style="margin-left: 10px;">Memuat...</span></div>
+            <div class="period-control period-value-control">
+                <label for="period-value">Periode</label>
+                <select id="period-value">
+                    <option value="">Memuat periode...</option>
+                </select>
+            </div>
         </div>
 
-        <h3 style="text-align:left; font-size:16px; margin-bottom:10px;">TABEL PERSENTASE</h3>
-        <table class="excel-table">
-            <thead>
-                <tr>
-                    <th>PERIODE MINGGU</th>
-                    <th>LAPORAN ALKITAB</th>
-                    <th>LAPORAN IBADAH RAYA</th>
-                    <th>LAPORAN KOMSEL</th>
-                    <th>LAPORAN KOMSEL GABUNGAN</th>
-                    <th>LAPORAN PERTEMUAN PEMIMPIN</th>
-                    <th>LAPORAN KEGIATAN KD</th>
-                    <th>LAPORAN LATIHAN</th>
-                    <th>LAPORAN PELAYANAN</th>
-                    <th>LAPORAN DOA</th>
-                </tr>
-            </thead>
-            <tbody id="excel-table-body"></tbody>
-        </table>
-
-        <h3 style="text-align:left; font-size:16px; margin-top:30px; margin-bottom:10px;">TABEL POIN</h3>
-        <table class="excel-table">
-            <thead>
-                <tr>
-                    <th>PERIODE MINGGU</th>
-                    <th>LAPORAN ALKITAB</th>
-                    <th>LAPORAN IBADAH RAYA</th>
-                    <th>LAPORAN KOMSEL</th>
-                    <th>LAPORAN KOMSEL GABUNGAN</th>
-                    <th>LAPORAN PERTEMUAN PEMIMPIN</th>
-                    <th>LAPORAN KEGIATAN KD</th>
-                    <th>LAPORAN LATIHAN</th>
-                    <th>LAPORAN PELAYANAN</th>
-                    <th>LAPORAN DOA</th>
-                </tr>
-            </thead>
-            <tbody id="excel-table-body-poin"></tbody>
-        </table>
-    </div>
-
-    <div class="header-stats" id="cards-container"></div>
-
-    <div class="chart-section">
-        <div>
-            <h3 style="font-size:14px; text-align:center;">Proporsi Keaktifan</h3>
-            <canvas id="pieChart"></canvas>
-        </div>
-        <div>
-            <h3 style="font-size:14px; text-align:center;">Perbandingan Capaian (%)</h3>
-            <canvas id="barChart"></canvas>
+        <div id="period-description" style="text-align:center;font-size:11px;color:#666;margin-top:8px;">
+            Menunggu data laporan...
         </div>
 
-        <div style="grid-column: 1 / -1; margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 10px; background-color: #fff;">
-            <h4 style="margin-top: 0; color: #333; border-bottom: 2px solid #548235; padding-bottom: 5px;">Keterangan Perhitungan Poin & Kriteria</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 12px; line-height: 1.6;">
-                <div>
-                    <strong>Rumus Poin:</strong><br>
-                    (Persentase Capaian / 100) x Bobot Maksimal
-                    <br><br>
-                    <strong>Bobot Maksimal per Kategori:</strong>
-                    <ul style="margin: 5px 0; padding-left: 20px;">
-                        <li>Ibadah Raya: 25 Poin</li>
-                        <li>Komsel / Komsel Gabungan: 20 Poin</li>
-                        <li>Alkitab / Doa / Pelayanan: 15 Poin</li>
-                        <li>Kegiatan KD / Latihan: 10 Poin</li>
-                    </ul>
+        <div class="excel-table-container">
+            <button class="pdf-export-btn" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf"></i> EXTRACT PDF
+            </button>
+
+            <div id="info-jemaat" class="info-jemaat-box">
+                <div class="info-row"><span class="info-label">NAMA</span> : <span id="display-nama"
+                        style="margin-left: 10px; font-weight: bold;">Memuat...</span></div>
+                <div class="info-row"><span class="info-label">NIJ</span> : <span id="display-nij"
+                        style="margin-left: 10px;">Memuat...</span></div>
+                <div class="info-row"><span class="info-label">JEMAAT</span> : <span id="display-jemaat"
+                        style="margin-left: 10px;">Memuat...</span></div>
+                <div class="info-row"><span class="info-label">KOMSEL</span> : <span id="display-komsel-info"
+                        style="margin-left: 10px;">Memuat...</span></div>
+            </div>
+
+            <h3 style="text-align:left; font-size:16px; margin-bottom:10px;">TABEL PERSENTASE</h3>
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th>PERIODE MINGGU</th>
+                        <th>LAPORAN ALKITAB</th>
+                        <th>LAPORAN IBADAH RAYA</th>
+                        <th>LAPORAN KOMSEL</th>
+                        <th>LAPORAN KOMSEL GABUNGAN</th>
+                        <th>LAPORAN PERTEMUAN PEMIMPIN</th>
+                        <th>LAPORAN DOA PUASA JEMAAT</th>
+                    </tr>
+                </thead>
+                <tbody id="excel-table-body"></tbody>
+            </table>
+
+            <h3 style="text-align:left; font-size:16px; margin-top:30px; margin-bottom:10px;">TABEL POIN</h3>
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th>PERIODE MINGGU</th>
+                        <th>LAPORAN ALKITAB</th>
+                        <th>LAPORAN IBADAH RAYA</th>
+                        <th>LAPORAN KOMSEL</th>
+                        <th>LAPORAN KOMSEL GABUNGAN</th>
+                        <th>LAPORAN PERTEMUAN PEMIMPIN</th>
+                        <th>LAPORAN DOA PUASA JEMAAT</th>
+                    </tr>
+                </thead>
+                <tbody id="excel-table-body-poin"></tbody>
+            </table>
+        </div>
+
+        <div class="header-stats" id="cards-container"></div>
+
+        <div class="chart-section">
+            <div class="chart-card">
+                <h3>Proporsi Keaktifan</h3>
+                <div class="chart-canvas">
+                    <canvas id="pieChart"></canvas>
                 </div>
+            </div>
+            <div class="chart-card">
+                <h3>Perbandingan Capaian (%)</h3>
+                <div class="chart-canvas">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div id="rapor-insight"
+                style="grid-column: 1 / -1; margin-top: 20px; padding: 15px; border: 1px solid #d9e3ef; border-radius: 12px; background: #f7fbff;">
+                <h4 style="margin:0 0 10px; color:#1f4e79;">
+                    <i class="fas fa-lightbulb"></i> Insight Pertumbuhan
+                </h4>
+
+                <div style="margin-bottom:10px;">
+                    <div style="font-size:11px;font-weight:800;margin-bottom:4px;">
+                        Ringkasan
+                    </div>
+                    <div id="insight-summary" style="font-size:12px;line-height:1.6;color:#4b5563;">
+                        Menunggu data Rapor...
+                    </div>
+                </div>
+
                 <div>
-                    <strong>Kriteria Predikat:</strong>
-                    <ul style="margin: 5px 0; padding-left: 20px;">
-                        <li><span style="color: #00FF00; font-weight: bold;">Sangat Baik:</span> 95% - 100%</li>
-                        <li><span style="color: #548235; font-weight: bold;">Cukup:</span> 80% - 94%</li>
-                        <li><span style="color: #ed7d31; font-weight: bold;">Kurang:</span> 50% - 79%</li>
-                        <li><span style="color: #ff0000; font-weight: bold;">Sangat Kurang:</span> < 50%</li>
-                    </ul>
+                    <div style="font-size:11px;font-weight:800;margin-bottom:4px;">
+                        Rekomendasi
+                    </div>
+                    <div id="insight-recommendation" style="font-size:12px;line-height:1.6;color:#4b5563;">
+                        Menunggu data Rapor...
+                    </div>
+                </div>
+            </div>
+            <div
+                style="grid-column: 1 / -1; margin-top: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 10px; background-color: #fff;">
+                <h4 style="margin-top: 0; color: #333; border-bottom: 2px solid #548235; padding-bottom: 5px;">
+                    Keterangan Perhitungan Poin & Kriteria</h4>
+                <div
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 12px; line-height: 1.6;">
+                    <div>
+                        <strong>Rumus Poin:</strong><br>
+                        (Persentase Capaian / 100) × 10 poin
+                        <br><br>
+
+                        <strong>Ketentuan Kegiatan Rutin:</strong>
+                        <ul style="margin:5px 0;padding-left:20px;">
+                            <li>Laporan Alkitab: 1 laporan per hari.</li>
+                            <li>Laporan Ibadah Raya: 1 kali setiap minggu (target 4 kali per bulan).</li>
+                            <li>Laporan Komsel: 1 kali setiap minggu (target 4 kali per bulan).</li>
+                            <li>Laporan Komsel Gabungan: 1 kali setiap 3 bulan.</li>
+                            <li>Laporan Doa Puasa Jemaat: 1 kali setiap minggu (target 4 kali per bulan).</li>
+                        </ul>
+
+                        <strong>Pertemuan Pemimpin (AD HOC):</strong>
+                        <ul style="margin:5px 0;padding-left:20px;">
+                            <li>Meeting dihitung berdasarkan event yang benar-benar terjadi.</li>
+                            <li>Tidak ada event pada periode: <strong>NIHIL</strong> dan tidak mengurangi nilai.</li>
+                            <li>Ada event: Capaian = event yang dihadiri ÷ event aktual × 100%.</li>
+                            <li>Poin AD HOC = (Capaian / 100) × 10 poin.</li>
+                        </ul>
+
+                        <strong>Bobot Final Rapor:</strong>
+                        <ul style="margin:5px 0;padding-left:20px;">
+                            <li>Laporan Alkitab: 10 poin</li>
+                            <li>Laporan Ibadah Raya: 10 poin</li>
+                            <li>Laporan Komsel: 10 poin</li>
+                            <li>Laporan Komsel Gabungan: 10 poin</li>
+                            <li>Laporan Pertemuan Pemimpin: 10 poin</li>
+                            <li>Laporan Doa Puasa Jemaat: 10 poin</li>
+                            <li><strong>Total Rapor: 60 poin</strong></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <strong>Kriteria Predikat:</strong>
+                        <ul style="margin:5px 0; padding-left:20px;">
+                            <li>
+                                <span style="color: #00FF00; font-weight: bold;">Sangat Baik:</span>
+                                95% - 100% (57,00 - 60,00 poin)
+                            </li>
+                            <li>
+                                <span style="color: #548235; font-weight: bold;">Cukup:</span>
+                                80% - 94% (48,00 - 56,40 poin)
+                            </li>
+                            <li>
+                                <span style="color: #ed7d31; font-weight: bold;">Kurang:</span>
+                                50% - 79% (30,00 - 47,40 poin)
+                            </li>
+                            <li>
+                                <span style="color: #ff0000; font-weight: bold;">Sangat Kurang:</span>
+                                &lt; 50% (&lt; 30,00 poin)
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-        authDomain: "boby-apps-project.firebaseapp.com",
-        databaseURL: "https://boby-apps-project-default-rtdb.firebaseio.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
-    
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-
-    let dataPribadi = {
-        "Pembacaan FT": 0, "Kehadiran Doa": 0, "Kehadiran Komsel": 0,
-        "Ibadah Raya": 0, "Komsel Gabungan": 0, "Kegiatan KD": 0,
-        "Latihan": 0, "Pelayanan": 0
-    };
-
-    function getKategori(val) {
-        if (val === "" || val === null) return { label: '', class: '' };
-        if (val < 50) return { label: 'SANGAT KURANG', class: 'bg-sangat-kurang' };
-        if (val < 80) return { label: 'KURANG', class: 'bg-kurang' };
-        if (val < 95) return { label: 'CUKUP', class: 'bg-cukup' };
-        return { label: 'SANGAT BAIK', class: 'bg-sangat-baik' };
-    }
-
-    function exportToPDF() {
-        const element = document.getElementById('report-content');
-        const btn = document.querySelector('.pdf-export-btn');
-        btn.style.display = 'none';
-        const opt = {
-            margin: [10, 10, 10, 10],
-            filename: 'Rapor_Pondok_Pemulihan_Papua.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false, y: 0 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.appspot.com",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
-        html2pdf().set(opt).from(element).save().then(() => { btn.style.display = 'block'; });
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const WEIGHT_EXACT = 10;
+
+        const INDICATORS = [
+            {
+                key: "alkitab",
+                label: "Laporan Alkitab",
+                collection: "laporan_bacaan"
+            },
+            {
+                key: "ibadah",
+                label: "Laporan Ibadah Raya",
+                collection: "kehadiran_jemaat",
+                kegiatan: "Absen Ibadah Raya"
+            },
+            {
+                key: "komsel",
+                label: "Laporan Komsel",
+                collection: "laporan_komsel_umum",
+                kegiatan: "Absen Komsel Reguler"
+            },
+            {
+                key: "gabungan",
+                label: "Laporan Komsel Gabungan",
+                collection: "laporan_komsel_umum",
+                kegiatan: "Absen Komsel Gabungan"
+            },
+            {
+                key: "pemimpin",
+                label: "Laporan Pertemuan Pemimpin",
+                collection: "kehadiran_jemaat",
+                kegiatan: "Absen Pertemuan Pemimpin"
+            },
+            {
+                key: "doa",
+                label: "Laporan Doa Puasa Jemaat",
+                collection: "laporan_doa"
+            }
+        ];
+
+        const state = {
+            user: null,
+            profile: null,
+            unsubscribe: [],
+            records: [],
+            periods: [],
+            mode: "WEEK",
+            selectedPeriod: ""
+        };
+
+        function normalize(value) {
+            return String(value ?? "").trim();
+        }
+
+        function timestampToDate(value) {
+            if (!value) return null;
+
+            if (
+                typeof value === "object" &&
+                typeof value.toDate === "function"
+            ) {
+                return value.toDate();
+            }
+
+            if (value instanceof Date) {
+                return value;
+            }
+
+            if (typeof value === "number") {
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? null : date;
+            }
+
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function getRecordDate(data) {
+            const candidates = [
+                data.tanggal_str,
+                data.tanggal,
+                data.tanggal_kegiatan,
+                data.created_at,
+                data.timestamp
+            ];
+
+            for (const value of candidates) {
+                const date = timestampToDate(value);
+                if (date) return date;
+            }
+
+            return null;
+        }
+
+        function startOfDay(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function endOfDay(date) {
+            const d = new Date(date);
+            d.setHours(23, 59, 59, 999);
+            return d;
+        }
+
+        function startOfWeekMonday(date) {
+            const d = startOfDay(date);
+            const day = d.getDay();
+            const offset = day === 0 ? -6 : 1 - day;
+            d.setDate(d.getDate() + offset);
+            return d;
+        }
+
+        function formatDate(date) {
+            return date.toLocaleDateString(
+                "id-ID",
+                {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+                }
+            );
+        }
+
+        function formatMonth(date) {
+            return date.toLocaleDateString(
+                "id-ID",
+                {
+                    month: "long",
+                    year: "numeric"
+                }
+            );
+        }
+
+        function yearOf(date) {
+            return date.getFullYear();
+        }
+
+        function periodKey(start, end) {
+            return (
+                start.toISOString().slice(0, 10) +
+                "|" +
+                end.toISOString().slice(0, 10)
+            );
+        }
+
+        function buildWeekPeriods(records) {
+            const periods = new Map();
+
+            records.forEach(record => {
+                const date = getRecordDate(record.data);
+                if (!date) return;
+
+                const start = startOfWeekMonday(date);
+                const end = endOfDay(
+                    new Date(
+                        start.getFullYear(),
+                        start.getMonth(),
+                        start.getDate() + 6
+                    )
+                );
+
+                const key = periodKey(start, end);
+
+                if (!periods.has(key)) {
+                    periods.set(key, {
+                        key,
+                        start,
+                        end,
+                        label:
+                            "Minggu: " +
+                            formatDate(start) +
+                            " - " +
+                            formatDate(end),
+                        description:
+                            "Periode " +
+                            formatDate(start) +
+                            " sampai " +
+                            formatDate(end)
+                    });
+                }
+            });
+
+            return [
+                ...periods.values()
+            ].sort(
+                (a, b) =>
+                    b.start.getTime() -
+                    a.start.getTime()
+            );
+        }
+
+        function buildMonthPeriods(records) {
+            const periods = new Map();
+
+            records.forEach(record => {
+                const date = getRecordDate(record.data);
+                if (!date) return;
+
+                const start = startOfDay(
+                    new Date(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        1
+                    )
+                );
+
+                const end = endOfDay(
+                    new Date(
+                        date.getFullYear(),
+                        date.getMonth() + 1,
+                        0
+                    )
+                );
+
+                const key = periodKey(start, end);
+
+                if (!periods.has(key)) {
+                    periods.set(key, {
+                        key,
+                        start,
+                        end,
+                        label: formatMonth(start),
+                        description:
+                            formatDate(start) +
+                            " - " +
+                            formatDate(end)
+                    });
+                }
+            });
+
+            return [
+                ...periods.values()
+            ].sort(
+                (a, b) =>
+                    b.start.getTime() -
+                    a.start.getTime()
+            );
+        }
+
+        function buildYearPeriods(records) {
+            const years = new Map();
+
+            records.forEach(record => {
+                const date = getRecordDate(record.data);
+                if (!date) return;
+
+                const year = date.getFullYear();
+                if (!years.has(year)) {
+                    years.set(year, {
+                        key: String(year),
+                        start: new Date(
+                            year,
+                            0,
+                            1
+                        ),
+                        end: endOfDay(
+                            new Date(
+                                year,
+                                11,
+                                31
+                            )
+                        ),
+                        label: String(year),
+                        description:
+                            "01/01/" +
+                            year +
+                            " - 31/12/" +
+                            year
+                    });
+                }
+            });
+
+            return [
+                ...years.values()
+            ].sort(
+                (a, b) =>
+                    b.start.getTime() -
+                    a.start.getTime()
+            );
+        }
+
+        function buildPeriods() {
+            const now = new Date();
+
+            if (!state.records.length) {
+                if (state.mode === "MONTH") {
+                    state.periods = [
+                        {
+                            key:
+                                `${now.getFullYear()}-${String(
+                                    now.getMonth() + 1
+                                ).padStart(2, "0")}`,
+                            start: new Date(
+                                now.getFullYear(),
+                                now.getMonth(),
+                                1
+                            ),
+                            end: endOfDay(
+                                new Date(
+                                    now.getFullYear(),
+                                    now.getMonth() + 1,
+                                    0
+                                )
+                            ),
+                            label: formatMonth(now),
+                            description: formatMonth(now)
+                        }
+                    ];
+                } else if (state.mode === "YEAR") {
+                    state.periods = [
+                        {
+                            key: String(
+                                now.getFullYear()
+                            ),
+                            start: new Date(
+                                now.getFullYear(),
+                                0,
+                                1
+                            ),
+                            end: endOfDay(
+                                new Date(
+                                    now.getFullYear(),
+                                    11,
+                                    31
+                                )
+                            ),
+                            label: String(
+                                now.getFullYear()
+                            ),
+                            description:
+                                `01/01/${now.getFullYear()} - ` +
+                                `31/12/${now.getFullYear()}`
+                        }
+                    ];
+                } else {
+                    const start =
+                        startOfWeekMonday(now);
+
+                    const end =
+                        endOfDay(
+                            new Date(start)
+                        );
+
+                    end.setDate(
+                        end.getDate() + 6
+                    );
+
+                    state.periods = [
+                        {
+                            key:
+                                start.toISOString()
+                                    .slice(0, 10),
+                            start,
+                            end,
+                            label:
+                                `${formatDate(start)} - ${formatDate(end)}`,
+                            description:
+                                `${formatDate(start)} - ${formatDate(end)}`
+                        }
+                    ];
+                }
+
+                state.selectedPeriod =
+                    state.periods[0].key;
+
+                return;
+            }
+
+            if (state.mode === "MONTH") {
+                state.periods =
+                    buildMonthPeriods(
+                        state.records
+                    );
+            } else if (state.mode === "YEAR") {
+                state.periods =
+                    buildYearPeriods(
+                        state.records
+                    );
+            } else {
+                state.periods =
+                    buildWeekPeriods(
+                        state.records
+                    );
+            }
+        }
+
+        function activePeriod() {
+            return state.periods.find(
+                period =>
+                    period.key ===
+                    state.selectedPeriod
+            ) || state.periods[0] || null;
+        }
+
+        function updatePeriodSelector() {
+            const select =
+                document.getElementById(
+                    "period-value"
+                );
+
+            if (!select) return;
+
+            select.innerHTML = "";
+
+            state.periods.forEach(
+                period => {
+                    const option =
+                        document.createElement(
+                            "option"
+                        );
+
+                    option.value =
+                        period.key;
+                    option.textContent =
+                        period.label;
+
+                    select.appendChild(
+                        option
+                    );
+                }
+            );
+
+            const current =
+                state.periods.find(
+                    period =>
+                        period.key ===
+                        state.selectedPeriod
+                );
+
+            if (current) {
+                select.value =
+                    current.key;
+            } else if (state.periods[0]) {
+                state.selectedPeriod =
+                    state.periods[0].key;
+                select.value =
+                    state.selectedPeriod;
+            }
+
+            const period =
+                activePeriod();
+
+            document.getElementById(
+                "periode-rapor"
+            ).innerText =
+                period
+                    ? "Periode: " + period.label
+                    : "Periode: Belum tersedia";
+
+            document.getElementById(
+                "period-description"
+            ).innerText =
+                period
+                    ? period.description
+                    : "Belum ada laporan pada periode yang tersedia.";
+        }
+
+        function matchesIndicator(
+            record,
+            indicator
+        ) {
+            const data = record.data || {};
+
+            if (
+                indicator.kegiatan &&
+                normalize(
+                    data.kegiatan
+                ) !== indicator.kegiatan
+            ) {
+                return false;
+            }
+
+            return true;
+        }
+
+        function recordsForIndicator(
+            indicator,
+            period
+        ) {
+            if (!period) return [];
+
+            return state.records.filter(
+                record => {
+                    const date =
+                        getRecordDate(
+                            record.data
+                        );
+
+                    if (!date) return false;
+
+                    if (
+                        date < period.start ||
+                        date > period.end
+                    ) {
+                        return false;
+                    }
+
+                    if (
+                        record.collection !==
+                        indicator.collection
+                    ) {
+                        return false;
+                    }
+
+                    return matchesIndicator(
+                        record,
+                        indicator
+                    );
+                }
+            );
+        }
+
+        /*
+         * MODEL TARGET RAPOR
+         *
+         * Lima indikator rutin:
+         * - 4 kesempatan per bulan
+         * - 1 kesempatan per minggu
+         * - 48 kesempatan per tahun
+         *
+         * Pertemuan Pemimpin tidak menggunakan target tetap
+         * karena bersifat AD HOC.
+         */
+        /*
+         * TARGET RUTIN RAPOR
+         *
+         * Baseline:
+         * Alkitab           = 30 kesempatan / bulan
+         * Ibadah Raya       = 4 kesempatan / bulan
+         * Komsel            = 4 kesempatan / bulan
+         * Komsel Gabungan   = 1 kesempatan / bulan
+         * Doa               = 4 kesempatan / bulan
+         *
+         * Pertemuan Pemimpin = AD HOC
+         * Tidak memiliki target tetap.
+         */
+      const RAPOR_TARGETS = {
+    alkitab: {
+        MONTH: 30,
+        YEAR: 365
+    },
+
+    ibadah: {
+        MONTH: 4,
+        YEAR: 52
+    },
+
+    komsel: {
+        MONTH: 4,
+        YEAR: 52
+    },
+
+    gabungan: {
+        QUARTER: 1,
+        YEAR: 4
+    },
+
+    pemimpin: {
+        MONTH: null,
+        YEAR: null
+    },
+
+    doa: {
+        MONTH: 4,
+        YEAR: 52
+    }
+};
+
+        function isSuccessfulReport(
+            record,
+            indicator
+        ) {
+            const data =
+                record.data || {};
+
+            const status =
+                String(
+                    data.status ||
+                    data.status_doa ||
+                    ""
+                )
+                    .trim()
+                    .toUpperCase();
+
+            if (
+                indicator.key === "alkitab"
+            ) {
+                return true;
+            }
+
+            return status === "HADIR";
+        }
+
+      function calculatePercentage(
+    records,
+    indicator,
+    period
+) {
+    if (!period) {
+        return null;
     }
 
-    function fetchDataJemaat() {
-        const userEmail = localStorage.getItem('userEmail');
-        if (userEmail) {
-            const dbRef = firebase.database().ref('users');
-            dbRef.orderByChild('email').equalTo(userEmail).on('value', (snapshot) => {
-                if (snapshot.exists()) {
-                    const userData = snapshot.val();
-                    const key = Object.keys(userData)[0];
-                    const data = userData[key];
-                    
-                    document.getElementById('display-nama').innerText = data.nama_lengkap || data.nama || 'Tidak Ada Nama';
-                    document.getElementById('display-nij').innerText = data.nij || '-';
-                    document.getElementById('display-jemaat').innerText = data.wilayah_jemaat || 'Papua';
-                    document.getElementById('display-komsel-info').innerText = data.nama_komsel || data.komsel || '-';
+    const mode =
+        String(
+            state.mode || "WEEK"
+        ).toUpperCase();
 
-                    if (data.statistik_bulanan) {
-                        const s = data.statistik_bulanan;
-                        dataPribadi = {
-                            "Pembacaan FT": s.alkitab || 0,
-                            "Kehadiran Doa": s.doa || 0,
-                            "Kehadiran Komsel": s.komsel || 0,
-                            "Ibadah Raya": s.ibadah_raya || 0,
-                            "Komsel Gabungan": s.komsel_gabungan || 0,
-                            "Kegiatan KD": s.kegiatan_kd || 0,
-                            "Latihan": s.latihan || 0,
-                            "Pelayanan": s.pelayanan || 0
-                        };
-                        renderHalaman();
+    /*
+     * =========================================================
+     * PERTEMUAN PEMIMPIN
+     * AD HOC
+     * =========================================================
+     *
+     * Hanya meeting aktual pada periode yang dipilih.
+     */
+    if (
+        indicator.key === "pemimpin"
+    ) {
+        const periodRecords =
+            records.filter(
+                record => {
+                    const date =
+                        getRecordDate(
+                            record.data || {}
+                        );
+
+                    if (!date) {
+                        return false;
+                    }
+
+                    return (
+                        date >= period.start &&
+                        date <= period.end
+                    );
+                }
+            );
+
+        const eventDates =
+            new Set();
+
+        periodRecords.forEach(
+            record => {
+                const date =
+                    getRecordDate(
+                        record.data || {}
+                    );
+
+                if (!date) {
+                    return;
+                }
+
+                eventDates.add(
+                    date.toISOString()
+                        .slice(0, 10)
+                );
+            }
+        );
+
+        const totalEvents =
+            eventDates.size;
+
+        /*
+         * Tidak ada meeting = NIHIL.
+         */
+        if (
+            totalEvents === 0
+        ) {
+            return null;
+        }
+
+        const successfulDates =
+            new Set();
+
+        periodRecords
+            .filter(
+                record =>
+                    isSuccessfulReport(
+                        record,
+                        indicator
+                    )
+            )
+            .forEach(
+                record => {
+                    const date =
+                        getRecordDate(
+                            record.data || {}
+                        );
+
+                    if (!date) {
+                        return;
+                    }
+
+                    successfulDates.add(
+                        date.toISOString()
+                            .slice(0, 10)
+                    );
+                }
+            );
+
+        return Math.min(
+            100,
+            Math.max(
+                0,
+                (
+                    successfulDates.size /
+                    totalEvents
+                ) * 100
+            )
+        );
+    }
+
+    /*
+     * =========================================================
+     * RENTANG WAKTU KEGIATAN RUTIN
+     * =========================================================
+     *
+     * WEEK  :
+     * tanggal 1 bulan sampai akhir minggu pilihan.
+     *
+     * MONTH :
+     * seluruh bulan.
+     *
+     * YEAR  :
+     * awal tahun sampai akhir periode.
+     *
+     * GABUNGAN:
+     * kuartal berjalan.
+     */
+    let calculationStart =
+        new Date(
+            period.start
+        );
+
+    let calculationEnd =
+        new Date(
+            period.end
+        );
+
+    if (
+        mode === "WEEK"
+    ) {
+        calculationStart =
+            new Date(
+                period.end.getFullYear(),
+                period.end.getMonth(),
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+    }
+
+    if (
+        mode === "MONTH"
+    ) {
+        calculationStart =
+            new Date(
+                period.end.getFullYear(),
+                period.end.getMonth(),
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+
+        calculationEnd =
+            new Date(
+                period.end.getFullYear(),
+                period.end.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
+    }
+
+    if (
+        mode === "YEAR"
+    ) {
+        calculationStart =
+            new Date(
+                period.end.getFullYear(),
+                0,
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+    }
+
+    /*
+     * Komsel Gabungan menggunakan kuartal.
+     */
+    if (
+        indicator.key === "gabungan"
+    ) {
+        if (
+            mode !== "YEAR"
+        ) {
+            const quarter =
+                Math.floor(
+                    period.end.getMonth() / 3
+                );
+
+            calculationStart =
+                new Date(
+                    period.end.getFullYear(),
+                    quarter * 3,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0
+                );
+
+            calculationEnd =
+                mode === "MONTH"
+                    ? new Date(
+                        period.end.getFullYear(),
+                        quarter * 3 + 3,
+                        0,
+                        23,
+                        59,
+                        59,
+                        999
+                    )
+                    : period.end;
+        }
+    }
+
+    /*
+     * =========================================================
+     * TARGET
+     * =========================================================
+     */
+    let target =
+        null;
+
+    if (
+        indicator.key === "alkitab"
+    ) {
+        if (
+            mode === "YEAR"
+        ) {
+            target = 365;
+        } else {
+            target =
+                new Date(
+                    period.end.getFullYear(),
+                    period.end.getMonth() + 1,
+                    0
+                ).getDate();
+        }
+    }
+
+    else if (
+        indicator.key === "ibadah"
+    ) {
+        target =
+            mode === "YEAR"
+                ? RAPOR_TARGETS.ibadah.YEAR
+                : RAPOR_TARGETS.ibadah.MONTH;
+    }
+
+    else if (
+        indicator.key === "komsel"
+    ) {
+        target =
+            mode === "YEAR"
+                ? RAPOR_TARGETS.komsel.YEAR
+                : RAPOR_TARGETS.komsel.MONTH;
+    }
+
+    else if (
+        indicator.key === "gabungan"
+    ) {
+        target =
+            mode === "YEAR"
+                ? RAPOR_TARGETS.gabungan.YEAR
+                : RAPOR_TARGETS.gabungan.QUARTER;
+    }
+
+    else if (
+        indicator.key === "doa"
+    ) {
+        target =
+            mode === "YEAR"
+                ? RAPOR_TARGETS.doa.YEAR
+                : RAPOR_TARGETS.doa.MONTH;
+    }
+
+    if (
+        !Number.isFinite(
+            target
+        ) ||
+        target <= 0
+    ) {
+        return null;
+    }
+
+    /*
+     * =========================================================
+     * RECORD DALAM RENTANG PERHITUNGAN
+     * =========================================================
+     */
+    const progressRecords =
+        records.filter(
+            record => {
+                const date =
+                    getRecordDate(
+                        record.data || {}
+                    );
+
+                if (!date) {
+                    return false;
+                }
+
+                return (
+                    date >= calculationStart &&
+                    date <= calculationEnd
+                );
+            }
+        );
+
+    /*
+     * =========================================================
+     * RECORD BERHASIL
+     * =========================================================
+     */
+    const successfulRecords =
+        progressRecords.filter(
+            record =>
+                isSuccessfulReport(
+                    record,
+                    indicator
+                )
+        );
+
+    /*
+     * =========================================================
+     * KESEMPATAN UNIK
+     * =========================================================
+     */
+    const opportunityKeys =
+        new Set();
+
+    successfulRecords.forEach(
+        record => {
+            const data =
+                record.data || {};
+
+            const date =
+                getRecordDate(
+                    data
+                );
+
+            if (!date) {
+                return;
+            }
+
+            const dateKey =
+                date.toISOString()
+                    .slice(0, 10);
+
+            let key =
+                dateKey;
+
+            /*
+             * Komsel Reguler:
+             * tanggal + JC.
+             */
+            if (
+                indicator.key ===
+                "komsel"
+            ) {
+                key =
+                    dateKey +
+                    "|" +
+                    String(
+                        data.jc ||
+                        data.komsel ||
+                        data.nama_komsel ||
+                        ""
+                    )
+                        .trim()
+                        .toLowerCase();
+            }
+
+            /*
+             * Komsel Gabungan:
+             * tanggal + nama + lokasi.
+             */
+            if (
+                indicator.key ===
+                "gabungan"
+            ) {
+                key =
+                    String(
+                        data.gabungan_tanggal_pelaksanaan ||
+                        dateKey
+                    ) +
+                    "|" +
+                    String(
+                        data.gabungan_nama_komsel ||
+                        ""
+                    )
+                        .trim()
+                        .toLowerCase() +
+                    "|" +
+                    String(
+                        data.gabungan_lokasi ||
+                        ""
+                    )
+                        .trim()
+                        .toLowerCase();
+            }
+
+            opportunityKeys.add(
+                key
+            );
+        }
+    );
+
+    const successfulCount =
+        opportunityKeys.size;
+
+    return Math.min(
+        100,
+        Math.max(
+            0,
+            (
+                successfulCount /
+                target
+            ) * 100
+        )
+    );
+}
+        function getCategory(value) {
+            if (value < 50) {
+                return {
+                    label: "SANGAT KURANG",
+                    className: "bg-sangat-kurang"
+                };
+            }
+
+            if (value < 80) {
+                return {
+                    label: "KURANG",
+                    className: "bg-kurang"
+                };
+            }
+
+            if (value < 95) {
+                return {
+                    label: "CUKUP",
+                    className: "bg-cukup"
+                };
+            }
+
+            return {
+                label: "SANGAT BAIK",
+                className: "bg-sangat-baik"
+            };
+        }
+
+     function buildMetrics(
+    period
+) {
+    return INDICATORS.map(
+        indicator => {
+            /*
+             * Untuk kegiatan rutin:
+             * hitung langsung dari seluruh records.
+             *
+             * calculatePercentage()
+             * sendiri yang menentukan rentang waktunya.
+             */
+            const percentage =
+                calculatePercentage(
+                    state.records,
+                    indicator,
+                    period
+                );
+
+            const points =
+                Number.isFinite(
+                    percentage
+                )
+                    ? (
+                        percentage /
+                        100
+                    ) *
+                    WEIGHT_EXACT
+                    : null;
+
+            return {
+                ...indicator,
+
+                count:
+                    state.records.filter(
+                        record => {
+                            const date =
+                                getRecordDate(
+                                    record.data ||
+                                    {}
+                                );
+
+                            return (
+                                date &&
+                                date >=
+                                    period.start &&
+                                date <=
+                                    period.end
+                            );
+                        }
+                    ).length,
+
+                percentage,
+
+                points,
+
+                records:
+                    state.records
+            };
+        }
+    );
+}
+        function renderCards(metrics) {
+            const container =
+                document.getElementById(
+                    "cards-container"
+                );
+
+            if (!container) {
+                return;
+            }
+
+            container.innerHTML =
+                metrics.map(
+                    metric => {
+                        const category =
+                            Number.isFinite(
+                                metric.percentage
+                            )
+                                ? getCategory(
+                                    metric.percentage
+                                )
+                                : {
+                                    label: "BELUM DIKONFIGURASI",
+                                    className: ""
+                                };
+
+                      const percentageText =
+    Number.isFinite(
+        metric.percentage
+    )
+        ? metric.percentage.toFixed(0) + "%"
+        : metric.key === "pemimpin"
+            ? "NIHIL"
+            : "N/A";
+
+const pointsText =
+    Number.isFinite(
+        metric.points
+    )
+        ? metric.points.toFixed(2) + " poin"
+        : metric.key === "pemimpin"
+            ? "-"
+            : "Menunggu target";
+
+                        return `
+                    <div class="stat-card ${category.className}">
+                        <div style="font-size:11px;opacity:.9;">
+                            ${metric.label}
+                        </div>
+
+                        <div style="font-size:22px;font-weight:bold;">
+                            ${percentageText}
+                        </div>
+
+                        <div style="font-size:10px;margin-top:4px;">
+                            ${metric.count} laporan
+                            · ${pointsText}
+                        </div>
+                    </div>
+                `;
+                    }
+                ).join("");
+        }
+
+        function renderTables(metrics, period) {
+            const tablePercentage =
+                document.getElementById(
+                    "excel-table-body"
+                );
+
+            const tablePoints =
+                document.getElementById(
+                    "excel-table-body-poin"
+                );
+
+            if (!tablePercentage || !tablePoints) {
+                return;
+            }
+
+            const percentageCells =
+                metrics.map(
+                    metric =>
+                        `<td>${Number.isFinite(metric.percentage)
+                            ? metric.percentage.toFixed(0) + "%"
+                            : metric.key === "pemimpin" ? "NIHIL" : "N/A"
+                        }</td>`
+                ).join("");
+
+            const pointCells =
+                metrics.map(
+                    metric =>
+                        `<td>${Number.isFinite(metric.points)
+                            ? metric.points.toFixed(2)
+                            : "-"
+                        }</td>`
+                ).join("");
+
+            const dateRange =
+                period
+                    ? `${formatDate(period.start)} - ${formatDate(period.end)}`
+                    : "-";
+
+            tablePercentage.innerHTML = `
+            <tr>
+                <td>${dateRange}</td>
+                ${percentageCells}
+            </tr>
+        `;
+
+            tablePoints.innerHTML = `
+            <tr>
+                <td>${dateRange}</td>
+                ${pointCells}
+            </tr>
+        `;
+
+            /*
+             * colspan final:
+             * periode + 6 indikator
+             */
+            const colSpan = 7;
+
+            tablePercentage.insertAdjacentHTML(
+                "beforeend",
+                `<tr class="separator"><td colspan="${colSpan}"></td></tr>`
+            );
+
+            tablePoints.insertAdjacentHTML(
+                "beforeend",
+                `<tr class="separator"><td colspan="${colSpan}"></td></tr>`
+            );
+        }
+
+        function renderSummary(metrics) {
+    const summary =
+        document.getElementById(
+            "insight-summary"
+        );
+
+    const recommendation =
+        document.getElementById(
+            "insight-recommendation"
+        );
+
+    if (!summary || !recommendation) {
+        return;
+    }
+
+    /*
+     * Indikator yang memiliki kewajiban pada periode.
+     *
+     * Pertemuan Pemimpin adalah AD HOC.
+     * Jika tidak ada event, percentage/points = null
+     * dan indikator tersebut tidak masuk denominator.
+     */
+    const configuredMetrics =
+        metrics.filter(
+            metric =>
+                Number.isFinite(
+                    metric.points
+                )
+        );
+
+    const totalPoints =
+        configuredMetrics.reduce(
+            (sum, metric) =>
+                sum + metric.points,
+            0
+        );
+
+    const MAX_RAPOR_POINTS =
+        configuredMetrics.length *
+        WEIGHT_EXACT;
+
+    const totalPercentage =
+        MAX_RAPOR_POINTS > 0
+            ? (
+                totalPoints /
+                MAX_RAPOR_POINTS
+            ) * 100
+            : 0;
+
+    const activeCount =
+        metrics.filter(
+            metric =>
+                metric.count > 0
+        ).length;
+
+    /*
+     * Indikator rutin yang belum memiliki laporan.
+     *
+     * Pertemuan Pemimpin tidak termasuk missing
+     * ketika statusnya NIHIL.
+     */
+    const missing =
+        metrics.filter(
+            metric =>
+                metric.count === 0 &&
+                metric.key !== "pemimpin"
+        );
+
+    /*
+     * Indikator yang benar-benar belum memiliki
+     * konfigurasi target.
+     *
+     * Pertemuan Pemimpin tidak dianggap
+     * unconfigured karena memang AD HOC.
+     */
+    const unconfigured =
+        metrics.filter(
+            metric =>
+                !Number.isFinite(
+                    metric.points
+                ) &&
+                metric.key !== "pemimpin"
+        );
+
+    const nihilPemimpin =
+        metrics.some(
+            metric =>
+                metric.key === "pemimpin" &&
+                !Number.isFinite(
+                    metric.percentage
+                )
+        );
+
+    summary.textContent =
+        `Capaian periode ini ${totalPercentage.toFixed(2)}% ` +
+        `(${totalPoints.toFixed(2)} dari ` +
+        `${MAX_RAPOR_POINTS.toFixed(2)} poin). ` +
+        `${activeCount} dari ${INDICATORS.length} indikator ` +
+        `memiliki laporan tercatat.` +
+        (
+            nihilPemimpin
+                ? " Pertemuan Pemimpin: NIHIL pada periode ini."
+                : ""
+        );
+
+    if (unconfigured.length) {
+        recommendation.textContent =
+            "Target periode belum dikonfigurasi untuk: " +
+            unconfigured
+                .map(
+                    metric =>
+                        metric.label
+                )
+                .join(", ") +
+            ". Nilai indikator tersebut belum dihitung agar Rapor tidak menghasilkan nilai yang tidak valid.";
+        return;
+    }
+
+    if (!missing.length) {
+        recommendation.textContent =
+            nihilPemimpin
+                ? "Semua indikator rutin sudah memiliki laporan. Pertemuan Pemimpin berstatus NIHIL karena tidak ada meeting pada periode ini."
+                : "Semua indikator sudah memiliki laporan pada periode ini. Pertahankan konsistensi dan kualitas partisipasi.";
+        return;
+    }
+
+    recommendation.textContent =
+        "Indikator yang belum memiliki laporan: " +
+        missing
+            .map(
+                metric =>
+                    metric.label
+            )
+            .join(", ") +
+        ".";
+}
+
+        function updateCharts(metrics) {
+            const labels =
+                metrics.map(
+                    metric =>
+                        metric.label.replace(
+                            "Laporan ",
+                            ""
+                        )
+                );
+
+            const reportCounts =
+                metrics.map(
+                    metric =>
+                        Number.isFinite(
+                            metric.count
+                        )
+                            ? metric.count
+                            : 0
+                );
+
+            const percentages =
+                metrics.map(
+                    metric =>
+                        Number.isFinite(
+                            metric.percentage
+                        )
+                            ? metric.percentage
+                            : 0
+                );
+
+            const pieCanvas =
+                document.getElementById(
+                    "pieChart"
+                );
+
+            const barCanvas =
+                document.getElementById(
+                    "barChart"
+                );
+
+            const pieWrapper =
+                pieCanvas?.parentElement;
+
+            const barWrapper =
+                barCanvas?.parentElement;
+
+            const hasReports =
+                reportCounts.some(
+                    count =>
+                        count > 0
+                );
+
+            /*
+             * PIE CHART
+             * Menggunakan jumlah laporan,
+             * bukan percentage.
+             */
+            if (pieCanvas) {
+                if (window.myPieChart) {
+                    window.myPieChart.destroy();
+                    window.myPieChart = null;
+                }
+
+                if (hasReports) {
+                    pieCanvas.style.display =
+                        "block";
+
+                    const oldMessage =
+                        pieWrapper?.querySelector(
+                            ".chart-empty-message"
+                        );
+
+                    if (oldMessage) {
+                        oldMessage.remove();
+                    }
+
+                    window.myPieChart =
+                        new Chart(
+                            pieCanvas,
+                            {
+                                type: "pie",
+                                data: {
+                                    labels,
+                                    datasets: [{
+                                        data:
+                                            reportCounts
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position:
+                                                "bottom"
+                                        }
+                                    }
+                                }
+                            }
+                        );
+                } else {
+                    pieCanvas.style.display =
+                        "none";
+
+                    if (
+                        pieWrapper &&
+                        !pieWrapper.querySelector(
+                            ".chart-empty-message"
+                        )
+                    ) {
+                        const message =
+                            document.createElement(
+                                "div"
+                            );
+
+                        message.className =
+                            "chart-empty-message";
+
+                        message.style.minHeight =
+                            "260px";
+
+                        message.style.display =
+                            "flex";
+
+                        message.style.alignItems =
+                            "center";
+
+                        message.style.justifyContent =
+                            "center";
+
+                        message.style.textAlign =
+                            "center";
+
+                        message.style.color =
+                            "#777";
+
+                        message.style.fontSize =
+                            "13px";
+
+                        message.innerText =
+                            "Belum ada laporan pada periode ini.";
+
+                        pieWrapper.appendChild(
+                            message
+                        );
                     }
                 }
-            });
-        }
-    }
+            }
 
-    function renderHalaman() {
-        const cardsCont = document.getElementById('cards-container');
-        const excelTable = document.getElementById('excel-table-body');
-        const excelTablePoin = document.getElementById('excel-table-body-poin');
-
-        const bobotMaks = {
-            "Pembacaan FT": 15, "Ibadah Raya": 25, "Kehadiran Komsel": 20,
-            "Komsel Gabungan": 20, "Kegiatan KD": 10, "Latihan": 10,
-            "Pelayanan": 15, "Kehadiran Doa": 15
-        };
-
-        if(cardsCont) {
-            cardsCont.innerHTML = "";
-            Object.keys(dataPribadi).forEach(key => {
-                const val = dataPribadi[key];
-                const kat = getKategori(val);
-                cardsCont.innerHTML += `<div class="stat-card ${kat.class}"><div style="font-size:11px; opacity:0.9;">${key}</div><div style="font-size:22px; font-weight:bold;">${val}%</div></div>`;
-            });
-        }
-
-        let rowsPersen = `<tr><td>Minggu I</td>${Object.keys(bobotMaks).map(key => `<td>${dataPribadi[key]}%</td>`).join('')}<td>-</td></tr>`;
-        let rowsPoin = `<tr><td>Minggu I</td>${Object.keys(bobotMaks).map(key => {
-            const poin = (dataPribadi[key] / 100) * bobotMaks[key];
-            return `<td>${poin.toFixed(1)}</td>`;
-        }).join('')}<td>-</td></tr>`;
-
-        for (let i = 2; i <= 4; i++) {
-            const emptyRow = `<tr><td>Minggu ${i === 2 ? 'II' : i === 3 ? 'III' : 'IV'}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;
-            rowsPersen += emptyRow; rowsPoin += emptyRow;
-        }
-
-        if(excelTable) excelTable.innerHTML = rowsPersen + `<tr class="separator"><td colspan="10"></td></tr>`;
-        if(excelTablePoin) excelTablePoin.innerHTML = rowsPoin + `<tr class="separator"><td colspan="10"></td></tr>`;
-
-        updateCharts();
-    }
-
-    function updateCharts() {
-        const pieCtx = document.getElementById('pieChart');
-        if(pieCtx) {
-            if(window.myPieChart) window.myPieChart.destroy();
-            window.myPieChart = new Chart(pieCtx, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(dataPribadi),
-                    datasets: [{ data: Object.values(dataPribadi), backgroundColor: ['#2ecc71','#e74c3c','#f1c40f','#3498db','#9b59b6','#e67e22','#1abc9c','#34495e'] }]
+            /*
+             * BAR CHART
+             * Menggunakan percentage.
+             */
+            if (barCanvas) {
+                if (window.myBarChart) {
+                    window.myBarChart.destroy();
+                    window.myBarChart = null;
                 }
-            });
+
+                barCanvas.style.display =
+                    "block";
+
+                const oldMessage =
+                    barWrapper?.querySelector(
+                        ".chart-empty-message"
+                    );
+
+                if (oldMessage) {
+                    oldMessage.remove();
+                }
+
+                window.myBarChart =
+                    new Chart(
+                        barCanvas,
+                        {
+                            type: "bar",
+                            data: {
+                                labels,
+                                datasets: [{
+                                    label:
+                                        "Capaian (%)",
+                                    data:
+                                        percentages
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero:
+                                            true,
+                                        max: 100
+                                    }
+                                }
+                            }
+                        }
+                    );
+            }
         }
 
-        const barCtx = document.getElementById('barChart');
-        if(barCtx) {
-            if(window.myBarChart) window.myBarChart.destroy();
-            window.myBarChart = new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(dataPribadi),
-                    datasets: [{ label: 'Capaian (%)', data: Object.values(dataPribadi), backgroundColor: '#548235' }]
+        function renderRapor() {
+            buildPeriods();
+
+            if (!state.selectedPeriod && state.periods[0]) {
+                state.selectedPeriod =
+                    state.periods[0].key;
+            }
+
+            updatePeriodSelector();
+
+            const period =
+                activePeriod();
+
+            if (!period) {
+                return;
+            }
+
+            const metrics =
+                buildMetrics(period);
+
+            renderCards(metrics);
+            renderTables(
+                metrics,
+                period
+            );
+            renderSummary(metrics);
+            updateCharts(metrics);
+        }
+
+        function clearListeners() {
+            state.unsubscribe.forEach(
+                unsubscribe => {
+                    try {
+                        unsubscribe();
+                    } catch (_) { }
+                }
+            );
+
+            state.unsubscribe = [];
+        }
+
+        function addCollectionListener(
+            collection,
+            callback
+        ) {
+            const unsubscribe =
+                db.collection(
+                    collection
+                )
+                    .where(
+                        "uid",
+                        "==",
+                        state.user.uid
+                    )
+                    .onSnapshot(
+                        snapshot => {
+                            callback(
+                                snapshot
+                            );
+                        },
+                        error => {
+                            console.error(
+                                "Gagal membaca " +
+                                collection +
+                                ":",
+                                error
+                            );
+
+                            showError(
+                                "Data Rapor tidak dapat dimuat."
+                            );
+                        }
+                    );
+
+            state.unsubscribe.push(
+                unsubscribe
+            );
+        }
+
+        function rebuildRecords(
+            snapshots
+        ) {
+            const records = [];
+
+            Object.entries(
+                snapshots
+            ).forEach(
+                ([
+                    collection,
+                    snapshot
+                ]) => {
+                    snapshot.forEach(
+                        doc => {
+                            records.push({
+                                collection,
+                                id: doc.id,
+                                data:
+                                    doc.data() || {}
+                            });
+                        }
+                    );
+                }
+            );
+
+            return records;
+        }
+
+        function loadReportsRealtime() {
+            clearListeners();
+
+            const snapshots = {};
+            let statisticsSnapshot =
+                null;
+
+            const requiredCollections = [
+                "kehadiran_jemaat",
+                "laporan_komsel_umum",
+                "laporan_doa",
+                "laporan_bacaan"
+            ];
+
+            const update =
+                (
+                    collection,
+                    snapshot
+                ) => {
+                    snapshots[
+                        collection
+                    ] = snapshot;
+
+                    state.records =
+                        rebuildRecords(
+                            snapshots
+                        );
+
+                    if (
+                        statisticsSnapshot
+                    ) {
+                        state.statisticsRecords =
+                            statisticsSnapshot.docs.map(
+                                doc => ({
+                                    id: doc.id,
+                                    data:
+                                        doc.data() || {}
+                                })
+                            );
+                    }
+
+                    renderRapor();
+                };
+
+            requiredCollections.forEach(
+                collection => {
+                    addCollectionListener(
+                        collection,
+                        snapshot =>
+                            update(
+                                collection,
+                                snapshot
+                            )
+                    );
+                }
+            );
+
+            const statisticsUnsubscribe =
+                db.collection(
+                    "statistik_jemaat_pusat"
+                )
+                    .onSnapshot(
+                        snapshot => {
+                            statisticsSnapshot =
+                                snapshot;
+
+                            state.statisticsRecords =
+                                snapshot.docs.map(
+                                    doc => ({
+                                        id: doc.id,
+                                        data:
+                                            doc.data() || {}
+                                    })
+                                );
+
+                            renderRapor();
+                        },
+                        error => {
+                            console.error(
+                                "Gagal membaca statistik pusat:",
+                                error
+                            );
+
+                            state.statisticsRecords =
+                                [];
+
+                            renderRapor();
+                        }
+                    );
+
+            state.unsubscribe.push(
+                statisticsUnsubscribe
+            );
+        }
+        async function loadProfile() {
+            const snap =
+                await db.collection(
+                    "users"
+                )
+                    .doc(state.user.uid)
+                    .get();
+
+            if (!snap.exists) {
+                throw new Error(
+                    "PROFILE_NOT_FOUND"
+                );
+            }
+
+            state.profile =
+                snap.data() || {};
+
+            document.getElementById(
+                "display-nama"
+            ).innerText =
+                state.profile.nama_lengkap ||
+                state.profile.nama ||
+                state.user.displayName ||
+                "Tidak Ada Nama";
+
+            document.getElementById(
+                "display-nij"
+            ).innerText =
+                state.profile.nij ||
+                state.profile.no_komsel ||
+                "-";
+
+            document.getElementById(
+                "display-jemaat"
+            ).innerText =
+                state.profile.wilayah_jemaat ||
+                state.profile.wilayah ||
+                "Papua";
+
+            document.getElementById(
+                "display-komsel-info"
+            ).innerText =
+                state.profile.nama_komsel ||
+                state.profile.lokasi_komsel ||
+                state.profile.komsel ||
+                "-";
+        }
+
+        function showError(message) {
+            const summary =
+                document.getElementById(
+                    "insight-summary"
+                );
+
+            if (summary) {
+                summary.textContent =
+                    message;
+            }
+
+            const recommendation =
+                document.getElementById(
+                    "insight-recommendation"
+                );
+
+            if (recommendation) {
+                recommendation.textContent =
+                    "Silakan muat ulang halaman atau login kembali.";
+            }
+        }
+
+        async function initializeRapor(user) {
+            state.user = user;
+
+            try {
+                await loadProfile();
+
+                loadReportsRealtime();
+            } catch (error) {
+                console.error(
+                    "Gagal memuat Rapor:",
+                    error
+                );
+
+                showError(
+                    "Data profil atau Rapor tidak dapat dimuat."
+                );
+            }
+        }
+
+        document.getElementById(
+            "period-mode"
+        )?.addEventListener(
+            "change",
+            event => {
+                state.mode =
+                    event.target.value;
+                state.selectedPeriod =
+                    "";
+                renderRapor();
+            }
+        );
+
+        document.getElementById(
+            "period-value"
+        )?.addEventListener(
+            "change",
+            event => {
+                state.selectedPeriod =
+                    event.target.value;
+                renderRapor();
+            }
+        );
+
+        function exportToPDF() {
+            const element =
+                document.getElementById(
+                    "report-content"
+                );
+
+            const btn =
+                document.querySelector(
+                    ".pdf-export-btn"
+                );
+
+            if (!element || !btn) return;
+
+            btn.style.display =
+                "none";
+
+            const opt = {
+                margin: [
+                    10,
+                    10,
+                    10,
+                    10
+                ],
+                filename:
+                    "Rapor_Pondok_Pemulihan_Papua.pdf",
+                image: {
+                    type: "jpeg",
+                    quality: 0.98
                 },
-                options: { scales: { y: { beginAtZero: true, max: 100 } } }
-            });
-        }
-    }
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    y: 0
+                },
+                jsPDF: {
+                    unit: "mm",
+                    format: "a4",
+                    orientation: "landscape"
+                }
+            };
 
-    window.onload = function() {
-        const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-        const tgl = new Date();
-        const ep = document.getElementById('periode-rapor');
-        if (ep) ep.innerText = `Periode: ${namaBulan[tgl.getMonth()]} ${tgl.getFullYear()}`;
-        fetchDataJemaat();
-    };
-</script>
+            html2pdf()
+                .set(opt)
+                .from(element)
+                .save()
+                .then(
+                    () => {
+                        btn.style.display =
+                            "block";
+                    }
+                );
+        }
+
+        auth.onAuthStateChanged(
+            user => {
+                if (!user || !user.uid) {
+                    window.location.replace(
+                        "index.html"
+                    );
+                    return;
+                }
+
+                initializeRapor(user);
+            }
+        );
+    </script>
 </body>
+
 </html>
