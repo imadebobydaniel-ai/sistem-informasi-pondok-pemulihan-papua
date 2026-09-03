@@ -127,6 +127,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -140,6 +141,7 @@
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
     const userEmail = localStorage.getItem("userEmail");
 
     const daftarKitab = ["Kejadian", "Keluaran", "Imamat", "Bilangan", "Ulangan", "Yosua", "Hakim-hakim", "Rut", "1 Samuel", "2 Samuel", "1 Raja-raja", "2 Raja-raja", "1 Tawarikh", "2 Tawarikh", "Ezra", "Nehemia", "Ester", "Ayub", "Mazmur", "Amsal", "Pengkhotbah", "Kidung Agung", "Yesaya", "Yeremia", "Ratapan", "Yehezkiel", "Daniel", "Hosea", "Yoel", "Amos", "Obaja", "Yunus", "Mikha", "Nahum", "Habakuk", "Zefanya", "Hagai", "Zakharia", "Maleakhi", "Matius", "Markus", "Lukas", "Yohanes", "Kisah Para Rasul", "Roma", "1 Korintus", "2 Korintus", "Galatia", "Efesus", "Filipi", "Kolose", "1 Tesalonika", "2 Tesalonika", "1 Timotius", "2 Timotius", "Titus", "Filemon", "Ibrani", "Yakobus", "1 Petrus", "2 Petrus", "1 Yohanes", "2 Yohanes", "3 Yohanes", "Yudas", "Wahyu"];
@@ -225,7 +227,22 @@
             const u = snapUser.docs[0].data();
 
             // 3. SUSUN PAYLOAD DENGAN TIMESTAMP AKURAT
+            const authUser = auth.currentUser;
+
+            if (!authUser || !authUser.uid) {
+                showBlock(
+                    "GAGAL",
+                    "Sesi akun tidak ditemukan. Silakan login kembali.",
+                    "fa-circle-xmark",
+                    "#e74c3c"
+                );
+                btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+                btn.disabled = false;
+                return;
+            }
+
             const payload = {
+                uid: authUser.uid,
                 nama: u.nama || "Tanpa Nama", 
                 email: userEmail, 
                 jc: String(u.komsel || u.jc || "Umum").trim(),

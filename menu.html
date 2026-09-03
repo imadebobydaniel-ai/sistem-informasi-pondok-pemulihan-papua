@@ -659,6 +659,46 @@
             }
         }
 </style>
+
+<style>
+.bottom-nav {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-nav.is-hidden {
+    transform: translateY(calc(100% - 18px));
+}
+
+.bottom-nav-toggle {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 46px;
+    height: 24px;
+    border: 0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 -3px 10px rgba(0,0,0,0.12);
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--biru-tua);
+    padding: 0;
+    touch-action: manipulation;
+}
+
+.bottom-nav-toggle i {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.bottom-nav.is-hidden .bottom-nav-toggle i {
+    transform: rotate(180deg);
+}
+</style>
 </head>
 <body>
     <!-- SIPAPUA POPUP BANNER -->
@@ -916,6 +956,15 @@
     </div>
 
     <nav class="bottom-nav">
+<button
+    type="button"
+    class="bottom-nav-toggle"
+    id="bottomNavToggle"
+    aria-label="Tampilkan menu bawah"
+    aria-expanded="false"
+>
+    <i class="fa-solid fa-chevron-up"></i>
+</button>
         <a href="javascript:location.reload()" class="nav-item">
             <div class="icon-circle"><i class="fa-solid fa-arrows-rotate"></i></div>
             <span>REFRESH</span>
@@ -942,7 +991,46 @@
         </a>
     </nav>
 
-    <div id="modalKartuDigital" class="modal-card-overlay">
+    <script>
+(() => {
+    const nav = document.getElementById("bottomNav");
+    const toggle = document.getElementById("bottomNavToggle");
+
+    if (!nav || !toggle) return;
+
+    let hideTimer = null;
+
+    function hideFooter() {
+        nav.classList.add("is-hidden");
+        toggle.setAttribute("aria-expanded", "false");
+    }
+
+    function showFooter() {
+        nav.classList.remove("is-hidden");
+        toggle.setAttribute("aria-expanded", "true");
+
+        clearTimeout(hideTimer);
+
+        hideTimer = setTimeout(() => {
+            hideFooter();
+        }, 5000);
+    }
+
+    toggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (nav.classList.contains("is-hidden")) {
+            showFooter();
+        } else {
+            hideFooter();
+        }
+    });
+
+    hideFooter();
+})();
+</script>
+<div id="modalKartuDigital" class="modal-card-overlay">
         <div style="position: relative;">
             <div onclick="tutupKartuDigital()" style="position:absolute; top:-35px; right:0; color:white; cursor:pointer;"><i class="fas fa-times"></i> Tutup</div>
             <div class="digital-card-box">

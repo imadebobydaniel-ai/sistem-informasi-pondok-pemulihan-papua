@@ -141,6 +141,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <script>
         const firebaseConfig = {
@@ -153,6 +154,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
         document.getElementById('pelayananForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -165,7 +167,19 @@
             btn.disabled = true;
             btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengirim...";
 
+            const authUser = auth.currentUser;
+
+            if (!authUser || !authUser.uid) {
+                msg.style.display = "block";
+                msg.className = "error-box";
+                msg.innerText = "Sesi akun tidak ditemukan. Silakan login kembali.";
+                btn.disabled = false;
+                btn.innerHTML = "<i class='fa-solid fa-paper-plane'></i> KIRIM LAPORAN";
+                return;
+            }
+
             const dataLaporan = {
+                uid: authUser.uid,
                 email: userEmail,
                 kategori: document.getElementById('kategori_kegiatan').value,
                 nama_kegiatan: document.getElementById('nama_kegiatan').value,
