@@ -1756,142 +1756,509 @@ const pointsText =
             );
         }
 
-        function renderSummary(metrics) {
-    const summary =
-        document.getElementById(
-            "insight-summary"
-        );
+        function getPreviousComparablePeriod(period) {
+            if (!period) {
+                return null;
+            }
 
-    const recommendation =
-        document.getElementById(
-            "insight-recommendation"
-        );
+            const start =
+                new Date(period.start);
 
-    if (!summary || !recommendation) {
-        return;
-    }
+            const end =
+                new Date(period.end);
 
-    /*
-     * Indikator yang memiliki kewajiban pada periode.
-     *
-     * Pertemuan Pemimpin adalah AD HOC.
-     * Jika tidak ada event, percentage/points = null
-     * dan indikator tersebut tidak masuk denominator.
-     */
-    const configuredMetrics =
-        metrics.filter(
-            metric =>
-                Number.isFinite(
-                    metric.points
-                )
-        );
+            const mode =
+                String(
+                    state.mode || "WEEK"
+                ).toUpperCase();
 
-    const totalPoints =
-        configuredMetrics.reduce(
-            (sum, metric) =>
-                sum + metric.points,
-            0
-        );
+            if (mode === "WEEK") {
+                const previousStart =
+                    new Date(start);
 
-    const MAX_RAPOR_POINTS =
-        configuredMetrics.length *
-        WEIGHT_EXACT;
+                previousStart.setDate(
+                    previousStart.getDate() - 7
+                );
 
-    const totalPercentage =
-        MAX_RAPOR_POINTS > 0
-            ? (
-                totalPoints /
-                MAX_RAPOR_POINTS
-            ) * 100
-            : 0;
+                const previousEnd =
+                    new Date(end);
 
-    const activeCount =
-        metrics.filter(
-            metric =>
-                metric.count > 0
-        ).length;
+                previousEnd.setDate(
+                    previousEnd.getDate() - 7
+                );
 
-    /*
-     * Indikator rutin yang belum memiliki laporan.
-     *
-     * Pertemuan Pemimpin tidak termasuk missing
-     * ketika statusnya NIHIL.
-     */
-    const missing =
-        metrics.filter(
-            metric =>
-                metric.count === 0 &&
-                metric.key !== "pemimpin"
-        );
+                return {
+                    key:
+                        periodKey(
+                            previousStart,
+                            previousEnd
+                        ),
+                    start: previousStart,
+                    end: previousEnd
+                };
+            }
 
-    /*
-     * Indikator yang benar-benar belum memiliki
-     * konfigurasi target.
-     *
-     * Pertemuan Pemimpin tidak dianggap
-     * unconfigured karena memang AD HOC.
-     */
-    const unconfigured =
-        metrics.filter(
-            metric =>
-                !Number.isFinite(
-                    metric.points
-                ) &&
-                metric.key !== "pemimpin"
-        );
+            if (mode === "MONTH") {
+                const previousYear =
+                    start.getMonth() === 0
+                        ? start.getFullYear() - 1
+                        : start.getFullYear();
 
-    const nihilPemimpin =
-        metrics.some(
-            metric =>
-                metric.key === "pemimpin" &&
-                !Number.isFinite(
-                    metric.percentage
-                )
-        );
+                const previousMonth =
+                    start.getMonth() === 0
+                        ? 11
+                        : start.getMonth() - 1;
 
-    summary.textContent =
-        `Capaian periode ini ${totalPercentage.toFixed(2)}% ` +
-        `(${totalPoints.toFixed(2)} dari ` +
-        `${MAX_RAPOR_POINTS.toFixed(2)} poin). ` +
-        `${activeCount} dari ${INDICATORS.length} indikator ` +
-        `memiliki laporan tercatat.` +
-        (
-            nihilPemimpin
-                ? " Pertemuan Pemimpin: NIHIL pada periode ini."
-                : ""
-        );
+                const previousStart =
+                    new Date(
+                        previousYear,
+                        previousMonth,
+                        1,
+                        0,
+                        0,
+                        0,
+                        0
+                    );
 
-    if (unconfigured.length) {
-        recommendation.textContent =
-            "Target periode belum dikonfigurasi untuk: " +
-            unconfigured
-                .map(
+                const previousEnd =
+                    new Date(
+                        previousYear,
+                        previousMonth + 1,
+                        0,
+                        23,
+                        59,
+                        59,
+                        999
+                    );
+
+                return {
+                    key:
+                        periodKey(
+                            previousStart,
+                            previousEnd
+                        ),
+                    start: previousStart,
+                    end: previousEnd
+                };
+            }
+
+            if (mode === "YEAR") {
+                const previousYear =
+                    start.getFullYear() - 1;
+
+                return {
+                    key:
+                        String(
+                            previousYear
+                        ),
+                    start:
+                        new Date(
+                            previousYear,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0
+                        ),
+                    end:
+                        new Date(
+                            previousYear,
+                            11,
+                            31,
+                            23,
+                            59,
+                            59,
+                            999
+                        )
+                };
+            }
+
+            return null;
+        }
+
+        function buildInsightAnalysis(
+            metrics,
+            period
+        ) {
+            const previousPeriod =
+                getPreviousComparablePeriod(
+                    period
+                );
+
+            const previousMetrics =
+                previousPeriod
+                    ? metrics.map(
+                        metric => ({
+                            ...metric,
+                            percentage:
+                                calculatePercentage(
+                                    state.records,
+                                    metric,
+                                    previousPeriod
+                                )
+                        })
+                    )
+                    : [];
+
+            const comparisons =
+                metrics.map(
+                    metric => {
+                        const previous =
+                            previousMetrics.find(
+                                item =>
+                                    item.key ===
+                                    metric.key
+                            );
+
+                        const currentValue =
+                            Number.isFinite(
+                                metric.percentage
+                            )
+                                ? metric.percentage
+                                : null;
+
+                        const previousValue =
+                            previous &&
+                            Number.isFinite(
+                                previous.percentage
+                            )
+                                ? previous.percentage
+                                : null;
+
+                        const delta =
+                            currentValue !== null &&
+                            previousValue !== null
+                                ? currentValue -
+                                  previousValue
+                                : null;
+
+                        return {
+                            metric,
+                            currentValue,
+                            previousValue,
+                            delta
+                        };
+                    }
+                );
+
+            const validComparisons =
+                comparisons.filter(
+                    item =>
+                        item.currentValue !== null &&
+                        item.previousValue !== null
+                );
+
+            const increased =
+                validComparisons.filter(
+                    item =>
+                        item.delta > 2
+                );
+
+            const decreased =
+                validComparisons.filter(
+                    item =>
+                        item.delta < -2
+                );
+
+            const stable =
+                validComparisons.filter(
+                    item =>
+                        Math.abs(item.delta) <= 2
+                );
+
+            const ranked =
+                metrics
+                    .filter(
+                        metric =>
+                            Number.isFinite(
+                                metric.percentage
+                            )
+                    )
+                    .sort(
+                        (a, b) =>
+                            b.percentage -
+                            a.percentage
+                    );
+
+            const strongest =
+                ranked[0] || null;
+
+            const weakest =
+                ranked.length
+                    ? ranked[
+                        ranked.length - 1
+                    ]
+                    : null;
+
+            const currentConfigured =
+                metrics.filter(
                     metric =>
-                        metric.label
-                )
-                .join(", ") +
-            ". Nilai indikator tersebut belum dihitung agar Rapor tidak menghasilkan nilai yang tidak valid.";
-        return;
-    }
+                        Number.isFinite(
+                            metric.points
+                        )
+                );
 
-    if (!missing.length) {
-        recommendation.textContent =
-            nihilPemimpin
-                ? "Semua indikator rutin sudah memiliki laporan. Pertemuan Pemimpin berstatus NIHIL karena tidak ada meeting pada periode ini."
-                : "Semua indikator sudah memiliki laporan pada periode ini. Pertahankan konsistensi dan kualitas partisipasi.";
-        return;
-    }
+            const currentTotalPoints =
+                currentConfigured.reduce(
+                    (sum, metric) =>
+                        sum + metric.points,
+                    0
+                );
 
-    recommendation.textContent =
-        "Indikator yang belum memiliki laporan: " +
-        missing
-            .map(
-                metric =>
-                    metric.label
-            )
-            .join(", ") +
-        ".";
-}
+            const currentMaxPoints =
+                currentConfigured.length *
+                WEIGHT_EXACT;
+
+            const currentOverall =
+                currentMaxPoints > 0
+                    ? (
+                        currentTotalPoints /
+                        currentMaxPoints
+                    ) * 100
+                    : 0;
+
+            const previousConfigured =
+                previousMetrics.filter(
+                    metric =>
+                        Number.isFinite(
+                            metric.percentage
+                        )
+                );
+
+            const previousTotalPoints =
+                previousConfigured.reduce(
+                    (sum, metric) =>
+                        sum +
+                        (
+                            metric.percentage /
+                            100
+                        ) *
+                        WEIGHT_EXACT,
+                    0
+                );
+
+            const previousMaxPoints =
+                previousConfigured.length *
+                WEIGHT_EXACT;
+
+            const previousOverall =
+                previousMaxPoints > 0
+                    ? (
+                        previousTotalPoints /
+                        previousMaxPoints
+                    ) * 100
+                    : null;
+
+            const overallDelta =
+                previousOverall !== null
+                    ? currentOverall -
+                      previousOverall
+                    : null;
+
+            const positiveIndicators =
+                increased
+                    .map(
+                        item =>
+                            `${item.metric.label} (+${item.delta.toFixed(1)} poin)`
+                    );
+
+            const warningIndicators =
+                decreased
+                    .map(
+                        item =>
+                            `${item.metric.label} (${item.delta.toFixed(1)} poin)`
+                    );
+
+            const missing =
+                metrics.filter(
+                    metric =>
+                        metric.count === 0 &&
+                        metric.key !== "pemimpin"
+                );
+
+            const nihilPemimpin =
+                metrics.some(
+                    metric =>
+                        metric.key === "pemimpin" &&
+                        !Number.isFinite(
+                            metric.percentage
+                        )
+                );
+
+            return {
+                comparisons,
+                increased,
+                decreased,
+                stable,
+                strongest,
+                weakest,
+                currentOverall,
+                previousOverall,
+                overallDelta,
+                positiveIndicators,
+                warningIndicators,
+                missing,
+                nihilPemimpin
+            };
+        }
+
+        function renderSummary(metrics) {
+            const summary =
+                document.getElementById(
+                    "insight-summary"
+                );
+
+            const recommendation =
+                document.getElementById(
+                    "insight-recommendation"
+                );
+
+            if (!summary || !recommendation) {
+                return;
+            }
+
+            /*
+             * ====================================================
+             * INSIGHT ENGINE V2
+             * ====================================================
+             */
+            const analysis =
+                buildInsightAnalysis(
+                    metrics,
+                    activePeriod()
+                );
+
+            const configuredMetrics =
+                metrics.filter(
+                    metric =>
+                        Number.isFinite(
+                            metric.points
+                        )
+                );
+
+            const totalPoints =
+                configuredMetrics.reduce(
+                    (sum, metric) =>
+                        sum + metric.points,
+                    0
+                );
+
+            const MAX_RAPOR_POINTS =
+                configuredMetrics.length *
+                WEIGHT_EXACT;
+
+            const totalPercentage =
+                MAX_RAPOR_POINTS > 0
+                    ? (
+                        totalPoints /
+                        MAX_RAPOR_POINTS
+                    ) * 100
+                    : 0;
+
+            const activeCount =
+                metrics.filter(
+                    metric =>
+                        metric.count > 0
+                ).length;
+
+            const trendLabel =
+                analysis.overallDelta === null
+                    ? "belum dapat dibandingkan dengan periode sebelumnya"
+                    : analysis.overallDelta > 2
+                        ? `meningkat ${analysis.overallDelta.toFixed(1)} poin`
+                        : analysis.overallDelta < -2
+                            ? `menurun ${Math.abs(analysis.overallDelta).toFixed(1)} poin`
+                            : "relatif stabil";
+
+            const strongestText =
+                analysis.strongest
+                    ? `${analysis.strongest.label} (${analysis.strongest.percentage.toFixed(1)}%)`
+                    : "belum tersedia";
+
+            const weakestText =
+                analysis.weakest
+                    ? `${analysis.weakest.label} (${analysis.weakest.percentage.toFixed(1)}%)`
+                    : "belum tersedia";
+
+            const positiveText =
+                analysis.positiveIndicators.length
+                    ? analysis.positiveIndicators.join(", ")
+                    : "Belum ada peningkatan indikator lebih dari 2 poin.";
+
+            const warningText =
+                analysis.warningIndicators.length
+                    ? analysis.warningIndicators.join(", ")
+                    : "Belum terlihat penurunan signifikan.";
+
+            let priorityText =
+                "Pertahankan konsistensi seluruh indikator.";
+
+            if (analysis.decreased.length >= 2) {
+                priorityText =
+                    "Prioritas tinggi: beberapa indikator mengalami penurunan bersamaan. Fokuskan evaluasi pada rutinitas yang mengalami penurunan terbesar.";
+            } else if (analysis.decreased.length === 1) {
+                priorityText =
+                    `Prioritas perhatian: ${analysis.decreased[0].metric.label} mengalami penurunan ${Math.abs(analysis.decreased[0].delta).toFixed(1)} poin dibanding periode sebelumnya.`;
+            } else if (analysis.missing.length) {
+                priorityText =
+                    "Prioritas perhatian: lengkapi indikator rutin yang belum memiliki laporan agar pola pertumbuhan dapat dipantau lebih konsisten.";
+            } else if (
+                analysis.overallDelta !== null &&
+                analysis.overallDelta > 2
+            ) {
+                priorityText =
+                    "Pertahankan momentum pertumbuhan dengan menjaga indikator yang sudah kuat dan memperkuat indikator yang masih berada di bawah capaian terbaik.";
+            }
+
+            summary.innerHTML =
+                `<strong>Ringkasan periode:</strong> ` +
+                `capaian ${totalPercentage.toFixed(2)}% ` +
+                `(${totalPoints.toFixed(2)} dari ${MAX_RAPOR_POINTS.toFixed(2)} poin). ` +
+                `${activeCount} dari ${INDICATORS.length} indikator memiliki laporan.<br><br>` +
+
+                `<strong>Trend:</strong> Capaian keseluruhan ${trendLabel}. ` +
+                `Indikator terkuat saat ini adalah ${strongestText}, ` +
+                `sedangkan indikator dengan capaian terendah adalah ${weakestText}.` +
+                (
+                    analysis.nihilPemimpin
+                        ? ` Pertemuan Pemimpin berstatus <strong>NIHIL</strong> dan tidak dihitung sebagai penurunan.`
+                        : ""
+                );
+
+            recommendation.innerHTML =
+                `<strong>Hal positif:</strong> ${positiveText}<br><br>` +
+
+                `<strong>Peringatan dini:</strong> ${warningText}<br><br>` +
+
+                `<strong>Rekomendasi:</strong> ${priorityText}<br><br>` +
+
+                `<strong>Strategi pertumbuhan:</strong> ` +
+                (
+                    analysis.strongest
+                        ? `Pertahankan ${analysis.strongest.label} sebagai kekuatan utama, ` +
+                          `kemudian arahkan pembinaan pada indikator yang berada di bawah capaian tersebut.`
+                        : "Bangun konsistensi laporan pada seluruh indikator rutin."
+                ) +
+
+                (
+                    analysis.overallDelta !== null
+                        ? `<br><br><strong>Arah periode:</strong> ` +
+                          `dibanding periode sebelumnya, capaian keseluruhan ` +
+                          `${analysis.overallDelta > 0 ? "naik" : analysis.overallDelta < 0 ? "turun" : "stabil"} ` +
+                          `${Math.abs(analysis.overallDelta).toFixed(1)} poin.`
+                        : ""
+                ) +
+
+                (
+                    analysis.decreased.length >= 2
+                        ? `<br><br><strong>Antisipasi:</strong> ` +
+                          `penurunan terjadi pada lebih dari satu indikator. ` +
+                          `Lakukan evaluasi lebih awal agar pola tersebut tidak berlanjut pada periode berikutnya.`
+                        : ""
+                );
+
+        }
 
         function updateCharts(metrics) {
             const labels =
