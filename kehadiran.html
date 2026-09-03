@@ -198,7 +198,11 @@
     // --- FUNGSI PROSES UTAMA (REVERSE GEOCODING & GLOBAL LOCK) ---
     async function handleProses(tipe) {
         const menu = document.getElementById("jenis-kegiatan").value;
-        const today = new Date().toISOString().split('T')[0];
+        const nowLocal = new Date();
+        const today =
+            `${nowLocal.getFullYear()}-` +
+            `${String(nowLocal.getMonth() + 1).padStart(2, "0")}-` +
+            `${String(nowLocal.getDate()).padStart(2, "0")}`;
 
         // 1. Validasi Input Tambahan (Extension & Gabungan)
         if(menu === "Absen Extention") {
@@ -216,21 +220,55 @@
         showLockDisplay('loading', 'Memverifikasi...', 'Memeriksa status laporan harian Anda...');
 
         try {
-            // 2. CEK DOUBLE SUBMIT GLOBAL (Satu laporan saja per 24 jam untuk semua jenis)
-            const checkA = await db.collection("kehadiran_jemaat")
-                            .where("nama", "==", userName)
-                            .where("tanggal", "==", today).get();
-            
-            const checkB = await db.collection("laporan_komsel_umum")
-                            .where("nama", "==", userName)
-                            .where("tanggal", "==", today).get();
-            const checkC = await db.collection("laporan_doa")
-                            .where("nama", "==", userName)
-                            .where("tanggal", "==", today).get();
+            // 2. LOCK HARIAN PER JENIS KEGIATAN
+            // Reset otomatis berdasarkan pergantian tanggal.
+            // Pertemuan Pemimpin dan kegiatan non-rutin
+            // tidak terkena daily lock.
 
-            if (!checkA.empty || !checkB.empty || !checkC.empty) {
-                showLockDisplay('error', 'Akses Terkunci', 'Anda sudah melakukan pelaporan hari ini. Laporan (Hadir/Tidak Hadir) hanya diizinkan satu kali dalam 24 jam.');
-                return;
+            const dailyLockMenus = [
+                "Absen Ibadah Raya",
+                "Absen Komsel Reguler",
+                "Doa Puasa Jemaat"
+            ];
+
+            if (dailyLockMenus.includes(menu)) {
+                const lockCollection =
+                    menu === "Absen Komsel Reguler"
+                        ? "laporan_komsel_umum"
+                        : menu === "Doa Puasa Jemaat"
+                            ? "laporan_doa"
+                            : "kehadiran_jemaat";
+
+                const existingReport =
+                    await db
+                        .collection(lockCollection)
+                        .where(
+                            "nama",
+                            "==",
+                            userName
+                        )
+                        .where(
+                            "tanggal",
+                            "==",
+                            today
+                        )
+                        .where(
+                            "kegiatan",
+                            "==",
+                            menu
+                        )
+                        .limit(1)
+                        .get();
+
+                if (!existingReport.empty) {
+                    showLockDisplay(
+                        "error",
+                        "Akses Terkunci",
+                        `Anda sudah melakukan ${menu} hari ini. Silakan kembali setelah pergantian hari.`
+                    );
+
+                    return;
+                }
             }
 
             // 3. JIKA LOLOS, AMBIL LOKASI & ALAMAT
