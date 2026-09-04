@@ -182,6 +182,11 @@
         box-shadow: 0 12px 20px rgba(212, 175, 55, 0.4);
     }
 
+    .nav-item.scroll-highlight .icon-circle {
+        transform: translateY(-15px) scale(1.1);
+        box-shadow: 0 12px 20px rgba(212, 175, 55, 0.4);
+    }
+
     .nav-item span { 
         font-size: 9px; 
         font-weight: 800; 
@@ -1016,6 +1021,54 @@
         }, 5000);
     }
 
+    let highlightTimer = null;
+    let highlightCleanupTimer = null;
+
+    function playFooterHighlight() {
+        const footerItems = Array.from(nav.querySelectorAll(".nav-item"));
+        if (!footerItems.length) return;
+
+        if (highlightTimer) clearInterval(highlightTimer);
+        if (highlightCleanupTimer) clearTimeout(highlightCleanupTimer);
+
+        let index = 0;
+
+        const updateHighlight = () => {
+            footerItems.forEach((item, itemIndex) => {
+                item.classList.toggle("scroll-highlight", itemIndex === index);
+            });
+            index = (index + 1) % footerItems.length;
+        };
+
+        updateHighlight();
+        highlightTimer = setInterval(updateHighlight, 450);
+
+        highlightCleanupTimer = setTimeout(() => {
+            if (highlightTimer) clearInterval(highlightTimer);
+            highlightTimer = null;
+            highlightCleanupTimer = null;
+            footerItems.forEach((item) => item.classList.remove("scroll-highlight"));
+        }, 2800);
+    }
+
+    const scrollContainer = document.querySelector(".container");
+
+    function handleScroll() {
+        if (!scrollContainer) return;
+
+        const scrollPosition = scrollContainer.scrollTop + scrollContainer.clientHeight;
+        const documentHeight = scrollContainer.scrollHeight;
+        const isAtBottom = documentHeight - scrollPosition <= 24;
+
+        if (isAtBottom) {
+            showFooter();
+            playFooterHighlight();
+        }
+    }
+
+    if (scrollContainer) {
+        scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    }
     toggle.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
