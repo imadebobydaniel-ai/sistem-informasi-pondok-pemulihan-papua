@@ -247,131 +247,729 @@
     <div id="AllGereja" class="cluster-content"></div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
 <script>
-    // 1. CONFIGURASI FIREBASE
-    const firebaseConfig = {
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
-        authDomain: "boby-apps-project.firebaseapp.com",
-        projectId: "boby-apps-project",
-        storageBucket: "boby-apps-project.appspot.com",
-        messagingSenderId: "125984859692",
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
-    };
-    
-    // Cegah inisialisasi ganda
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
+    const SUPABASE_URL = "https://cfnimvrxrnmefmxtzqks.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_wgucJVERaaymia6eNj2riw_oL31966i";
 
-    // Inisialisasi dropdown Tahun
-    const selectTahun = document.getElementById('selectTahun');
+    const MONTHS = [
+        "",
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember"
+    ];
+
+    const selectTahun = document.getElementById("selectTahun");
     const thnSekarang = new Date().getFullYear();
-    for (let i = thnSekarang - 1; i <= thnSekarang + 3; i++) {
-        let opt = document.createElement('option');
-        opt.value = i.toString(); 
-        opt.innerHTML = i;
-        if (i === thnSekarang) opt.selected = true;
+
+    for (let i = thnSekarang - 1; i <= 2035; i++) {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = String(i);
+
+        if (i === thnSekarang) {
+            opt.selected = true;
+        }
+
         selectTahun.appendChild(opt);
     }
 
-    const clusters = ['Abepura', 'Sentani', 'Doyo', 'Arso1', 'Arso2', 'AllGereja'];
-    const komselList = ["Umum Gereja", "Komsel Bapak", "Komsel Ibu", "Komsel Profesi", "Komsel Mahasiswa", "Komsel Pelajar", "Komsel Sekolah Minggu", "Agenda Tambahan (Ext)"];
+    const clusters = ["Abepura", "Sentani", "Doyo", "Arso1", "Arso2", "AllGereja"];
 
-    // 2. Render Struktur Tab & Kategori secara otomatis
-    clusters.forEach(id => {
+    const headers = {
+        "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": "Bearer " + SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": "application/json"
+    };
+
+    const escapeHtml = (value) =>
+        String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+
+    clusters.forEach((id) => {
         const div = document.getElementById(id);
-        if (div) {
-            let html = `<div class="sub-tab-wrapper">`;
-            komselList.forEach((komsel, index) => {
-                const isActive = index === 0 ? 'active' : '';
-                html += `<button class="sub-link ${isActive}" onclick="openSubTab(this, '${id}')">${komsel}</button>`;
-            });
-            html += `</div><div class="agenda-list"><p style="color:#888; text-align:center; width:100%;">Silakan pilih bulan dan klik "Cari Agenda" untuk melihat jadwal.</p></div>`;
-            div.innerHTML = html;
-        }
+
+        if (!div) return;
+
+        div.innerHTML = `
+            <div class="sub-tab-wrapper">
+                <button class="sub-link active">
+                    Semua Divisi / Tim
+                </button>
+            </div>
+
+            <div class="agenda-list">
+                <p style="color:#888;text-align:center;width:100%;">
+                    Silakan pilih bulan dan klik "Cari Agenda" untuk melihat jadwal.
+                </p>
+            </div>
+        `;
     });
 
     function openCluster(evt, clusterName) {
-        document.querySelectorAll(".cluster-content").forEach(c => { c.style.display = "none"; c.classList.remove("active"); });
-        document.querySelectorAll(".tab-link").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".cluster-content").forEach((c) => {
+            c.style.display = "none";
+            c.classList.remove("active");
+        });
+
+        document.querySelectorAll(".tab-link").forEach((t) => {
+            t.classList.remove("active");
+        });
+
         const target = document.getElementById(clusterName);
+
+        if (!target) return;
+
         target.style.display = "block";
-        setTimeout(() => target.classList.add("active"), 10);
+
+        setTimeout(() => {
+            target.classList.add("active");
+        }, 10);
+
         evt.currentTarget.classList.add("active");
+
         cariAgenda();
     }
 
-    function openSubTab(element, clusterId) {
-        const parent = element.parentElement;
-        parent.querySelectorAll(".sub-link").forEach(b => b.classList.remove("active"));
-        element.classList.add("active");
-        cariAgenda();
+    async function loadAgendaRows(bln, thn, wilayahAktif) {
+        const bulanNama = MONTHS[Number(bln)];
+
+        if (!bulanNama) return [];
+
+        const params = new URLSearchParams();
+
+        params.set(
+            "select",
+            [
+                "id",
+                "wilayah",
+                "divisi",
+                "tahun",
+                "periode",
+                "bulan",
+                "program_kerja",
+                "tujuan_pelaksanaan",
+                "sasaran_target",
+                "estimasi_pencapaian",
+                "minggu_i",
+                "minggu_ii",
+                "minggu_iii",
+                "minggu_iv",
+                "keterangan",
+                "kendala_pelaksanaan",
+                "tindak_lanjut"
+            ].join(",")
+        );
+
+        params.set("tahun", "eq." + thn);
+        params.set("bulan", "eq." + bulanNama);
+
+        if (wilayahAktif !== "All Gereja") {
+            params.set("wilayah", "eq." + wilayahAktif);
+        }
+
+        params.set("order", "created_at.desc");
+
+        const response = await fetch(
+            SUPABASE_URL +
+            "/rest/v1/published_agenda_programs?" +
+            params.toString(),
+            { headers }
+        );
+
+        if (!response.ok) {
+            const message = await response.text();
+            throw new Error(
+                message || "Gagal mengambil data Agenda Supabase."
+            );
+        }
+
+        return await response.json();
     }
 
-    // FUNGSI UTAMA PENGAMBILAN DATA FIREBASE
-    function cariAgenda() {
-        const bln = document.getElementById('selectBulan').value;
-        const thn = document.getElementById('selectTahun').value;
-        
+    async function loadAnnualActivityRows(bln, thn, wilayahAktif) {
+        const monthNumber = Number(bln);
+        const yearNumber = Number(thn);
+
+        if (!monthNumber || !yearNumber) return [];
+
+        const startDate =
+            yearNumber +
+            "-" +
+            String(monthNumber).padStart(2, "0") +
+            "-01";
+
+        const nextMonth = new Date(
+            Date.UTC(yearNumber, monthNumber, 1)
+        );
+
+        const endDate =
+            nextMonth.getUTCFullYear() +
+            "-" +
+            String(nextMonth.getUTCMonth() + 1).padStart(2, "0") +
+            "-01";
+
+        const params = new URLSearchParams();
+
+        params.set(
+            "select",
+            "id,wilayah,divisi,nama_kegiatan,tanggal_kegiatan,tahun_kegiatan,lokasi_kegiatan,agenda_kegiatan,keterangan,pemilik_nama"
+        );
+
+        params.set(
+            "tanggal_kegiatan",
+            "gte." + startDate
+        );
+
+        params.append(
+            "tanggal_kegiatan",
+            "lt." + endDate
+        );
+
+        if (wilayahAktif !== "All Gereja") {
+            params.set(
+                "wilayah",
+                "eq." + wilayahAktif
+            );
+        }
+
+        params.set(
+            "order",
+            "tanggal_kegiatan.asc,created_at.asc"
+        );
+
+        const response = await fetch(
+            SUPABASE_URL +
+                "/rest/v1/published_annual_activities?" +
+                params.toString(),
+            {
+                headers
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                await response.text() ||
+                "Gagal mengambil Kegiatan Tahunan."
+            );
+        }
+
+        return await response.json();
+    }
+
+    async function loadAnnualActivityPhotos(activityIds) {
+        if (!activityIds.length) return [];
+
+        const params = new URLSearchParams();
+
+        params.set(
+            "select",
+            "id,activity_id,url,caption,sort_order"
+        );
+
+        params.set(
+            "activity_id",
+            "in.(" + activityIds.join(",") + ")"
+        );
+
+        params.set("order", "sort_order.asc");
+
+        const response = await fetch(
+            SUPABASE_URL +
+                "/rest/v1/published_annual_activity_photos?" +
+                params.toString(),
+            {
+                headers
+            }
+        );
+
+        if (!response.ok) return [];
+
+        return await response.json();
+    }
+
+    async function renderAnnualActivities(
+        listArea,
+        bln,
+        thn,
+        wilayahAktif
+    ) {
+        try {
+            const rows = await loadAnnualActivityRows(
+                bln,
+                thn,
+                wilayahAktif
+            );
+
+            if (!rows.length) return;
+
+            const photos = await loadAnnualActivityPhotos(
+                rows.map((row) => row.id)
+            );
+
+            const photosByActivity = new Map();
+
+            photos.forEach((photo) => {
+                const current =
+                    photosByActivity.get(photo.activity_id) || [];
+
+                current.push(photo);
+
+                photosByActivity.set(
+                    photo.activity_id,
+                    current
+                );
+            });
+
+            let html = `
+                <div style="
+                    margin-top:20px;
+                    padding-top:18px;
+                    border-top:2px solid #e0e0e0;
+                ">
+                    <h3 style="
+                        margin:0 0 15px;
+                        color:#006666;
+                        font-size:18px;
+                    ">
+                        Kegiatan Tahunan
+                    </h3>
+            `;
+
+            rows.forEach((data) => {
+                const rowPhotos =
+                    photosByActivity.get(data.id) || [];
+
+                const parts =
+                    String(data.tanggal_kegiatan || "").split("-");
+
+                const tanggal =
+                    parts.length === 3
+                        ? parts[2] + "-" + parts[1] + "-" + parts[0]
+                        : data.tanggal_kegiatan || "-";
+
+                const photoHtml = rowPhotos.length
+                    ? `
+                        <div style="
+                            display:grid;
+                            grid-template-columns:
+                                repeat(auto-fit,minmax(140px,1fr));
+                            gap:10px;
+                            margin-top:14px;
+                        ">
+                            ${rowPhotos.map((photo) => `
+                                <figure style="margin:0;">
+                                    <img
+                                        src="${escapeHtml(photo.url)}"
+                                        alt="${escapeHtml(
+                                            photo.caption ||
+                                            "Dokumentasi Kegiatan Tahunan"
+                                        )}"
+                                        loading="lazy"
+                                        style="
+                                            width:100%;
+                                            height:160px;
+                                            object-fit:cover;
+                                            border-radius:10px;
+                                            border:1px solid #e5e7e5;
+                                        "
+                                    >
+                                </figure>
+                            `).join("")}
+                        </div>
+                    `
+                    : "";
+
+                html += `
+                    <div class="agenda-item">
+                        <h4>
+                            ${escapeHtml(
+                                data.nama_kegiatan ||
+                                "Kegiatan Tahunan"
+                            )}
+                        </h4>
+
+                        <p>
+                            <b>Wilayah:</b>
+                            ${escapeHtml(data.wilayah || "-")}
+                        </p>
+
+                        <p>
+                            <b>Divisi / Tim:</b>
+                            ${escapeHtml(data.divisi || "-")}
+                        </p>
+
+                        <p>
+                            <b>Tanggal:</b>
+                            ${escapeHtml(tanggal)}
+                        </p>
+
+                        <p>
+                            <b>Tahun:</b>
+                            ${escapeHtml(data.tahun_kegiatan || "-")}
+                        </p>
+
+                        <p>
+                            <b>Lokasi:</b>
+                            ${escapeHtml(data.lokasi_kegiatan || "-")}
+                        </p>
+
+                        <p>
+                            <b>Agenda Kegiatan:</b>
+                            ${escapeHtml(data.agenda_kegiatan || "-")}
+                        </p>
+
+                        <p>
+                            <b>Keterangan:</b>
+                            ${escapeHtml(data.keterangan || "-")}
+                        </p>
+
+                        ${
+                            data.pemilik_nama
+                                ? `
+                                    <p>
+                                        <b>Pemilik:</b>
+                                        ${escapeHtml(data.pemilik_nama)}
+                                    </p>
+                                `
+                                : ""
+                        }
+
+                        ${photoHtml}
+                    </div>
+                `;
+            });
+
+            html += "</div>";
+
+            const existingAnnualSection = listArea.querySelector(
+                '[data-section="annual-activities"]'
+            );
+
+            if (existingAnnualSection) {
+                existingAnnualSection.remove();
+            }
+
+            const annualWrapper = document.createElement("div");
+            annualWrapper.setAttribute(
+                "data-section",
+                "annual-activities"
+            );
+            annualWrapper.innerHTML = html;
+
+            listArea.appendChild(annualWrapper);
+        } catch (error) {
+            console.error(
+                "Supabase Kegiatan Tahunan Error:",
+                error
+            );
+        }
+    }
+    async function loadAgendaPhotos(agendaIds) {
+        if (!agendaIds.length) return [];
+
+        const params = new URLSearchParams();
+
+        params.set(
+            "select",
+            "id,agenda_id,url,caption,sort_order"
+        );
+
+        params.set(
+            "agenda_id",
+            "in.(" + agendaIds.join(",") + ")"
+        );
+
+        params.set("order", "sort_order.asc");
+
+        const response = await fetch(
+            SUPABASE_URL +
+            "/rest/v1/published_agenda_program_photos?" +
+            params.toString(),
+            { headers }
+        );
+
+        if (!response.ok) return [];
+
+        return await response.json();
+    }
+
+    async function cariAgenda() {
+        const bln = document.getElementById("selectBulan").value;
+        const thn = document.getElementById("selectTahun").value;
+
         const tabAktif = document.querySelector(".tab-link.active");
-        let wilayahAktif = tabAktif.innerText;
-        
-        const containerId = wilayahAktif.replace(/\s/g, ''); 
+
+        if (!tabAktif) return;
+
+        const wilayahAktif = tabAktif.innerText.trim();
+        const containerId = wilayahAktif.replace(/\s/g, "");
         const containerAktif = document.getElementById(containerId);
-        
+
         if (!containerAktif) return;
 
-        const kategoriAktif = containerAktif.querySelector(".sub-link.active").innerText;
         const listArea = containerAktif.querySelector(".agenda-list");
 
-        if(!bln) { 
-            listArea.innerHTML = `<p style="color:#e67e22; text-align:center; width:100%;">Harap pilih bulan terlebih dahulu.</p>`;
-            return; 
+        if (!bln) {
+            listArea.innerHTML = `
+                <p style="color:#e67e22;text-align:center;width:100%;">
+                    Harap pilih bulan terlebih dahulu.
+                </p>
+            `;
+            return;
         }
 
-        listArea.innerHTML = `<p style="color:#006666; text-align:center; width:100%;">Memuat data agenda...</p>`;
+        listArea.innerHTML = `
+            <p style="color:#006666;text-align:center;width:100%;">
+                Memuat data agenda...
+            </p>
+        `;
 
-        let query = db.collection("agenda_tahunan");
+        try {
+            const rows = await loadAgendaRows(
+                bln,
+                thn,
+                wilayahAktif
+            );
 
-        // Filter Wilayah
-        if (wilayahAktif !== "All Gereja") {
-            query = query.where("wilayah", "==", wilayahAktif);
-        }
+            if (!rows.length) {
+                listArea.innerHTML = `
+                    <p style="color:#888;text-align:center;width:100%;">
+                        Agenda Terprogram untuk <b>${escapeHtml(wilayahAktif)}</b>
+                        bulan <b>${escapeHtml(MONTHS[Number(bln)])}</b>
+                        tahun <b>${escapeHtml(thn)}</b>
+                        belum tersedia.
+                    </p>
+                `;
 
-        query.where("kategori", "==", kategoriAktif)
-            .where("bulan", "==", bln)
-            .where("tahun", "==", thn)
-            .onSnapshot((snapshot) => {
-                if (snapshot.empty) {
-                    listArea.innerHTML = `<p style="color:#888; text-align:center; width:100%;">Agenda untuk <b>${wilayahAktif} - ${kategoriAktif}</b> belum tersedia.</p>`;
-                } else {
-                    let htmlResult = "";
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        
-                        const labelWilayah = (wilayahAktif === "All Gereja") ? 
-                            `<small style="background:#eef2f1; color:#006666; padding:4px 8px; border-radius:6px; position:absolute; right:15px; top:15px; font-weight:bold; border:1px solid #006666;">${data.wilayah}</small>` : "";
-                        
-                        htmlResult += `
-                            <div class="agenda-item">
-                                ${labelWilayah}
-                                <h4>${data.nama || data.nama_kegiatan}</h4> 
-                                <p>📅 <b>Hari/Tgl:</b> ${data.tanggal}</p>
-                                <p>⏰ <b>Jam:</b> ${data.jam}</p>
-                                <p>📍 <b>Lokasi:</b> ${data.lokasi || '-'}</p>
-                            </div>
-                        `;
-                    });
-                    listArea.innerHTML = htmlResult;
-                }
-            }, (error) => {
-                console.error("Firebase Error: ", error);
-                listArea.innerHTML = `<p style="color:red; text-align:center; width:100%;">Terjadi kesalahan: ${error.message}</p>`;
+                await renderAnnualActivities(
+                    listArea,
+                    bln,
+                    thn,
+                    wilayahAktif
+                );
+
+                return;
+            }
+
+            const photos = await loadAgendaPhotos(
+                rows.map((row) => row.id)
+            );
+
+            const photosByAgenda = new Map();
+
+            photos.forEach((photo) => {
+                const current =
+                    photosByAgenda.get(photo.agenda_id) || [];
+
+                current.push(photo);
+                photosByAgenda.set(photo.agenda_id, current);
             });
+
+            let htmlResult = "";
+
+            rows.forEach((data) => {
+                const rowPhotos =
+                    photosByAgenda.get(data.id) || [];
+
+                const labelWilayah =
+                    wilayahAktif === "All Gereja"
+                        ? `
+                            <small style="
+                                background:#eef2f1;
+                                color:#006666;
+                                padding:4px 8px;
+                                border-radius:6px;
+                                position:absolute;
+                                right:15px;
+                                top:15px;
+                                font-weight:bold;
+                                border:1px solid #006666;
+                            ">
+                                ${escapeHtml(data.wilayah)}
+                            </small>
+                        `
+                        : "";
+
+                const photoHtml = rowPhotos.length
+                    ? `
+                        <div style="
+                            display:grid;
+                            grid-template-columns:
+                                repeat(auto-fit,minmax(140px,1fr));
+                            gap:10px;
+                            margin-top:14px;
+                        ">
+                            ${rowPhotos.map((photo) => `
+                                <figure style="margin:0;">
+                                    <img
+                                        src="${escapeHtml(photo.url)}"
+                                        alt="${escapeHtml(
+                                            photo.caption ||
+                                            "Dokumentasi Agenda"
+                                        )}"
+                                        loading="lazy"
+                                        style="
+                                            width:100%;
+                                            height:160px;
+                                            object-fit:cover;
+                                            border-radius:10px;
+                                            border:1px solid #e5e7e5;
+                                        "
+                                    >
+                                    ${
+                                        photo.caption
+                                            ? `
+                                                <figcaption style="
+                                                    font-size:11px;
+                                                    color:#777;
+                                                    margin-top:4px;
+                                                ">
+                                                    ${escapeHtml(
+                                                        photo.caption
+                                                    )}
+                                                </figcaption>
+                                            `
+                                            : ""
+                                    }
+                                </figure>
+                            `).join("")}
+                        </div>
+                    `
+                    : "";
+
+                htmlResult += `
+                    <div class="agenda-item">
+                        ${labelWilayah}
+
+                        <h4>
+                            ${escapeHtml(
+                                data.program_kerja ||
+                                "Program Kerja"
+                            )}
+                        </h4>
+
+                        <p>
+                            <b>Wilayah:</b>
+                            ${escapeHtml(data.wilayah || "-")}
+                        </p>
+
+                        <p>
+                            <b>Divisi / Tim:</b>
+                            ${escapeHtml(data.divisi || "-")}
+                        </p>
+
+                        <p>
+                            <b>Tahun:</b> ${escapeHtml(data.tahun || "-")}
+                            &nbsp; | &nbsp;
+                            <b>Periode:</b>
+                            ${escapeHtml(data.periode || "-")}
+                            &nbsp; | &nbsp;
+                            <b>Bulan:</b>
+                            ${escapeHtml(data.bulan || "-")}
+                        </p>
+
+                        <p>
+                            <b>Tujuan Pelaksanaan:</b>
+                            ${escapeHtml(
+                                data.tujuan_pelaksanaan || "-"
+                            )}
+                        </p>
+
+                        <p>
+                            <b>Sasaran / Target:</b>
+                            ${escapeHtml(
+                                data.sasaran_target || "-"
+                            )}
+                        </p>
+
+                        <p>
+                            <b>Estimasi Pencapaian:</b>
+                            ${escapeHtml(
+                                data.estimasi_pencapaian || "-"
+                            )}
+                        </p>
+
+                        <p>
+                            <b>Minggu I:</b>
+                            ${escapeHtml(data.minggu_i || "-")}
+                        </p>
+
+                        <p>
+                            <b>Minggu II:</b>
+                            ${escapeHtml(data.minggu_ii || "-")}
+                        </p>
+
+                        <p>
+                            <b>Minggu III:</b>
+                            ${escapeHtml(data.minggu_iii || "-")}
+                        </p>
+
+                        <p>
+                            <b>Minggu IV:</b>
+                            ${escapeHtml(data.minggu_iv || "-")}
+                        </p>
+
+                        <p>
+                            <b>Keterangan:</b>
+                            ${escapeHtml(data.keterangan || "-")}
+                        </p>
+
+                        <p>
+                            <b>Kendala Pelaksanaan:</b>
+                            ${escapeHtml(
+                                data.kendala_pelaksanaan || "-"
+                            )}
+                        </p>
+
+                        <p>
+                            <b>Tindak Lanjut:</b>
+                            ${escapeHtml(
+                                data.tindak_lanjut || "-"
+                            )}
+                        </p>
+
+                        ${photoHtml}
+                    </div>
+                `;
+            });
+
+            listArea.innerHTML = htmlResult;
+
+            await renderAnnualActivities(
+                listArea,
+                bln,
+                thn,
+                wilayahAktif
+            );
+        } catch (error) {
+            console.error(
+                "Supabase Agenda Error:",
+                error
+            );
+
+            listArea.innerHTML = `
+                <p style="
+                    color:#c0392b;
+                    text-align:center;
+                    width:100%;
+                ">
+                    Terjadi kesalahan saat memuat Agenda.
+                </p>
+            `;
+        }
     }
 </script>
 </body>

@@ -1,4 +1,4 @@
-rules_version = '2';
+﻿rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -333,6 +333,13 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /pks_users/{uid} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && uid == request.auth.uid);
+
+      allow create, update, delete: if false;
+    }
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;

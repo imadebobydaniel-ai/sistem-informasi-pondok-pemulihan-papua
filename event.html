@@ -182,7 +182,9 @@
     const db = getDatabase(app);
     const eventRef = ref(db, 'events');
     const logRef = ref(db, 'log_activity');
-    const NO_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png";
+    const SUPABASE_URL = "https://cfnimvrxrnmefmxtzqks.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_wgucJVERaaymia6eNj2riw_oL31966i";
+const NO_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/1665px-No-Image-Placeholder.svg.png";
 
     window.currentAdmin = localStorage.getItem('sipapua_admin') || null; 
     window.cloudinaryImages = [];
@@ -222,34 +224,122 @@
         return `${d.getDate()} ${bulanIndo[d.getMonth()]} ${d.getFullYear()}`;
     };
 
-    onValue(eventRef, (snapshot) => {
-        const data = snapshot.val(); 
+    async function loadPublishedEvents() {
         const newsList = document.getElementById('newsList');
         if (!newsList) return;
-        
-        newsList.innerHTML = "";
-        const list = [];
-        for (let id in data) { list.unshift({ id, ...data[id] }); }
-        window.currentEvents = list;
 
-        list.forEach(item => {
-            newsList.innerHTML += `
-            <div class="news-card" onclick="detailEvent('${item.id}')">
-                <img src="${(item.fotos && item.fotos[0]) || NO_IMG}" class="news-img">
-                <div class="news-body">
-                    <button class="btn-delete-news" onclick="event.stopPropagation(); hapusBerita('${item.id}', '${item.createdBy}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <div class="news-category">OLEH: ${item.createdBy || 'ADMIN'}</div>
-                    <div class="news-title">${item.nama}</div>
-                    <div class="news-meta">
-                        <span><i class="fas fa-calendar-alt"></i> ${formatTglIndo(item.tgl)}</span>
-                    </div>
+        try {
+            newsList.innerHTML = `
+                <div style="text-align:center;padding:30px;color:#666;">
+                    Memuat event jemaat...
                 </div>
-            </div>`;
-        });
-    });
+            `;
 
+            const headers = {
+                "apikey": SUPABASE_PUBLISHABLE_KEY,
+                "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+                "Content-Type": "application/json"
+            };
+
+            const eventsResponse = await fetch(
+                `${SUPABASE_URL}/rest/v1/published_events?select=id,nama,lokasi,tanggal,isi,published_at,wilayah,divisi,komsel,pemilik_nama&order=tanggal.desc,published_at.desc`,
+                { headers }
+            );
+
+            if (!eventsResponse.ok) {
+                throw new Error(`Gagal mengambil event: HTTP ${eventsResponse.status}`);
+            }
+
+            const photosResponse = await fetch(
+                `${SUPABASE_URL}/rest/v1/published_event_photos?select=id,event_id,url,caption,sort_order&order=sort_order.asc`,
+                { headers }
+            );
+
+            if (!photosResponse.ok) {
+                throw new Error(`Gagal mengambil foto event: HTTP ${photosResponse.status}`);
+            }
+
+            const events = await eventsResponse.json();
+            const photos = await photosResponse.json();
+
+            const photoMap = {};
+
+            photos.forEach(photo => {
+                if (!photoMap[photo.event_id]) {
+                    photoMap[photo.event_id] = [];
+                }
+
+                if (photo.url) {
+                    photoMap[photo.event_id].push(photo.url);
+                }
+            });
+
+            const list = (events || []).map(item => ({
+                id: item.id,
+                nama: item.nama,
+                lokasi: item.lokasi,
+                tgl: item.tanggal,
+                isi: item.isi,
+                fotos: photoMap[item.id] || [],
+                createdBy: item.pemilik_nama || "PKS",
+                createdAt: item.published_at,
+                wilayah: item.wilayah || "",
+                divisi: item.divisi || "",
+                komsel: item.komsel || "",
+                ownerNama: item.pemilik_nama || ""
+            }));
+
+            window.currentEvents = list;
+            newsList.innerHTML = "";
+
+            if (list.length === 0) {
+                newsList.innerHTML = `
+                    <div style="text-align:center;padding:40px;color:#777;">
+                        Belum ada event jemaat yang dipublikasikan.
+                    </div>
+                `;
+                return;
+            }
+
+            list.forEach(item => {
+                const deleteButton = window.currentAdmin
+                    ? `
+                        <button class="btn-delete-news"
+                            onclick="event.stopPropagation(); hapusBerita('${item.id}', '${item.createdBy || ""}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `
+                    : "";
+
+                newsList.innerHTML += `
+                <div class="news-card" onclick="detailEvent('${item.id}')">
+                    <img src="${(item.fotos && item.fotos[0]) || NO_IMG}" class="news-img">
+                    <div class="news-body">
+                        ${deleteButton}
+                        <div class="news-category">OLEH: ${item.createdBy || 'PKS'}</div>
+                        <div class="news-title">${item.nama || '-'}</div>
+                        <div class="news-meta">
+                            <span>
+                                <i class="fas fa-calendar-alt"></i>
+                                ${formatTglIndo(item.tgl)}
+                            </span>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+        } catch (error) {
+            console.error("Supabase Event Error:", error);
+
+            newsList.innerHTML = `
+                <div style="text-align:center;padding:40px;color:#c0392b;">
+                    Gagal memuat event jemaat.
+                </div>
+            `;
+        }
+    }
+
+    loadPublishedEvents();
     window.hapusBerita = async (id, creator) => {
         const user = window.currentAdmin;
         if (!user) return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat menghapus.', 'error');
@@ -379,8 +469,8 @@
             title: item.nama,
             html: `<div style="max-height:350px; overflow-y:auto">${gallery}</div>
                     <div style="text-align:left; font-size:14px; margin-top:15px">
-                        <p><b>📍 Lokasi:</b> ${item.lokasi}</p>
-                        <p><b>📅 Tanggal:</b> ${formatTglIndo(item.tgl)}</p>
+                        <p><b>ðŸ“ Lokasi:</b> ${item.lokasi}</p>
+                        <p><b>ðŸ“… Tanggal:</b> ${formatTglIndo(item.tgl)}</p>
                         <hr><div style="white-space:pre-line">${item.isi}</div>
                     </div>`,
             showConfirmButton: false, 

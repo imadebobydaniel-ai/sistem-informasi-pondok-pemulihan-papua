@@ -1,4 +1,4 @@
-const { onCall } = require("firebase-functions/v2/https");
+﻿const { onCall } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const {
     getFirestore,
@@ -161,6 +161,69 @@ exports.checkRegistrationDuplicate = onCall(
 
 const adminAuth = getAuth();
 
+const PKS_WILAYAH_KOMSEL = {
+    "Abepura": [
+        "Lansia Abepura",
+        "Joseph 1",
+        "Joseph 2",
+        "Joseph 3",
+        "Joseph 4",
+        "Joseph 5",
+        "Esther 1",
+        "Esther 2",
+        "Esther 3",
+        "Esther 4",
+        "Esther 5",
+        "Esther 6",
+        "Esther 7",
+        "Esther 8",
+        "Esther 9",
+        "Esther 10",
+        "Esther 11",
+        "Esther 12",
+        "Komsel Mahasiswa Abe",
+        "Komsel Profesi Abe",
+        "Komsel Pelajar Abe",
+        "Komsel Sekolah Minggu"
+    ],
+    "Sentani": [
+        "Siloam 1",
+        "Siloam 2",
+        "Siloam 3",
+        "Siloam 4",
+        "Komsel 5",
+        "Siloam 6",
+        "Siloam 8",
+        "Agape 1",
+        "Agape 2",
+        "Agape 3",
+        "Agape 4",
+        "Agape 5",
+        "Komsel Mahasiswa Sentani",
+        "Komsel Profesi Sentani",
+        "Komsel Pelajar Sentani",
+        "Komsel Remaja Sentani",
+        "Komsel Sekolah Minggu Sentani"
+    ],
+    "Doyo": [
+        "Komsel Bapak doyo",
+        "Komsel Ibu doyo"
+    ],
+    "Arso 1": [
+        "Komsel Keluarga Arso 1"
+    ],
+    "Arso 2": [
+        "Komsel Keluarga Arso 2"
+    ]
+};
+
+const PKS_JABATAN = [
+    "Anggota Jemaat",
+    "Gembala Sidang",
+    "Pemimpin / Koordinator",
+    "PKS Komsel",
+    "Fulltimer"
+];
 const MASTER_UID =
     "hXo6v5OKhkMVtRAAuUqcYcASplo2";
 
@@ -362,6 +425,189 @@ exports.adminGetRoleCounts = onCall(
     }
 );
 
+exports.pksCreateUser = onCall(
+    {
+        region: "asia-southeast2",
+        enforceAppCheck: false,
+        timeoutSeconds: 30
+    },
+    async (request) => {
+        const caller =
+            await getCallerAdmin(
+                request
+            );
+
+        const data =
+            request.data || {};
+
+        const nama =
+            String(
+                data.nama || ""
+            ).trim();
+
+        const email =
+            normalizeEmail(
+                data.email
+            );
+
+        const password =
+            String(
+                data.password || ""
+            );
+
+        const wilayah =
+            String(
+                data.wilayah || ""
+            ).trim();
+
+        const komsel =
+            String(
+                data.komsel || ""
+            ).trim();
+
+        const jabatan =
+            String(
+                data.jabatan || ""
+            ).trim();
+
+        if (
+            !nama ||
+            !email ||
+            !password ||
+            !wilayah ||
+            !komsel ||
+            !jabatan
+        ) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Data akun PKS belum lengkap."
+            );
+        }
+
+        if (
+            password.length < 6
+        ) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Password minimal 6 karakter."
+            );
+        }
+
+        if (
+            !Object.prototype.hasOwnProperty.call(
+                PKS_WILAYAH_KOMSEL,
+                wilayah
+            )
+        ) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Wilayah PKS tidak valid."
+            );
+        }
+
+        if (
+            !PKS_WILAYAH_KOMSEL[wilayah].includes(
+                komsel
+            )
+        ) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Komsel tidak sesuai dengan wilayah yang dipilih."
+            );
+        }
+
+        if (
+            !PKS_JABATAN.includes(jabatan)
+        ) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Jabatan PKS tidak valid."
+            );
+        }
+
+        let createdUser = null;
+
+        try {
+            createdUser =
+                await adminAuth.createUser({
+                    email,
+                    password,
+                    displayName:
+                        nama
+                });
+
+            const uid =
+                createdUser.uid;
+
+            await db
+                .collection(
+                    "pks_users"
+                )
+                .doc(uid)
+                .set({
+                    uid,
+                    nama,
+                    email,
+                    wilayah,
+                    komsel,
+                    jabatan,
+                    role: "pks",
+                    status: "active",
+                    createdBy:
+                        caller.uid,
+                    createdAt:
+                        FieldValue.serverTimestamp(),
+                    updatedAt:
+                        FieldValue.serverTimestamp()
+                });
+
+            return {
+                ok: true,
+                uid,
+                email,
+                role: "pks",
+                wilayah,
+                komsel,
+                jabatan,
+                createdBy:
+                    caller.uid
+            };
+        } catch (error) {
+            if (
+                createdUser?.uid
+            ) {
+                try {
+                    await adminAuth.deleteUser(
+                        createdUser.uid
+                    );
+                } catch (_) {
+                    // Abaikan cleanup failure.
+                }
+            }
+
+            if (
+                error instanceof HttpsError
+            ) {
+                throw error;
+            }
+
+            if (
+                error.code ===
+                "auth/email-already-exists"
+            ) {
+                throw new HttpsError(
+                    "already-exists",
+                    "Email tersebut sudah terdaftar di Firebase Authentication."
+                );
+            }
+
+            throw new HttpsError(
+                "internal",
+                "Gagal membuat akun PKS."
+            );
+        }
+    }
+);
 exports.adminCreateUser = onCall(
     {
         region: "asia-southeast2",
@@ -950,5 +1196,156 @@ exports.getRaporStatistics = onCall(
             db,
             request.auth.uid
         );
+    }
+);
+const DEMO_PKS_WILAYAH = [
+    "Abepura",
+    "Sentani",
+    "Doyo",
+    "Arso 1",
+    "Arso 2"
+];
+
+const DEMO_PKS_DIVISI = [
+    "Praise and Worship (PW)",
+    "Multimedia & Sound Engineering",
+    "Tamborin and Banner",
+    "Event & Organizer",
+    "Komsel Bapak",
+    "Komsel Ibu",
+    "Komsel Pelajar",
+    "Komsel Mahasiswa",
+    "Komsel Profesi",
+    "Sekolah Minggu",
+    "Lansia",
+    "Team Doa",
+    "Team Misi",
+    "Perparkiran dan Keamanan",
+    "General Affairs"
+];
+
+function demoPksSlug(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ".")
+        .replace(/^\.+|\.+$/g, "");
+}
+
+function getDemoPksAccount(email, password) {
+    const normalizedEmail = normalizeEmail(email);
+
+    for (
+        let wilayahIndex = 0;
+        wilayahIndex < DEMO_PKS_WILAYAH.length;
+        wilayahIndex++
+    ) {
+        for (
+            let divisiIndex = 0;
+            divisiIndex < DEMO_PKS_DIVISI.length;
+            divisiIndex++
+        ) {
+            const number =
+                wilayahIndex *
+                    DEMO_PKS_DIVISI.length +
+                divisiIndex +
+                1;
+
+            const wilayah =
+                DEMO_PKS_WILAYAH[wilayahIndex];
+
+            const divisi =
+                DEMO_PKS_DIVISI[divisiIndex];
+
+            const account = {
+                uid:
+                    `demo-pks-${String(number).padStart(3, "0")}`,
+                nama:
+                    `PKS ${wilayah} - ${divisi}`,
+                email:
+                    `pks.${demoPksSlug(wilayah)}.${demoPksSlug(divisi)}@demo.sipapua.local`,
+                password:
+                    `DemoPKS-${String(number).padStart(3, "0")}-2026!`,
+                wilayah,
+                divisi,
+                komsel: "Demo",
+                jabatan: "PKS",
+                role: "pks",
+                status: "active"
+            };
+
+            if (
+                account.email === normalizedEmail &&
+                account.password === String(password || "")
+            ) {
+                return account;
+            }
+        }
+    }
+
+    return null;
+}
+
+exports.pksDemoLogin = onCall(
+    {
+        region: "asia-southeast2",
+        enforceAppCheck: false,
+        timeoutSeconds: 15
+    },
+    async (request) => {
+        const data = request.data || {};
+
+        const email =
+            normalizeEmail(data.email);
+
+        const password =
+            String(data.password || "");
+
+        if (!email || !password) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Email dan password wajib diisi."
+            );
+        }
+
+        const account =
+            getDemoPksAccount(
+                email,
+                password
+            );
+
+        if (!account) {
+            throw new HttpsError(
+                "unauthenticated",
+                "Email atau password demo PKS tidak valid."
+            );
+        }
+
+        const token =
+            await adminAuth.createCustomToken(
+                account.uid,
+                {
+                    role: "pks",
+                    wilayah: account.wilayah,
+                    divisi: account.divisi,
+                    komsel: account.komsel,
+                    jabatan: account.jabatan
+                }
+            );
+
+        return {
+            ok: true,
+            token,
+            profile: {
+                uid: account.uid,
+                nama: account.nama,
+                email: account.email,
+                wilayah: account.wilayah,
+                divisi: account.divisi,
+                komsel: account.komsel,
+                jabatan: account.jabatan,
+                role: account.role,
+                status: account.status
+            }
+        };
     }
 );
