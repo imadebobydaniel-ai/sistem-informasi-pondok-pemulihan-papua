@@ -1,0 +1,3583 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Tahunan - Admin Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --primary:#003366;
+            --primary-dark:#00264d;
+            --emas:#D4AF37;
+            --light:#f4f7f6;
+            --border:#dfe7eb;
+            --text:#27313a;
+            --muted:#6b7780;
+            --success:#198754;
+            --white:#fff;
+        }
+
+        * {
+            box-sizing:border-box;
+        }
+
+        body {
+            font-family:'Segoe UI',sans-serif;
+            background:var(--light);
+            margin:0;
+            padding:15px;
+            color:var(--text);
+        }
+
+        .page-container {
+            max-width:1450px;
+            margin:auto;
+        }
+
+        .page-header,
+        .card {
+            background:var(--white);
+            border-radius:15px;
+            box-shadow:0 4px 25px rgba(0,0,0,.08);
+        }
+
+        .page-header {
+            padding:20px;
+            border-bottom:3px solid var(--emas);
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            margin-bottom:20px;
+        }
+
+        .page-header h2 {
+            margin:0 0 4px;
+            color:var(--primary);
+        }
+
+        .page-header small {
+            color:var(--muted);
+        }
+
+        .back-button {
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+            padding:10px 16px;
+            border-radius:8px;
+            background:var(--primary);
+            color:#fff;
+            text-decoration:none;
+            font-size:13px;
+            font-weight:700;
+        }
+
+        .grid {
+            display:grid;
+            grid-template-columns:1fr 1fr 1fr 1fr;
+            gap:15px;
+        }
+
+        .card {
+            overflow:hidden;
+            margin-bottom:20px;
+        }
+
+        .card-header {
+            padding:16px 20px;
+            border-bottom:1px solid var(--border);
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:12px;
+        }
+
+        .card-header h3 {
+            margin:0;
+            color:var(--primary);
+            font-size:16px;
+        }
+
+        .card-body {
+            padding:20px;
+        }
+
+        label {
+            display:block;
+            margin-bottom:6px;
+            font-size:12px;
+            font-weight:700;
+            color:#3f4d57;
+        }
+
+        select {
+            width:100%;
+            padding:10px 11px;
+            border:1px solid var(--border);
+            border-radius:8px;
+            background:#fff;
+            font-size:13px;
+            outline:none;
+        }
+
+        select:focus {
+            border-color:var(--primary);
+            box-shadow:0 0 0 3px rgba(0,51,102,.08);
+        }
+
+        .summary-grid {
+            display:grid;
+            grid-template-columns:repeat(4,1fr);
+            gap:15px;
+        }
+
+        .summary-box {
+            padding:18px;
+            border:1px solid var(--border);
+            border-radius:10px;
+            background:#fbfcfd;
+        }
+
+        .summary-box .label {
+            font-size:12px;
+            color:var(--muted);
+            margin-bottom:6px;
+        }
+
+        .summary-box .value {
+            font-size:28px;
+            font-weight:800;
+            color:var(--primary);
+        }
+
+        .toolbar {
+            display:flex;
+            gap:10px;
+            align-items:center;
+        }
+
+        .btn {
+            border:0;
+            border-radius:8px;
+            padding:10px 14px;
+            cursor:pointer;
+            font-size:12px;
+            font-weight:700;
+            display:inline-flex;
+            align-items:center;
+            gap:7px;
+        }
+
+        .btn-secondary {
+            background:#eef2f5;
+            color:#34414b;
+        }
+
+        .table-wrap {
+            overflow:auto;
+        }
+
+        table {
+            width:100%;
+            min-width:950px;
+            border-collapse:collapse;
+        }
+
+        th,
+        td {
+            padding:12px 14px;
+            border-bottom:1px solid var(--border);
+            text-align:left;
+            vertical-align:top;
+            font-size:13px;
+        }
+
+        th {
+            background:#f8fafb;
+            color:var(--primary);
+            font-size:11px;
+            text-transform:uppercase;
+            letter-spacing:.3px;
+        }
+
+        tbody tr:hover {
+            background:#fbfcfd;
+        }
+
+        .badge {
+            display:inline-flex;
+            padding:5px 9px;
+            border-radius:999px;
+            background:#eef4f8;
+            color:var(--primary);
+            font-size:11px;
+            font-weight:700;
+        }
+
+        .empty-state,
+        .loading {
+            padding:45px 20px;
+            text-align:center;
+            color:var(--muted);
+        }
+
+        .empty-state i,
+        .loading i {
+            font-size:38px;
+            color:var(--emas);
+            margin-bottom:12px;
+        }
+
+        .count-text {
+            font-size:12px;
+            color:var(--muted);
+        }
+
+
+        .report-row {
+            cursor:pointer;
+        }
+
+        .report-row:hover {
+            background:#f3f7fa;
+        }
+
+        .detail-modal {
+            display:none;
+            position:fixed;
+            inset:0;
+            z-index:9999;
+            background:rgba(0,0,0,.55);
+            padding:20px;
+            align-items:center;
+            justify-content:center;
+        }
+
+        .detail-modal.show {
+            display:flex;
+        }
+
+        .detail-modal-card {
+            width:min(820px,100%);
+            max-height:90vh;
+            overflow:auto;
+            background:#fff;
+            border-radius:15px;
+            box-shadow:0 20px 60px rgba(0,0,0,.25);
+        }
+
+        .detail-modal-header {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            padding:18px 20px;
+            border-bottom:1px solid var(--border);
+            background:#fbfcfd;
+        }
+
+        .detail-modal-header h3 {
+            margin:0;
+            color:var(--primary);
+            font-size:17px;
+        }
+
+        .detail-close {
+            border:0;
+            background:#eef2f5;
+            color:#34414b;
+            width:36px;
+            height:36px;
+            border-radius:8px;
+            cursor:pointer;
+            font-size:16px;
+        }
+
+        .detail-body {
+            padding:20px;
+        }
+
+        .detail-title {
+            margin:0 0 15px;
+            color:var(--primary);
+            font-size:20px;
+            line-height:1.4;
+        }
+
+        .detail-grid {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:12px;
+        }
+
+        .detail-item {
+            border:1px solid var(--border);
+            border-radius:9px;
+            padding:12px 14px;
+            background:#fbfcfd;
+        }
+
+        .detail-item.full {
+            grid-column:1 / -1;
+        }
+
+        .detail-label {
+            color:var(--muted);
+            font-size:11px;
+            margin-bottom:5px;
+            text-transform:uppercase;
+            letter-spacing:.3px;
+            font-weight:700;
+        }
+
+        .detail-value {
+            color:var(--text);
+            font-size:14px;
+            font-weight:600;
+        }
+
+        .detail-actions {
+            display:flex;
+            justify-content:flex-end;
+            gap:10px;
+            padding:15px 20px;
+            border-top:1px solid var(--border);
+            background:#fbfcfd;
+        }
+
+        .btn-pdf {
+            background:#b42318;
+            color:#fff;
+        }
+
+        @media (max-width:650px) {
+            .detail-modal {
+                padding:10px;
+            }
+
+            .detail-grid {
+                grid-template-columns:1fr;
+            }
+
+            .detail-item.full {
+                grid-column:auto;
+            }
+
+            .detail-actions {
+                flex-direction:column;
+            }
+
+            .detail-actions .btn {
+                width:100%;
+                justify-content:center;
+            }
+        }
+        @media (max-width:1100px) {
+            .grid {
+                grid-template-columns:repeat(2,1fr);
+            }
+
+            .summary-grid {
+                grid-template-columns:repeat(2,1fr);
+            }
+        }
+
+        @media (max-width:650px) {
+            body {
+                padding:10px;
+            }
+
+            .page-header {
+                flex-direction:column;
+                align-items:flex-start;
+            }
+
+            .back-button {
+                width:100%;
+                justify-content:center;
+            }
+
+            .grid,
+            .summary-grid {
+                grid-template-columns:1fr;
+            }
+        }
+    </style>
+
+<style id="compact-monitoring-filters">
+/* Compact monitoring filters */
+#monitoringAgenda .filters,
+#eventJemaatReport .filters,
+#annualActivitiesReport .filters {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+    align-items: end;
+    gap: 10px;
+    margin-bottom: 12px !important;
+}
+
+#monitoringAgenda .filter-group,
+#eventJemaatReport .filter-group,
+#annualActivitiesReport .filter-group {
+    min-width: 0;
+}
+
+#monitoringAgenda .filter-group label,
+#eventJemaatReport .filter-group label,
+#annualActivitiesReport .filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 600;
+}
+
+#monitoringAgenda .filter-group select,
+#eventJemaatReport .filter-group select,
+#annualActivitiesReport .filter-group select {
+    width: 100%;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 7px;
+}
+
+#monitoringAgenda #resetFilter,
+#eventJemaatReport #resetEventFilter,
+#annualActivitiesReport #resetAnnualFilter {
+    height: 38px;
+    min-height: 38px;
+    margin: 0 !important;
+    padding: 0 12px;
+    white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+    #monitoringAgenda .filters,
+    #eventJemaatReport .filters,
+    #annualActivitiesReport .filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    #monitoringAgenda .filters,
+    #eventJemaatReport .filters,
+    #annualActivitiesReport .filters {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    #monitoringAgenda #resetFilter,
+    #eventJemaatReport #resetEventFilter,
+    #annualActivitiesReport #resetAnnualFilter {
+        width: 100%;
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="page-container">
+
+    <div class="page-header">
+        <div>
+            <h2><i class="fas fa-file-alt"></i> Laporan Tahunan</h2>
+            <small>Pusat monitoring Agenda Terprogram, Event Jemaat, dan Kegiatan Tahunan seluruh wilayah</small>
+        </div>
+
+        <a class="back-button" href="admin.html">
+            <i class="fas fa-arrow-left"></i>
+            Kembali ke Dashboard
+        </a>
+    </div>
+
+    
+
+    <section class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-simple"></i> Ringkasan</h3>
+            <span class="count-text" id="summaryPeriod">Semua data</span>
+        </div>
+
+        <div class="card-body">
+            <div class="summary-grid">
+                <div class="summary-box">
+                    <div class="label">Total Agenda</div>
+                    <div class="value" id="totalAgenda">0</div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="label">Wilayah Terlibat</div>
+                    <div class="value" id="totalUmum">0</div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="label">Divisi / Tim</div>
+                    <div class="value" id="totalKomsel">0</div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="label">Program Terpublikasi</div>
+                    <div class="value" id="totalTambahan">0</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card" id="monitoringAgenda">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-calendar-days"></i>
+            Monitoring Agenda Terprogram
+        </h3>
+        <span class="count-text" id="resultCount">0 data</span>
+    </div>
+
+    <div class="card-body">
+        <div class="filters" style="margin-bottom:20px;">
+            <div class="filter-group">
+                <label for="filterTahun">Tahun</label>
+                <select id="filterTahun">
+                    <option value="">Semua Tahun</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterWilayah">Wilayah</label>
+                <select id="filterWilayah">
+                    <option value="">Semua Wilayah</option>
+                    <option value="Abepura">Abepura</option>
+                    <option value="Sentani">Sentani</option>
+                    <option value="Doyo">Doyo</option>
+                    <option value="Arso1">Arso 1</option>
+                    <option value="Arso2">Arso 2</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterKategori">Divisi / Tim</label>
+                <select id="filterKategori">
+                    <option value="">Semua Divisi / Tim</option>
+                    <option value="Praise and Worship (PW)">Praise and Worship (PW)</option>
+                    <option value="Multimedia & Sound Engineering">Multimedia & Sound Engineering</option>
+                    <option value="Tamborin and Banner">Tamborin and Banner</option>
+                    <option value="Event & Organizer">Event & Organizer</option>
+                    <option value="Komsel Bapak">Komsel Bapak</option>
+                    <option value="Komsel Ibu">Komsel Ibu</option>
+                    <option value="Komsel Pelajar">Komsel Pelajar</option>
+                    <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
+                    <option value="Komsel Profesi">Komsel Profesi</option>
+                    <option value="Sekolah Minggu">Sekolah Minggu</option>
+                    <option value="Lansia">Lansia</option>
+                    <option value="Team Doa">Team Doa</option>
+                    <option value="Team Misi">Team Misi</option>
+                    <option value="Perparkiran dan Keamanan">Perparkiran dan Keamanan</option>
+                    <option value="General Affairs">General Affairs</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterPeriode">Periode</label>
+                <select id="filterPeriode">
+                    <option value="">Semua Periode</option>
+                    <option value="Triwulan I">Triwulan I</option>
+                    <option value="Triwulan II">Triwulan II</option>
+                    <option value="Triwulan III">Triwulan III</option>
+                    <option value="Triwulan IV">Triwulan IV</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterBulan">Bulan</label>
+                <select id="filterBulan">
+                    <option value="">Semua Bulan</option>
+                    <option value="1">Januari</option>
+                    <option value="2">Februari</option>
+                    <option value="3">Maret</option>
+                    <option value="4">April</option>
+                    <option value="5">Mei</option>
+                    <option value="6">Juni</option>
+                    <option value="7">Juli</option>
+                    <option value="8">Agustus</option>
+                    <option value="9">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+            </div>
+
+            <div class="filter-group filter-action">
+                <button type="button" class="btn btn-secondary" id="resetFilter">
+                    <i class="fas fa-rotate-left"></i>
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="tableContainer">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Memuat data agenda PKS...</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="eventJemaatReport">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-calendar-check"></i>
+            Monitoring Event Jemaat
+        </h3>
+        <span class="count-text" id="eventJemaatCount">0 event</span>
+    </div>
+
+    <div class="card-body">
+        <div class="filters" style="margin-bottom:20px;">
+            <div class="filter-group">
+                <label for="eventFilterTahun">Tahun</label>
+                <select id="eventFilterTahun">
+                    <option value="">Semua Tahun</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="eventFilterWilayah">Wilayah</label>
+                <select id="eventFilterWilayah">
+                    <option value="">Semua Wilayah</option>
+                    <option value="Abepura">Abepura</option>
+                    <option value="Sentani">Sentani</option>
+                    <option value="Doyo">Doyo</option>
+                    <option value="Arso 1">Arso 1</option>
+                    <option value="Arso 2">Arso 2</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="eventFilterDivisi">Divisi / Tim</label>
+                <select id="eventFilterDivisi">
+                    <option value="">Semua Divisi / Tim</option>
+                    <option value="Praise and Worship (PW)">Praise and Worship (PW)</option>
+                    <option value="Multimedia & Sound Engineering">Multimedia & Sound Engineering</option>
+                    <option value="Tamborin and Banner">Tamborin and Banner</option>
+                    <option value="Event & Organizer">Event & Organizer</option>
+                    <option value="Komsel Bapak">Komsel Bapak</option>
+                    <option value="Komsel Ibu">Komsel Ibu</option>
+                    <option value="Komsel Pelajar">Komsel Pelajar</option>
+                    <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
+                    <option value="Komsel Profesi">Komsel Profesi</option>
+                    <option value="Sekolah Minggu">Sekolah Minggu</option>
+                    <option value="Lansia">Lansia</option>
+                    <option value="Team Doa">Team Doa</option>
+                    <option value="Team Misi">Team Misi</option>
+                    <option value="Perparkiran dan Keamanan">Perparkiran dan Keamanan</option>
+                    <option value="General Affairs">General Affairs</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="eventFilterBulan">Bulan</label>
+                <select id="eventFilterBulan">
+                    <option value="">Semua Bulan</option>
+                    <option value="1">Januari</option>
+                    <option value="2">Februari</option>
+                    <option value="3">Maret</option>
+                    <option value="4">April</option>
+                    <option value="5">Mei</option>
+                    <option value="6">Juni</option>
+                    <option value="7">Juli</option>
+                    <option value="8">Agustus</option>
+                    <option value="9">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+            </div>
+
+            <div class="filter-group filter-action">
+                <button type="button" class="btn btn-secondary" id="resetEventFilter">
+                    <i class="fas fa-rotate-left"></i>
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="eventJemaatTableContainer">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Memuat Event Jemaat...</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="annualActivitiesReport">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-chart-column"></i>
+            Monitoring Kegiatan Tahunan
+        </h3>
+        <span class="count-text" id="annualActivityCount">0 kegiatan</span>
+    </div>
+
+    <div class="card-body">
+        <div class="filters" style="margin-bottom:20px;">
+            <div class="filter-group">
+                <label for="annualFilterTahun">Tahun Kegiatan</label>
+                <select id="annualFilterTahun">
+                    <option value="">Semua Tahun</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="annualFilterWilayah">Wilayah</label>
+                <select id="annualFilterWilayah">
+                    <option value="">Semua Wilayah</option>
+                    <option value="Abepura">Abepura</option>
+                    <option value="Sentani">Sentani</option>
+                    <option value="Doyo">Doyo</option>
+                    <option value="Arso 1">Arso 1</option>
+                    <option value="Arso 2">Arso 2</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="annualFilterDivisi">Divisi / Tim</label>
+                <select id="annualFilterDivisi">
+                    <option value="">Semua Divisi / Tim</option>
+                    <option value="Praise and Worship (PW)">Praise and Worship (PW)</option>
+                    <option value="Multimedia & Sound Engineering">Multimedia & Sound Engineering</option>
+                    <option value="Tamborin and Banner">Tamborin and Banner</option>
+                    <option value="Event & Organizer">Event & Organizer</option>
+                    <option value="Komsel Bapak">Komsel Bapak</option>
+                    <option value="Komsel Ibu">Komsel Ibu</option>
+                    <option value="Komsel Pelajar">Komsel Pelajar</option>
+                    <option value="Komsel Mahasiswa">Komsel Mahasiswa</option>
+                    <option value="Komsel Profesi">Komsel Profesi</option>
+                    <option value="Sekolah Minggu">Sekolah Minggu</option>
+                    <option value="Lansia">Lansia</option>
+                    <option value="Team Doa">Team Doa</option>
+                    <option value="Team Misi">Team Misi</option>
+                    <option value="Perparkiran dan Keamanan">Perparkiran dan Keamanan</option>
+                    <option value="General Affairs">General Affairs</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="annualFilterBulan">Bulan</label>
+                <select id="annualFilterBulan">
+                    <option value="">Semua Bulan</option>
+                    <option value="1">Januari</option>
+                    <option value="2">Februari</option>
+                    <option value="3">Maret</option>
+                    <option value="4">April</option>
+                    <option value="5">Mei</option>
+                    <option value="6">Juni</option>
+                    <option value="7">Juli</option>
+                    <option value="8">Agustus</option>
+                    <option value="9">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+            </div>
+
+            <div class="filter-group filter-action">
+                <button type="button" class="btn btn-secondary" id="resetAnnualFilter">
+                    <i class="fas fa-rotate-left"></i>
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="annualActivityTableContainer">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>Memuat Kegiatan Tahunan...</div>
+            </div>
+        </div>
+    </div>
+</section>
+<div id="detailModal" class="detail-modal" aria-hidden="true">
+    <div class="detail-modal-card">
+        <div class="detail-modal-header">
+            <h3><i class="fas fa-file-lines"></i> Detail Laporan</h3>
+            <button type="button" class="detail-close" id="closeDetail" aria-label="Tutup">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="detail-body" id="detailBody"></div>
+
+        <div class="detail-actions">
+            <button type="button" class="btn btn-secondary" id="cancelDetail">
+                <i class="fas fa-times"></i>
+                Tutup
+            </button>
+
+            <button type="button" class="btn btn-pdf" id="exportDetailPdf">
+                <i class="fas fa-file-pdf"></i>
+                Export PDF
+            </button>
+        </div>
+    </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script>
+const SUPABASE_URL = 'https://cfnimvrxrnmefmxtzqks.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wgucJVERaaymia6eNj2riw_oL31966i';
+</script>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+    authDomain: "boby-apps-project.firebaseapp.com",
+    projectId: "boby-apps-project",
+    storageBucket: "boby-apps-project.appspot.com",
+    messagingSenderId: "125984859692",
+    appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const ADMIN_ROLES = new Set([
+    "master",
+    "super_admin",
+    "admin",
+    "viewer"
+]);
+
+const MONTH_NAMES = [
+    "",
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember"
+];
+
+const filterTahun = document.getElementById("filterTahun");
+const filterWilayah = document.getElementById("filterWilayah");
+const filterKategori = document.getElementById("filterKategori");
+const filterBulan = document.getElementById("filterBulan");
+const tableContainer = document.getElementById("tableContainer");
+    const detailModal = document.getElementById("detailModal");
+    const detailBody = document.getElementById("detailBody");
+    const closeDetail = document.getElementById("closeDetail");
+    const cancelDetail = document.getElementById("cancelDetail");
+    const exportDetailPdf = document.getElementById("exportDetailPdf");
+
+    let allAgenda = [];
+    let selectedAgendaIds = new Set();
+    let selectedAgenda = null;
+
+const MASTER_WILAYAH_FILTER = [
+    { value: "Abepura", label: "Abepura" },
+    { value: "Sentani", label: "Sentani" },
+    { value: "Doyo", label: "Doyo" },
+    { value: "Arso1", label: "Arso 1" },
+    { value: "Arso2", label: "Arso 2" }
+];
+
+const MASTER_DIVISI_FILTER = [
+    "Praise and Worship (PW)",
+    "Multimedia & Sound Engineering",
+    "Tamborin and Banner",
+    "Event & Organizer",
+    "Komsel Bapak",
+    "Komsel Ibu",
+    "Komsel Pelajar",
+    "Komsel Mahasiswa",
+    "Komsel Profesi",
+    "Sekolah Minggu",
+    "Lansia",
+    "Team Doa",
+    "Team Misi",
+    "Perparkiran dan Keamanan",
+    "General Affairs"
+];
+
+function normalizeWilayahValue(value) {
+    const wilayah = String(value ?? "").trim();
+
+    const aliases = {
+        "Arso 1": "Arso1",
+        "ARSO 1": "Arso1",
+        "Arso1": "Arso1",
+        "Arso 2": "Arso2",
+        "ARSO 2": "Arso2",
+        "Arso2": "Arso2"
+    };
+
+    return aliases[wilayah] || wilayah;
+}
+
+function formatWilayah(value) {
+    const wilayah = String(value ?? "").trim();
+
+    const map = {
+        "Abepura": "Abepura",
+        "Sentani": "Sentani",
+        "Doyo": "Doyo",
+        "Arso1": "Arso 1",
+        "Arso 1": "Arso 1",
+        "Arso2": "Arso 2",
+        "Arso 2": "Arso 2"
+    };
+
+    return map[wilayah] || wilayah || "-";
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function populateYears(data) {
+    const years = [...new Set(
+        data
+            .map(item => String(item.tahun || "").trim())
+            .filter(Boolean)
+    )].sort((a, b) => Number(b) - Number(a));
+
+    filterTahun.innerHTML =
+        '<option value="">Semua Tahun</option>' +
+        years.map(year =>
+            `<option value="${escapeHtml(year)}">${escapeHtml(year)}</option>`
+        ).join("");
+}
+
+function populateAgendaFilters(data) {
+    const currentWilayah = filterWilayah?.value || "";
+    const currentDivisi = filterKategori?.value || "";
+
+    filterWilayah.innerHTML =
+        '<option value="">Semua Wilayah</option>' +
+        MASTER_WILAYAH_FILTER.map(item =>
+            `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`
+        ).join("");
+
+    filterKategori.innerHTML =
+        '<option value="">Semua Divisi / Tim</option>' +
+        MASTER_DIVISI_FILTER.map(item =>
+            `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`
+        ).join("");
+
+    if (currentWilayah) {
+        filterWilayah.value = normalizeWilayahValue(currentWilayah);
+    }
+
+    if (currentDivisi) {
+        filterKategori.value = currentDivisi;
+    }
+}
+
+function renderSummary(data) {
+    document.getElementById("totalAgenda").textContent =
+        data.length;
+
+    const wilayahCount = new Set(
+        data
+            .map(item => String(item.wilayah || "").trim())
+            .filter(Boolean)
+    ).size;
+
+    const divisiCount = new Set(
+        data
+            .map(item => String(item.divisi || "").trim())
+            .filter(Boolean)
+    ).size;
+
+    document.getElementById("totalUmum").textContent =
+        wilayahCount;
+
+    document.getElementById("totalKomsel").textContent =
+        divisiCount;
+
+    document.getElementById("totalTambahan").textContent =
+        data.length;
+
+    const year = filterTahun.value;
+    const wilayah = filterWilayah.value;
+    const divisi = filterKategori.value;
+    const bulan = filterBulan.value;
+
+    const parts = [];
+
+    if (year) parts.push(year);
+    if (wilayah) parts.push(formatWilayah(wilayah));
+    if (divisi) parts.push(divisi);
+    if (bulan) parts.push(MONTH_NAMES[Number(bulan)]);
+
+    document.getElementById("summaryPeriod").textContent =
+        parts.length ? parts.join(" ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ") : "Semua data";
+}
+
+function renderTable(data) {
+    const rows = data.map((item, index) => `
+        <tr class="report-row" data-id="${escapeHtml(item.id)}">
+            <td>
+                <input
+                    type="checkbox"
+                    class="agenda-check"
+                    data-id="${escapeHtml(item.id)}"
+                    ${selectedAgendaIds.has(item.id) ? "checked" : ""}
+                    onchange="toggleAgendaSelection('${escapeHtml(item.id)}', this.checked)"
+                    aria-label="Pilih agenda"
+                >
+            </td>
+
+            <td>${index + 1}</td>
+
+            <td>
+                <span class="badge">
+                    ${escapeHtml(formatWilayah(item.wilayah))}
+                </span>
+            </td>
+
+            <td>
+                <strong>
+                    ${escapeHtml(item.divisi || "-")}
+                </strong>
+            </td>
+
+            <td>${escapeHtml(item.tahun || "-")}</td>
+
+            <td>${escapeHtml(item.periode || "-")}</td>
+
+            <td>${escapeHtml(item.bulan || "-")}</td>
+
+            <td>
+                <strong>
+                    ${escapeHtml(item.program_kerja || "-")}
+                </strong>
+            </td>
+
+            <td>
+                ${escapeHtml(item.sasaran_target || "-")}
+            </td>
+
+            <td>
+                ${escapeHtml(item.estimasi_pencapaian || "-")}
+            </td>
+
+            <td>
+                ${escapeHtml(item.pemilik_nama || "-")}
+            </td>
+        </tr>
+    `).join("");
+
+    const selectedVisibleCount = data.filter(item =>
+        selectedAgendaIds.has(item.id)
+    ).length;
+
+    const allVisibleSelected =
+        data.length > 0 &&
+        selectedVisibleCount === data.length;
+
+    tableContainer.innerHTML = `
+        <div
+            style="
+                display:flex;
+                flex-wrap:wrap;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+                margin-bottom:14px;
+            "
+        >
+            <label
+                style="
+                    display:inline-flex;
+                    align-items:center;
+                    gap:8px;
+                    font-size:12px;
+                    font-weight:700;
+                    cursor:pointer;
+                "
+            >
+                <input
+                    type="checkbox"
+                    id="selectAllAgenda"
+                    ${allVisibleSelected ? "checked" : ""}
+                    ${data.length ? "" : "disabled"}
+                    onchange="toggleAllAgendaSelection(this.checked)"
+                >
+                Pilih Semua
+            </label>
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    flex-wrap:wrap;
+                "
+            >
+                <span
+                    id="agendaSelectionCount"
+                    style="
+                        font-size:12px;
+                        font-weight:700;
+                        color:var(--primary);
+                    "
+                >
+                    ${selectedVisibleCount} dipilih
+                </span>
+
+                <button
+                    type="button"
+                    class="btn"
+                    onclick="deleteSelectedAgenda()"
+                    ${selectedVisibleCount ? "" : "disabled"}
+                    style="
+                        background:#b42318;
+                        color:#fff;
+                        opacity:${selectedVisibleCount ? "1" : ".5"};
+                        cursor:${selectedVisibleCount ? "pointer" : "not-allowed"};
+                    "
+                >
+                    <i class="fas fa-trash"></i>
+                    Hapus Terpilih
+                </button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>
+                            <i class="fas fa-check"></i>
+                        </th>
+                        <th>NO.</th>
+                        <th>WILAYAH</th>
+                        <th>DIVISI / TIM</th>
+                        <th>TAHUN</th>
+                        <th>PERIODE</th>
+                        <th>BULAN</th>
+                        <th>PROGRAM KERJA</th>
+                        <th>SASARAN / TARGET</th>
+                        <th>ESTIMASI</th>
+                        <th>PEMILIK</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${
+                        rows || `
+                            <tr>
+                                <td
+                                    colspan="11"
+                                    style="text-align:center;padding:30px;"
+                                >
+                                    Belum ada Agenda PKS yang dipublikasikan.
+                                </td>
+                            </tr>
+                        `
+                    }
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    document.getElementById("resultCount").textContent =
+        `${data.length} data`;
+}
+
+function toggleAgendaSelection(id, checked) {
+    if (checked) {
+        selectedAgendaIds.add(id);
+    } else {
+        selectedAgendaIds.delete(id);
+    }
+
+    applyFilters();
+}
+
+function toggleAllAgendaSelection(checked) {
+    const visibleItems = Array.isArray(allAgenda) ? applyCurrentAgendaFiltersOnly() : [];
+
+    visibleItems.forEach(item => {
+        if (checked) {
+            selectedAgendaIds.add(item.id);
+        } else {
+            selectedAgendaIds.delete(item.id);
+        }
+    });
+
+    renderTable(visibleItems);
+}
+
+function applyCurrentAgendaFiltersOnly() {
+    const tahun = document.getElementById("filterTahun")?.value || "";
+    const wilayah = document.getElementById("filterWilayah")?.value || "";
+    const kategori = document.getElementById("filterKategori")?.value || "";
+    const bulan = document.getElementById("filterBulan")?.value || "";
+
+    return allAgenda.filter(item => {
+        const itemTahun = String(item.tahun || "");
+        const itemWilayah = String(item.wilayah || "").trim();
+        const itemKategori = String(item.kategori || item.divisi || "").trim();
+
+        let cocokBulan = true;
+
+        if (bulan) {
+            cocokBulan = getAgendaMonthValue(item.bulan) === bulan;
+        }
+
+        return (
+            (!tahun || itemTahun === tahun) &&
+            (!wilayah || itemWilayah === wilayah) &&
+            (!kategori || itemKategori === kategori) &&
+            cocokBulan
+        );
+    });
+}
+function openDetail(item) {
+    selectedAgenda = item;
+
+    detailBody.innerHTML = `
+        <h2 class="detail-title">
+            ${escapeHtml(item.program_kerja || "-")}
+        </h2>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <div class="detail-label">Wilayah</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.wilayah || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Divisi / Tim</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.divisi || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Tahun</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.tahun || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Periode</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.periode || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Bulan</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.bulan || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item full">
+                <div class="detail-label">Tujuan Pelaksanaan</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.tujuan_pelaksanaan || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item full">
+                <div class="detail-label">Sasaran / Target</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.sasaran_target || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item full">
+                <div class="detail-label">Estimasi Pencapaian</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.estimasi_pencapaian || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Minggu I</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.minggu_i || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Minggu II</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.minggu_ii || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Minggu III</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.minggu_iii || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Minggu IV</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.minggu_iv || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item full">
+                <div class="detail-label">Keterangan</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.keterangan || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item full">
+                <div class="detail-label">Kendala Pelaksanaan</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.kendala_pelaksanaan || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item full">
+                <div class="detail-label">Tindak Lanjut</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.tindak_lanjut || "-")}
+                </div>
+            </div>
+
+            <div class="detail-item">
+                <div class="detail-label">Pemilik</div>
+                <div class="detail-value">
+                    ${escapeHtml(item.pemilik_nama || "-")}
+                </div>
+            </div>
+        </div>
+    `;
+
+    detailModal.classList.add("show");
+}
+
+async function exportSelectedAgendaPdf() {
+    if (!selectedAgenda) return;
+
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("Library PDF belum siap.");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const data = selectedAgenda;
+
+    doc.setFontSize(16);
+    doc.setFont(undefined, "bold");
+    doc.text("LAPORAN AGENDA TAHUNAN", 105, 18, {
+        align: "center"
+    });
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, "normal");
+    doc.text("Admin Portal SIPAPUA", 105, 25, {
+        align: "center"
+    });
+
+    doc.autoTable({
+        startY: 34,
+        theme: "grid",
+        head: [["Field", "Informasi"]],
+        body: [
+            ["Program Kerja", data.program_kerja || "-"],
+            ["Wilayah", formatWilayah(data.wilayah)],
+            ["Divisi / Tim", data.divisi || "-"],
+            ["Tahun", data.tahun || "-"],
+            ["Periode", data.periode || "-"],
+            ["Bulan", data.bulan || "-"],
+            ["Tujuan Pelaksanaan", data.tujuan_pelaksanaan || "-"],
+            ["Sasaran / Target", data.sasaran_target || "-"],
+            ["Estimasi Pencapaian", data.estimasi_pencapaian || "-"],
+            ["Minggu I", data.minggu_i || "-"],
+            ["Minggu II", data.minggu_ii || "-"],
+            ["Minggu III", data.minggu_iii || "-"],
+            ["Minggu IV", data.minggu_iv || "-"],
+            ["Keterangan", data.keterangan || "-"],
+            ["Kendala Pelaksanaan", data.kendala_pelaksanaan || "-"],
+            ["Tindak Lanjut", data.tindak_lanjut || "-"],
+            ["Pemilik", data.pemilik_nama || "-"]
+        ],
+        styles: {
+            fontSize: 9,
+            cellPadding: 4
+        },
+        headStyles: {
+            fontStyle: "bold"
+        }
+    });
+
+    const safeName = String(
+        data.program_kerja ||
+        "laporan-agenda"
+    )
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "-")
+        .replace(/\s+/g, "-")
+        .substring(0, 80);
+
+    doc.save(`laporan-${safeName}.pdf`);
+}
+
+function applyFilters() {
+    const year = filterTahun?.value || "";
+    const wilayah = filterWilayah?.value || "";
+    const divisi = filterKategori?.value || "";
+    const periode = document.getElementById("filterPeriode")?.value || "";
+    const bulan = filterBulan?.value || "";
+
+    const filtered = allAgenda.filter(item => {
+        if (
+            year &&
+            String(item.tahun || "") !== year
+        ) {
+            return false;
+        }
+
+        if (
+            wilayah &&
+            normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)
+        ) {
+            return false;
+        }
+
+        if (
+            divisi &&
+            String(item.divisi || "") !== divisi
+        ) {
+            return false;
+        }
+
+        if (
+            periode &&
+            String(item.periode || "") !== periode
+        ) {
+            return false;
+        }
+
+        if (bulan) {
+            const monthName =
+                MONTH_NAMES[Number(bulan)] || "";
+
+            const itemMonth =
+                String(item.bulan || "").trim();
+
+            if (
+                itemMonth !== monthName &&
+                itemMonth !== String(bulan)
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    renderSummary(filtered);
+    renderTable(filtered);
+}
+async function loadAgenda() {
+    tableContainer.innerHTML = `
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <div>Memuat data agenda PKS...</div>
+        </div>
+    `;
+
+    try {
+        const endpoint =
+            `${SUPABASE_URL}/rest/v1/published_agenda_programs` +
+            `?select=id,wilayah,divisi,tahun,periode,bulan,program_kerja,` +
+            `tujuan_pelaksanaan,sasaran_target,estimasi_pencapaian,` +
+            `minggu_i,minggu_ii,minggu_iii,minggu_iv,keterangan,` +
+            `kendala_pelaksanaan,tindak_lanjut,pemilik_nama,created_at` +
+            `&order=tahun.desc,created_at.desc`;
+
+        const response = await fetch(endpoint, {
+            method: "GET",
+            headers: {
+                "apikey": SUPABASE_PUBLISHABLE_KEY,
+                "Authorization":
+                    `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Supabase HTTP ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+
+        allAgenda =
+            Array.isArray(data) ? data : [];
+
+        populateYears(allAgenda);
+        populateAgendaFilters(allAgenda);
+        applyFilters();
+
+    } catch (error) {
+        console.error(
+            "Gagal memuat Agenda PKS Supabase:",
+            error
+        );
+
+        allAgenda = [];
+
+        document.getElementById("totalAgenda").textContent = "0";
+        document.getElementById("totalUmum").textContent = "0";
+        document.getElementById("totalKomsel").textContent = "0";
+        document.getElementById("totalTambahan").textContent = "0";
+
+        tableContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>Data Agenda PKS belum dapat dimuat.</div>
+                <div style="font-size:12px;margin-top:6px;">
+                    Periksa koneksi Supabase dan view
+                    <strong>published_agenda_programs</strong>.
+                </div>
+            </div>
+        `;
+    }
+}
+
+document.getElementById("resetFilter")
+    .addEventListener("click", () => {
+        filterTahun.value = "";
+        filterWilayah.value = "";
+        filterKategori.value = "";
+        const filterPeriodeEl =
+            document.getElementById("filterPeriode");
+        if (filterPeriodeEl) {
+            filterPeriodeEl.value = "";
+        }
+        filterBulan.value = "";
+        applyFilters();
+    });
+
+const eventFilterTahun = document.getElementById("eventFilterTahun");
+const eventFilterWilayah = document.getElementById("eventFilterWilayah");
+const eventFilterDivisi =
+    document.getElementById("eventFilterDivisi");
+
+const eventFilterBulan =
+    document.getElementById("eventFilterBulan");
+
+const resetEventFilter = document.getElementById("resetEventFilter");
+const eventJemaatCount = document.getElementById("eventJemaatCount");
+const eventJemaatTableContainer = document.getElementById("eventJemaatTableContainer");
+
+let allEventJemaatReport = [];
+let selectedEventJemaatIds = new Set();
+
+function escapeEventHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function formatEventDate(value) {
+    if (!value) return "-";
+
+    const parts = String(value).split("-");
+    if (parts.length !== 3) return escapeEventHtml(value);
+
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
+function populateEventFilters() {
+    if (!eventFilterTahun || !eventFilterWilayah || !eventFilterDivisi) {
+        return;
+    }
+
+    const years = [...new Set(
+        allEventJemaatReport
+            .map(item => String(item.tanggal || "").slice(0, 4))
+            .filter(year => /^\d{4}$/.test(year))
+    )].sort((a, b) => Number(b) - Number(a));
+
+    const currentYear = eventFilterTahun.value || "";
+    const currentWilayah = eventFilterWilayah.value || "";
+    const currentDivisi = eventFilterDivisi.value || "";
+
+    eventFilterTahun.innerHTML =
+        '<option value="">Semua Tahun</option>' +
+        years.map(year =>
+            `<option value="${escapeEventHtml(year)}">${escapeEventHtml(year)}</option>`
+        ).join("");
+
+    eventFilterWilayah.innerHTML =
+        '<option value="">Semua Wilayah</option>' +
+        MASTER_WILAYAH_FILTER.map(item =>
+            `<option value="${escapeEventHtml(item.value)}">${escapeEventHtml(item.label)}</option>`
+        ).join("");
+
+    eventFilterDivisi.innerHTML =
+        '<option value="">Semua Divisi / Tim</option>' +
+        MASTER_DIVISI_FILTER.map(item =>
+            `<option value="${escapeEventHtml(item)}">${escapeEventHtml(item)}</option>`
+        ).join("");
+
+    if (currentYear) {
+        eventFilterTahun.value = currentYear;
+    }
+
+    if (currentWilayah) {
+        eventFilterWilayah.value = normalizeWilayahValue(currentWilayah);
+    }
+
+    if (currentDivisi) {
+        eventFilterDivisi.value = currentDivisi;
+    }
+}
+
+function renderEventJemaatTable(items) {
+    if (!eventJemaatTableContainer || !eventJemaatCount) return;
+
+    eventJemaatCount.textContent =
+        `${items.length} event`;
+
+    if (!items.length) {
+        eventJemaatTableContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-calendar-xmark"></i>
+                <div>Belum ada Event Jemaat yang dipublikasikan.</div>
+            </div>
+        `;
+        return;
+    }
+
+    const selectedVisibleCount = items.filter(item =>
+        selectedEventJemaatIds.has(item.id)
+    ).length;
+
+    const allVisibleSelected =
+        items.length > 0 &&
+        selectedVisibleCount === items.length;
+
+    const rows = items.map((item, index) => `
+        <tr>
+            <td>
+                <input
+                    type="checkbox"
+                    class="event-check"
+                    data-id="${escapeEventHtml(item.id)}"
+                    ${selectedEventJemaatIds.has(item.id) ? "checked" : ""}
+                    onchange="toggleEventJemaatSelection('${escapeEventHtml(item.id)}', this.checked)"
+                    aria-label="Pilih event"
+                >
+            </td>
+            <td>${index + 1}</td>
+            <td>
+                <strong>${escapeEventHtml(item.nama)}</strong>
+            </td>
+            <td>${escapeEventHtml(item.wilayah || "-")}</td>
+            <td>${escapeEventHtml(item.divisi || "-")}</td>
+            <td>${formatEventDate(item.tanggal)}</td>
+            <td>${escapeEventHtml(item.lokasi || "-")}</td>
+            <td>${escapeEventHtml(item.pemilik_nama || "-")}</td>
+        </tr>
+    `).join("");
+
+    eventJemaatTableContainer.innerHTML = `
+        <div
+            style="
+                display:flex;
+                flex-wrap:wrap;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+                margin-bottom:14px;
+            "
+        >
+            <label
+                style="
+                    display:inline-flex;
+                    align-items:center;
+                    gap:8px;
+                    font-weight:600;
+                    cursor:pointer;
+                "
+            >
+                <input
+                    type="checkbox"
+                    id="selectAllEventJemaat"
+                    ${allVisibleSelected ? "checked" : ""}
+                    onchange="toggleAllEventJemaatSelection(this.checked)"
+                >
+                Pilih Semua
+            </label>
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    flex-wrap:wrap;
+                    gap:10px;
+                "
+            >
+                <span
+                    id="selectedEventJemaatCount"
+                    style="font-size:13px;color:#64748b;"
+                >
+                    ${selectedVisibleCount} event dipilih
+                </span>
+
+                <button
+                    type="button"
+                    class="btn btn-danger"
+                    onclick="deleteSelectedEventJemaat()"
+                    ${selectedVisibleCount === 0 ? "disabled" : ""}
+                >
+                    <i class="fas fa-trash"></i>
+                    Hapus Terpilih
+                </button>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px;">
+                            <i class="fas fa-check-square"></i>
+                        </th>
+                        <th>NO.</th>
+                        <th>NAMA EVENT</th>
+                        <th>WILAYAH</th>
+                        <th>DIVISI / TIM</th>
+                        <th>TANGGAL</th>
+                        <th>LOKASI</th>
+                        <th>PEMILIK</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function toggleEventJemaatSelection(id, checked) {
+    if (checked) {
+        selectedEventJemaatIds.add(id);
+    } else {
+        selectedEventJemaatIds.delete(id);
+    }
+
+    applyEventFilters();
+}
+
+function toggleAllEventJemaatSelection(checked) {
+    const visibleItems = allEventJemaatReport.filter(item => {
+        const year = eventFilterTahun?.value || "";
+        const wilayah = eventFilterWilayah?.value || "";
+        const divisi = eventFilterDivisi?.value || "";
+        const bulan = eventFilterBulan?.value || "";
+
+        const tanggal = String(item.tanggal || "").slice(0, 10);
+        const itemYear = tanggal.slice(0, 4);
+        const itemMonth = tanggal.slice(5, 7);
+
+        if (year && itemYear !== year) return false;
+        if (wilayah && normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)) return false;
+        if (divisi && String(item.divisi || "") !== divisi) return false;
+        if (bulan && itemMonth !== bulan) return false;
+
+        return true;
+    });
+
+    visibleItems.forEach(item => {
+        if (checked) {
+            selectedEventJemaatIds.add(item.id);
+        } else {
+            selectedEventJemaatIds.delete(item.id);
+        }
+    });
+
+    applyEventFilters();
+}
+
+function deleteSelectedEventJemaat() {
+    const selectedCount = selectedEventJemaatIds.size;
+
+    if (!selectedCount) {
+        alert("Belum ada Event Jemaat yang dipilih.");
+        return;
+    }
+
+    alert(
+        `Ada ${selectedCount} Event Jemaat yang dipilih.
+
+` +
+        "Penghapusan database belum diaktifkan dari browser. " +
+        "Jalur hapus aman melalui backend admin harus digunakan."
+    );
+}
+
+function applyEventFilters() {
+    if (!eventFilterTahun || !eventFilterWilayah) {
+        return;
+    }
+
+    const year = eventFilterTahun.value || "";
+    const wilayah = eventFilterWilayah.value || "";
+    const divisi = eventFilterDivisi?.value || "";
+    const bulan = eventFilterBulan?.value || "";
+
+    const filtered = allEventJemaatReport.filter(item => {
+        const tanggal =
+            String(item.tanggal || "").slice(0, 10);
+
+        const itemYear = tanggal.slice(0, 4);
+        const itemMonth = tanggal.slice(5, 7);
+
+        if (year && itemYear !== year) {
+            return false;
+        }
+
+        if (
+            wilayah &&
+            normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)
+        ) {
+            return false;
+        }
+
+        if (
+            divisi &&
+            String(item.divisi || "") !== divisi
+        ) {
+            return false;
+        }
+
+        if (
+            bulan &&
+            Number(itemMonth) !== Number(bulan)
+        ) {
+            return false;
+        }
+
+        return true;
+    });
+
+    renderEventJemaatTable(filtered);
+}
+async function loadPublishedEvents() {
+    if (!eventJemaatTableContainer) return;
+
+    eventJemaatTableContainer.innerHTML = `
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <div>Memuat Event Jemaat...</div>
+        </div>
+    `;
+
+    try {
+        const endpoint =
+            `${SUPABASE_URL}/rest/v1/published_events` +
+            `?select=id,nama,lokasi,tanggal,isi,published_at,wilayah,divisi,komsel,pemilik_nama` +
+            `&order=tanggal.desc,published_at.desc`;
+
+        const response = await fetch(endpoint, {
+            method: "GET",
+            headers: {
+                "apikey": SUPABASE_PUBLISHABLE_KEY
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Supabase HTTP ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+
+        allEventJemaatReport =
+            Array.isArray(data) ? data : [];
+
+        populateEventFilters();
+        applyEventFilters();
+
+    } catch (error) {
+        console.error(
+            "Gagal memuat Event Jemaat Supabase:",
+            error
+        );
+
+        allEventJemaatReport = [];
+
+        if (eventJemaatCount) {
+            eventJemaatCount.textContent = "0 event";
+        }
+
+        eventJemaatTableContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>Data Event Jemaat belum dapat dimuat.</div>
+                <div style="font-size:12px;margin-top:6px;">
+                    Periksa koneksi Supabase dan view
+                    <strong>published_events</strong>.
+                </div>
+            </div>
+        `;
+    }
+}
+
+if (eventFilterTahun) {
+    eventFilterTahun.addEventListener(
+        "change",
+        applyEventFilters
+    );
+}
+
+if (eventFilterWilayah) {
+    eventFilterWilayah.addEventListener(
+        "change",
+        applyEventFilters
+    );
+}
+
+if (eventFilterDivisi) {
+    eventFilterDivisi.addEventListener(
+        "change",
+        applyEventFilters
+    );
+}
+
+if (eventFilterBulan) {
+    eventFilterBulan.addEventListener(
+        "change",
+        applyEventFilters
+    );
+}
+if (resetEventFilter) {
+    resetEventFilter.addEventListener(
+        "click",
+        () => {
+            eventFilterTahun.value = "";
+            eventFilterWilayah.value = "";
+            applyEventFilters();
+        }
+    );
+}
+
+const annualActivityCount =
+    document.getElementById("annualActivityCount");
+
+const annualActivityTableContainer =
+    document.getElementById("annualActivityTableContainer");
+
+const annualFilterTahun =
+    document.getElementById("annualFilterTahun");
+
+const annualFilterWilayah =
+    document.getElementById("annualFilterWilayah");
+
+const annualFilterDivisi =
+    document.getElementById("annualFilterDivisi");
+
+const annualFilterBulan =
+    document.getElementById("annualFilterBulan");
+
+const resetAnnualFilter =
+    document.getElementById("resetAnnualFilter");
+
+let allAnnualActivities = [];
+let selectedAnnualActivityIds = new Set();
+
+function escapeAnnualHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function annualMonthValue(value) {
+    const text = String(value ?? "").trim();
+
+    if (!text) return "";
+
+    const numeric = Number(text);
+
+    if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 12) {
+        return numeric;
+    }
+
+    const index = MONTH_NAMES.findIndex(
+        item =>
+            String(item).toLowerCase() === text.toLowerCase()
+    );
+
+    return index > 0 ? index : "";
+}
+
+function populateAnnualActivityFilters() {
+    if (
+        !annualFilterTahun ||
+        !annualFilterWilayah ||
+        !annualFilterDivisi
+    ) {
+        return;
+    }
+
+    const years = [...new Set(
+        allAnnualActivities
+            .map(item => String(item.tahun_kegiatan || "").trim())
+            .filter(Boolean)
+    )].sort((a, b) => Number(b) - Number(a));
+
+    const currentYear = annualFilterTahun.value || "";
+    const currentWilayah = annualFilterWilayah.value || "";
+    const currentDivisi = annualFilterDivisi.value || "";
+
+    annualFilterTahun.innerHTML =
+        '<option value="">Semua Tahun</option>' +
+        years.map(year =>
+            `<option value="${escapeAnnualHtml(year)}">${escapeAnnualHtml(year)}</option>`
+        ).join("");
+
+    annualFilterWilayah.innerHTML =
+        '<option value="">Semua Wilayah</option>' +
+        MASTER_WILAYAH_FILTER.map(item =>
+            `<option value="${escapeAnnualHtml(item.value)}">${escapeAnnualHtml(item.label)}</option>`
+        ).join("");
+
+    annualFilterDivisi.innerHTML =
+        '<option value="">Semua Divisi / Tim</option>' +
+        MASTER_DIVISI_FILTER.map(item =>
+            `<option value="${escapeAnnualHtml(item)}">${escapeAnnualHtml(item)}</option>`
+        ).join("");
+
+    if (currentYear) {
+        annualFilterTahun.value = currentYear;
+    }
+
+    if (currentWilayah) {
+        annualFilterWilayah.value = normalizeWilayahValue(currentWilayah);
+    }
+
+    if (currentDivisi) {
+        annualFilterDivisi.value = currentDivisi;
+    }
+}
+
+function renderAnnualActivityTable(items) {
+    if (
+        !annualActivityTableContainer ||
+        !annualActivityCount
+    ) {
+        return;
+    }
+
+    annualActivityCount.textContent =
+        `${items.length} kegiatan`;
+
+    const selectedVisibleCount = items.filter(item =>
+        selectedAnnualActivityIds.has(item.id)
+    ).length;
+
+    const allVisibleSelected =
+        items.length > 0 &&
+        selectedVisibleCount === items.length;
+
+    const rows = items.map((item, index) => {
+        const tanggal =
+            String(item.tanggal_kegiatan || "")
+                .slice(0, 10);
+
+        return `
+            <tr>
+                <td>
+                    <input
+                        type="checkbox"
+                        class="annual-activity-check"
+                        data-id="${escapeAnnualHtml(item.id)}"
+                        ${selectedAnnualActivityIds.has(item.id) ? "checked" : ""}
+                        onchange="toggleAnnualActivitySelection('${escapeAnnualHtml(item.id)}', this.checked)"
+                        aria-label="Pilih kegiatan tahunan"
+                    >
+                </td>
+
+                <td>${index + 1}</td>
+
+                <td>
+                    <span class="badge">
+                        ${escapeAnnualHtml(
+                            formatWilayah(item.wilayah)
+                        )}
+                    </span>
+                </td>
+
+                <td>
+                    ${escapeAnnualHtml(item.divisi || "-")}
+                </td>
+
+                <td>
+                    <strong>
+                        ${escapeAnnualHtml(
+                            item.nama_kegiatan || "-"
+                        )}
+                    </strong>
+                </td>
+
+                <td>${escapeAnnualHtml(tanggal || "-")}</td>
+
+                <td>
+                    ${escapeAnnualHtml(
+                        item.tahun_kegiatan || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${escapeAnnualHtml(
+                        item.lokasi_kegiatan || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${escapeAnnualHtml(
+                        item.agenda_kegiatan || "-"
+                    )}
+                </td>
+
+                <td>
+                    ${escapeAnnualHtml(
+                        item.keterangan || "-"
+                    )}
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    annualActivityTableContainer.innerHTML = `
+        <div
+            style="
+                display:flex;
+                flex-wrap:wrap;
+                align-items:center;
+                justify-content:space-between;
+                gap:10px;
+                margin-bottom:14px;
+            "
+        >
+            <label
+                style="
+                    display:inline-flex;
+                    align-items:center;
+                    gap:8px;
+                    font-size:12px;
+                    font-weight:700;
+                    cursor:pointer;
+                "
+            >
+                <input
+                    type="checkbox"
+                    id="selectAllAnnualActivities"
+                    ${allVisibleSelected ? "checked" : ""}
+                    ${items.length ? "" : "disabled"}
+                    onchange="toggleAllAnnualActivitySelection(this.checked)"
+                >
+                Pilih Semua
+            </label>
+
+            <div
+                style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    flex-wrap:wrap;
+                "
+            >
+                <span
+                    style="
+                        font-size:12px;
+                        font-weight:700;
+                        color:var(--primary);
+                    "
+                >
+                    ${selectedVisibleCount} dipilih
+                </span>
+
+                <button
+                    type="button"
+                    class="btn"
+                    onclick="deleteSelectedAnnualActivities()"
+                    disabled
+                    style="
+                        background:#b42318;
+                        color:#fff;
+                        opacity:.5;
+                        cursor:not-allowed;
+                    "
+                    title="Penghapusan database akan diaktifkan setelah endpoint aman tersedia."
+                >
+                    <i class="fas fa-trash"></i>
+                    Hapus Terpilih
+                </button>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-check"></i></th>
+                        <th>NO.</th>
+                        <th>WILAYAH</th>
+                        <th>DIVISI / TIM</th>
+                        <th>NAMA KEGIATAN</th>
+                        <th>TANGGAL</th>
+                        <th>TAHUN</th>
+                        <th>LOKASI</th>
+                        <th>AGENDA</th>
+                        <th>KETERANGAN</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${
+                        rows ||
+                        `
+                            <tr>
+                                <td
+                                    colspan="10"
+                                    style="
+                                        text-align:center;
+                                        padding:30px;
+                                    "
+                                >
+                                    Belum ada Kegiatan Tahunan
+                                    yang dipublikasikan.
+                                </td>
+                            </tr>
+                        `
+                    }
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function applyAnnualActivityFilters() {
+    const year = annualFilterTahun?.value || "";
+    const wilayah = annualFilterWilayah?.value || "";
+    const divisi = annualFilterDivisi?.value || "";
+    const bulan = annualFilterBulan?.value || "";
+
+    const filtered = allAnnualActivities.filter(item => {
+        const itemYear =
+            String(item.tahun_kegiatan || "");
+
+        if (year && itemYear !== year) {
+            return false;
+        }
+
+        if (
+            wilayah &&
+            normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)
+        ) {
+            return false;
+        }
+
+        if (
+            divisi &&
+            String(item.divisi || "") !== divisi
+        ) {
+            return false;
+        }
+
+        if (bulan) {
+            const itemMonth =
+                String(item.tanggal_kegiatan || "")
+                    .slice(5, 7);
+
+            if (
+                Number(itemMonth) !== Number(bulan)
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    renderAnnualActivityTable(filtered);
+}
+
+function toggleAnnualActivitySelection(id, checked) {
+    if (checked) {
+        selectedAnnualActivityIds.add(id);
+    } else {
+        selectedAnnualActivityIds.delete(id);
+    }
+
+    applyAnnualActivityFilters();
+}
+
+function toggleAllAnnualActivitySelection(checked) {
+    const items = allAnnualActivities.filter(item => {
+        const year = annualFilterTahun?.value || "";
+        const wilayah = annualFilterWilayah?.value || "";
+        const divisi = annualFilterDivisi?.value || "";
+        const bulan = annualFilterBulan?.value || "";
+
+        if (
+            year &&
+            String(item.tahun_kegiatan || "") !== year
+        ) {
+            return false;
+        }
+
+        if (
+            wilayah &&
+            normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)
+        ) {
+            return false;
+        }
+
+        if (
+            divisi &&
+            String(item.divisi || "") !== divisi
+        ) {
+            return false;
+        }
+
+        if (bulan) {
+            const itemMonth =
+                String(item.tanggal_kegiatan || "")
+                    .slice(5, 7);
+
+            if (Number(itemMonth) !== Number(bulan)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    items.forEach(item => {
+        if (checked) {
+            selectedAnnualActivityIds.add(item.id);
+        } else {
+            selectedAnnualActivityIds.delete(item.id);
+        }
+    });
+
+    applyAnnualActivityFilters();
+}
+
+function deleteSelectedAnnualActivities() {
+    alert(
+        "Penghapusan Kegiatan Tahunan belum diaktifkan. " +
+        "Endpoint penghapusan aman harus diverifikasi terlebih dahulu."
+    );
+}
+
+async function loadPublishedAnnualActivities() {
+    if (!annualActivityTableContainer) {
+        return;
+    }
+
+    annualActivityTableContainer.innerHTML = `
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <div>Memuat Kegiatan Tahunan...</div>
+        </div>
+    `;
+
+    try {
+        const endpoint =
+            `${SUPABASE_URL}/rest/v1/published_annual_activities` +
+            `?select=id,wilayah,divisi,nama_kegiatan,tanggal_kegiatan,` +
+            `tahun_kegiatan,lokasi_kegiatan,agenda_kegiatan,keterangan,` +
+            `created_at` +
+            `&order=tanggal_kegiatan.desc,created_at.desc`;
+
+        const response = await fetch(endpoint, {
+            method: "GET",
+            headers: {
+                "apikey": SUPABASE_PUBLISHABLE_KEY
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                `Supabase HTTP ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+
+        allAnnualActivities =
+            Array.isArray(data) ? data : [];
+
+        populateAnnualActivityFilters();
+        applyAnnualActivityFilters();
+
+    } catch (error) {
+        console.error(
+            "Gagal memuat Kegiatan Tahunan Supabase:",
+            error
+        );
+
+        allAnnualActivities = [];
+
+        if (annualActivityCount) {
+            annualActivityCount.textContent =
+                "0 kegiatan";
+        }
+
+        annualActivityTableContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>
+                    Data Kegiatan Tahunan belum dapat dimuat.
+                </div>
+                <div
+                    style="
+                        font-size:12px;
+                        margin-top:6px;
+                    "
+                >
+                    Periksa koneksi Supabase dan view
+                    <strong>
+                        published_annual_activities
+                    </strong>.
+                </div>
+            </div>
+        `;
+    }
+}
+
+if (annualFilterTahun) {
+    annualFilterTahun.addEventListener(
+        "change",
+        applyAnnualActivityFilters
+    );
+}
+
+if (annualFilterWilayah) {
+    annualFilterWilayah.addEventListener(
+        "change",
+        applyAnnualActivityFilters
+    );
+}
+
+if (annualFilterDivisi) {
+    annualFilterDivisi.addEventListener(
+        "change",
+        applyAnnualActivityFilters
+    );
+}
+
+if (annualFilterBulan) {
+    annualFilterBulan.addEventListener(
+        "change",
+        applyAnnualActivityFilters
+    );
+}
+
+if (resetAnnualFilter) {
+    resetAnnualFilter.addEventListener("click", () => {
+        annualFilterTahun.value = "";
+        annualFilterWilayah.value = "";
+        annualFilterDivisi.value = "";
+        annualFilterBulan.value = "";
+        selectedAnnualActivityIds.clear();
+        applyAnnualActivityFilters();
+    });
+}
+
+
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location.replace("login_cyber.html");
+        return;
+    }
+
+    try {
+        const adminDoc = await db
+            .collection("admin_users")
+            .doc(user.uid)
+            .get();
+
+        if (!adminDoc.exists) {
+            throw new Error("ADMIN_NOT_REGISTERED");
+        }
+
+        const adminData = adminDoc.data();
+        const role = adminData.role || "";
+        const status = adminData.status || "inactive";
+
+        if (!ADMIN_ROLES.has(role)) {
+            throw new Error("ADMIN_NOT_AUTHORIZED");
+        }
+
+        if (status !== "active") {
+            throw new Error("ADMIN_INACTIVE");
+        }
+
+        await loadAgenda();
+        await loadPublishedEvents();
+        await loadPublishedAnnualActivities();
+
+    } catch (error) {
+        console.error("Laporan Tahunan authorization error:", error);
+
+        try {
+            await auth.signOut();
+        } finally {
+            window.location.replace("login_cyber.html");
+        }
+    }
+});
+</script>
+
+<!-- REPORT-DETAIL-FINAL -->
+<style>
+.report-detail-clickable{
+    cursor:pointer;
+}
+.report-detail-clickable:hover{
+    background:#f4faf8 !important;
+    box-shadow:inset 4px 0 0 #176c66;
+}
+.report-detail-modal{
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(4,28,34,.65);
+    backdrop-filter:blur(4px);
+}
+.report-detail-modal.show{
+    display:flex;
+}
+.report-detail-card{
+    width:min(820px,100%);
+    max-height:90vh;
+    overflow:auto;
+    background:#fff;
+    border-radius:18px;
+    box-shadow:0 25px 80px rgba(0,0,0,.3);
+}
+.report-detail-header{
+    position:sticky;
+    top:0;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:18px 20px;
+    background:#fff;
+    border-bottom:1px solid #e4ecea;
+}
+.report-detail-header h3{
+    margin:0;
+    color:#073f46;
+    font-size:18px;
+}
+.report-detail-close{
+    width:36px;
+    height:36px;
+    border:0;
+    border-radius:50%;
+    background:#edf3f1;
+    color:#31585e;
+    cursor:pointer;
+    font-size:16px;
+}
+.report-detail-body{
+    padding:20px;
+}
+.report-detail-title{
+    margin:0 0 18px;
+    color:#063f46;
+    font-size:23px;
+    line-height:1.35;
+}
+.report-detail-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+}
+.report-detail-item{
+    padding:13px 14px;
+    border:1px solid #e1ebe9;
+    border-radius:12px;
+    background:#fbfdfc;
+}
+.report-detail-item.full{
+    grid-column:1/-1;
+}
+.report-detail-label{
+    display:block;
+    margin-bottom:6px;
+    color:#6c858a;
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+}
+.report-detail-value{
+    color:#244f55;
+    font-size:13px;
+    line-height:1.6;
+    white-space:pre-wrap;
+    word-break:break-word;
+}
+.report-detail-actions{
+    position:sticky;
+    bottom:0;
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    padding:16px 20px 20px;
+    background:#fff;
+    border-top:1px solid #e4ecea;
+}
+.report-detail-actions button{
+    min-height:42px;
+    border:0;
+    border-radius:10px;
+    padding:0 16px;
+    font-weight:800;
+    cursor:pointer;
+}
+.report-detail-cancel{
+    background:#edf2f1;
+    color:#31585e;
+}
+.report-detail-pdf{
+    background:#176c66;
+    color:#fff;
+}
+@media(max-width:640px){
+    .report-detail-modal{
+        padding:8px;
+    }
+    .report-detail-card{
+        max-height:94vh;
+        border-radius:14px;
+    }
+    .report-detail-grid{
+        grid-template-columns:1fr;
+    }
+    .report-detail-item.full{
+        grid-column:auto;
+    }
+    .report-detail-actions{
+        flex-direction:column;
+    }
+    .report-detail-actions button{
+        width:100%;
+    }
+}
+</style>
+
+<div id="reportDetailModal" class="report-detail-modal" aria-hidden="true">
+    <div class="report-detail-card" role="dialog" aria-modal="true">
+
+        <div class="report-detail-header">
+            <h3>
+                <i class="fas fa-file-lines"></i>
+                Detail Laporan
+            </h3>
+
+            <button
+                type="button"
+                class="report-detail-close"
+                id="reportDetailClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div
+            id="reportDetailBody"
+            class="report-detail-body">
+        </div>
+
+        <div class="report-detail-actions">
+            <button
+                type="button"
+                class="report-detail-cancel"
+                id="reportDetailCancel">
+                <i class="fas fa-times"></i>
+                Tutup
+            </button>
+
+            <button
+                type="button"
+                class="report-detail-pdf"
+                id="reportDetailPdf">
+                <i class="fas fa-file-pdf"></i>
+                Export PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+
+    const modal =
+        document.getElementById("reportDetailModal");
+
+    const body =
+        document.getElementById("reportDetailBody");
+
+    const closeButton =
+        document.getElementById("reportDetailClose");
+
+    const cancelButton =
+        document.getElementById("reportDetailCancel");
+
+    const pdfButton =
+        document.getElementById("reportDetailPdf");
+
+    if(
+        !modal ||
+        !body ||
+        !closeButton ||
+        !cancelButton ||
+        !pdfButton
+    ){
+        return;
+    }
+
+    let selectedReport = null;
+    let selectedType = "";
+
+    function escapeHtml(value){
+
+        return String(value ?? "-")
+            .replaceAll("&","&amp;")
+            .replaceAll("<","&lt;")
+            .replaceAll(">","&gt;")
+            .replaceAll('"',"&quot;")
+            .replaceAll("'","&#039;");
+    }
+
+    function field(label,value,full=false){
+
+        return `
+            <div class="report-detail-item${full ? " full" : ""}">
+                <span class="report-detail-label">
+                    ${escapeHtml(label)}
+                </span>
+
+                <div class="report-detail-value">
+                    ${escapeHtml(value || "-")}
+                </div>
+            </div>
+        `;
+    }
+
+    function openModal(type,data){
+
+        selectedType = type;
+        selectedReport = data;
+
+        if(type === "event"){
+
+            body.innerHTML = `
+                <h2 class="report-detail-title">
+                    ${escapeHtml(data.nama)}
+                </h2>
+
+                <div class="report-detail-grid">
+
+                    ${field(
+                        "Tanggal",
+                        data.tanggal
+                    )}
+
+                    ${field(
+                        "Wilayah",
+                        data.wilayah
+                    )}
+
+                    ${field(
+                        "Divisi / Tim",
+                        data.divisi
+                    )}
+
+                    ${field(
+                        "Lokasi",
+                        data.lokasi
+                    )}
+
+                    ${field(
+                        "Pemilik",
+                        data.pemilik
+                    )}
+
+                    ${field(
+                        "Isi / Deskripsi",
+                        data.isi,
+                        true
+                    )}
+
+                </div>
+            `;
+
+        }else{
+
+            body.innerHTML = `
+                <h2 class="report-detail-title">
+                    ${escapeHtml(data.nama)}
+                </h2>
+
+                <div class="report-detail-grid">
+
+                    ${field(
+                        "Wilayah",
+                        data.wilayah
+                    )}
+
+                    ${field(
+                        "Divisi / Tim",
+                        data.divisi
+                    )}
+
+                    ${field(
+                        "Tanggal",
+                        data.tanggal
+                    )}
+
+                    ${field(
+                        "Tahun",
+                        data.tahun
+                    )}
+
+                    ${field(
+                        "Lokasi",
+                        data.lokasi
+                    )}
+
+                    ${field(
+                        "Agenda",
+                        data.agenda,
+                        true
+                    )}
+
+                    ${field(
+                        "Keterangan",
+                        data.keterangan,
+                        true
+                    )}
+
+                </div>
+            `;
+        }
+
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden","false");
+    }
+
+    function closeModal(){
+
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden","true");
+
+        selectedReport = null;
+        selectedType = "";
+    }
+
+    function safeFilename(value,fallback){
+
+        return String(value || fallback)
+            .trim()
+            .replace(/[\\/:*?"<>|]+/g,"-")
+            .replace(/\s+/g,"-")
+            .substring(0,80);
+    }
+
+    function exportPdf(){
+
+        if(!selectedReport){
+            return;
+        }
+
+        if(
+            !window.jspdf ||
+            !window.jspdf.jsPDF
+        ){
+            alert("Library PDF belum siap.");
+            return;
+        }
+
+        if(
+            typeof window.jspdf.jsPDF
+                !== "function"
+        ){
+            alert("Library PDF tidak valid.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+
+        const doc = new jsPDF(
+            "p",
+            "mm",
+            "a4"
+        );
+
+        const title =
+            selectedType === "event"
+                ? "LAPORAN EVENT JEMAAT"
+                : "LAPORAN KEGIATAN TAHUNAN";
+
+        doc.setFontSize(16);
+        doc.setFont(undefined,"bold");
+
+        doc.text(
+            title,
+            105,
+            18,
+            {
+                align:"center"
+            }
+        );
+
+        doc.setFontSize(9);
+        doc.setFont(undefined,"normal");
+
+        doc.text(
+            "SIPAPUA — Laporan Monitoring",
+            105,
+            25,
+            {
+                align:"center"
+            }
+        );
+
+        const d = selectedReport;
+
+        let rows = [];
+
+        if(selectedType === "event"){
+
+            rows = [
+                ["Nama Event",d.nama || "-"],
+                ["Tanggal",d.tanggal || "-"],
+                ["Wilayah",d.wilayah || "-"],
+                ["Divisi / Tim",d.divisi || "-"],
+                ["Lokasi",d.lokasi || "-"],
+                ["Pemilik",d.pemilik || "-"],
+                ["Isi / Deskripsi",d.isi || "-"]
+            ];
+
+        }else{
+
+            rows = [
+                ["Nama Kegiatan",d.nama || "-"],
+                ["Wilayah",d.wilayah || "-"],
+                ["Divisi / Tim",d.divisi || "-"],
+                ["Tanggal",d.tanggal || "-"],
+                ["Tahun",d.tahun || "-"],
+                ["Lokasi",d.lokasi || "-"],
+                ["Agenda",d.agenda || "-"],
+                ["Keterangan",d.keterangan || "-"]
+            ];
+        }
+
+        if(
+            typeof doc.autoTable === "function"
+        ){
+
+            doc.autoTable({
+                startY:34,
+
+                theme:"grid",
+
+                head:[
+                    ["Field","Informasi"]
+                ],
+
+                body:rows,
+
+                margin:{
+                    left:14,
+                    right:14
+                },
+
+                styles:{
+                    fontSize:9,
+                    cellPadding:4,
+                    valign:"top",
+                    overflow:"linebreak"
+                },
+
+                headStyles:{
+                    fontStyle:"bold"
+                },
+
+                columnStyles:{
+                    0:{
+                        cellWidth:42
+                    },
+                    1:{
+                        cellWidth:"auto"
+                    }
+                }
+            });
+
+        }else{
+
+            let y = 38;
+
+            rows.forEach(row => {
+
+                doc.setFont(undefined,"bold");
+                doc.text(
+                    row[0],
+                    15,
+                    y
+                );
+
+                doc.setFont(undefined,"normal");
+
+                const lines =
+                    doc.splitTextToSize(
+                        String(row[1]),
+                        140
+                    );
+
+                doc.text(
+                    lines,
+                    60,
+                    y
+                );
+
+                y += Math.max(
+                    8,
+                    lines.length * 5
+                );
+            });
+        }
+
+        const filename =
+            selectedType === "event"
+                ? safeFilename(
+                    d.nama,
+                    "event-jemaat"
+                )
+                : safeFilename(
+                    d.nama,
+                    "kegiatan-tahunan"
+                );
+
+        doc.save(
+            `laporan-${selectedType}-${filename}.pdf`
+        );
+    }
+
+    function handleRowClick(event){
+
+        if(
+            event.target.closest(
+                "input,button,a,select"
+            )
+        ){
+            return;
+        }
+
+        const eventRow =
+            event.target.closest(
+                "#eventJemaatTableContainer tbody tr"
+            );
+
+        if(eventRow){
+
+            const cells =
+                eventRow.querySelectorAll("td");
+
+            if(cells.length >= 7){
+
+                openModal(
+                    "event",
+                    {
+                        nama:
+                            cells[1]?.innerText.trim() || "-",
+
+                        wilayah:
+                            cells[2]?.innerText.trim() || "-",
+
+                        divisi:
+                            cells[3]?.innerText.trim() || "-",
+
+                        tanggal:
+                            cells[4]?.innerText.trim() || "-",
+
+                        lokasi:
+                            cells[5]?.innerText.trim() || "-",
+
+                        pemilik:
+                            cells[6]?.innerText.trim() || "-",
+
+                        isi:
+                            "Lihat informasi lengkap Event Jemaat."
+                    }
+                );
+            }
+
+            return;
+        }
+
+        const annualRow =
+            event.target.closest(
+                "#annualActivityTableContainer tbody tr"
+            );
+
+        if(annualRow){
+
+            const cells =
+                annualRow.querySelectorAll("td");
+
+            if(cells.length >= 9){
+
+                openModal(
+                    "annual",
+                    {
+                        wilayah:
+                            cells[1]?.innerText.trim() || "-",
+
+                        divisi:
+                            cells[2]?.innerText.trim() || "-",
+
+                        nama:
+                            cells[3]?.innerText.trim() || "-",
+
+                        tanggal:
+                            cells[4]?.innerText.trim() || "-",
+
+                        tahun:
+                            cells[5]?.innerText.trim() || "-",
+
+                        lokasi:
+                            cells[6]?.innerText.trim() || "-",
+
+                        agenda:
+                            cells[7]?.innerText.trim() || "-",
+
+                        keterangan:
+                            cells[8]?.innerText.trim() || "-"
+                    }
+                );
+            }
+        }
+    }
+
+    document.addEventListener(
+        "click",
+        handleRowClick
+    );
+
+    closeButton.addEventListener(
+        "click",
+        closeModal
+    );
+
+    cancelButton.addEventListener(
+        "click",
+        closeModal
+    );
+
+    pdfButton.addEventListener(
+        "click",
+        exportPdf
+    );
+
+    modal.addEventListener(
+        "click",
+        event => {
+
+            if(event.target === modal){
+                closeModal();
+            }
+
+        }
+    );
+
+    document.addEventListener(
+        "keydown",
+        event => {
+
+            if(
+                event.key === "Escape" &&
+                modal.classList.contains("show")
+            ){
+                closeModal();
+            }
+
+        }
+    );
+
+})();
+</script>
+<!-- /REPORT-DETAIL-FINAL --></body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style id="laporan-ui-polish">
+/* =========================================================
+   SIPAPUA — LAPORAN TAHUNAN UI POLISH
+   Tidak mengubah struktur/data/API.
+   ========================================================= */
+
+body {
+    background: #f3f7f6 !important;
+    color: #123f46;
+}
+
+.container {
+    width: min(1280px, calc(100% - 32px)) !important;
+    margin: 0 auto !important;
+    padding-bottom: 48px !important;
+}
+
+.page-header,
+.header {
+    margin-bottom: 22px !important;
+}
+
+.page-header h2,
+.header h2 {
+    margin-bottom: 6px !important;
+    letter-spacing: -0.02em;
+}
+
+.page-header small,
+.header small {
+    color: #66858a !important;
+    line-height: 1.6 !important;
+}
+
+/* Semua blok monitoring */
+.card {
+    border: 1px solid #dbe8e6 !important;
+    border-radius: 18px !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 24px rgba(18, 63, 70, 0.07) !important;
+    overflow: hidden !important;
+    margin-bottom: 22px !important;
+}
+
+.card-header {
+    min-height: 64px !important;
+    padding: 16px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+    border-bottom: 1px solid #e5efed !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fcfb 100%) !important;
+}
+
+.card-header h3 {
+    margin: 0 !important;
+    color: #073f46 !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.card-header h3 i {
+    margin-right: 8px !important;
+}
+
+.count-text {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 64px !important;
+    padding: 7px 12px !important;
+    border-radius: 999px !important;
+    background: #e9f6f2 !important;
+    color: #00695c !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+}
+
+.card-body {
+    padding: 18px 20px 20px !important;
+}
+
+/* Filter */
+.filters {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    align-items: end !important;
+    margin-bottom: 18px !important;
+}
+
+.filter-group {
+    min-width: 0 !important;
+}
+
+.filter-group label {
+    display: block !important;
+    margin-bottom: 7px !important;
+    color: #315b61 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+.filter-group select,
+.filters select,
+.filter-group input {
+    width: 100% !important;
+    min-height: 40px !important;
+    border: 1px solid #d3e2e0 !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    color: #123f46 !important;
+    padding: 9px 12px !important;
+    outline: none !important;
+}
+
+.filter-group select:focus,
+.filters select:focus,
+.filter-group input:focus {
+    border-color: #6da9a0 !important;
+    box-shadow: 0 0 0 3px rgba(109, 169, 160, 0.14) !important;
+}
+
+/* Toolbar / action area */
+.toolbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+.toolbar button,
+button.btn {
+    min-height: 40px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+}
+
+/* Tabel */
+.table-wrapper {
+    width: 100% !important;
+    overflow-x: auto !important;
+    border: 1px solid #e0ebe9 !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+.table-wrapper table {
+    width: 100% !important;
+    min-width: 900px !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.table-wrapper th {
+    background: #f2f7f6 !important;
+    color: #31585d !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+    padding: 12px 11px !important;
+    border-bottom: 1px solid #dce8e6 !important;
+    white-space: nowrap !important;
+}
+
+.table-wrapper td {
+    color: #274e54 !important;
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    padding: 12px 11px !important;
+    border-bottom: 1px solid #edf2f1 !important;
+    vertical-align: middle !important;
+}
+
+.table-wrapper tbody tr:last-child td {
+    border-bottom: 0 !important;
+}
+
+.table-wrapper tbody tr:hover {
+    background: #f8fcfb !important;
+}
+
+.table-wrapper td strong {
+    color: #063f46 !important;
+    font-weight: 800 !important;
+}
+
+/* Checkbox lebih teratur */
+.table-wrapper input[type="checkbox"] {
+    width: 16px !important;
+    height: 16px !important;
+    accent-color: #176c66 !important;
+}
+
+/* Empty / loading */
+.loading,
+.empty-state {
+    min-height: 150px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 28px !important;
+    color: #6a858a !important;
+}
+
+.empty-state i {
+    margin-bottom: 10px !important;
+    font-size: 28px !important;
+    color: #7da09b !important;
+}
+
+/* Event Jemaat khusus */
+#eventJemaatReport .card-body {
+    padding-top: 18px !important;
+}
+
+#eventJemaatReport .table-wrapper {
+    margin-top: 4px !important;
+}
+
+/* Section spacing */
+#eventJemaatReport,
+#annualActivitiesReport,
+section.card {
+    scroll-margin-top: 20px;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+    .container {
+        width: min(100% - 20px, 1280px) !important;
+    }
+
+    .filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .card-header {
+        align-items: flex-start !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .container {
+        width: calc(100% - 12px) !important;
+        padding-bottom: 28px !important;
+    }
+
+    .card {
+        border-radius: 14px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .card-header {
+        min-height: auto !important;
+        padding: 14px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .card-header h3 {
+        font-size: 15px !important;
+    }
+
+    .card-body {
+        padding: 14px !important;
+    }
+
+    .filters {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .table-wrapper {
+        border-radius: 10px !important;
+    }
+
+    .table-wrapper td,
+    .table-wrapper th {
+        padding: 10px 9px !important;
+    }
+
+    .count-text {
+        align-self: flex-start !important;
+    }
+}
+</style>
