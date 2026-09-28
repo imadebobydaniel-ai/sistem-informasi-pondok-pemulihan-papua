@@ -17,6 +17,8 @@
         .btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; color: white; }
         .btn-hadir { background: #00c853; }
         .btn-absen { background: #d81b60; }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        #reporting-window-message { display: none; color: #9b1c1c; background: #fff1f1; border: 1px solid #f1b7b7; border-radius: 10px; padding: 10px; font-size: 13px; font-weight: bold; }
         
         #lock-display { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
@@ -41,6 +43,7 @@
     <div class="icon-header"><i class="fa-solid fa-location-dot"></i></div>
     <h2>LAPORAN KEHADIRAN</h2>
     <p class="subtitle">Shalom! Silakan pilih jenis kegiatan jemaat.</p>
+    <p id="reporting-window-message" role="status" aria-live="polite">Pelaporan harian dibuka pukul 00:01 WIT dan ditutup pukul 22:00 WIT.</p>
 
     <div class="menu-selector">
         <label><i class="fa-solid fa-list-check"></i> Pilih Jenis Kegiatan:</label>
@@ -121,13 +124,13 @@
     </div>
 
     <div id="main-buttons" style="margin-top: 20px;">
-        <button class="btn btn-hadir" onclick="handleProses('HADIR')">SAYA HADIR <i class="fa-solid fa-circle-check"></i></button>
-        <button class="btn btn-absen" onclick="tampilkanInputAlasan()">TIDAK HADIR <i class="fa-solid fa-circle-xmark"></i></button>
+        <button id="btn-hadir" class="btn btn-hadir" disabled onclick="handleProses('HADIR')">SAYA HADIR <i class="fa-solid fa-circle-check"></i></button>
+        <button id="btn-tidak-hadir" class="btn btn-absen" disabled onclick="tampilkanInputAlasan()">TIDAK HADIR <i class="fa-solid fa-circle-xmark"></i></button>
     </div>
 
     <div id="reason-container">
         <textarea id="alasan" rows="3" placeholder="Tulis alasan tidak hadir..."></textarea>
-        <button class="btn btn-absen" onclick="handleProses('TIDAK HADIR')">KIRIM LAPORAN</button>
+        <button id="btn-submit-absen" class="btn btn-absen" disabled onclick="handleProses('TIDAK HADIR')">KIRIM LAPORAN</button>
         <button style="background:none; border:none; color:#777; margin-top:10px;" onclick="batalAbsen()">Kembali</button>
     </div>
 
@@ -136,6 +139,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
     const firebaseConfig = { 
@@ -148,6 +152,20 @@
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
+    const authUserPromise = new Promise((resolve) => {
+        let unsubscribe = () => {};
+        unsubscribe = auth.onAuthStateChanged(
+            (user) => {
+                unsubscribe();
+                resolve(user);
+            },
+            () => {
+                unsubscribe();
+                resolve(null);
+            }
+        );
+    });
 
     const userName = localStorage.getItem("userName") || "Jemaat";
 
@@ -195,14 +213,98 @@
         document.getElementById("reason-container").style.display = "none"; 
     }
 
+    function getWitDateString(date) {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Asia/Jayapura",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        }).formatToParts(date);
+        const year = parts.find(part => part.type === "year").value;
+        const month = parts.find(part => part.type === "month").value;
+        const day = parts.find(part => part.type === "day").value;
+        return `${year}-${month}-${day}`;
+    }
+
+    function getWitReportingState(date = new Date()) {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Asia/Jayapura",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(date);
+        const hour = Number(parts.find(part => part.type === "hour").value);
+        const minute = Number(parts.find(part => part.type === "minute").value);
+        const second = Number(parts.find(part => part.type === "second").value);
+        const totalSeconds = hour * 3600 + minute * 60 + second;
+
+        return {
+            isOpen: totalSeconds >= 60 && totalSeconds < 22 * 3600,
+            date: getWitDateString(date),
+            hour,
+            minute,
+            second,
+            totalSeconds
+        };
+    }
+
+    const REPORTING_WINDOW_MESSAGE = "Pelaporan harian dibuka pukul 00:01 WIT dan ditutup pukul 22:00 WIT.";
+    let reportingWindowTimer = null;
+
+    function refreshReportingWindowUi() {
+        const now = new Date();
+        const state = getWitReportingState(now);
+        const isOpen = state.isOpen;
+        ["btn-hadir", "btn-tidak-hadir", "btn-submit-absen"].forEach(id => {
+            document.getElementById(id).disabled = !isOpen;
+        });
+
+        const message = document.getElementById("reporting-window-message");
+        message.style.display = isOpen ? "none" : "block";
+
+        if (reportingWindowTimer !== null) window.clearTimeout(reportingWindowTimer);
+        const openSeconds = 60;
+        const closeSeconds = 22 * 3600;
+        // Refresh at the next WIT calendar boundary; this is not a submit-relative cooldown.
+        const nextBoundary = isOpen
+            ? closeSeconds
+            : state.totalSeconds < openSeconds
+                ? openSeconds
+                : 24 * 3600 + openSeconds;
+        const delay = Math.max(1, (nextBoundary - state.totalSeconds) * 1000 - now.getMilliseconds());
+        reportingWindowTimer = window.setTimeout(refreshReportingWindowUi, delay);
+    }
+
+    function getAllowedWitReportingState(expectedDate) {
+        const state = getWitReportingState(new Date());
+        if (!state.isOpen) {
+            showLockDisplay("error", "Waktu Pelaporan Ditutup", REPORTING_WINDOW_MESSAGE);
+            refreshReportingWindowUi();
+            return null;
+        }
+        if (expectedDate && state.date !== expectedDate) {
+            showLockDisplay("error", "Periode Pelaporan Berubah", "Periode pelaporan sudah berganti. Silakan kirim laporan kembali.");
+            return null;
+        }
+        return state;
+    }
+
     // --- FUNGSI PROSES UTAMA (REVERSE GEOCODING & GLOBAL LOCK) ---
     async function handleProses(tipe) {
+        if (!getAllowedWitReportingState()) return;
+
+        const authUser = await authUserPromise;
+        if (!authUser || !authUser.uid) {
+            showLockDisplay('error', 'Sesi Tidak Ditemukan', 'Sesi akun tidak ditemukan. Silakan login kembali.');
+            return;
+        }
+
+        const submissionState = getAllowedWitReportingState();
+        if (!submissionState) return;
+        const submissionDate = submissionState.date;
         const menu = document.getElementById("jenis-kegiatan").value;
-        const nowLocal = new Date();
-        const today =
-            `${nowLocal.getFullYear()}-` +
-            `${String(nowLocal.getMonth() + 1).padStart(2, "0")}-` +
-            `${String(nowLocal.getDate()).padStart(2, "0")}`;
+        const today = submissionDate;
 
         // 1. Validasi Input Tambahan (Extension & Gabungan)
         if(menu === "Absen Extention") {
@@ -243,9 +345,9 @@
                     await db
                         .collection(lockCollection)
                         .where(
-                            "nama",
+                            "uid",
                             "==",
-                            userName
+                            authUser.uid
                         )
                         .where(
                             "tanggal",
@@ -271,6 +373,8 @@
                 }
             }
 
+            if (!getAllowedWitReportingState(submissionDate)) return;
+
             // 3. JIKA LOLOS, AMBIL LOKASI & ALAMAT
             if (navigator.geolocation) {
                 showLockDisplay('loading', 'Melacak Lokasi...', 'Sedang mengambil alamat posisi Anda...');
@@ -286,9 +390,9 @@
                         const data = await response.json();
                         const alamatLengkap = data.display_name || "Alamat tidak ditemukan";
                         
-                        saveData(tipe, koordinat, alamatLengkap);
+                        saveData(tipe, koordinat, alamatLengkap, authUser, today);
                     } catch (err) {
-                        saveData(tipe, koordinat, "Lokasi terdeteksi (Gagal memuat nama jalan)");
+                        saveData(tipe, koordinat, "Lokasi terdeteksi (Gagal memuat nama jalan)", authUser, today);
                     }
                 }, () => {
                     showLockDisplay('error', 'GPS Mati', 'Mohon aktifkan GPS Anda untuk melakukan laporan.');
@@ -302,15 +406,18 @@
         }
     }
 
-    async function saveData(tipe, koordinat, alamat) {
+    async function saveData(tipe, koordinat, alamat, authUser, attendanceDate) {
+        if (!getAllowedWitReportingState(attendanceDate)) return;
+        if (!authUser || !authUser.uid) {
+            showLockDisplay('error', 'Sesi Tidak Ditemukan', 'Sesi akun tidak ditemukan. Silakan login kembali.');
+            return;
+        }
+
         const menu = document.getElementById("jenis-kegiatan").value;
         if (menu === "Absen Ibadah Raya" && !document.getElementById("wilayah-ibadah").value) {
             alert("Mohon pilih wilayah Ibadah Raya terlebih dahulu!");
             return;
         }
-        const now = new Date();
-        const tglHariIni = now.toISOString().split('T')[0];
-        
         // Tentukan koleksi tujuan
         let targetColl = "kehadiran_jemaat";
         if (menu === "Absen Komsel Reguler" || menu === "Absen Komsel Gabungan") {
@@ -320,9 +427,10 @@
         }
 
         let payload = {
+            uid: authUser.uid,
             status: tipe,
             nama: userName,
-            tanggal: tglHariIni,
+            tanggal: attendanceDate,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             kegiatan: menu,
             lokasi_koordinat: koordinat,
@@ -369,6 +477,7 @@
         }
 
         try {
+            if (!getAllowedWitReportingState(attendanceDate)) return;
             await db.collection(targetColl).add(payload);
             await db.collection("statistik_jemaat_pusat").add({...payload, type: "Umum_Entry"});
             
@@ -382,5 +491,7 @@
             showLockDisplay('error', 'Gagal Simpan', err.message);
         }
     }
+
+    refreshReportingWindowUi();
 </script></body>
 </html>
