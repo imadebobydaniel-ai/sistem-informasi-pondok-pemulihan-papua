@@ -121,6 +121,7 @@
         <label class="check-item"><input type="checkbox" id="check2" onchange="validasiTombol()"><span>Selesai Membaca Pasal Amsal</span></label>
     </div>
 
+    <p id="reporting-window-message" role="status" aria-live="polite" style="display:none; color:#9b1c1c; background:#fff1f1; border:1px solid #f1b7b7; border-radius:10px; padding:10px; font-size:13px; font-weight:bold;">Pelaporan harian dibuka pukul 00:01 WIT dan ditutup pukul 22:00 WIT.</p>
     <button id="btnKirim" class="btn-kirim btn-disabled" disabled onclick="prosesLaporan()">KIRIM LAPORAN SEKARANG</button>
     <a href="menu.html" style="display: block; margin-top: 20px; text-decoration: none; color: var(--biru-bca); font-weight: bold; font-size: 13px;"><i class="fa-solid fa-house"></i> Kembali ke Menu Utama</a>
 </div>
@@ -142,6 +143,19 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
+    const authUserPromise = new Promise((resolve) => {
+        let unsubscribe = () => {};
+        unsubscribe = auth.onAuthStateChanged(
+            (user) => {
+                unsubscribe();
+                resolve(user);
+            },
+            () => {
+                unsubscribe();
+                resolve(null);
+            }
+        );
+    });
     const userEmail = localStorage.getItem("userEmail");
 
     const daftarKitab = ["Kejadian", "Keluaran", "Imamat", "Bilangan", "Ulangan", "Yosua", "Hakim-hakim", "Rut", "1 Samuel", "2 Samuel", "1 Raja-raja", "2 Raja-raja", "1 Tawarikh", "2 Tawarikh", "Ezra", "Nehemia", "Ester", "Ayub", "Mazmur", "Amsal", "Pengkhotbah", "Kidung Agung", "Yesaya", "Yeremia", "Ratapan", "Yehezkiel", "Daniel", "Hosea", "Yoel", "Amos", "Obaja", "Yunus", "Mikha", "Nahum", "Habakuk", "Zefanya", "Hagai", "Zakharia", "Maleakhi", "Matius", "Markus", "Lukas", "Yohanes", "Kisah Para Rasul", "Roma", "1 Korintus", "2 Korintus", "Galatia", "Efesus", "Filipi", "Kolose", "1 Tesalonika", "2 Tesalonika", "1 Timotius", "2 Timotius", "Titus", "Filemon", "Ibrani", "Yakobus", "1 Petrus", "2 Petrus", "1 Yohanes", "2 Yohanes", "3 Yohanes", "Yudas", "Wahyu"];
@@ -193,22 +207,119 @@
     function validasiTombol() {
         const btn = document.getElementById('btnKirim');
         const ready = document.getElementById('check1').checked && document.getElementById('check2').checked;
-        btn.disabled = !ready;
-        btn.className = ready ? "btn-kirim btn-enabled" : "btn-kirim btn-disabled";
+        btn.disabled = !ready || !isWitReportingOpen;
+        btn.className = ready && isWitReportingOpen ? "btn-kirim btn-enabled" : "btn-kirim btn-disabled";
+    }
+
+    function getWitDateString(date) {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Asia/Jayapura",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        }).formatToParts(date);
+        const year = parts.find(part => part.type === "year").value;
+        const month = parts.find(part => part.type === "month").value;
+        const day = parts.find(part => part.type === "day").value;
+        return `${year}-${month}-${day}`;
+    }
+
+    function getWitReportingState(date = new Date()) {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Asia/Jayapura",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hourCycle: "h23"
+        }).formatToParts(date);
+        const hour = Number(parts.find(part => part.type === "hour").value);
+        const minute = Number(parts.find(part => part.type === "minute").value);
+        const second = Number(parts.find(part => part.type === "second").value);
+        const totalSeconds = hour * 3600 + minute * 60 + second;
+
+        return {
+            isOpen: totalSeconds >= 60 && totalSeconds < 22 * 3600,
+            date: getWitDateString(date),
+            hour,
+            minute,
+            second,
+            totalSeconds
+        };
+    }
+
+    const REPORTING_WINDOW_MESSAGE = "Pelaporan harian dibuka pukul 00:01 WIT dan ditutup pukul 22:00 WIT.";
+    let isWitReportingOpen = false;
+    let reportingWindowTimer = null;
+
+    function refreshReportingWindowUi() {
+        const now = new Date();
+        const state = getWitReportingState(now);
+        isWitReportingOpen = state.isOpen;
+        document.getElementById("reporting-window-message").style.display = isWitReportingOpen ? "none" : "block";
+        validasiTombol();
+
+        if (reportingWindowTimer !== null) window.clearTimeout(reportingWindowTimer);
+        const openSeconds = 60;
+        const closeSeconds = 22 * 3600;
+        // Refresh at the next WIT calendar boundary; this is not a submit-relative cooldown.
+        const nextBoundary = isWitReportingOpen
+            ? closeSeconds
+            : state.totalSeconds < openSeconds
+                ? openSeconds
+                : 24 * 3600 + openSeconds;
+        const delay = Math.max(1, (nextBoundary - state.totalSeconds) * 1000 - now.getMilliseconds());
+        reportingWindowTimer = window.setTimeout(refreshReportingWindowUi, delay);
+    }
+
+    function getAllowedWitReportingState(expectedDate) {
+        const state = getWitReportingState(new Date());
+        if (!state.isOpen) {
+            showBlock("GAGAL", REPORTING_WINDOW_MESSAGE, "fa-circle-xmark", "#e74c3c");
+            refreshReportingWindowUi();
+            return null;
+        }
+        if (expectedDate && state.date !== expectedDate) {
+            showBlock("GAGAL", "Periode pelaporan sudah berganti. Silakan kirim laporan kembali.", "fa-circle-xmark", "#e74c3c");
+            return null;
+        }
+        return state;
     }
 
     async function prosesLaporan() {
         const btn = document.getElementById('btnKirim');
+        const initialReportingState = getAllowedWitReportingState();
+        if (!initialReportingState) {
+            validasiTombol();
+            return;
+        }
         btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Menyimpan...";
         btn.disabled = true;
 
         const sekarang = new Date();
-        const tglString = sekarang.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        const tglString = initialReportingState.date;
 
         try {
-            // 1. CEK DOUBLE INPUT (Berdasarkan Email dan Tanggal hari ini)
+            const authUser = await authUserPromise;
+            if (!getAllowedWitReportingState(tglString)) {
+                btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+                validasiTombol();
+                return;
+            }
+            if (!authUser || !authUser.uid) {
+                showBlock(
+                    "GAGAL",
+                    "Sesi akun tidak ditemukan. Silakan login kembali.",
+                    "fa-circle-xmark",
+                    "#e74c3c"
+                );
+                btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+                btn.disabled = false;
+                return;
+            }
+
+            // 1. CEK DOUBLE INPUT (Berdasarkan UID dan Tanggal hari ini)
             const cekDouble = await db.collection("laporan_bacaan")
-                .where("email", "==", userEmail)
+                .where("uid", "==", authUser.uid)
                 .where("tanggal_str", "==", tglString)
                 .get();
 
@@ -226,21 +337,13 @@
             }
             const u = snapUser.docs[0].data();
 
-            // 3. SUSUN PAYLOAD DENGAN TIMESTAMP AKURAT
-            const authUser = auth.currentUser;
-
-            if (!authUser || !authUser.uid) {
-                showBlock(
-                    "GAGAL",
-                    "Sesi akun tidak ditemukan. Silakan login kembali.",
-                    "fa-circle-xmark",
-                    "#e74c3c"
-                );
+            if (!getAllowedWitReportingState(tglString)) {
                 btn.innerHTML = "KIRIM LAPORAN SEKARANG";
-                btn.disabled = false;
+                validasiTombol();
                 return;
             }
 
+            // 3. SUSUN PAYLOAD DENGAN TIMESTAMP AKURAT
             const payload = {
                 uid: authUser.uid,
                 nama: u.nama || "Tanpa Nama", 
@@ -263,6 +366,11 @@
             }
 
             // 4. KIRIM KE FIRESTORE
+            if (!getAllowedWitReportingState(tglString)) {
+                btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+                validasiTombol();
+                return;
+            }
             await db.collection("laporan_bacaan").add(payload);
             showBlock("BERHASIL", "Laporan Anda telah tersimpan rapi.", "fa-circle-check", "#2ecc71");
 
@@ -288,6 +396,7 @@
         }
         init();
         document.getElementById('current-date').innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        refreshReportingWindowUi();
     };
 </script>
 </body>

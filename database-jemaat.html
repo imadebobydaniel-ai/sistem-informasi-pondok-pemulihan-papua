@@ -2044,7 +2044,14 @@ const firebaseConfig = {
     const db = firebase.firestore();
 
     const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
-    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
+    let currentAdminRole = "";
+    const DELETE_DENIED_MESSAGE = "Penghapusan data membutuhkan password Superadmin.";
+    function canDeleteAdminData() {
+        return ["master", "super_admin", "superadmin"].includes(
+            String(currentAdminRole || "").trim().toLowerCase()
+        );
+    }
     const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
     const IDLE_WARNING_MS = 29 * 60 * 1000;
 
@@ -2155,7 +2162,7 @@ const firebaseConfig = {
             }
 
             const adminData = adminDoc.data();
-            const role = adminData.role || "";
+            const role = String(adminData.role || "").trim().toLowerCase();
             const status = adminData.status || "inactive";
 
             if (!ADMIN_ROLES.has(role)) {
@@ -2165,6 +2172,8 @@ const firebaseConfig = {
             if (status !== "active") {
                 throw new Error("ADMIN_INACTIVE");
             }
+
+            currentAdminRole = String(role).trim().toLowerCase();
 
             if (user.uid === MASTER_UID) {
                 if (role !== "master" || adminData.protected !== true) {
@@ -4793,6 +4802,11 @@ snapshot.forEach(doc => {
     }
     async function bulkDelete() {
 
+        if (!canDeleteAdminData()) {
+            alert(DELETE_DENIED_MESSAGE);
+            return;
+        }
+
         const checkboxes =
             Array.from(
                 document.querySelectorAll(
@@ -6532,7 +6546,15 @@ snapshot.forEach(doc => {
     }
 
     function openEditModal(uid) { window.location.href = `edit-jemaat-administrator.html?edit=${uid}`; }
-    function deleteUser(id) { if(confirm("Hapus data ini secara permanen?")) db.collection("users").doc(id).delete(); }
+    async function deleteUser(id) {
+        if (!canDeleteAdminData()) {
+            alert(DELETE_DENIED_MESSAGE);
+            return;
+        }
+        if (confirm("Hapus data ini secara permanen?")) {
+            await db.collection("users").doc(id).delete();
+        }
+    }
     function bindDemografiFilterEvents() {
         document
             .querySelectorAll(

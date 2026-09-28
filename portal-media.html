@@ -422,6 +422,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
@@ -439,6 +440,14 @@
         firebase.initializeApp(firebaseConfig); 
     }
     const db = firebase.firestore();
+    const auth = firebase.auth();
+    let currentAdminRole = "";
+    function canDeleteMedia() { return ["master", "super_admin", "superadmin"].includes(currentAdminRole); }
+    function denyViewerDelete() {
+        if (canDeleteMedia()) return false;
+        alert("Penghapusan data membutuhkan password Superadmin.");
+        return true;
+    }
     let playlistData = [];
     async function kirimBroadcast() {
         const judulEl =
@@ -902,6 +911,7 @@
     }
 
     async function hapusBroadcast(docId) {
+        if (denyViewerDelete()) return;
         if (!docId) {
             return;
         }
@@ -950,6 +960,7 @@
     }
 
     async function hapusBroadcastTerpilih() {
+        if (denyViewerDelete()) return;
         const selected =
             Array.from(
                 document.querySelectorAll(
@@ -1087,6 +1098,7 @@
     }
 
     async function deleteRT(id) {
+        if (denyViewerDelete()) return;
         if(confirm("Hapus pesan ini dari riwayat?")) {
             try {
                 await db.collection("running_text_history").doc(id).delete();
@@ -1229,12 +1241,14 @@
 
     // --- 5. CLEANUP ---
     async function deleteMedia(id) {
+        if (denyViewerDelete()) return;
         if(confirm("Hapus konten dari playlist?")) {
             await db.collection("portal_media").doc(id).delete();
         }
     }
 
     async function deleteSelected() {
+        if (denyViewerDelete()) return;
         const checked = document.querySelectorAll('.item-checkbox:checked');
         if(checked.length === 0) return alert("Pilih item dahulu!");
         if(confirm(`Hapus ${checked.length} item?`)) {
@@ -1249,16 +1263,26 @@
         document.querySelectorAll('.item-checkbox').forEach(box => box.checked = master.checked);
     }
 
-    window.onload = () => {
-        loadRTCollection();
-        loadMedia();
-        db.collection("config").doc("playlist").get().then(doc => {
-            if(doc.exists && doc.data().mode) {
-                document.getElementById('play_mode').value = doc.data().mode;
-                document.getElementById('currentModeDisplay').innerText = doc.data().mode.toUpperCase();
-            }
-        });
-    };
+    auth.onAuthStateChanged(async user => {
+        if (!user) return window.location.replace("login_cyber.html");
+        try {
+            const snap = await db.collection("admin_users").doc(user.uid).get();
+            const data = snap.exists ? snap.data() : {};
+            currentAdminRole = String(data.role || "").trim().toLowerCase();
+            if (data.status !== "active" || !["master", "super_admin", "superadmin", "admin", "viewer"].includes(currentAdminRole)) throw new Error("ADMIN_NOT_AUTHORIZED");
+            loadRTCollection();
+            loadMedia();
+            db.collection("config").doc("playlist").get().then(doc => {
+                if(doc.exists && doc.data().mode) {
+                    document.getElementById('play_mode').value = doc.data().mode;
+                    document.getElementById('currentModeDisplay').innerText = doc.data().mode.toUpperCase();
+                }
+            });
+        } catch (error) {
+            console.error("Portal Media authorization failed:", error);
+            window.location.replace("login_cyber.html");
+        }
+    });
 </script>
 </body>
 </html>
