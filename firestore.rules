@@ -1,4 +1,4 @@
-﻿rules_version = '2';
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -35,6 +35,40 @@ service cloud.firestore {
         && myAdminDoc()
         && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.status == "active"
         && myRole() in ["master", "super_admin", "admin", "viewer"];
+    }
+
+    function blockedBetween(firstUid, secondUid) {
+      return exists(/databases/$(database)/documents/user_blocks/$(firstUid)/blocked/$(secondUid))
+        || exists(/databases/$(database)/documents/user_blocks/$(secondUid)/blocked/$(firstUid));
+    }
+
+    function requestBlockedAfter(firstUid, secondUid) {
+      return existsAfter(/databases/$(database)/documents/user_blocks/$(firstUid)/blocked/$(secondUid))
+        || existsAfter(/databases/$(database)/documents/user_blocks/$(secondUid)/blocked/$(firstUid));
+    }
+
+    function validPresence() {
+      return request.resource.data.keys().hasOnly([
+          "online", "lastSeen", "displayName", "photoURL", "updatedAt",
+          "discoverable", "showOnline", "komsel", "wilayah"
+        ])
+        && request.resource.data.keys().hasAll([
+          "online", "lastSeen", "displayName", "photoURL", "updatedAt",
+          "discoverable", "showOnline", "komsel", "wilayah"
+        ])
+        && request.resource.data.online is bool
+        && request.resource.data.discoverable is bool
+        && request.resource.data.showOnline is bool
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2048
+        && request.resource.data.komsel is string
+        && request.resource.data.komsel.size() <= 120
+        && request.resource.data.wilayah is string
+        && request.resource.data.wilayah.size() <= 120
+        && request.resource.data.lastSeen == request.time
+        && request.resource.data.updatedAt == request.time;
     }
     function targetIsMaster() {
       return resource.data.role == "master"
@@ -235,12 +269,160 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    match /friend_requests/{document=**} {
-      allow read, write: if true;
+    // SOCIAL PRESENCE - public fields only; exact GPS coordinates are private.
+    match /presence/{uid} {
+      allow read: if signedIn()
+        && (uid == request.auth.uid
+          || (resource.data.discoverable == true
+            && resource.data.showOnline == true
+            && !blockedBetween(uid, request.auth.uid)));
+
+      allow create, update: if signedIn()
+        && uid == request.auth.uid
+        && validPresence();
+
+      allow delete: if signedIn() && uid == request.auth.uid;
     }
 
-    match /friends/{document=**} {
-      allow read, write: if true;
+    match /presence_locations/{uid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+
+      allow create, update: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["latitude", "longitude", "updatedAt"])
+        && request.resource.data.keys().hasAll(["latitude", "longitude", "updatedAt"])
+        && request.resource.data.latitude is number
+        && request.resource.data.latitude >= -90
+        && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number
+        && request.resource.data.longitude >= -180
+        && request.resource.data.longitude <= 180
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    match /friend_requests/{requestId} {
+      allow read: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+          || resource.data.toUid == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.keys().hasAll([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid != request.auth.uid
+        && exists(/databases/$(database)/documents/presence/$(request.auth.uid))
+        && request.resource.data.fromDisplayName == get(/databases/$(database)/documents/presence/$(request.auth.uid)).data.displayName
+        && request.resource.data.fromPhotoURL == get(/databases/$(database)/documents/presence/$(request.auth.uid)).data.photoURL
+        && exists(/databases/$(database)/documents/presence/$(request.resource.data.toUid))
+        && get(/databases/$(database)/documents/presence/$(request.resource.data.toUid)).data.discoverable == true
+        && request.resource.data.status == "pending"
+        && request.resource.data.fromDisplayName is string
+        && request.resource.data.fromDisplayName.size() <= 100
+        && request.resource.data.fromPhotoURL is string
+        && request.resource.data.fromPhotoURL.size() <= 2048
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && !blockedBetween(request.auth.uid, request.resource.data.toUid);
+
+      allow update: if signedIn()
+        && resource.data.status == "pending"
+        && request.resource.data.keys().hasOnly([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.keys().hasAll([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.fromUid == resource.data.fromUid
+        && request.resource.data.toUid == resource.data.toUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.fromDisplayName == resource.data.fromDisplayName
+        && request.resource.data.fromPhotoURL == resource.data.fromPhotoURL
+        && request.resource.data.updatedAt == request.time
+        && (
+          (resource.data.toUid == request.auth.uid
+            && request.resource.data.status == "rejected")
+          || (resource.data.toUid == request.auth.uid
+            && request.resource.data.status == "accepted"
+            && !requestBlockedAfter(resource.data.fromUid, resource.data.toUid))
+          || (request.resource.data.status == "blocked"
+            && resource.data.fromUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(resource.data.toUid)))
+          || (request.resource.data.status == "blocked"
+            && resource.data.toUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(resource.data.fromUid)))
+        );
+
+      allow delete: if signedIn()
+        && resource.data.fromUid == request.auth.uid
+        && resource.data.status == "pending";
+    }
+
+    match /contacts/{uid}/friends/{friendUid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          "friendUid", "createdAt", "displayName", "photoURL", "status", "requestId"
+        ])
+        && request.resource.data.keys().hasAll([
+          "friendUid", "createdAt", "displayName", "photoURL", "status", "requestId"
+        ])
+        && request.resource.data.friendUid == friendUid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2048
+        && request.resource.data.status == "accepted"
+        && existsAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId))
+        && getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.status == "accepted"
+        && getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.toUid == request.auth.uid
+        && ((uid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.fromUid
+            && friendUid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.toUid)
+          || (uid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.toUid
+            && friendUid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.fromUid));
+
+      allow update: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.friendUid == resource.data.friendUid
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.status == "accepted"
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    match /user_blocks/{uid}/blocked/{blockedUid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+
+      allow create: if signedIn()
+        && uid == request.auth.uid
+        && blockedUid != request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "blockedUid", "createdAt", "displayName", "photoURL"
+        ])
+        && request.resource.data.keys().hasAll([
+          "blockedUid", "createdAt", "displayName", "photoURL"
+        ])
+        && request.resource.data.blockedUid == blockedUid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2048;
+
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
     }
 
     match /game_scores/{document=**} {
@@ -339,6 +521,20 @@ service cloud.firestore {
         || (signedIn() && uid == request.auth.uid);
 
       allow create, update, delete: if false;
+    }
+    match /event_user_hidden/{uid}/events/{eventId} {
+      allow read: if
+        signedIn()
+        && uid == request.auth.uid;
+
+      allow create, update: if
+        signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.hidden == true;
+
+      allow delete: if
+        signedIn()
+        && uid == request.auth.uid;
     }
     // Deny everything else by default.
     match /{document=**} {

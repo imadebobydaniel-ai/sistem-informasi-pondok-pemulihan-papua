@@ -109,6 +109,18 @@
             padding: 0;
         }
 
+        .social-section { padding: 14px 20px; border-bottom: 1px solid #e2e8f0; }
+        .social-section h4 { margin: 0 0 10px; color: var(--text-dark); }
+        .social-contact { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #f1f5f9; }
+        .social-contact .profile-img { margin: 0; flex: 0 0 45px; }
+        .social-contact-info { min-width: 0; flex: 1; }
+        .social-contact-meta { margin-top: 4px; color: #64748b; font-size: 12px; }
+        .social-contact button, .blocked-contact button { border: 0; border-radius: 7px; padding: 8px 9px; color: white; background: var(--danger-color); font-size: 11px; font-weight: 700; }
+        .social-empty { color: #64748b; font-size: 13px; }
+        .blocked-contact { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+        .blocked-contact span { flex: 1; }
+        .blocked-contact button { background: var(--primary-color); }
+
         .contact-item { 
             display: flex; 
             align-items: center; 
@@ -214,6 +226,12 @@
             </div>
         </div>
 
+        <section id="socialSection" class="social-section" hidden>
+            <h4>Kontak Jemaat</h4>
+            <div id="socialContactList" class="social-empty">Memuat kontak jemaat...</div>
+            <h4 style="margin-top:18px;">Pengguna Diblokir</h4>
+            <div id="blockedContactList" class="social-empty">Memuat daftar blokir...</div>
+        </section>
         <div id="contactList" class="contact-list"></div>
     </div>
 
@@ -347,6 +365,184 @@
 
         // Jalankan saat pertama kali buka
         renderContacts(contacts);
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.appspot.com",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
+        const contactAuth = firebase.auth();
+        const contactDb = firebase.firestore();
+        const socialSection = document.getElementById("socialSection");
+        const socialContactList = document.getElementById("socialContactList");
+        const blockedContactList = document.getElementById("blockedContactList");
+        let contactAuthUser = null;
+        let socialContacts = [];
+        const onlineFreshnessMs = 3 * 60 * 1000;
+
+        function safePhoto(value) {
+            try {
+                const parsed = new URL(String(value || ""));
+                return parsed.protocol === "https:" ? parsed.href : "";
+            } catch (_) {
+                return "";
+            }
+        }
+
+        function appendSocialContact(item) {
+            const row = document.createElement("div");
+            row.className = "social-contact";
+            const photo = document.createElement("img");
+            photo.className = "profile-img";
+            photo.alt = "Foto profil";
+            photo.src = safePhoto(item.photoURL) || "https://ui-avatars.com/api/?name=Jemaat&background=2563eb&color=fff";
+            const info = document.createElement("div");
+            info.className = "social-contact-info";
+            const name = document.createElement("div");
+            name.className = "contact-name";
+            name.textContent = item.displayName || "Jemaat SIPAPUA";
+            const status = document.createElement("div");
+            status.className = "social-contact-meta";
+            status.textContent = item.online ? "Online" : "Offline atau status disembunyikan";
+            info.append(name, status);
+            const blockButton = document.createElement("button");
+            blockButton.type = "button";
+            blockButton.textContent = "BLOKIR";
+            blockButton.addEventListener("click", () => blockSocialContact(item));
+            row.append(photo, info, blockButton);
+            socialContactList.appendChild(row);
+        }
+
+        async function loadSocialContacts() {
+            if (!contactAuthUser?.uid) return;
+            socialContactList.textContent = "Memuat kontak jemaat...";
+            const snapshot = await contactDb.collection("contacts").doc(contactAuthUser.uid).collection("friends").get();
+            socialContacts = await Promise.all(snapshot.docs.map(async (contactDoc) => {
+                const data = contactDoc.data();
+                let online = false;
+                try {
+                    const presence = await contactDb.collection("presence").doc(contactDoc.id).get();
+                    const state = presence.exists ? presence.data() : {};
+                    const lastSeen = state.lastSeen?.toMillis?.() || 0;
+                    online = state.online === true && state.showOnline === true && Date.now() - lastSeen <= onlineFreshnessMs;
+                } catch (_) {
+                    online = false;
+                }
+                return {
+                    uid: contactDoc.id,
+                    displayName: String(data.displayName || "Jemaat SIPAPUA"),
+                    photoURL: safePhoto(data.photoURL),
+                    online
+                };
+            }));
+            renderSocialContacts();
+        }
+
+        function renderSocialContacts() {
+            socialContactList.replaceChildren();
+            if (!socialContacts.length) {
+                socialContactList.textContent = "Belum ada kontak jemaat yang diterima.";
+                socialContactList.className = "social-empty";
+                return;
+            }
+            socialContactList.className = "";
+            socialContacts.forEach(appendSocialContact);
+        }
+
+        async function loadBlockedContacts() {
+            if (!contactAuthUser?.uid) return;
+            const snapshot = await contactDb.collection("user_blocks").doc(contactAuthUser.uid).collection("blocked").get();
+            blockedContactList.replaceChildren();
+            if (snapshot.empty) {
+                blockedContactList.textContent = "Tidak ada pengguna yang diblokir.";
+                blockedContactList.className = "social-empty";
+                return;
+            }
+            blockedContactList.className = "";
+            snapshot.docs.forEach((blockedDoc) => {
+                const data = blockedDoc.data();
+                const row = document.createElement("div");
+                row.className = "blocked-contact";
+                const photo = document.createElement("img");
+                photo.className = "profile-img";
+                photo.alt = "Foto profil";
+                photo.src = safePhoto(data.photoURL) || "https://ui-avatars.com/api/?name=Jemaat&background=2563eb&color=fff";
+                const name = document.createElement("span");
+                name.textContent = data.displayName || "Pengguna SIPAPUA";
+                const unblock = document.createElement("button");
+                unblock.type = "button";
+                unblock.textContent = "BUKA BLOKIR";
+                unblock.addEventListener("click", async () => {
+                    unblock.disabled = true;
+                    try {
+                        await contactDb.collection("user_blocks").doc(contactAuthUser.uid).collection("blocked").doc(blockedDoc.id).delete();
+                        await loadBlockedContacts();
+                    } catch (error) {
+                        console.error("Buka blokir gagal:", error);
+                        unblock.disabled = false;
+                    }
+                });
+                row.append(photo, name, unblock);
+                blockedContactList.appendChild(row);
+            });
+        }
+
+        async function blockSocialContact(item) {
+            if (!contactAuthUser?.uid) return;
+            try {
+                const blockRef = contactDb.collection("user_blocks").doc(contactAuthUser.uid).collection("blocked").doc(item.uid);
+                const existingBlock = await blockRef.get();
+                const [outgoing, incoming] = await Promise.all([
+                    contactDb.collection("friend_requests").where("fromUid", "==", contactAuthUser.uid).where("toUid", "==", item.uid).where("status", "==", "pending").get(),
+                    contactDb.collection("friend_requests").where("fromUid", "==", item.uid).where("toUid", "==", contactAuthUser.uid).where("status", "==", "pending").get()
+                ]);
+                const batch = contactDb.batch();
+                if (!existingBlock.exists) {
+                    batch.set(blockRef, {
+                        blockedUid: item.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        displayName: item.displayName,
+                        photoURL: item.photoURL || ""
+                    });
+                }
+                [...outgoing.docs, ...incoming.docs].forEach((requestDoc) => {
+                    batch.update(requestDoc.ref, {
+                        status: "blocked",
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+                await batch.commit();
+                await Promise.all([loadSocialContacts(), loadBlockedContacts()]);
+            } catch (error) {
+                console.error("Blokir pengguna gagal:", error);
+                alert("Pengguna tidak dapat diblokir sekarang.");
+            }
+        }
+
+        contactAuth.onAuthStateChanged(async (user) => {
+            contactAuthUser = user || null;
+            if (!user) {
+                socialSection.hidden = true;
+                return;
+            }
+            socialSection.hidden = false;
+            try {
+                await Promise.all([loadSocialContacts(), loadBlockedContacts()]);
+            } catch (error) {
+                console.error("Kontak jemaat gagal dimuat:", error);
+                socialContactList.textContent = "Kontak jemaat belum dapat dimuat.";
+                blockedContactList.textContent = "Daftar blokir belum dapat dimuat.";
+            }
+        });
     </script>
 </body>
 </html>

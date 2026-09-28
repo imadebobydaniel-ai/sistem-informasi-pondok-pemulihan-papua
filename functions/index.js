@@ -1,8 +1,10 @@
 ﻿const { onCall } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const {
     getFirestore,
-    FieldValue
+    FieldValue,
+    Timestamp
 } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const { HttpsError } = require("firebase-functions/v2/https");
@@ -25,6 +27,263 @@ exports.healthCheck = onCall(
 
 
 const db = getFirestore();
+
+exports.findNearbyMembers = onCall(
+    {
+        region: "asia-southeast2",
+        enforceAppCheck: false,
+        timeoutSeconds: 15,
+        memory: "256MiB"
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "Silakan login untuk menggunakan Lacak Domba."
+            );
+        }
+
+        // Caller coordinates in request.data are ignored; the caller's location
+        // is read server-side from presence_locations/{auth uid}.
+        const radiusKm = Number(request.data?.radiusKm);
+
+        if (![1, 5, 10].includes(radiusKm)) {
+            throw new HttpsError("invalid-argument", "Radius tidak valid.");
+        }
+
+        const callerUid = request.auth.uid;
+        const now = Date.now();
+        const locationMaxAgeMs = 15 * 60 * 1000;
+
+        const callerLocationSnapshot = await db
+            .collection("presence_locations")
+            .doc(callerUid)
+            .get();
+        const callerLocation = callerLocationSnapshot.exists
+            ? callerLocationSnapshot.data()
+            : null;
+        const latitude = callerLocation?.latitude;
+        const longitude = callerLocation?.longitude;
+        const callerLocationTime = callerLocation?.updatedAt?.toMillis?.() || 0;
+
+        if (
+            !callerLocation
+            || typeof latitude !== "number" || !Number.isFinite(latitude)
+            || latitude < -90 || latitude > 90
+            || typeof longitude !== "number" || !Number.isFinite(longitude)
+            || longitude < -180 || longitude > 180
+            || now - callerLocationTime > locationMaxAgeMs
+        ) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Lokasi Anda belum tersedia atau sudah kedaluwarsa. Pindai ulang untuk memperbarui lokasi."
+            );
+        }
+
+        const rateLimitRef = db.collection("social_rate_limits").doc(callerUid);
+
+        await db.runTransaction(async (transaction) => {
+            const rateLimit = await transaction.get(rateLimitRef);
+            const lastRequestAt = rateLimit.exists
+                ? rateLimit.data().lastRequestAt?.toMillis?.() || 0
+                : 0;
+
+            if (now - lastRequestAt < 15000) {
+                throw new HttpsError(
+                    "resource-exhausted",
+                    "Tunggu sebentar sebelum memindai kembali."
+                );
+            }
+
+            transaction.set(rateLimitRef, {
+                lastRequestAt: FieldValue.serverTimestamp()
+            });
+        });
+
+        const latitudeDelta = radiusKm / 110.574;
+        const cosineLatitude = Math.max(
+            0.01,
+            Math.cos(latitude * Math.PI / 180)
+        );
+        const longitudeDelta = Math.min(
+            180,
+            radiusKm / (111.320 * cosineLatitude)
+        );
+        const minLatitude = Math.max(-90, latitude - latitudeDelta);
+        const maxLatitude = Math.min(90, latitude + latitudeDelta);
+        const minLongitude = longitude - longitudeDelta;
+        const maxLongitude = longitude + longitudeDelta;
+
+        const locationsSnapshot = await db
+            .collection("presence_locations")
+            .where("latitude", ">=", minLatitude)
+            .where("latitude", "<=", maxLatitude)
+            .limit(501)
+            .get();
+
+        if (locationsSnapshot.size > 500) {
+            throw new HttpsError(
+                "resource-exhausted",
+                "Terlalu banyak lokasi aktif di area ini. Perkecil radius dan coba lagi."
+            );
+        }
+
+        const blockedSnapshot = await db
+            .collection("user_blocks")
+            .doc(callerUid)
+            .collection("blocked")
+            .get();
+        const blockedUids = new Set(blockedSnapshot.docs.map((doc) => doc.id));
+        const candidates = [];
+        const staleLocationDeletes = [];
+        const presenceMaxAgeMs = 3 * 60 * 1000;
+
+        function getDistanceKm(firstLatitude, firstLongitude, secondLatitude, secondLongitude) {
+            const earthRadiusKm = 6371;
+            const toRadians = (value) => value * Math.PI / 180;
+            const latitudeDifference = toRadians(secondLatitude - firstLatitude);
+            const longitudeDifference = toRadians(secondLongitude - firstLongitude);
+            const haversine = Math.sin(latitudeDifference / 2) ** 2
+                + Math.cos(toRadians(firstLatitude))
+                * Math.cos(toRadians(secondLatitude))
+                * Math.sin(longitudeDifference / 2) ** 2;
+
+            return earthRadiusKm * 2 * Math.atan2(
+                Math.sqrt(haversine),
+                Math.sqrt(1 - haversine)
+            );
+        }
+
+        function getDistanceBucket(distanceKm) {
+            if (distanceKm < 1) return { rank: 0, label: "< 1 KM" };
+            if (distanceKm < 5) return { rank: 1, label: "1–5 KM" };
+            return { rank: 2, label: "5–10 KM" };
+        }
+
+        await Promise.all(locationsSnapshot.docs.map(async (locationDoc) => {
+            const candidateUid = locationDoc.id;
+            const location = locationDoc.data();
+            const locationTime = location.updatedAt?.toMillis?.() || 0;
+
+            if (now - locationTime > locationMaxAgeMs) {
+                staleLocationDeletes.push(locationDoc.ref.delete());
+                return;
+            }
+
+            if (candidateUid === callerUid || blockedUids.has(candidateUid)) {
+                return;
+            }
+
+            if (
+                minLongitude >= -180 && maxLongitude <= 180
+                && (location.longitude < minLongitude || location.longitude > maxLongitude)
+            ) {
+                return;
+            }
+
+            const distanceKm = getDistanceKm(
+                latitude,
+                longitude,
+                location.latitude,
+                location.longitude
+            );
+
+            if (distanceKm > radiusKm) return;
+
+            const [presenceSnapshot, reverseBlockSnapshot] = await Promise.all([
+                db.collection("presence").doc(candidateUid).get(),
+                db.collection("user_blocks")
+                    .doc(candidateUid)
+                    .collection("blocked")
+                    .doc(callerUid)
+                    .get()
+            ]);
+
+            if (!presenceSnapshot.exists || reverseBlockSnapshot.exists) return;
+
+            const presence = presenceSnapshot.data();
+            const lastSeen = presence.lastSeen?.toMillis?.() || 0;
+            if (
+                presence.discoverable !== true
+                || presence.online !== true
+                || now - lastSeen > presenceMaxAgeMs
+            ) {
+                return;
+            }
+
+            const distanceBucket = getDistanceBucket(distanceKm);
+            const rawPhoto = String(presence.photoURL || "").trim();
+            let photoURL = "";
+            try {
+                const parsedPhoto = new URL(rawPhoto);
+                if (parsedPhoto.protocol === "https:") photoURL = parsedPhoto.href;
+            } catch (_) {
+                photoURL = "";
+            }
+
+            candidates.push({
+                uid: candidateUid,
+                displayName: String(presence.displayName || "Jemaat").slice(0, 100),
+                photoURL,
+                online: presence.showOnline === true,
+                komsel: String(presence.komsel || "").slice(0, 120),
+                wilayah: String(presence.wilayah || "").slice(0, 120),
+                distanceRange: distanceBucket.label,
+                distanceRank: distanceBucket.rank
+            });
+        }));
+
+        if (staleLocationDeletes.length) {
+            await Promise.all(staleLocationDeletes);
+        }
+
+        // Sort by coarse range only so result order does not leak exact distance.
+        candidates.sort((first, second) =>
+            first.distanceRank - second.distanceRank
+            || first.displayName.localeCompare(second.displayName)
+        );
+
+        return {
+            results: candidates
+                .slice(0, 100)
+                .map(({ distanceRank, ...result }) => result),
+            truncated: candidates.length > 100
+        };
+    }
+);
+
+exports.cleanupExpiredPresenceLocations = onSchedule(
+    {
+        schedule: "every 15 minutes",
+        timeZone: "Asia/Jayapura",
+        region: "asia-southeast2",
+        timeoutSeconds: 60,
+        memory: "256MiB"
+    },
+    async () => {
+        const expiration = Timestamp.fromMillis(Date.now() - 15 * 60 * 1000);
+        let deletedCount = 0;
+
+        while (true) {
+            const staleLocations = await db
+                .collection("presence_locations")
+                .where("updatedAt", "<", expiration)
+                .limit(500)
+                .get();
+
+            if (staleLocations.empty) break;
+
+            const batch = db.batch();
+            staleLocations.docs.forEach((location) => batch.delete(location.ref));
+            await batch.commit();
+            deletedCount += staleLocations.size;
+
+            if (staleLocations.size < 500) break;
+        }
+
+        return { deletedCount };
+    }
+);
 
 function normalizeEmail(value) {
     return String(value || "")

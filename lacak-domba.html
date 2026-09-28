@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lacak Domba - SIPAPUA</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -17,14 +19,16 @@
         body {
             margin: 0;
             padding: 0;
+            padding-bottom: 82px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #0b0f19;
             color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .header {
@@ -37,9 +41,9 @@
         /* --- RADAR CSS --- */
         .radar-box {
             position: relative;
-            width: 320px;
-            height: 320px;
-            margin-top: 50px;
+            width: min(320px, 82vw);
+            height: min(320px, 82vw);
+            margin: 22px auto 12px;
             border: 2px solid var(--radar-green);
             border-radius: 50%;
             background: repeating-radial-gradient(circle, #0b0f19 0%, #0b0f19 15%, rgba(46, 204, 113, 0.2) 15.2%, #0b0f19 15.5%);
@@ -102,10 +106,54 @@
         }
 
         .status-info {
-            margin-top: 30px;
+            margin: 10px 16px;
             font-size: 14px;
             color: #aaa;
+            text-align: center;
         }
+
+        .social-controls, .results-panel {
+            width: min(620px, calc(100% - 28px));
+            box-sizing: border-box;
+            margin: 12px auto;
+            padding: 14px;
+            border: 1px solid rgba(46, 204, 113, 0.32);
+            border-radius: 14px;
+            background: rgba(12, 20, 32, 0.94);
+        }
+
+        .privacy-row, .scan-row, .member-card, .member-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .privacy-row { margin: 8px 0; font-size: 14px; }
+        .privacy-row input { accent-color: var(--radar-green); width: 18px; height: 18px; }
+        .scan-row { flex-wrap: wrap; margin-top: 12px; }
+        .scan-row select, .scan-row button, .member-actions button, .blocked-item button {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-weight: 700;
+        }
+        .scan-row select { flex: 1; min-width: 110px; }
+        .scan-row button, .member-actions button, .blocked-item button { background: var(--primary-color); color: #fff; }
+        .scan-row button:disabled { opacity: 0.55; }
+        .results-panel h3 { margin: 0 0 10px; font-size: 16px; }
+        .member-card { padding: 11px 0; border-top: 1px solid rgba(255,255,255,.12); align-items: flex-start; }
+        .member-card img, .blocked-item img { width: 46px; height: 46px; object-fit: cover; border-radius: 50%; background: #fff; }
+        .member-details { min-width: 0; flex: 1; }
+        .member-details strong { display: block; overflow-wrap: anywhere; }
+        .member-meta { color: #b8c4ce; font-size: 12px; margin-top: 4px; }
+        .member-actions { flex-wrap: wrap; margin-top: 8px; }
+        .member-actions button { font-size: 11px; padding: 8px 9px; }
+        .member-actions .secondary { background: #263746; }
+        .online-indicator { color: #75e6a3; }
+        .offline-indicator { color: #b8c4ce; }
+        .blocked-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+        .blocked-item span { flex: 1; }
+        .empty-results { padding: 14px 0; color: #b8c4ce; font-size: 13px; }
 
         .btn-back {
             position: fixed;
@@ -125,9 +173,23 @@
 <body>
 
 <div class="header">
-    <h2 style="margin:0;">Cari Domba</h2>
-    <p style="font-size: 12px; opacity: 0.8;">Radius Scanning: 5 KM</p>
+    <h2 style="margin:0;">Lacak Domba</h2>
+    <p style="font-size: 12px; opacity: 0.8;">Temukan jemaat yang memilih untuk ditemukan di sekitar Anda.</p>
 </div>
+
+<section class="social-controls" aria-label="Pengaturan privasi dan pemindaian">
+    <label class="privacy-row"><input id="discoverableToggle" type="checkbox" disabled> Izinkan saya ditemukan</label>
+    <label class="privacy-row"><input id="showOnlineToggle" type="checkbox" disabled> Tampilkan status online</label>
+    <div class="scan-row">
+        <label for="radiusSelect">Radius</label>
+        <select id="radiusSelect" disabled>
+            <option value="1">1 KM</option>
+            <option value="5" selected>5 KM</option>
+            <option value="10">10 KM</option>
+        </select>
+        <button id="scanButton" type="button" disabled><i class="fas fa-radar"></i> Pindai sekitar</button>
+    </div>
+</section>
 
 <div class="radar-box" id="radarScreen">
     <div class="radar-sweep"></div>
@@ -136,153 +198,507 @@
 
 <div class="status-info" id="statusScan">Mencari domba di sekitar...</div>
 
+<section class="results-panel">
+    <h3>Jemaat di sekitar</h3>
+    <div id="nearbyResults" class="empty-results">Aktifkan pemindaian untuk melihat jemaat yang mengizinkan ditemukan.</div>
+</section>
+
+<section class="results-panel">
+    <h3>Pengguna yang diblokir</h3>
+    <div id="blockedResults" class="empty-results">Login untuk mengelola blokir.</div>
+</section>
+
 <a href="menu.html" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali ke Menu</a>
 
 <script>
-    // 1. Firebase Config
-    const firebaseConfig = { 
-        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
-        authDomain: "boby-apps-project.firebaseapp.com", 
-        projectId: "boby-apps-project", 
-        storageBucket: "boby-apps-project.appspot.com", 
-        messagingSenderId: "125984859692", 
-        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389" 
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
 
-    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
-    const myEmail = localStorage.getItem("userEmail");
-    let myCurrentPos = { lat: 0, lon: 0 };
+    const functions = firebase.app().functions("asia-southeast2");
+    const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
+    const discoverableToggle = document.getElementById("discoverableToggle");
+    const showOnlineToggle = document.getElementById("showOnlineToggle");
+    const radiusSelect = document.getElementById("radiusSelect");
+    const scanButton = document.getElementById("scanButton");
+    const nearbyResults = document.getElementById("nearbyResults");
+    const blockedResults = document.getElementById("blockedResults");
+    const placeholderPhoto = "https://ui-avatars.com/api/?name=Jemaat&background=003366&color=fff";
+    let authUser = null;
+    let publicProfile = { displayName: "Jemaat", photoURL: "", komsel: "", wilayah: "" };
+    let heartbeatId = null;
+    let scanInProgress = false;
+    let memberResults = new Map();
+    let relationshipState = { contacts: new Set(), sent: new Set(), received: new Set() };
 
-    // Fungsi Hitung Jarak (Haversine Formula)
-    function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
+    function escapeHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
-    function startScanning() {
-        if (!navigator.geolocation) {
-            Swal.fire("Error", "GPS tidak didukung di browser ini", "error");
+    function safePhotoUrl(value) {
+        try {
+            const photo = new URL(String(value || ""));
+            return photo.protocol === "https:" ? photo.href : "";
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function userPresenceRef(uid = authUser?.uid) {
+        return db.collection("presence").doc(uid);
+    }
+
+    function privateLocationRef(uid = authUser?.uid) {
+        return db.collection("presence_locations").doc(uid);
+    }
+
+    async function readOwnProfile(user) {
+        let profile = {};
+        try {
+            const snapshot = await db.collection("users").doc(user.uid).get();
+            if (snapshot.exists) profile = snapshot.data() || {};
+        } catch (error) {
+            console.warn("Profil jemaat tidak tersedia; memakai profil Firebase.", error);
+        }
+
+        publicProfile = {
+            displayName: String(profile.nama || user.displayName || "Jemaat SIPAPUA").trim().slice(0, 100),
+            photoURL: safePhotoUrl(profile.foto_profil || user.photoURL || ""),
+            komsel: String(profile.komsel || "").trim().slice(0, 120),
+            wilayah: String(profile.wilayah || "").trim().slice(0, 120)
+        };
+    }
+
+    async function updatePresence(user, initialize = false) {
+        if (!user?.uid || auth.currentUser?.uid !== user.uid) return;
+        const ref = userPresenceRef(user.uid);
+        const snapshot = await ref.get();
+        const presenceData = {
+            online: true,
+            lastSeen: serverTimestamp(),
+            displayName: publicProfile.displayName,
+            photoURL: publicProfile.photoURL,
+            updatedAt: serverTimestamp(),
+            komsel: publicProfile.komsel,
+            wilayah: publicProfile.wilayah
+        };
+
+        if (!snapshot.exists) {
+            presenceData.discoverable = false;
+            presenceData.showOnline = false;
+        }
+
+        await ref.set(presenceData, { merge: true });
+        if (initialize) {
+            const latest = await ref.get();
+            discoverableToggle.checked = latest.data()?.discoverable === true;
+            showOnlineToggle.checked = latest.data()?.showOnline === true;
+        }
+    }
+
+    async function startUserSession(user) {
+        authUser = user;
+        await readOwnProfile(user);
+        await updatePresence(user, true);
+        discoverableToggle.disabled = false;
+        showOnlineToggle.disabled = false;
+        radiusSelect.disabled = false;
+        scanButton.disabled = false;
+        document.getElementById("statusScan").textContent = "Sesi Firebase aktif. Aktifkan pemindaian saat siap.";
+        await loadBlockedUsers();
+
+        if (heartbeatId) clearInterval(heartbeatId);
+        heartbeatId = setInterval(() => {
+            if (auth.currentUser?.uid === user.uid) {
+                updatePresence(user).catch((error) => console.warn("Presence heartbeat gagal.", error));
+            }
+        }, 90000);
+    }
+
+    auth.onAuthStateChanged((user) => {
+        authUser = user || null;
+        if (!user) {
+            if (heartbeatId) clearInterval(heartbeatId);
+            heartbeatId = null;
+            discoverableToggle.disabled = true;
+            showOnlineToggle.disabled = true;
+            radiusSelect.disabled = true;
+            scanButton.disabled = true;
+            document.getElementById("statusScan").textContent = "Login Firebase diperlukan untuk menggunakan Lacak Domba.";
+            nearbyResults.innerHTML = '<div class="empty-results">Silakan login melalui halaman utama SIPAPUA.</div>';
+            blockedResults.textContent = "Login untuk mengelola blokir.";
             return;
         }
 
-        navigator.geolocation.watchPosition(async (pos) => {
-            myCurrentPos.lat = pos.coords.latitude;
-            myCurrentPos.lon = pos.coords.longitude;
+        startUserSession(user).catch((error) => {
+            console.error("Gagal menyiapkan presence jemaat:", error);
+            document.getElementById("statusScan").textContent = "Presence belum dapat dimuat. Silakan muat ulang halaman.";
+        });
+    });
 
-            if (myEmail) {
-                const userRef = db.collection("users").where("email", "==", myEmail);
-                userRef.get().then(s => {
-                    if(!s.empty) s.docs[0].ref.update({ 
-                        lat: myCurrentPos.lat, 
-                        lon: myCurrentPos.lon, 
-                        lastActive: new Date() 
-                    });
-                });
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && auth.currentUser) {
+            updatePresence(auth.currentUser).catch((error) => console.warn("Presence saat halaman aktif gagal diperbarui.", error));
+        }
+    });
+
+    function getCurrentPosition() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error("Browser ini tidak mendukung geolokasi."));
+                return;
             }
 
-            db.collection("users").onSnapshot(snapshot => {
-                document.querySelectorAll('.user-dot').forEach(dot => dot.remove());
-                let count = 0;
-
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.email !== myEmail && data.lat && data.lon) {
-                        const dist = getDistance(myCurrentPos.lat, myCurrentPos.lon, data.lat, data.lon);
-                        if (dist <= 5) { 
-                            count++;
-                            renderUserOnRadar(data, dist);
-                        }
-                    }
-                });
-                document.getElementById('statusScan').innerText = count + " Domba terdeteksi di sekitar Anda";
-            });
-
-        }, (err) => {
-            document.getElementById('statusScan').innerText = "Gagal mengakses GPS. Pastikan izin diaktifkan.";
-        }, { enableHighAccuracy: true });
-    }
-
-    function renderUserOnRadar(userData, dist) {
-        const radar = document.getElementById('radarScreen');
-        const dot = document.createElement('div');
-        dot.className = 'user-dot';
-
-        const angle = Math.atan2(userData.lon - myCurrentPos.lon, userData.lat - myCurrentPos.lat);
-        const radiusInPx = (dist / 5) * 150; 
-        
-        const x = 160 + radiusInPx * Math.sin(angle);
-        const y = 160 - radiusInPx * Math.cos(angle);
-
-        dot.style.left = x + 'px';
-        dot.style.top = y + 'px';
-
-        const foto = userData.foto_profil || 'https://via.placeholder.com/50';
-        dot.innerHTML = `
-            <img src="${foto}">
-            <span class="user-name">${userData.nama || 'User'}</span>
-        `;
-
-        dot.onclick = () => {
-            cekStatusPertemanan(userData, dist);
-        };
-
-        radar.appendChild(dot);
-    }
-
-    async function cekStatusPertemanan(targetUser, dist) {
-        const friendCheck = await db.collection("friends")
-            .where("user_a", "==", myEmail)
-            .where("user_b", "==", targetUser.email).get();
-
-        let isFriend = !friendCheck.empty;
-        let btnText = isFriend ? "Sudah Teman Anda" : "Kirim Permintaan Pertemanan";
-
-        Swal.fire({
-            title: targetUser.nama,
-            text: `Berjarak sekitar ${dist.toFixed(2)} km dari lokasi Anda`,
-            imageUrl: targetUser.foto_profil || 'https://via.placeholder.com/150',
-            imageWidth: 100,
-            imageHeight: 100,
-            showCancelButton: true,
-            confirmButtonText: btnText,
-            confirmButtonColor: isFriend ? '#2ecc71' : '#003366',
-            cancelButtonText: 'Tutup'
-        }).then((result) => {
-            if (result.isConfirmed && !isFriend) {
-                kirimPermintaan(targetUser);
-            }
+            navigator.geolocation.getCurrentPosition(
+                resolve,
+                reject,
+                { enableHighAccuracy: false, maximumAge: 30000, timeout: 12000 }
+            );
         });
     }
 
-    // FUNGSI KIRIM PERMINTAAN (UPDATE BARU)
-    async function kirimPermintaan(targetUser) {
-        const myName = localStorage.getItem("userName"); 
-        const myFoto = localStorage.getItem("userFoto");
+    async function savePrivateLocation(position) {
+        if (!authUser?.uid || auth.currentUser?.uid !== authUser.uid) {
+            throw new Error("Sesi Firebase tidak tersedia.");
+        }
 
+        await privateLocationRef().set({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            updatedAt: serverTimestamp()
+        });
+    }
+
+    discoverableToggle.addEventListener("change", async () => {
+        if (!authUser?.uid) return;
+        const enablingDiscovery = discoverableToggle.checked;
+        discoverableToggle.disabled = true;
         try {
-            await db.collection("friend_requests").add({
-                from_email: myEmail,
-                from_name: myName || "User SIPAPUA",
-                from_photo: myFoto || "",
-                to_email: targetUser.email,
-                status: "pending",
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            Swal.fire("Terkirim!", `Permintaan koneksi dikirim ke ${targetUser.nama}`, "success");
+            if (enablingDiscovery) {
+                document.getElementById("statusScan").textContent = "Meminta izin lokasi untuk mengaktifkan penemuan...";
+                const position = await getCurrentPosition();
+                await savePrivateLocation(position);
+                await userPresenceRef().update({
+                    discoverable: true,
+                    online: true,
+                    lastSeen: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                document.getElementById("statusScan").textContent = "Anda mengizinkan jemaat lain menemukan Anda saat aktif.";
+            } else {
+                await privateLocationRef().delete();
+                await userPresenceRef().update({
+                    discoverable: false,
+                    updatedAt: serverTimestamp(),
+                    lastSeen: serverTimestamp()
+                });
+                memberResults.clear();
+                nearbyResults.innerHTML = '<div class="empty-results">Anda tidak sedang mengizinkan untuk ditemukan.</div>';
+                document.getElementById("statusScan").textContent = "Pengaturan penemuan dimatikan.";
+            }
         } catch (error) {
-            console.error("Error kirim request:", error);
-            Swal.fire("Gagal", "Tidak dapat mengirim permintaan.", "error");
+            if (enablingDiscovery) {
+                await privateLocationRef().delete().catch(() => {});
+            }
+            discoverableToggle.checked = !enablingDiscovery;
+            console.error("Gagal mengubah pengaturan penemuan:", error);
+            document.getElementById("statusScan").textContent = error.code === 1
+                ? "Izin lokasi ditolak. Anda tetap dapat mematikan pengaturan ini."
+                : "Pengaturan lokasi tidak dapat diperbarui. Coba lagi.";
+        } finally {
+            discoverableToggle.disabled = false;
+        }
+    });
+
+    showOnlineToggle.addEventListener("change", async () => {
+        if (!authUser?.uid) return;
+        showOnlineToggle.disabled = true;
+        try {
+            await userPresenceRef().update({
+                showOnline: showOnlineToggle.checked,
+                updatedAt: serverTimestamp(),
+                lastSeen: serverTimestamp()
+            });
+        } catch (error) {
+            showOnlineToggle.checked = !showOnlineToggle.checked;
+            console.error("Gagal mengubah visibilitas status online:", error);
+            Swal.fire("Gagal", "Pengaturan status online tidak dapat disimpan.", "error");
+        } finally {
+            showOnlineToggle.disabled = false;
+        }
+    });
+
+    async function getRelationshipState() {
+        const uid = authUser.uid;
+        const [contacts, sentRequests, receivedRequests] = await Promise.all([
+            db.collection("contacts").doc(uid).collection("friends").get(),
+            db.collection("friend_requests").where("fromUid", "==", uid).where("status", "==", "pending").get(),
+            db.collection("friend_requests").where("toUid", "==", uid).where("status", "==", "pending").get()
+        ]);
+
+        return {
+            contacts: new Set(contacts.docs.map((item) => item.id)),
+            sent: new Set(sentRequests.docs.map((item) => item.data().toUid)),
+            received: new Set(receivedRequests.docs.map((item) => item.data().fromUid))
+        };
+    }
+
+    function renderNearbyMembers(results, truncated) {
+        memberResults = new Map(results.map((member) => [member.uid, member]));
+        document.querySelectorAll(".user-dot").forEach((dot) => dot.remove());
+
+        if (!results.length) {
+            nearbyResults.innerHTML = '<div class="empty-results">Tidak ada jemaat yang memilih untuk ditemukan dalam radius ini.</div>';
+            document.getElementById("statusScan").textContent = "Tidak ada jemaat terdeteksi dalam radius pilihan.";
+            return;
+        }
+
+        const radius = Number(radiusSelect.value);
+        const center = document.createElement("div");
+        center.className = "center-dot";
+        const radar = document.getElementById("radarScreen");
+        radar.querySelectorAll(".center-dot").forEach((item) => item.remove());
+        radar.appendChild(center);
+
+        nearbyResults.innerHTML = results.map((member) => {
+            const relation = relationshipState.contacts.has(member.uid)
+                ? "contact"
+                : relationshipState.sent.has(member.uid)
+                    ? "sent"
+                    : relationshipState.received.has(member.uid)
+                        ? "received"
+                        : "none";
+            const status = member.online
+                ? '<span class="online-indicator"><i class="fas fa-circle"></i> Online</span>'
+                : '<span class="offline-indicator"><i class="far fa-circle"></i> Status online disembunyikan</span>';
+            const relationshipAction = relation === "contact"
+                ? '<button type="button" data-action="contact" data-uid="' + escapeHtml(member.uid) + '">BUKA KONTAK</button>'
+                : relation === "sent"
+                    ? '<button type="button" class="secondary" disabled>PERMINTAAN TERKIRIM</button>'
+                    : relation === "received"
+                        ? '<button type="button" class="secondary" disabled>PERMINTAAN MASUK DI MENU</button>'
+                        : '<button type="button" data-action="request" data-uid="' + escapeHtml(member.uid) + '">TAMBAH KONTAK</button>';
+            const groupParts = [member.komsel, member.wilayah].filter(Boolean);
+
+            return '<article class="member-card">'
+                + '<img src="' + escapeHtml(member.photoURL || placeholderPhoto) + '" alt="Foto profil">'
+                + '<div class="member-details"><strong>' + escapeHtml(member.displayName) + '</strong>'
+                + '<div class="member-meta">' + status + ' · ' + escapeHtml(member.distanceRange || "-")
+                + (groupParts.length ? ' · ' + escapeHtml(groupParts.join(" / ")) : '') + '</div>'
+                + '<div class="member-actions"><button type="button" class="secondary" data-action="profile" data-uid="' + escapeHtml(member.uid) + '">LIHAT PROFIL</button>'
+                + relationshipAction
+                + '<button type="button" class="secondary" data-action="block" data-uid="' + escapeHtml(member.uid) + '">BLOKIR</button></div></div></article>';
+        }).join("");
+
+        if (truncated) {
+            nearbyResults.insertAdjacentHTML("beforeend", '<div class="empty-results">Hasil dibatasi. Gunakan radius lebih kecil untuk hasil yang lebih tepat.</div>');
+        }
+        document.getElementById("statusScan").textContent = results.length + " jemaat terdeteksi di sekitar Anda.";
+        renderRadar(results, radius);
+    }
+
+    // Coarse server ranges only; the radar never receives an exact distance.
+    function distanceRangeFraction(distanceRange, radius) {
+        const rank = ["< 1 KM", "1–5 KM", "5–10 KM"].indexOf(distanceRange);
+        const bucketCount = radius <= 1 ? 1 : radius <= 5 ? 2 : 3;
+        if (rank < 0) return 1;
+        return Math.min(1, (rank + 0.5) / bucketCount);
+    }
+
+    function renderRadar(results, radius) {
+        const radar = document.getElementById("radarScreen");
+        radar.querySelectorAll(".user-dot").forEach((dot) => dot.remove());
+        const radarSize = radar.clientWidth;
+        const radarCenter = radarSize / 2;
+        const maximumDotRadius = Math.max(20, radarCenter - 30);
+        results.slice(0, 12).forEach((member, index) => {
+            const dot = document.createElement("button");
+            const angle = (index / Math.max(results.length, 1)) * Math.PI * 2;
+            const radiusInPx = distanceRangeFraction(member.distanceRange, radius) * maximumDotRadius;
+            dot.type = "button";
+            dot.className = "user-dot";
+            dot.style.left = (radarCenter + radiusInPx * Math.sin(angle)) + "px";
+            dot.style.top = (radarCenter - radiusInPx * Math.cos(angle)) + "px";
+            dot.style.padding = "0";
+            dot.style.border = "0";
+            dot.style.background = "transparent";
+            dot.setAttribute("aria-label", member.displayName);
+            dot.innerHTML = '<img src="' + escapeHtml(member.photoURL || placeholderPhoto) + '" alt=""><span class="user-name">'
+                + escapeHtml(member.displayName) + '</span>';
+            dot.addEventListener("click", () => showMemberProfile(member));
+            radar.appendChild(dot);
+        });
+    }
+
+    function showMemberProfile(member) {
+        const groupParts = [member.komsel, member.wilayah].filter(Boolean);
+        Swal.fire({
+            title: escapeHtml(member.displayName),
+            text: [member.online ? "Online" : "Status online disembunyikan", member.distanceRange || "-", ...groupParts].join(" · "),
+            imageUrl: member.photoURL || placeholderPhoto,
+            imageWidth: 90,
+            imageHeight: 90,
+            confirmButtonText: "TUTUP",
+            heightAuto: false
+        });
+    }
+
+    async function runScan() {
+        if (!authUser?.uid || scanInProgress) return;
+        scanInProgress = true;
+        scanButton.disabled = true;
+        document.getElementById("statusScan").textContent = "Meminta lokasi untuk pemindaian satu kali...";
+        let temporaryScanLocation = false;
+        try {
+            const position = await getCurrentPosition();
+            if (auth.currentUser?.uid !== authUser.uid) throw new Error("Sesi Firebase berubah.");
+            // The server reads the caller location from presence_locations/{uid}.
+            // Non-discoverable users store it only for this scan.
+            temporaryScanLocation = !discoverableToggle.checked;
+            await savePrivateLocation(position);
+
+            const findNearby = functions.httpsCallable("findNearbyMembers");
+            const response = await findNearby({
+                radiusKm: Number(radiusSelect.value)
+            });
+            relationshipState = await getRelationshipState();
+            renderNearbyMembers(response.data.results || [], response.data.truncated === true);
+        } catch (error) {
+            console.error("Pemindaian Lacak Domba gagal:", error);
+            document.getElementById("statusScan").textContent = error.code === "functions/not-found"
+                ? "Layanan pencarian belum tersedia. Hubungi administrator SIPAPUA."
+                : "Lokasi atau data sekitar belum dapat dimuat. Periksa izin lokasi dan coba lagi.";
+            nearbyResults.innerHTML = '<div class="empty-results">Pemindaian gagal. Lokasi Anda tidak ditampilkan kepada pengguna lain.</div>';
+        } finally {
+            if (temporaryScanLocation && !discoverableToggle.checked && authUser?.uid) {
+                privateLocationRef(authUser.uid).delete().catch(() => {});
+            }
+            scanInProgress = false;
+            scanButton.disabled = false;
         }
     }
 
-    window.onload = startScanning;
+    scanButton.addEventListener("click", runScan);
+
+    nearbyResults.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const member = memberResults.get(button.dataset.uid);
+        if (!member) return;
+
+        if (button.dataset.action === "profile") {
+            showMemberProfile(member);
+        } else if (button.dataset.action === "contact") {
+            window.location.href = "kontak.html";
+        } else if (button.dataset.action === "request") {
+            button.disabled = true;
+            try {
+                await db.collection("friend_requests").add({
+                    fromUid: authUser.uid,
+                    toUid: member.uid,
+                    status: "pending",
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    fromDisplayName: publicProfile.displayName,
+                    fromPhotoURL: publicProfile.photoURL
+                });
+                relationshipState.sent.add(member.uid);
+                renderNearbyMembers(Array.from(memberResults.values()), false);
+                Swal.fire("Permintaan terkirim", "Permintaan kontak menunggu persetujuan jemaat tersebut.", "success");
+            } catch (error) {
+                button.disabled = false;
+                console.error("Permintaan kontak gagal:", error);
+                Swal.fire("Gagal", "Permintaan kontak tidak dapat dikirim.", "error");
+            }
+        } else if (button.dataset.action === "block") {
+            const result = await Swal.fire({
+                title: "Blokir pengguna?",
+                text: "Pengguna ini tidak akan muncul di Lacak Domba dan tidak dapat mengirim permintaan kontak kepada Anda.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "BLOKIR",
+                cancelButtonText: "BATAL"
+            });
+            if (result.isConfirmed) await blockUser(member);
+        }
+    });
+
+    async function blockUser(member) {
+        const uid = authUser.uid;
+        try {
+            const [outgoing, incoming] = await Promise.all([
+                db.collection("friend_requests").where("fromUid", "==", uid).where("toUid", "==", member.uid).where("status", "==", "pending").get(),
+                db.collection("friend_requests").where("fromUid", "==", member.uid).where("toUid", "==", uid).where("status", "==", "pending").get()
+            ]);
+            const batch = db.batch();
+            batch.set(db.collection("user_blocks").doc(uid).collection("blocked").doc(member.uid), {
+                blockedUid: member.uid,
+                createdAt: serverTimestamp(),
+                displayName: member.displayName,
+                photoURL: member.photoURL || ""
+            });
+            [...outgoing.docs, ...incoming.docs].forEach((request) => {
+                batch.update(request.ref, { status: "blocked", updatedAt: serverTimestamp() });
+            });
+            await batch.commit();
+            memberResults.delete(member.uid);
+            await loadBlockedUsers();
+            renderNearbyMembers(Array.from(memberResults.values()), false);
+            await Swal.fire("Pengguna diblokir", "Pengguna tersebut tidak akan muncul di Lacak Domba.", "success");
+        } catch (error) {
+            console.error("Blokir pengguna gagal:", error);
+            await Swal.fire("Gagal", "Pengguna tidak dapat diblokir sekarang.", "error");
+        }
+    }
+
+    async function loadBlockedUsers() {
+        if (!authUser?.uid) return;
+        const snapshot = await db.collection("user_blocks").doc(authUser.uid).collection("blocked").get();
+        if (snapshot.empty) {
+            blockedResults.innerHTML = '<div class="empty-results">Belum ada pengguna yang diblokir.</div>';
+            return;
+        }
+
+        blockedResults.innerHTML = snapshot.docs.map((item) => {
+            const data = item.data();
+            return '<div class="blocked-item"><img src="' + escapeHtml(safePhotoUrl(data.photoURL) || placeholderPhoto) + '" alt="">'
+                + '<span>' + escapeHtml(data.displayName || "Pengguna SIPAPUA") + '</span>'
+                + '<button type="button" data-unblock-uid="' + escapeHtml(item.id) + '">BUKA BLOKIR</button></div>';
+        }).join("");
+    }
+
+    blockedResults.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-unblock-uid]");
+        if (!button || !authUser?.uid) return;
+        button.disabled = true;
+        try {
+            await db.collection("user_blocks").doc(authUser.uid).collection("blocked").doc(button.dataset.unblockUid).delete();
+            await loadBlockedUsers();
+        } catch (error) {
+            button.disabled = false;
+            console.error("Buka blokir gagal:", error);
+            Swal.fire("Gagal", "Pengaturan blokir tidak dapat diperbarui.", "error");
+        }
+    });
+
+    window.addEventListener("pagehide", () => {
+        if (authUser?.uid && discoverableToggle.checked) {
+            privateLocationRef(authUser.uid).delete().catch(() => {});
+        }
+    });
 </script>
 
 </body>
