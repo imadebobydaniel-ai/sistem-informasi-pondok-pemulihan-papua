@@ -150,6 +150,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -165,7 +166,10 @@
     };
     
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const auth = firebase.auth();
     const db = firebase.firestore();
+    let currentAdminRole = "";
+    function canDeleteTickets() { return ["master", "super_admin", "superadmin"].includes(currentAdminRole); }
 
     let ticketListener = null;
 
@@ -369,6 +373,10 @@
     }
 
     function deleteTicket(id) {
+        if (!canDeleteTickets()) {
+            alert("Penghapusan data membutuhkan password Superadmin.");
+            return;
+        }
         if(confirm("Hapus tiket ini secara permanen?")) {
             db.collection("saran_masukan").doc(id).delete();
         }
@@ -385,7 +393,19 @@
         });
     }
 
-    window.onload = loadTickets;
+    auth.onAuthStateChanged(async user => {
+        if (!user) return window.location.replace("login_cyber.html");
+        try {
+            const snap = await db.collection("admin_users").doc(user.uid).get();
+            const data = snap.exists ? snap.data() : {};
+            currentAdminRole = String(data.role || "").trim().toLowerCase();
+            if (data.status !== "active" || !["master", "super_admin", "superadmin", "admin", "viewer"].includes(currentAdminRole)) throw new Error("ADMIN_NOT_AUTHORIZED");
+            loadTickets();
+        } catch (error) {
+            console.error("Ticket admin authorization failed:", error);
+            window.location.replace("login_cyber.html");
+        }
+    });
 </script>
 </body>
 </html>

@@ -123,7 +123,7 @@
     const db = firebase.firestore();
 
 const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
-    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
     const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
     const IDLE_WARNING_MS = 29 * 60 * 1000;
 
@@ -204,6 +204,11 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             } catch (error) {
                 console.error("Idle session sign-out error:", error);
             } finally {
+                localStorage.removeItem("adminLoggedIn");
+                localStorage.removeItem("adminUser");
+                localStorage.removeItem("adminUid");
+                localStorage.removeItem("adminRole");
+                localStorage.removeItem("adminAuthMode");
                 hideSessionWarning();
                 window.location.replace("login_cyber.html");
             }
@@ -223,7 +228,6 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             window.location.replace("login_cyber.html");
             return;
         }
-
         try {
             const adminDoc = await db.collection("admin_users")
                 .doc(user.uid)
@@ -234,7 +238,7 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             }
 
             const adminData = adminDoc.data();
-            const role = adminData.role || "";
+            const role = String(adminData.role || "").trim().toLowerCase();
             const status = adminData.status || "inactive";
 
             if (!ADMIN_ROLES.has(role)) {
@@ -250,6 +254,14 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
                     throw new Error("MASTER_PROTECTION_INVALID");
                 }
             }
+
+            // localStorage is display/session metadata only; authorization above
+            // comes from Firebase Auth and admin_users/{uid}.
+            localStorage.setItem("adminLoggedIn", "true");
+            localStorage.setItem("adminUser", user.email || "");
+            localStorage.setItem("adminUid", user.uid);
+            localStorage.setItem("adminRole", role);
+            localStorage.setItem("adminAuthMode", "firebase");
 
             // Database Jemaat dipisahkan ke database-jemaat.html.
             resetIdleTimer();
@@ -269,14 +281,22 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
 
     async function logoutAdmin() {
         try {
-            await auth.signOut();
+            if (auth.currentUser) {
+                await auth.signOut();
+            }
+
+            localStorage.removeItem("adminLoggedIn");
+            localStorage.removeItem("adminUser");
+            localStorage.removeItem("adminUid");
+            localStorage.removeItem("adminRole");
+            localStorage.removeItem("adminAuthMode");
+
             window.location.replace("login_cyber.html");
         } catch (error) {
             console.error("Logout error:", error);
             alert("Gagal keluar dari sistem. Silakan coba lagi.");
         }
     }
-
 </script>
 </body>
 </html>

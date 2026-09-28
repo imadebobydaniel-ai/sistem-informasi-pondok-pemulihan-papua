@@ -165,7 +165,16 @@ function togglePasswordVisibility() {
 
     document.getElementById('closeModal').onclick = () => document.getElementById('cyberModal').style.display = 'none';
 
-    const ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
+
+
+    // Firebase email addresses are intentionally left unset until provisioned.
+    // Never place a synthetic UID/role in localStorage as an authenticated session.
+    const INTERNAL_ADMIN_ALIASES = {
+        admin01: { firebaseEmail: "", role: "superadmin" },
+        admin02: { firebaseEmail: "", role: "viewer" },
+        admin03: { firebaseEmail: "", role: "viewer" }
+    };
 
     document.getElementById("cyberLoginForm").addEventListener("submit", async function(e) {
         e.preventDefault();
@@ -177,10 +186,27 @@ function togglePasswordVisibility() {
         btn.innerText = "VERIFYING...";
         btn.disabled = true;
 
+        const internalAlias = INTERNAL_ADMIN_ALIASES[email];
+        let firebaseEmail = email;
+
+        if (internalAlias) {
+            firebaseEmail = internalAlias.firebaseEmail.trim().toLowerCase();
+            if (!firebaseEmail) {
+                showCyberNotification(
+                    "error",
+                    "Akun Belum Disiapkan",
+                    "Alias admin ini memerlukan email akun Firebase yang telah diprovisikan."
+                );
+                btn.innerText = "VERIFY & LOG IN";
+                btn.disabled = false;
+                return;
+            }
+        }
+
         try {
             await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
-            const credential = await auth.signInWithEmailAndPassword(email, password);
+            const credential = await auth.signInWithEmailAndPassword(firebaseEmail, password);
             const user = credential.user;
 
             if (!user.emailVerified) {
@@ -199,7 +225,7 @@ function togglePasswordVisibility() {
             }
 
             const adminData = adminDoc.data();
-            const role = adminData.role || "";
+            const role = String(adminData.role || "").trim().toLowerCase();
             const status = adminData.status || "inactive";
 
             if (!ADMIN_ROLES.has(role)) {
@@ -212,10 +238,17 @@ function togglePasswordVisibility() {
                 throw new Error("ADMIN_INACTIVE");
             }
 
+            if (internalAlias && role !== internalAlias.role &&
+                !(internalAlias.role === "superadmin" && role === "super_admin")) {
+                await auth.signOut();
+                throw new Error("ADMIN_ROLE_MISMATCH");
+            }
+
             localStorage.setItem("adminLoggedIn", "true");
             localStorage.setItem("adminUser", user.email || email);
             localStorage.setItem("adminUid", user.uid);
             localStorage.setItem("adminRole", role);
+            localStorage.setItem("adminAuthMode", "firebase");
 
             const isMaster =
                 user.uid === "hXo6v5OKhkMVtRAAuUqcYcASplo2" &&
@@ -245,6 +278,8 @@ function togglePasswordVisibility() {
                 message = "Akun tidak memiliki role administrator yang sah.";
             } else if (error.message === "ADMIN_INACTIVE") {
                 message = "Akun administrator sedang dinonaktifkan.";
+            } else if (error.message === "ADMIN_ROLE_MISMATCH") {
+                message = "Role akun Firebase tidak sesuai dengan alias administrator ini.";
             } else if (
                 error.code === "auth/user-not-found" ||
                 error.code === "auth/wrong-password" ||
