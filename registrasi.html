@@ -1063,8 +1063,39 @@
     ) {
 }
 
-    const checkRegistrationDuplicate =
-        functions.httpsCallable("checkRegistrationDuplicate");
+    const checkRegistrationDuplicate = async ({ email, whatsapp }) => {
+        const candidateIds = new Set();
+        const matchedBy = [];
+
+        const checks = [
+            ["email_normalized", email, "email"],
+            ["whatsapp_normalized", whatsapp, "whatsapp"],
+            ["email", email, "email_legacy"],
+            ["whatsapp", whatsapp, "whatsapp_legacy"]
+        ];
+
+        for (const [field, value, label] of checks) {
+            if (!value) continue;
+
+            const snapshot = await db.collection("users")
+                .where(field, "==", value)
+                .limit(2)
+                .get();
+
+            if (!snapshot.empty) {
+                matchedBy.push(label);
+                snapshot.forEach(doc => candidateIds.add(doc.id));
+            }
+        }
+
+        return {
+            data: {
+                duplicate: candidateIds.size > 0,
+                matchedBy: [...new Set(matchedBy)],
+                candidateCount: candidateIds.size
+            }
+        };
+    };
 
     // --- KONFIGURASI API WILAYAH ---
     const BASE_URL_WILAYAH = 'https://www.emsifa.com/api-wilayah-indonesia/api';
