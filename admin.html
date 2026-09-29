@@ -101,7 +101,7 @@
         <a href="admin-bigdata.html"><div class="stat-card" style="background: var(--cyan);"><h4>Big Data</h4><i class="fas fa-chart-line"></i></div></a>
         <a href="admin-news.html"><div class="stat-card" style="background: var(--primary);"><h4>News SIPAPUA</h4><i class="fas fa-newspaper"></i></div></a>
         <a href="admin-popup.html"><div class="stat-card" style="background: var(--purple);"><h4>Popup Banner</h4><i class="fas fa-bullhorn"></i></div></a>
-        <a href="manajemen-user.html"><div class="stat-card" style="background: var(--emas); color: #333;"><h4 style="color: #333;">Manajemen User</h4><i class="fas fa-users-cog" style="color: #333;"></i></div></a>
+        <a href="manajemen-user.html" id="menuManajemenUser" style="display:none;"><div class="stat-card" style="background: var(--emas); color: #333;"><h4 style="color: #333;">Manajemen User</h4><i class="fas fa-users-cog" style="color: #333;"></i></div></a>
         <a href="manajemen-pks.html"><div class="stat-card" style="background: var(--teal);"><h4>Manajemen PKS</h4><i class="fas fa-user-shield"></i></div></a>
     </div>
 
@@ -127,7 +127,16 @@
     const db = firebase.firestore();
 
 const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
-    const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
+    // Canonical roles: master, super_admin, viewer. "superadmin" and "admin"
+    // are recognised for the transition only; admin_users data is unchanged.
+    const SUPERADMIN_ROLES = new Set(["master", "super_admin", "superadmin"]);
+    const VIEWER_ROLES = new Set(["viewer", "admin"]);
+
+    function adminRoleGroup(role) {
+        if (SUPERADMIN_ROLES.has(role)) return "superadmin";
+        if (VIEWER_ROLES.has(role)) return "viewer";
+        return null;
+    }
     const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
     const IDLE_WARNING_MS = 29 * 60 * 1000;
 
@@ -226,15 +235,17 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
     // Display only: role and account come from the verified Firebase user and
     // admin_users/{uid} read by the auth gate below, never from localStorage.
     function adminRoleLabel(role) {
-        if (role === "master" || role === "super_admin" || role === "superadmin") {
-            return "Superadmin";
-        }
+        return adminRoleGroup(role) === "superadmin" ? "Superadmin" : "Admin Viewer";
+    }
 
-        if (role === "viewer") {
-            return "Admin Viewer";
-        }
+    // Visual only: manajemen-user.html enforces its own role gate.
+    function applyAdminMenuAccess(role) {
+        const userManagementLink = document.getElementById("menuManajemenUser");
 
-        return "Admin";
+        if (userManagementLink) {
+            userManagementLink.style.display =
+                adminRoleGroup(role) === "superadmin" ? "" : "none";
+        }
     }
 
     function renderAdminIdentity(user, adminData, role) {
@@ -271,7 +282,7 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             const role = String(adminData.role || "").trim().toLowerCase();
             const status = adminData.status || "inactive";
 
-            if (!ADMIN_ROLES.has(role)) {
+            if (!adminRoleGroup(role)) {
                 throw new Error("ADMIN_NOT_AUTHORIZED");
             }
 
@@ -294,6 +305,7 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             localStorage.setItem("adminAuthMode", "firebase");
 
             renderAdminIdentity(user, adminData, role);
+            applyAdminMenuAccess(role);
 
             // Database Jemaat dipisahkan ke database-jemaat.html.
             resetIdleTimer();
