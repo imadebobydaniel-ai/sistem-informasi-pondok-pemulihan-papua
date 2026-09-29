@@ -959,12 +959,14 @@ const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") |
 
     // Canonical roles: master, super_admin, viewer. "superadmin" and "admin"
     // are recognised for the transition only; admin_users data is unchanged.
+    // Only master/super_admin may open this page: firestore.rules grants the
+    // admin_users list only to those roles (isAdminManager()).
     function isSuperadminRole(role) {
-        return ["master", "super_admin", "superadmin"].includes(role);
+        return ["master", "super_admin"].includes(role);
     }
 
     function isKnownAdminRole(role) {
-        return isSuperadminRole(role) || ["viewer", "admin"].includes(role);
+        return isSuperadminRole(role) || ["superadmin", "viewer", "admin"].includes(role);
     }
 
     async function initializeManagementAccess() {
@@ -998,6 +1000,15 @@ const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") |
             }
 
             window.location.replace("login_cyber.html");
+            return;
+        }
+
+        if (role === "superadmin") {
+            alert(
+                "Akses Manajemen User ditolak: role akun ini masih \"superadmin\". " +
+                "Role harus diperbarui menjadi \"super_admin\" oleh administrator sistem."
+            );
+            exitManagementSecurity();
             return;
         }
 
