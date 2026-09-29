@@ -80,6 +80,10 @@
         <div>
             <h2 style="color:var(--primary); margin:0;">Dashboard Administrator</h2>
             <small style="color: #666;">Manajemen Data Jemaat Real-time</small>
+            <div id="adminIdentity" style="display:none; margin-top:8px;">
+                <div id="adminIdentityGreeting" style="font-weight:700; color:var(--primary);"></div>
+                <div id="adminIdentityAccount" style="font-size:12px; color:#666;"></div>
+            </div>
         </div>
         <div style="display: flex; gap: 15px; align-items: center;">
             <div onclick="bukaKartuDigitalDinamis()" style="cursor:pointer; color: var(--emas); font-size: 24px;" title="Cek Kartu Digital">
@@ -219,6 +223,32 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
         resetIdleTimer();
     }
 
+    // Display only: role and account come from the verified Firebase user and
+    // admin_users/{uid} read by the auth gate below, never from localStorage.
+    function adminRoleLabel(role) {
+        if (role === "master" || role === "super_admin" || role === "superadmin") {
+            return "Superadmin";
+        }
+
+        if (role === "viewer") {
+            return "Admin Viewer";
+        }
+
+        return "Admin";
+    }
+
+    function renderAdminIdentity(user, adminData, role) {
+        const box = document.getElementById("adminIdentity");
+        if (!box) return;
+
+        const account = String(adminData.username || "").trim() || user.email || "";
+
+        document.getElementById("adminIdentityGreeting").textContent =
+            `Selamat Datang, ${adminRoleLabel(role)}`;
+        document.getElementById("adminIdentityAccount").textContent = account;
+        box.style.display = "block";
+    }
+
     ["click", "mousedown", "keydown", "scroll", "touchstart", "mousemove"].forEach((eventName) => {
         window.addEventListener(eventName, registerIdleActivity, {passive: true});
     });
@@ -262,6 +292,8 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             localStorage.setItem("adminUid", user.uid);
             localStorage.setItem("adminRole", role);
             localStorage.setItem("adminAuthMode", "firebase");
+
+            renderAdminIdentity(user, adminData, role);
 
             // Database Jemaat dipisahkan ke database-jemaat.html.
             resetIdleTimer();
