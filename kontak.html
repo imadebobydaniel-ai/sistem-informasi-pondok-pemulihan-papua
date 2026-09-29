@@ -389,6 +389,23 @@
         let socialContacts = [];
         const onlineFreshnessMs = 3 * 60 * 1000;
 
+        // Must match pairRequestId() in firestore.rules: one request per user pair.
+        function pairRequestRef(firstUid, secondUid) {
+            return contactDb.collection("friend_requests").doc([firstUid, secondUid].sort().join("_"));
+        }
+
+        // After unblocking, clear the pair's blocked request so a new request can
+        // be sent later. Rules keep it if the other user still blocks this one.
+        async function clearBlockedRequest(uid, otherUid) {
+            try {
+                const requestRef = pairRequestRef(uid, otherUid);
+                const requestDoc = await requestRef.get().catch(() => null);
+                if (requestDoc?.exists && requestDoc.data().status === "blocked") await requestRef.delete();
+            } catch (error) {
+                console.warn("Permintaan kontak lama belum dapat dibersihkan.", error);
+            }
+        }
+
         function safePhoto(value) {
             try {
                 const parsed = new URL(String(value || ""));
@@ -485,6 +502,7 @@
                     unblock.disabled = true;
                     try {
                         await contactDb.collection("user_blocks").doc(contactAuthUser.uid).collection("blocked").doc(blockedDoc.id).delete();
+                        await clearBlockedRequest(contactAuthUser.uid, blockedDoc.id);
                         await loadBlockedContacts();
                     } catch (error) {
                         console.error("Buka blokir gagal:", error);
@@ -501,10 +519,9 @@
             try {
                 const blockRef = contactDb.collection("user_blocks").doc(contactAuthUser.uid).collection("blocked").doc(item.uid);
                 const existingBlock = await blockRef.get();
-                const [outgoing, incoming] = await Promise.all([
-                    contactDb.collection("friend_requests").where("fromUid", "==", contactAuthUser.uid).where("toUid", "==", item.uid).where("status", "==", "pending").get(),
-                    contactDb.collection("friend_requests").where("fromUid", "==", item.uid).where("toUid", "==", contactAuthUser.uid).where("status", "==", "pending").get()
-                ]);
+                const requestRef = pairRequestRef(contactAuthUser.uid, item.uid);
+                // Rules deny reading a pair request that does not exist.
+                const requestDoc = await requestRef.get().catch(() => null);
                 const batch = contactDb.batch();
                 if (!existingBlock.exists) {
                     batch.set(blockRef, {
@@ -514,12 +531,15 @@
                         photoURL: item.photoURL || ""
                     });
                 }
-                [...outgoing.docs, ...incoming.docs].forEach((requestDoc) => {
-                    batch.update(requestDoc.ref, {
+                if (requestDoc?.exists && ["pending", "accepted"].includes(requestDoc.data().status)) {
+                    batch.update(requestRef, {
                         status: "blocked",
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                });
+                }
+                // Blocking ends the contact relationship on both sides.
+                batch.delete(contactDb.collection("contacts").doc(contactAuthUser.uid).collection("friends").doc(item.uid));
+                batch.delete(contactDb.collection("contacts").doc(item.uid).collection("friends").doc(contactAuthUser.uid));
                 await batch.commit();
                 await Promise.all([loadSocialContacts(), loadBlockedContacts()]);
             } catch (error) {

@@ -47,6 +47,39 @@ service cloud.firestore {
         || existsAfter(/databases/$(database)/documents/user_blocks/$(secondUid)/blocked/$(firstUid));
     }
 
+    // One friend request document per user pair, regardless of direction.
+    function pairRequestId(firstUid, secondUid) {
+      return firstUid < secondUid
+        ? firstUid + "_" + secondUid
+        : secondUid + "_" + firstUid;
+    }
+
+    // Contacts may only be created in the same batch that moves the pair's
+    // request from pending to accepted, so an old accepted request is never
+    // reusable. Display fields are bound to the request or the accepter's
+    // presence instead of being chosen freely by the writer.
+    function validAcceptedContact(uid, friendUid) {
+      let requestPath = /databases/$(database)/documents/friend_requests/$(request.resource.data.requestId);
+      let presencePath = /databases/$(database)/documents/presence/$(request.auth.uid);
+      return request.resource.data.requestId == pairRequestId(uid, friendUid)
+        && exists(requestPath)
+        && get(requestPath).data.status == "pending"
+        && getAfter(requestPath).data.status == "accepted"
+        && getAfter(requestPath).data.toUid == request.auth.uid
+        && ((uid == getAfter(requestPath).data.fromUid && friendUid == getAfter(requestPath).data.toUid)
+          || (uid == getAfter(requestPath).data.toUid && friendUid == getAfter(requestPath).data.fromUid))
+        && !requestBlockedAfter(uid, friendUid)
+        && (friendUid == getAfter(requestPath).data.fromUid
+          ? (request.resource.data.displayName == getAfter(requestPath).data.fromDisplayName
+              || (getAfter(requestPath).data.fromDisplayName == "" && request.resource.data.displayName == "Jemaat SIPAPUA"))
+            && request.resource.data.photoURL == getAfter(requestPath).data.fromPhotoURL
+          : (exists(presencePath)
+            ? (request.resource.data.displayName == get(presencePath).data.displayName
+                || (get(presencePath).data.displayName == "" && request.resource.data.displayName == "Jemaat SIPAPUA"))
+              && request.resource.data.photoURL == get(presencePath).data.photoURL
+            : request.resource.data.displayName == "Jemaat SIPAPUA" && request.resource.data.photoURL == ""));
+    }
+
     function validPresence() {
       return request.resource.data.keys().hasOnly([
           "online", "lastSeen", "displayName", "photoURL", "updatedAt",
@@ -318,6 +351,7 @@ service cloud.firestore {
         ])
         && request.resource.data.fromUid == request.auth.uid
         && request.resource.data.toUid != request.auth.uid
+        && requestId == pairRequestId(request.resource.data.fromUid, request.resource.data.toUid)
         && exists(/databases/$(database)/documents/presence/$(request.auth.uid))
         && request.resource.data.fromDisplayName == get(/databases/$(database)/documents/presence/$(request.auth.uid)).data.displayName
         && request.resource.data.fromPhotoURL == get(/databases/$(database)/documents/presence/$(request.auth.uid)).data.photoURL
@@ -333,7 +367,7 @@ service cloud.firestore {
         && !blockedBetween(request.auth.uid, request.resource.data.toUid);
 
       allow update: if signedIn()
-        && resource.data.status == "pending"
+        && resource.data.status in ["pending", "accepted"]
         && request.resource.data.keys().hasOnly([
           "fromUid", "toUid", "status", "createdAt", "updatedAt",
           "fromDisplayName", "fromPhotoURL"
@@ -349,9 +383,11 @@ service cloud.firestore {
         && request.resource.data.fromPhotoURL == resource.data.fromPhotoURL
         && request.resource.data.updatedAt == request.time
         && (
-          (resource.data.toUid == request.auth.uid
+          (resource.data.status == "pending"
+            && resource.data.toUid == request.auth.uid
             && request.resource.data.status == "rejected")
-          || (resource.data.toUid == request.auth.uid
+          || (resource.data.status == "pending"
+            && resource.data.toUid == request.auth.uid
             && request.resource.data.status == "accepted"
             && !requestBlockedAfter(resource.data.fromUid, resource.data.toUid))
           || (request.resource.data.status == "blocked"
@@ -362,9 +398,17 @@ service cloud.firestore {
             && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(resource.data.fromUid)))
         );
 
+      // Sender may cancel a pending request. A blocked pair's request may be
+      // cleared by either side only once no block remains, so the pair can
+      // connect again after unblocking.
       allow delete: if signedIn()
-        && resource.data.fromUid == request.auth.uid
-        && resource.data.status == "pending";
+        && (
+          (resource.data.fromUid == request.auth.uid
+            && resource.data.status == "pending")
+          || ((resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid)
+            && resource.data.status == "blocked"
+            && !requestBlockedAfter(resource.data.fromUid, resource.data.toUid))
+        );
     }
 
     match /contacts/{uid}/friends/{friendUid} {
@@ -384,13 +428,7 @@ service cloud.firestore {
         && request.resource.data.photoURL is string
         && request.resource.data.photoURL.size() <= 2048
         && request.resource.data.status == "accepted"
-        && existsAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId))
-        && getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.status == "accepted"
-        && getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.toUid == request.auth.uid
-        && ((uid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.fromUid
-            && friendUid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.toUid)
-          || (uid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.toUid
-            && friendUid == getAfter(/databases/$(database)/documents/friend_requests/$(request.resource.data.requestId)).data.fromUid));
+        && validAcceptedContact(uid, friendUid);
 
       allow update: if signedIn()
         && uid == request.auth.uid
@@ -399,7 +437,12 @@ service cloud.firestore {
         && request.resource.data.status == "accepted"
         && request.resource.data.createdAt == resource.data.createdAt;
 
-      allow delete: if signedIn() && uid == request.auth.uid;
+      // Owner may remove any entry. A user who has blocked the owner may only
+      // remove their own entry from the owner's list (block cleanup).
+      allow delete: if signedIn()
+        && (uid == request.auth.uid
+          || (friendUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(uid))));
     }
 
     match /user_blocks/{uid}/blocked/{blockedUid} {

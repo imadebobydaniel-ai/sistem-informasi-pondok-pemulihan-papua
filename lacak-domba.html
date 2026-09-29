@@ -265,6 +265,11 @@
         return db.collection("presence_locations").doc(uid);
     }
 
+    // Must match pairRequestId() in firestore.rules: one request per user pair.
+    function pairRequestRef(firstUid, secondUid) {
+        return db.collection("friend_requests").doc([firstUid, secondUid].sort().join("_"));
+    }
+
     async function readOwnProfile(user) {
         let profile = {};
         try {
@@ -606,7 +611,7 @@
         } else if (button.dataset.action === "request") {
             button.disabled = true;
             try {
-                await db.collection("friend_requests").add({
+                await pairRequestRef(authUser.uid, member.uid).set({
                     fromUid: authUser.uid,
                     toUid: member.uid,
                     status: "pending",
@@ -639,10 +644,9 @@
     async function blockUser(member) {
         const uid = authUser.uid;
         try {
-            const [outgoing, incoming] = await Promise.all([
-                db.collection("friend_requests").where("fromUid", "==", uid).where("toUid", "==", member.uid).where("status", "==", "pending").get(),
-                db.collection("friend_requests").where("fromUid", "==", member.uid).where("toUid", "==", uid).where("status", "==", "pending").get()
-            ]);
+            const requestRef = pairRequestRef(uid, member.uid);
+            // Rules deny reading a pair request that does not exist.
+            const request = await requestRef.get().catch(() => null);
             const batch = db.batch();
             batch.set(db.collection("user_blocks").doc(uid).collection("blocked").doc(member.uid), {
                 blockedUid: member.uid,
@@ -650,9 +654,12 @@
                 displayName: member.displayName,
                 photoURL: member.photoURL || ""
             });
-            [...outgoing.docs, ...incoming.docs].forEach((request) => {
-                batch.update(request.ref, { status: "blocked", updatedAt: serverTimestamp() });
-            });
+            if (request?.exists && ["pending", "accepted"].includes(request.data().status)) {
+                batch.update(requestRef, { status: "blocked", updatedAt: serverTimestamp() });
+            }
+            // Blocking ends the contact relationship on both sides.
+            batch.delete(db.collection("contacts").doc(uid).collection("friends").doc(member.uid));
+            batch.delete(db.collection("contacts").doc(member.uid).collection("friends").doc(uid));
             await batch.commit();
             memberResults.delete(member.uid);
             await loadBlockedUsers();
@@ -661,6 +668,18 @@
         } catch (error) {
             console.error("Blokir pengguna gagal:", error);
             await Swal.fire("Gagal", "Pengguna tidak dapat diblokir sekarang.", "error");
+        }
+    }
+
+    // After unblocking, clear the pair's blocked request so a new request can
+    // be sent later. Rules keep it if the other user still blocks this one.
+    async function clearBlockedRequest(uid, otherUid) {
+        try {
+            const requestRef = pairRequestRef(uid, otherUid);
+            const request = await requestRef.get().catch(() => null);
+            if (request?.exists && request.data().status === "blocked") await requestRef.delete();
+        } catch (error) {
+            console.warn("Permintaan kontak lama belum dapat dibersihkan.", error);
         }
     }
 
@@ -686,6 +705,7 @@
         button.disabled = true;
         try {
             await db.collection("user_blocks").doc(authUser.uid).collection("blocked").doc(button.dataset.unblockUid).delete();
+            await clearBlockedRequest(authUser.uid, button.dataset.unblockUid);
             await loadBlockedUsers();
         } catch (error) {
             button.disabled = false;
