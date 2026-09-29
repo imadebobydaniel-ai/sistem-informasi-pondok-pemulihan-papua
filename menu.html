@@ -1120,6 +1120,11 @@
     const userUid = localStorage.getItem("userUid");
 
     let memberSessionTimerId = null;
+    let memberPresenceHeartbeatId = null;
+    let activePresenceUid = null;
+    let friendRequestsUnsubscribe = null;
+    const friendRequestPrompts = new Set();
+    const memberPresenceProfiles = new Map();
 
     auth.onAuthStateChanged((user) => {
         if (!user) {
@@ -1127,11 +1132,90 @@
                 clearTimeout(memberSessionTimerId);
                 memberSessionTimerId = null;
             }
+            if (memberPresenceHeartbeatId) {
+                clearInterval(memberPresenceHeartbeatId);
+                memberPresenceHeartbeatId = null;
+            }
+            if (friendRequestsUnsubscribe) {
+                friendRequestsUnsubscribe();
+                friendRequestsUnsubscribe = null;
+            }
+            activePresenceUid = null;
             return;
         }
 
         startMemberSessionTimer();
+        if (activePresenceUid !== user.uid) {
+            activePresenceUid = user.uid;
+            updateMemberPresence(user).catch((error) => console.warn("Presence belum dapat diperbarui.", error));
+            listenForRequests(user.uid);
+            if (memberPresenceHeartbeatId) clearInterval(memberPresenceHeartbeatId);
+            memberPresenceHeartbeatId = setInterval(() => {
+                if (auth.currentUser?.uid === user.uid) {
+                    updateMemberPresence(user).catch((error) => console.warn("Presence heartbeat gagal.", error));
+                }
+            }, 90000);
+        }
     });
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && auth.currentUser) {
+            updateMemberPresence(auth.currentUser).catch((error) => console.warn("Presence saat halaman aktif gagal diperbarui.", error));
+        }
+    });
+
+    async function updateMemberPresence(user) {
+        if (!user?.uid || auth.currentUser?.uid !== user.uid) return;
+        let profile = memberPresenceProfiles.get(user.uid);
+        if (!profile) {
+            try {
+                const profileSnapshot = await db.collection("users").doc(user.uid).get();
+                const data = profileSnapshot.exists ? profileSnapshot.data() : {};
+                const safePhoto = String(data.foto_profil || user.photoURL || "").trim();
+                profile = {
+                    displayName: String(data.nama || user.displayName || "Jemaat SIPAPUA").trim().slice(0, 100),
+                    photoURL: /^https:\/\//i.test(safePhoto) ? safePhoto.slice(0, 2048) : "",
+                    komsel: String(data.komsel || "").trim().slice(0, 120),
+                    wilayah: String(data.wilayah || "").trim().slice(0, 120)
+                };
+                memberPresenceProfiles.set(user.uid, profile);
+            } catch (error) {
+                profile = {
+                    displayName: String(user.displayName || "Jemaat SIPAPUA").trim().slice(0, 100),
+                    photoURL: /^https:\/\//i.test(String(user.photoURL || "")) ? String(user.photoURL).slice(0, 2048) : "",
+                    komsel: "",
+                    wilayah: ""
+                };
+            }
+        }
+
+        const presenceRef = db.collection("presence").doc(user.uid);
+        const existing = await presenceRef.get();
+        const presence = {
+            online: true,
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            ...profile
+        };
+        if (!existing.exists) {
+            presence.discoverable = false;
+            presence.showOnline = false;
+        }
+        await presenceRef.set(presence, { merge: true });
+    }
+
+    async function markPresenceOffline(uid) {
+        if (!uid || auth.currentUser?.uid !== uid) return;
+        try {
+            await db.collection("presence").doc(uid).update({
+                online: false,
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.warn("Status offline tidak dapat disimpan.", error);
+        }
+    }
 
     function startMemberSessionTimer() {
         if (memberSessionTimerId) {
@@ -1163,7 +1247,7 @@
         const remaining = expiresAt - Date.now();
 
         if (remaining <= 0) {
-            auth.signOut().finally(() => {
+            markPresenceOffline(auth.currentUser?.uid).finally(() => auth.signOut()).finally(() => {
                 sessionStorage.removeItem(sessionKey);
                 localStorage.removeItem("userEmail");
                 localStorage.removeItem("userUid");
@@ -1173,7 +1257,7 @@
         }
 
         memberSessionTimerId = setTimeout(() => {
-            auth.signOut().finally(() => {
+            markPresenceOffline(auth.currentUser?.uid).finally(() => auth.signOut()).finally(() => {
                 sessionStorage.removeItem(sessionKey);
                 localStorage.removeItem("userEmail");
                 localStorage.removeItem("userUid");
@@ -1291,7 +1375,6 @@
                     }
                 }
             });
-            listenForRequests();
         }
 
         /*
@@ -1680,45 +1763,81 @@
             });
 
     }
-    function listenForRequests() {
-        if (!userEmail) return;
-        db.collection("friend_requests")
-            .where("to_email", "==", userEmail)
+    function listenForRequests(uid) {
+        if (!uid || auth.currentUser?.uid !== uid) return;
+        if (friendRequestsUnsubscribe) friendRequestsUnsubscribe();
+        friendRequestsUnsubscribe = db.collection("friend_requests")
+            .where("toUid", "==", uid)
             .where("status", "==", "pending")
             .onSnapshot(snapshot => {
                 snapshot.docChanges().forEach(change => {
-                    if (change.type === "added") {
+                    if (change.type === "added" && !friendRequestPrompts.has(change.doc.id)) {
                         const data = change.doc.data();
                         const requestId = change.doc.id;
+                        friendRequestPrompts.add(requestId);
                         Swal.fire({
                             title: 'Permintaan Pertemanan',
-                            text: `Domba ${data.from_name} ingin menjadi koneksi pertemanan dengan anda...`,
-                            imageUrl: data.from_photo || 'https://via.placeholder.com/100',
+                            text: `${data.fromDisplayName || "Jemaat SIPAPUA"} ingin menambahkan Anda sebagai kontak.`,
+                            imageUrl: data.fromPhotoURL || 'https://ui-avatars.com/api/?name=Jemaat&background=003366&color=fff',
                             imageWidth: 80, imageHeight: 80,
-                            showCancelButton: true, confirmButtonText: 'Yes',
-                            cancelButtonText: 'No', confirmButtonColor: '#2ecc71',
+                            showCancelButton: true, confirmButtonText: 'TERIMA',
+                            cancelButtonText: 'TOLAK', confirmButtonColor: '#2ecc71',
                             cancelButtonColor: '#dc2626', heightAuto: false
                         }).then((result) => {
-                            if (result.isConfirmed) { terimaPertemanan(requestId, data); }
-                            else { tolakPertemanan(requestId); }
+                            if (result.isConfirmed) terimaPertemanan(requestId, data, uid);
+                            else if (result.dismiss === Swal.DismissReason.cancel) tolakPertemanan(requestId);
                         });
                     }
                 });
-            });
+            }, (error) => console.error("Gagal memuat permintaan kontak:", error));
     }
 
-    async function terimaPertemanan(requestId, data) {
+    async function terimaPertemanan(requestId, data, uid) {
         try {
-            await db.collection("friend_requests").doc(requestId).update({ status: "accepted" });
-            await db.collection("friends").add({
-                user_a: data.from_email, user_b: userEmail,
-                connected_at: firebase.firestore.FieldValue.serverTimestamp()
+            if (auth.currentUser?.uid !== uid) throw new Error("Sesi Firebase berubah.");
+            const ownPresence = await db.collection("presence").doc(uid).get();
+            const ownProfile = ownPresence.exists ? ownPresence.data() : {};
+            const connectedAt = firebase.firestore.FieldValue.serverTimestamp();
+            const batch = db.batch();
+            batch.update(db.collection("friend_requests").doc(requestId), {
+                status: "accepted",
+                updatedAt: connectedAt
             });
+            batch.set(db.collection("contacts").doc(uid).collection("friends").doc(data.fromUid), {
+                friendUid: data.fromUid,
+                createdAt: connectedAt,
+                displayName: data.fromDisplayName || "Jemaat SIPAPUA",
+                photoURL: data.fromPhotoURL || "",
+                status: "accepted",
+                requestId
+            });
+            batch.set(db.collection("contacts").doc(data.fromUid).collection("friends").doc(uid), {
+                friendUid: uid,
+                createdAt: connectedAt,
+                displayName: ownProfile.displayName || "Jemaat SIPAPUA",
+                photoURL: ownProfile.photoURL || "",
+                status: "accepted",
+                requestId
+            });
+            await batch.commit();
             Swal.fire({ title: "Diterima!", text: "Sekarang kalian berteman.", icon: "success", heightAuto: false });
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error("Gagal menerima permintaan kontak:", e);
+            Swal.fire("Gagal", "Permintaan kontak tidak dapat diterima.", "error");
+        }
     }
 
-    async function tolakPertemanan(requestId) { await db.collection("friend_requests").doc(requestId).update({ status: "rejected" }); }
+    async function tolakPertemanan(requestId) {
+        try {
+            await db.collection("friend_requests").doc(requestId).update({
+                status: "rejected",
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Gagal menolak permintaan kontak:", error);
+            Swal.fire("Gagal", "Permintaan kontak tidak dapat ditolak.", "error");
+        }
+    }
     let inboxFolder = "inbox";
     let inboxSnapshotUnsubscribe = null;
     const inboxSelectedIds = new Set();
@@ -2602,7 +2721,8 @@
     function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
     function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
     function executeLogout() {
-        auth.signOut().then(() => {
+        const uid = auth.currentUser?.uid;
+        markPresenceOffline(uid).finally(() => auth.signOut()).then(() => {
             sessionStorage.removeItem("sipapua_popup_dismissed");
             sessionStorage.removeItem("sipapua_session_started_at");
             localStorage.removeItem("userEmail");
