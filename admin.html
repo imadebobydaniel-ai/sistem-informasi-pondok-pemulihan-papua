@@ -127,8 +127,12 @@
     const db = firebase.firestore();
 
 const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
-    // Canonical roles: master, super_admin, viewer. "superadmin" and "admin"
-    // are recognised for the transition only; admin_users data is unchanged.
+    // Authorization: exactly the active admin roles firestore.rules accepts
+    // (isActiveAdmin()). The transitional "superadmin" role is not accepted
+    // until its admin_users data becomes "super_admin".
+    const AUTHORIZED_ADMIN_ROLES = new Set(["master", "super_admin", "viewer", "admin"]);
+
+    // Display only (header label). Never used for authorization.
     const SUPERADMIN_ROLES = new Set(["master", "super_admin", "superadmin"]);
     const VIEWER_ROLES = new Set(["viewer", "admin"]);
 
@@ -284,7 +288,7 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             const role = String(adminData.role || "").trim().toLowerCase();
             const status = adminData.status || "inactive";
 
-            if (!adminRoleGroup(role)) {
+            if (!AUTHORIZED_ADMIN_ROLES.has(role)) {
                 throw new Error("ADMIN_NOT_AUTHORIZED");
             }
 
