@@ -14,7 +14,7 @@
         const isMember = localStorage.getItem("userEmail");
         const isAdmin = localStorage.getItem("adminLoggedIn");
         if (!isMember && isAdmin !== "true") {
-            window.location.href = "login.html"; 
+            window.location.href = "index.html";
         }
     </script>
 
@@ -244,6 +244,14 @@
         animation: sipapuaPopupIn .35s ease-out;
     }
 
+    #sipapua-popup-slide.is-entering[data-direction="next"] {
+        animation: sipapuaPopupSlideFromRight .34s ease both;
+    }
+
+    #sipapua-popup-slide.is-entering[data-direction="previous"] {
+        animation: sipapuaPopupSlideFromLeft .34s ease both;
+    }
+
     #sipapua-popup-close {
         position: absolute;
         top: 10px;
@@ -335,6 +343,24 @@
         to {
             opacity: 1;
             transform: translateY(0) scale(1);
+        }
+    }
+
+    @keyframes sipapuaPopupSlideFromRight {
+        from { opacity: 0; transform: translateX(22px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes sipapuaPopupSlideFromLeft {
+        from { opacity: 0; transform: translateX(-22px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #sipapua-popup-card,
+        #sipapua-popup-slide.is-entering[data-direction] {
+            animation-duration: .01ms !important;
+            animation-iteration-count: 1 !important;
         }
     }
 
@@ -720,24 +746,26 @@
                 <i class="fas fa-times"></i>
             </button>
 
-            <img
-                id="sipapua-popup-image"
-                alt="Popup Banner SIPAPUA">
+            <div id="sipapua-popup-slide" data-direction="next">
+                <img
+                    id="sipapua-popup-image"
+                    alt="Popup Banner SIPAPUA">
 
-            <div id="sipapua-popup-content">
-                <h2 id="sipapua-popup-title"></h2>
+                <div id="sipapua-popup-content">
+                    <h2 id="sipapua-popup-title"></h2>
 
-                <p id="sipapua-popup-text"></p>
+                    <p id="sipapua-popup-text"></p>
 
-                <a
-                    id="sipapua-popup-link"
-                    href="#"
-                    target="_blank"
-                    rel="noopener noreferrer">
-                    Buka Informasi
-                </a>
+                    <a
+                        id="sipapua-popup-link"
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer">
+                        Buka Informasi
+                    </a>
 
-                <div id="sipapua-popup-counter"></div>
+                    <div id="sipapua-popup-counter"></div>
+                </div>
             </div>
 
             <div class="sipapua-popup-nav">
@@ -2783,9 +2811,11 @@
        ========================================================= */
 
     const SIPAPUA_POPUP_LIMIT = 5;
+    const SIPAPUA_POPUP_AUTO_SLIDE_MS = 5000;
 
     let sipapuaPopups = [];
     let sipapuaPopupIndex = 0;
+    let sipapuaPopupAutoSlideTimer = null;
 
     // Dipertahankan saat berpindah menu dalam tab yang sama.
     // Dihapus saat refresh/reload atau logout.
@@ -2841,9 +2871,50 @@
             "aria-hidden",
             show ? "false" : "true"
         );
+
+        if (show) {
+            restartSipapuaPopupAutoSlide();
+        } else {
+            clearSipapuaPopupAutoSlide();
+        }
     }
 
-    function renderSipapuaPopup(index) {
+    function clearSipapuaPopupAutoSlide() {
+        if (sipapuaPopupAutoSlideTimer !== null) {
+            clearTimeout(sipapuaPopupAutoSlideTimer);
+            sipapuaPopupAutoSlideTimer = null;
+        }
+    }
+
+    function restartSipapuaPopupAutoSlide() {
+        clearSipapuaPopupAutoSlide();
+
+        if (sipapuaPopupDismissed || sipapuaPopups.length <= 1) {
+            return;
+        }
+
+        const overlay =
+            document.getElementById("sipapua-popup-overlay");
+
+        if (!overlay || overlay.style.display !== "flex") {
+            return;
+        }
+
+        sipapuaPopupAutoSlideTimer = setTimeout(() => {
+            sipapuaPopupAutoSlideTimer = null;
+
+            if (sipapuaPopupDismissed || sipapuaPopups.length <= 1) {
+                return;
+            }
+
+            renderSipapuaPopup(
+                (sipapuaPopupIndex + 1) % sipapuaPopups.length,
+                "next"
+            );
+        }, SIPAPUA_POPUP_AUTO_SLIDE_MS);
+    }
+
+    function renderSipapuaPopup(index, direction = "next") {
 
         if (sipapuaPopupDismissed) {
             sipapuaPopupShow(false);
@@ -2884,7 +2955,17 @@
         const next =
             document.getElementById("sipapua-popup-next");
 
+        const slideContent =
+            document.getElementById("sipapua-popup-slide");
+
         if (!item) return;
+
+        if (slideContent) {
+            slideContent.classList.remove("is-entering");
+            slideContent.dataset.direction = direction;
+            void slideContent.offsetWidth;
+            slideContent.classList.add("is-entering");
+        }
 
         title.textContent = item.title || "";
         content.textContent = item.content || "";
@@ -2924,6 +3005,7 @@
     }
 
     function closeSipapuaPopup() {
+        clearSipapuaPopupAutoSlide();
         sipapuaPopupShow(false);
     }
 
@@ -2985,7 +3067,8 @@
                 () => {
                     if (sipapuaPopupIndex > 0) {
                         renderSipapuaPopup(
-                            sipapuaPopupIndex - 1
+                            sipapuaPopupIndex - 1,
+                            "previous"
                         );
                     }
                 }
@@ -3001,7 +3084,8 @@
                         sipapuaPopups.length - 1
                     ) {
                         renderSipapuaPopup(
-                            sipapuaPopupIndex + 1
+                            sipapuaPopupIndex + 1,
+                            "next"
                         );
                     }
                 }
