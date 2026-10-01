@@ -1841,21 +1841,85 @@ function toggleAllEventJemaatSelection(checked) {
     applyEventFilters();
 }
 
-function deleteSelectedEventJemaat() {
-    const selectedCount = selectedEventJemaatIds.size;
+async function deleteSelectedEventJemaat() {
+    const eventIds = Array.from(selectedEventJemaatIds, id => String(id));
 
-    if (!selectedCount) {
+    if (!eventIds.length) {
         alert("Belum ada Event Jemaat yang dipilih.");
         return;
     }
 
-    alert(
-        `Ada ${selectedCount} Event Jemaat yang dipilih.
+    if (deleteSelectedEventJemaat.inProgress) return;
 
-` +
-        "Penghapusan database belum diaktifkan dari browser. " +
-        "Jalur hapus aman melalui backend admin harus digunakan."
+    const selectedNames = allEventJemaatReport
+        .filter(item => eventIds.includes(String(item.id)))
+        .map(item => `- ${item.nama || item.id}`)
+        .join("\n");
+
+    const confirmed = window.confirm(
+        `Hapus ${eventIds.length} Event Jemaat berikut dari publik?\n\n` +
+        `${selectedNames}\n\n` +
+        "Event akan diarsipkan dan ditarik dari publik, sehingga tidak lagi tampil di SIPAPUA. " +
+        "Data dan foto tetap tersimpan di Dashboard PKS sebagai history."
     );
+    if (!confirmed) return;
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        alert("Sesi Administrator tidak ditemukan. Silakan login ulang.");
+        return;
+    }
+
+    deleteSelectedEventJemaat.inProgress = true;
+    let result = null;
+
+    try {
+        const idToken = await currentUser.getIdToken();
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/admin-delete-event-jemaat`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${idToken}`,
+                    "apikey": SUPABASE_PUBLISHABLE_KEY,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ eventIds })
+            }
+        );
+
+        result = await response.json().catch(() => null);
+
+        if (!response.ok || !result?.ok) {
+            const error = new Error(
+                result?.error ||
+                `Server hapus Event Jemaat merespons HTTP ${response.status}.`
+            );
+            error.code = result?.code || `HTTP_${response.status}`;
+            throw error;
+        }
+
+        selectedEventJemaatIds.clear();
+        await loadPublishedEvents();
+        alert(
+            `${result.eventsArchived} Event Jemaat diarsipkan dan tidak lagi tampil di SIPAPUA. ` +
+            "Data tetap tersimpan di Dashboard PKS sebagai history."
+        );
+    } catch (error) {
+        console.error("Gagal menghapus Event Jemaat:", error, result);
+
+        if (result?.details?.partial) {
+            await loadPublishedEvents();
+        }
+
+        alert(
+            "Penghapusan Event Jemaat gagal.\n\n" +
+            `${error.message}` +
+            (error.code ? `\n(Kode: ${error.code})` : "")
+        );
+    } finally {
+        deleteSelectedEventJemaat.inProgress = false;
+    }
 }
 
 function applyEventFilters() {

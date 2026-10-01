@@ -154,7 +154,7 @@
     </table>
 </div>
 
-<div class="modal-overlay" id="managementSecurityGate" style="display:flex;z-index:5000;">
+<div class="modal-overlay" id="managementSecurityGate" style="display:none;z-index:5000;">
     <div class="modal-box">
         <h3><i class="fas fa-shield-halved"></i> Security Verification</h3>
 
@@ -957,6 +957,18 @@ const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") |
         updateButtons();
     }
 
+    // Canonical roles: master, super_admin, viewer. "superadmin" and "admin"
+    // are recognised for the transition only; admin_users data is unchanged.
+    // Only master/super_admin may open this page: firestore.rules grants the
+    // admin_users list only to those roles (isAdminManager()).
+    function isSuperadminRole(role) {
+        return ["master", "super_admin"].includes(role);
+    }
+
+    function isKnownAdminRole(role) {
+        return isSuperadminRole(role) || ["superadmin", "viewer", "admin"].includes(role);
+    }
+
     async function initializeManagementAccess() {
         const user = auth.currentUser;
 
@@ -965,7 +977,46 @@ const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") |
             return;
         }
 
+        // Role comes from admin_users/{uid}, never from localStorage.
+        let role = "";
+        let status = "inactive";
 
+        try {
+            const adminDoc = await db.collection("admin_users").doc(user.uid).get();
+
+            if (adminDoc.exists) {
+                role = String(adminDoc.data().role || "").trim().toLowerCase();
+                status = String(adminDoc.data().status || "inactive").trim().toLowerCase();
+            }
+        } catch (error) {
+            console.error("Management role lookup error:", error);
+        }
+
+        if (status !== "active" || !isKnownAdminRole(role)) {
+            try {
+                await auth.signOut();
+            } catch (signOutError) {
+                console.error("Management sign-out error:", signOutError);
+            }
+
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        if (role === "superadmin") {
+            alert(
+                "Akses Manajemen User ditolak: role akun ini masih \"superadmin\". " +
+                "Role harus diperbarui menjadi \"super_admin\" oleh administrator sistem."
+            );
+            exitManagementSecurity();
+            return;
+        }
+
+        if (!isSuperadminRole(role)) {
+            alert("Manajemen User hanya dapat dibuka oleh Superadmin.");
+            exitManagementSecurity();
+            return;
+        }
 
         document.getElementById(
             "managementSecurityPassword"
@@ -1028,10 +1079,7 @@ const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") |
 
             if (
                 currentStatus !== "active" ||
-                (
-                    currentRole !== "master" &&
-                    currentRole !== "super_admin"
-                )
+                !isSuperadminRole(currentRole)
             ) {
                 throw new Error(
                     "Hanya Super Admin aktif yang dapat membuka menu ini."
@@ -1087,8 +1135,7 @@ const adminCreatorApp = firebase.apps.find(app => app.name === "adminCreator") |
 
         await initializeManagementAccess();
     });
-    // Jalankan load data admin saat halaman dibuka
-    loadUsers();
+    // Data admin dimuat oleh verifyManagementSecurity() setelah gate Superadmin lolos.
 </script>
 </body>
 </html>

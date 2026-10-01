@@ -3,103 +3,419 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - Pondok Pemulihan Papua</title>
+    <title>Dashboard Administrator - SIPAPUA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
-        :root { 
-            --primary: #003366; --accent: #007bff; --dark: #333; 
-            --light: #f4f7f6; --success: #28a745; --emas: #D4AF37;
-            --danger: #dc3545; --purple: #6f42c1; --orange: #fd7e14; --cyan: #17a2b8;
-            --teal: #008080;
+        :root {
+            color-scheme: dark;
+            --bg-main: #061425;
+            --bg-panel: rgba(10, 28, 50, .78);
+            --bg-panel-strong: rgba(12, 34, 60, .94);
+            --border-neon: rgba(0, 212, 255, .25);
+            --cyan: #00d9ff;
+            --blue: #1677ff;
+            --green: #20e0a0;
+            --purple: #9b5cff;
+            --orange: #ff9a43;
+            --gold: #f1c94a;
+            --teal: #31d7c1;
+            --text-main: #f4f8ff;
+            --text-muted: #8fa7c2;
+            --danger: #ff5c75;
+            --panel-shadow: 0 18px 54px rgba(0, 0, 0, .24), inset 0 1px rgba(255,255,255,.025);
         }
 
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; padding: 15px; color: var(--dark); }
-        .admin-container { max-width: 100%; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); }
-        
-        .header-section { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--emas); padding-bottom: 15px; margin-bottom: 25px; }
-        .btn-logout { background: var(--danger); color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; transition: 0.3s; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stats-grid a { text-decoration: none; }
-        .stat-card { padding: 20px; border-radius: 12px; color: white; position: relative; overflow: hidden; transition: 0.3s; display: flex; align-items: center; min-height: 80px; }
-        .stat-card h4 { margin: 0; font-size: 12px; text-transform: uppercase; z-index: 2; position: relative; }
-        .stat-card i { position: absolute; right: 15px; font-size: 2rem; opacity: 0.2; z-index: 1; }
-
-        #actionMenu { display: none; gap: 10px; margin-bottom: 15px; padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 10px; align-items: center; }
-
-        .table-controls { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-        
-        .search-container { position: relative; flex: 1; min-width: 300px; display: flex; align-items: center; }
-        .search-container input { width: 100%; padding: 12px 20px 12px 45px; border: 2px solid #eee; border-radius: 12px; font-size: 14px; outline: none; transition: 0.3s; }
-        .search-container input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0,123,255,0.1); }
-        .search-container i { position: absolute; left: 18px; color: #aaa; font-size: 16px; }
-
-        .btn-cetak-kartu-main { background: var(--teal); color: white; border: none; padding: 12px 25px; border-radius: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
-        .btn-cetak-kartu-main:hover { background: #006666; transform: translateY(-2px); }
-
-        .table-responsive { overflow-x: auto; border-radius: 12px; border: 1px solid #eee; }
-        table { width: 100%; border-collapse: collapse; min-width: 1500px; }
-        table th { background: var(--primary); color: white; padding: 15px; font-size: 12px; text-align: left; }
-        table td { padding: 12px 15px; border-bottom: 1px solid #f8f9fa; font-size: 13px; color: #555; }
-        
-        .nij-col { color: var(--accent); font-weight: bold; font-family: 'Courier New', monospace; }
-        .badge-aktif { background: #d4edda; color: #155724; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
-        .badge-pending { background: #ffefc1; color: #856404; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
-        
-        .btn-action { padding: 8px; border: none; border-radius: 6px; color: white; cursor: pointer; margin-right: 5px; }
-
-        /* --- CSS KARTU DIGITAL POPUP --- */
-        .modal-card-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; padding: 20px;
+        * { box-sizing: border-box; }
+        html { min-width: 320px; scroll-behavior: smooth; }
+        body {
+            min-width: 320px;
+            margin: 0;
+            padding: 24px;
+            overflow-x: hidden;
+            color: var(--text-main);
+            font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+            background:
+                radial-gradient(ellipse at 12% 0%, rgba(0, 126, 190, .19), transparent 38%),
+                radial-gradient(ellipse at 96% 32%, rgba(30, 78, 160, .16), transparent 34%),
+                linear-gradient(145deg, #061425 0%, #071a30 52%, #081326 100%);
         }
-        .digital-card-box {
-            width: 380px; height: 230px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%);
-            border-radius: 15px; position: relative; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            color: #fff; font-family: 'Arial', sans-serif; border: 1px solid rgba(255,255,255,0.4); overflow: hidden;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: .18;
+            background-image: linear-gradient(rgba(97, 187, 230, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(97, 187, 230, .08) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(to bottom, #000 0%, transparent 82%);
         }
+        button, a { font: inherit; }
+        a { color: inherit; }
+        a:focus-visible, button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
+
+        .admin-container { position: relative; z-index: 1; width: min(100%, 1480px); margin: 0 auto; }
+        .topbar {
+            min-height: 86px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            padding: 18px 22px;
+            border: 1px solid var(--border-neon);
+            border-radius: 20px;
+            background: rgba(7, 24, 43, .8);
+            box-shadow: var(--panel-shadow), 0 0 28px rgba(0, 195, 255, .055);
+            backdrop-filter: blur(16px);
+        }
+        .topbar-brand, .header-actions, .header-clock, .hero-meta, .panel-title, .module-heading, .status-row, .access-row { display: flex; align-items: center; }
+        .topbar-brand { min-width: 0; gap: 16px; }
+        .topbar-copy { min-width: 0; }
+        .eyebrow { margin: 0 0 5px; color: var(--cyan); font-size: 10px; font-weight: 800; letter-spacing: .19em; text-transform: uppercase; }
+        .topbar h1 { margin: 0; font-size: clamp(18px, 2vw, 24px); line-height: 1.2; letter-spacing: -.025em; }
+        .topbar-subtitle { margin: 5px 0 0; color: var(--text-muted); font-size: 12px; }
+        .icon-button, .notification-mark {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(117, 188, 226, .2);
+            border-radius: 13px;
+            color: #c6eaff;
+            background: rgba(18, 46, 76, .72);
+            text-decoration: none;
+        }
+        .icon-button:hover { border-color: rgba(0,217,255,.55); color: white; background: rgba(0,140,195,.16); }
+        .header-actions { justify-content: flex-end; gap: 12px; }
+        .header-clock { min-width: 150px; flex-direction: column; align-items: flex-end; gap: 2px; color: var(--text-muted); font-size: 11px; }
+        .header-clock time:first-child { color: var(--text-main); font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 700; }
+        .btn-logout {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 0 16px;
+            border: 1px solid rgba(255, 92, 117, .42);
+            border-radius: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, rgba(184, 44, 74, .94), rgba(126, 35, 66, .96));
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .06em;
+            transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+            white-space: nowrap;
+        }
+        .btn-logout:hover { transform: translateY(-2px); border-color: var(--danger); box-shadow: 0 8px 24px rgba(255, 60, 96, .2); }
+
+        .hero-panel, .dashboard-panel {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-neon);
+            border-radius: 22px;
+            background: var(--bg-panel);
+            box-shadow: var(--panel-shadow);
+            backdrop-filter: blur(16px);
+        }
+        .hero-panel {
+            min-height: 225px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 32px;
+            margin-top: 20px;
+            padding: clamp(24px, 4vw, 44px);
+            background: radial-gradient(ellipse at 86% 46%, rgba(0, 172, 220, .17), transparent 32%), linear-gradient(120deg, rgba(10, 33, 58, .97), rgba(8, 25, 46, .88));
+        }
+        .hero-panel::before, .hero-panel::after { content: ""; position: absolute; pointer-events: none; }
+        .hero-panel::before {
+            width: 290px; height: 290px; right: 8%; top: 50%; transform: translateY(-50%);
+            border: 1px solid rgba(0, 217, 255, .15); border-radius: 50%;
+            box-shadow: 0 0 0 24px rgba(0,217,255,.025), 0 0 0 54px rgba(0,217,255,.02), inset 0 0 50px rgba(0,217,255,.055);
+        }
+        .hero-panel::after { width: 100%; height: 1px; top: 50%; left: 0; background: linear-gradient(90deg, transparent, rgba(0,217,255,.16), transparent); }
+        .hero-copy, .hero-art { position: relative; z-index: 1; }
+        .hero-copy { max-width: 650px; }
+        .hero-copy h2 { margin: 8px 0 10px; font-size: clamp(26px, 4vw, 42px); letter-spacing: -.04em; }
+        .hero-copy > p { max-width: 590px; margin: 0; color: #a8bad0; font-size: 14px; line-height: 1.7; }
+        #adminIdentity { display: none; margin: 0 0 16px; }
+        #adminIdentityGreeting { color: var(--text-main); font-size: clamp(25px, 3.7vw, 38px); font-weight: 750; letter-spacing: -.04em; }
+        #adminIdentityAccount { margin-top: 7px; color: #99b4cd; font-size: 13px; }
+        .online-indicator { display: none; align-items: center; gap: 8px; margin-top: 14px; padding: 7px 11px; border: 1px solid rgba(32,224,160,.25); border-radius: 99px; color: #8ff3cb; background: rgba(32,224,160,.075); font-size: 11px; font-weight: 700; }
+        .online-indicator i { color: var(--green); font-size: 9px; animation: online-pulse 2s ease-in-out infinite; }
+        .hero-meta { flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+        .hero-meta span { display: inline-flex; align-items: center; gap: 8px; color: #a9bdd2; font-size: 11px; }
+        .hero-meta i { color: var(--cyan); }
+        .hero-art { width: clamp(130px, 20vw, 230px); aspect-ratio: 1; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid rgba(0,217,255,.23); border-radius: 50%; background: radial-gradient(circle, rgba(0,217,255,.12), rgba(12,41,68,.1) 58%, transparent 60%); }
+        .hero-art::before, .hero-art::after { content: ""; position: absolute; inset: 11%; border: 1px dashed rgba(0,217,255,.25); border-radius: 50%; }
+        .hero-art::after { inset: 23%; border-style: solid; border-color: rgba(114,172,255,.21); }
+        .hero-art i { color: #65dfff; font-size: clamp(44px, 7vw, 76px); filter: drop-shadow(0 0 18px rgba(0,217,255,.45)); }
+
+        .section-heading { display: flex; align-items: center; gap: 11px; margin: 30px 0 15px; }
+        .section-heading > i { color: var(--cyan); font-size: 15px; }
+        .section-heading h2 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+        .section-heading::after { content: ""; width: 52px; height: 2px; margin-left: 2px; border-radius: 3px; background: linear-gradient(90deg, var(--cyan), transparent); }
+        .section-heading span { margin-left: auto; color: #708ba6; font-size: 10px; }
+
+        .module-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+        .module-card {
+            --module-color: var(--cyan);
+            position: relative;
+            min-width: 0;
+            min-height: 146px;
+            display: flex;
+            flex-direction: column;
+            padding: 19px;
+            overflow: hidden;
+            border: 1px solid color-mix(in srgb, var(--module-color) 26%, transparent);
+            border-radius: 17px;
+            color: var(--text-main);
+            background: linear-gradient(145deg, rgba(14, 37, 63, .94), rgba(8, 25, 45, .92));
+            box-shadow: 0 9px 28px rgba(0,0,0,.13), inset 0 1px rgba(255,255,255,.025);
+            text-decoration: none;
+            transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease;
+        }
+        .module-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--module-color); opacity: .8; box-shadow: 0 0 14px var(--module-color); }
+        .module-card::after { content: ""; position: absolute; width: 120px; height: 120px; top: -75px; right: -50px; border-radius: 50%; background: var(--module-color); opacity: .07; filter: blur(4px); transition: opacity .22s ease; }
+        .module-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--module-color) 62%, transparent); box-shadow: 0 14px 35px rgba(0,0,0,.24), 0 0 22px color-mix(in srgb, var(--module-color) 13%, transparent); background: linear-gradient(145deg, rgba(17, 45, 75, .98), rgba(9, 29, 51, .96)); }
+        .module-card:hover::after { opacity: .15; }
+        .module-heading { gap: 13px; min-width: 0; }
+        .module-icon { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--module-color) 34%, transparent); border-radius: 13px; color: var(--module-color); background: color-mix(in srgb, var(--module-color) 10%, rgba(6,20,37,.5)); font-size: 17px; box-shadow: inset 0 0 14px color-mix(in srgb, var(--module-color) 7%, transparent); }
+        .module-title { min-width: 0; margin: 0; font-size: 14px; font-weight: 750; }
+        .module-card p { margin: 14px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+        .module-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 13px; color: var(--module-color); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+        .module-action i { transition: transform .2s ease; }
+        .module-card:hover .module-action i { transform: translateX(4px); }
+        .module-tickets { --module-color: #39a7ff; }
+        .module-people { --module-color: var(--green); }
+        .module-media { --module-color: var(--purple); }
+        .module-reports { --module-color: var(--orange); }
+        .module-data { --module-color: var(--cyan); }
+        .module-news { --module-color: #5d9bff; }
+        .module-popup { --module-color: #bd7bff; }
+        .module-users { --module-color: var(--gold); }
+        .module-pks { --module-color: var(--teal); }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
+        .metric-card { min-width: 0; padding: 17px; border: 1px solid rgba(115,159,199,.16); border-radius: 15px; background: rgba(10,28,50,.68); box-shadow: var(--panel-shadow); }
+        .metric-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+        .metric-top i { color: var(--metric-color, var(--cyan)); font-size: 15px; }
+        .metric-value { display: block; margin-top: 15px; color: var(--text-main); font-size: 26px; font-weight: 750; letter-spacing: -.04em; }
+        .metric-note { display: block; margin-top: 3px; color: #718ba5; font-size: 10px; }
+        .metric-people { --metric-color: var(--green); }
+        .metric-tickets { --metric-color: #39a7ff; }
+        .metric-reports { --metric-color: var(--orange); }
+        .metric-news { --metric-color: var(--purple); }
+
+        .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 14px; margin-top: 14px; }
+        .dashboard-panel { min-width: 0; padding: 20px; }
+        .panel-title { gap: 10px; margin-bottom: 16px; }
+        .panel-title-icon { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border: 1px solid rgba(0,217,255,.2); border-radius: 10px; color: var(--cyan); background: rgba(0,217,255,.07); font-size: 12px; }
+        .panel-title h2 { margin: 0; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+        .panel-title p { margin: 3px 0 0; color: var(--text-muted); font-size: 10px; }
+        .empty-state { min-height: 95px; display: grid; place-items: center; padding: 18px; border: 1px dashed rgba(123,164,199,.2); border-radius: 13px; color: #8299b0; text-align: center; font-size: 11px; line-height: 1.6; }
+        .empty-state i { display: block; margin-bottom: 8px; color: #54738e; font-size: 20px; }
+        .chart-empty { min-height: 145px; }
+
+        .status-list { display: grid; gap: 0; }
+        .status-row { justify-content: space-between; gap: 12px; min-height: 47px; border-bottom: 1px solid rgba(135,171,202,.1); }
+        .status-row:last-child { border-bottom: 0; }
+        .status-service { display: flex; align-items: center; gap: 10px; color: #d7e5f3; font-size: 11px; }
+        .status-service i { width: 16px; color: #8eabc5; text-align: center; }
+        .status-badge { padding: 5px 8px; border: 1px solid rgba(143,167,194,.17); border-radius: 99px; color: #9cb1c5; background: rgba(143,167,194,.06); font-size: 9px; white-space: nowrap; }
+        .status-badge.verified { border-color: rgba(32,224,160,.25); color: #8ff3cb; background: rgba(32,224,160,.07); }
+        .storage-empty { min-height: 100px; display: grid; place-items: center; padding: 20px; border: 1px dashed rgba(123,164,199,.2); border-radius: 13px; color: #91a7bd; text-align: center; font-size: 11px; }
+        .storage-empty i { display: block; margin-bottom: 9px; color: var(--cyan); font-size: 22px; }
+        .access-list { display: grid; gap: 10px; }
+        .access-row { justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(135,171,202,.1); }
+        .access-row:last-child { padding-bottom: 0; border: 0; }
+        .access-label { color: #839ab1; font-size: 10px; }
+        .access-value { max-width: 65%; overflow-wrap: anywhere; color: #e3effa; font-size: 10px; font-weight: 650; text-align: right; }
+        .dashboard-footer { padding: 22px 4px 4px; color: #637e98; font-size: 10px; text-align: center; }
+
+        /* Existing digital-card modal presentation. */
+        .modal-card-overlay { display: none; position: fixed; inset: 0; width: 100%; height: 100%; padding: 20px; background: rgba(0,0,0,.85); z-index: 10000; justify-content: center; align-items: center; }
+        .digital-card-box { width: 380px; height: 230px; background: linear-gradient(135deg, #f1c40f 0%, #d4af37 50%, #b8860b 100%); border-radius: 15px; position: relative; padding: 20px; box-shadow: 0 15px 35px rgba(0,0,0,.5); color: #fff; font-family: Arial, sans-serif; border: 1px solid rgba(255,255,255,.4); overflow: hidden; }
         .card-logo-right { position: absolute; top: 15px; right: 15px; width: 55px; height: 55px; object-fit: contain; }
         .card-header-title { font-size: 13px; font-weight: 800; color: #003366; margin-bottom: 20px; text-transform: uppercase; }
         .card-data-row { margin-bottom: 8px; }
-        .card-data-label { font-size: 8px; opacity: 0.9; text-transform: uppercase; color: #fdfdfd; }
-        .card-data-value { font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); text-transform: uppercase; }
-        .card-nij-atm {
-            position: absolute; bottom: 25px; left: 20px; font-family: 'Courier New', Courier, monospace;
-            font-size: 22px; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 3px rgba(0,0,0,0.6);
-        }
+        .card-data-label { font-size: 8px; opacity: .9; text-transform: uppercase; color: #fdfdfd; }
+        .card-data-value { font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,.3); text-transform: uppercase; }
+        .card-nij-atm { position: absolute; bottom: 25px; left: 20px; font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: bold; letter-spacing: 2px; text-shadow: 2px 2px 3px rgba(0,0,0,.6); }
         .card-qrcode-box { position: absolute; bottom: 15px; right: 20px; background: white; padding: 4px; border-radius: 5px; }
         .btn-close-card { position: absolute; top: -40px; right: 0; color: white; font-size: 16px; cursor: pointer; }
+
+        @keyframes online-pulse { 0%, 100% { opacity: 1; text-shadow: 0 0 7px rgba(32,224,160,.45); } 50% { opacity: .58; text-shadow: none; } }
+        @media (max-width: 1050px) {
+            body { padding: 18px; }
+            .module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 760px) {
+            body { padding: 12px; }
+            .topbar { align-items: flex-start; padding: 15px; }
+            .topbar-brand { gap: 10px; }
+            .header-clock { display: none; }
+            .notification-mark { display: none; }
+            .btn-logout { min-height: 40px; padding: 0 11px; font-size: 9px; }
+            .hero-panel { min-height: 0; padding: 26px 22px; }
+            .hero-art { width: 116px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 620px) {
+            .btn-logout { width: 38px; min-width: 38px; padding: 0; overflow: hidden; font-size: 0; }
+            .btn-logout i { font-size: 14px; }
+        }
+        @media (max-width: 520px) {
+            body { padding: 9px; }
+            .topbar { gap: 8px; padding: 12px; border-radius: 15px; }
+            .topbar-brand { gap: 9px; }
+            .icon-button { width: 36px; height: 36px; flex-basis: 36px; border-radius: 11px; }
+            .eyebrow { font-size: 8px; }
+            .topbar h1 { font-size: 15px; }
+            .topbar-subtitle { max-width: 230px; font-size: 9px; line-height: 1.35; }
+            .header-actions { gap: 7px; }
+            .btn-logout { width: 38px; min-width: 38px; padding: 0; overflow: hidden; font-size: 0; }
+            .btn-logout i { font-size: 14px; }
+            .hero-panel { margin-top: 12px; padding: 22px 17px; border-radius: 17px; }
+            .hero-art { width: 64px; border: 0; background: none; }
+            .hero-art::before { inset: 0; }
+            .hero-art::after { inset: 14%; }
+            .hero-art i { font-size: 29px; }
+            .hero-copy > p { font-size: 12px; }
+            .hero-meta { gap: 8px 14px; margin-top: 17px; }
+            .hero-meta span { font-size: 9px; }
+            .section-heading { margin-top: 24px; }
+            .section-heading h2 { font-size: 11px; }
+            .section-heading span { font-size: 9px; }
+            .module-grid { grid-template-columns: 1fr; gap: 10px; }
+            .module-card { min-height: 126px; padding: 15px; }
+            .summary-grid { gap: 9px; }
+            .metric-card { padding: 13px; }
+            .metric-top { align-items: flex-start; font-size: 8px; }
+            .metric-value { margin-top: 12px; font-size: 22px; }
+            .dashboard-panel { padding: 15px; border-radius: 16px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+        }
     </style>
 </head>
 <body>
 
 <div class="admin-container">
-    <div class="header-section">
-        <div>
-            <h2 style="color:var(--primary); margin:0;">Dashboard Administrator</h2>
-            <small style="color: #666;">Manajemen Data Jemaat Real-time</small>
-        </div>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <div onclick="bukaKartuDigitalDinamis()" style="cursor:pointer; color: var(--emas); font-size: 24px;" title="Cek Kartu Digital">
-                <i class="fas fa-id-card"></i>
+    <header class="topbar">
+        <div class="topbar-brand">
+            <a class="icon-button" href="#moduleGrid" aria-label="Lompat ke modul dashboard" title="Menu modul"><i class="fas fa-bars" aria-hidden="true"></i></a>
+            <div class="topbar-copy">
+                <p class="eyebrow">SIPAPUA · ADMIN CONTROL</p>
+                <h1>Dashboard Administrator</h1>
+                <p class="topbar-subtitle">Sistem Informasi Pondok Pemulihan Papua (SIPAPUA)</p>
             </div>
-            <button type="button" class="btn-logout" onclick="logoutAdmin()"><i class="fas fa-sign-out-alt"></i> KELUAR SISTEM</button>
         </div>
-    </div>
+        <div class="header-actions">
+            <div class="header-clock" aria-label="Waktu saat ini">
+                <time id="dashboardTime">--:--:--</time>
+                <time id="dashboardDate">Memuat tanggal…</time>
+            </div>
+            <span class="notification-mark" aria-label="Notifikasi" title="Notifikasi"><i class="far fa-bell" aria-hidden="true"></i></span>
+            <button type="button" class="icon-button" onclick="bukaKartuDigitalDinamis()" aria-label="Buka kartu digital" title="Cek Kartu Digital"><i class="fas fa-id-card" aria-hidden="true"></i></button>
+            <button type="button" class="btn-logout" onclick="logoutAdmin()" aria-label="Keluar sistem"><i class="fas fa-sign-out-alt" aria-hidden="true"></i><span>KELUAR SISTEM</span></button>
+        </div>
+    </header>
 
-    <div class="stats-grid">
-        <a href="admin-tiket.html"><div class="stat-card" style="background: var(--accent);"><h4>Portal Tiket</h4><i class="fas fa-ticket-alt"></i></div></a>
-        <a href="database-jemaat.html"><div class="stat-card" style="background: var(--success);"><h4>DATA BASE JEMAAT</h4><i class="fas fa-users"></i></div></a>
-        <a href="portal-media.html"><div class="stat-card" style="background: var(--purple);"><h4>Portal Media</h4><i class="fas fa-icons"></i></div></a>
-        <a href="laporan-tahunan.html"><div class="stat-card" style="background: var(--orange);"><h4>Laporan Tahunan</h4><i class="fas fa-file-alt"></i></div></a>
-        <a href="admin-bigdata.html"><div class="stat-card" style="background: var(--cyan);"><h4>Big Data</h4><i class="fas fa-chart-line"></i></div></a>
-        <a href="admin-news.html"><div class="stat-card" style="background: var(--primary);"><h4>News SIPAPUA</h4><i class="fas fa-newspaper"></i></div></a>
-        <a href="admin-popup.html"><div class="stat-card" style="background: var(--purple);"><h4>Popup Banner</h4><i class="fas fa-bullhorn"></i></div></a>
-        <a href="manajemen-user.html"><div class="stat-card" style="background: var(--emas); color: #333;"><h4 style="color: #333;">Manajemen User</h4><i class="fas fa-users-cog" style="color: #333;"></i></div></a>
-        <a href="manajemen-pks.html"><div class="stat-card" style="background: var(--teal);"><h4>Manajemen PKS</h4><i class="fas fa-user-shield"></i></div></a>
-    </div>
+    <main>
+        <section class="hero-panel" aria-labelledby="welcomeTitle">
+            <div class="hero-copy">
+                <div id="adminIdentity">
+                    <div id="adminIdentityGreeting"></div>
+                    <div id="adminIdentityAccount"></div>
+                </div>
+                <h2 id="welcomeTitle">Pusat kendali SIPAPUA</h2>
+                <p>Kelola data, pantau aktivitas, dan pastikan seluruh layanan SIPAPUA berjalan dengan baik.</p>
+                <span class="online-indicator"><i class="fas fa-circle" aria-hidden="true"></i> Sistem Online</span>
+                <div class="hero-meta">
+                    <span><i class="far fa-calendar" aria-hidden="true"></i><time id="heroDate">Tanggal berjalan</time></span>
+                    <span><i class="fas fa-user-shield" aria-hidden="true"></i><span id="heroUser">Memverifikasi sesi…</span></span>
+                </div>
+            </div>
+            <div class="hero-art" aria-hidden="true"><i class="fas fa-shield-alt"></i></div>
+        </section>
+
+        <section aria-labelledby="moduleTitle">
+            <div class="section-heading"><i class="fas fa-cubes" aria-hidden="true"></i><h2 id="moduleTitle">Modul Sistem</h2><span>9 modul tersedia</span></div>
+            <div class="module-grid" id="moduleGrid">
+                <a class="module-card module-tickets" href="admin-tiket.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-ticket-alt" aria-hidden="true"></i></span><h3 class="module-title">Portal Tiket</h3></div><p>Kelola tiket dan permintaan layanan yang masuk.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-people" href="database-jemaat.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-users" aria-hidden="true"></i></span><h3 class="module-title">Database Jemaat</h3></div><p>Akses dan kelola data jemaat SIPAPUA.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-media" href="portal-media.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-icons" aria-hidden="true"></i></span><h3 class="module-title">Portal Media</h3></div><p>Atur konten dan aset media publikasi.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-reports" href="laporan-tahunan.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-file-alt" aria-hidden="true"></i></span><h3 class="module-title">Laporan Tahunan</h3></div><p>Pantau laporan dan kegiatan tahunan.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-data" href="admin-bigdata.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-chart-line" aria-hidden="true"></i></span><h3 class="module-title">Big Data</h3></div><p>Jelajahi ringkasan dan analisis data.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-news" href="admin-news.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-newspaper" aria-hidden="true"></i></span><h3 class="module-title">News SIPAPUA</h3></div><p>Kelola berita dan informasi SIPAPUA.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-popup" href="admin-popup.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-bullhorn" aria-hidden="true"></i></span><h3 class="module-title">Popup Banner</h3></div><p>Atur pesan dan banner pada halaman publik.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-users" href="manajemen-user.html" id="menuManajemenUser" style="display:none;"><div class="module-heading"><span class="module-icon"><i class="fas fa-users-cog" aria-hidden="true"></i></span><h3 class="module-title">Manajemen User</h3></div><p>Kelola akun dan akses pengguna.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+                <a class="module-card module-pks" href="manajemen-pks.html"><div class="module-heading"><span class="module-icon"><i class="fas fa-user-shield" aria-hidden="true"></i></span><h3 class="module-title">Manajemen PKS</h3></div><p>Kelola data dan administrasi PKS.</p><span class="module-action">Buka modul <i class="fas fa-arrow-right" aria-hidden="true"></i></span></a>
+            </div>
+        </section>
+
+        <section aria-labelledby="summaryTitle">
+            <div class="section-heading"><i class="fas fa-layer-group" aria-hidden="true"></i><h2 id="summaryTitle">Ringkasan Sistem</h2><span>Data live belum tersedia di dashboard</span></div>
+            <div class="summary-grid">
+                <article class="metric-card metric-people"><div class="metric-top"><span>Total Jemaat</span><i class="fas fa-users" aria-hidden="true"></i></div><strong class="metric-value">—</strong><span class="metric-note">Belum tersedia</span></article>
+                <article class="metric-card metric-tickets"><div class="metric-top"><span>Tiket Masuk</span><i class="fas fa-ticket-alt" aria-hidden="true"></i></div><strong class="metric-value">—</strong><span class="metric-note">Belum tersedia</span></article>
+                <article class="metric-card metric-reports"><div class="metric-top"><span>Laporan Tahun Ini</span><i class="fas fa-file-alt" aria-hidden="true"></i></div><strong class="metric-value">—</strong><span class="metric-note">Belum tersedia</span></article>
+                <article class="metric-card metric-news"><div class="metric-top"><span>Berita Dipublikasikan</span><i class="fas fa-newspaper" aria-hidden="true"></i></div><strong class="metric-value">—</strong><span class="metric-note">Belum tersedia</span></article>
+            </div>
+        </section>
+
+        <div class="dashboard-grid">
+            <section class="dashboard-panel" aria-labelledby="activityTitle"><div class="panel-title"><span class="panel-title-icon"><i class="fas fa-stream" aria-hidden="true"></i></span><div><h2 id="activityTitle">Aktivitas Terbaru</h2><p>Aktivitas dari sumber data yang tersedia</p></div></div><div class="empty-state"><div><i class="far fa-clock" aria-hidden="true"></i>Belum ada aktivitas terbaru.</div></div></section>
+            <section class="dashboard-panel" aria-labelledby="chartTitle"><div class="panel-title"><span class="panel-title-icon"><i class="fas fa-chart-area" aria-hidden="true"></i></span><div><h2 id="chartTitle">Statistik Aktivitas</h2><p>Tren aktivitas sistem</p></div></div><div class="empty-state chart-empty"><div><i class="fas fa-wave-square" aria-hidden="true"></i>Statistik akan tersedia setelah data aktivitas terkumpul.</div></div></section>
+        </div>
+
+        <div class="dashboard-grid">
+            <section class="dashboard-panel" aria-labelledby="serviceTitle"><div class="panel-title"><span class="panel-title-icon"><i class="fas fa-heartbeat" aria-hidden="true"></i></span><div><h2 id="serviceTitle">Status Layanan</h2><p>Status yang dapat diverifikasi dari halaman ini</p></div></div>
+                <div class="status-list">
+                    <div class="status-row"><span class="status-service"><i class="fas fa-database" aria-hidden="true"></i>Database</span><span class="status-badge" id="databaseStatus">Belum diverifikasi</span></div>
+                    <div class="status-row"><span class="status-service"><i class="fas fa-fingerprint" aria-hidden="true"></i>Authentication</span><span class="status-badge" id="authStatus">Belum diverifikasi</span></div>
+                    <div class="status-row"><span class="status-service"><i class="fas fa-plug" aria-hidden="true"></i>API / Service</span><span class="status-badge">Tidak dipantau</span></div>
+                    <div class="status-row"><span class="status-service"><i class="fas fa-cloud" aria-hidden="true"></i>Storage</span><span class="status-badge">Belum diverifikasi</span></div>
+                </div>
+            </section>
+            <section class="dashboard-panel" aria-labelledby="storageTitle"><div class="panel-title"><span class="panel-title-icon"><i class="fas fa-hdd" aria-hidden="true"></i></span><div><h2 id="storageTitle">Penyimpanan Data</h2><p>Kapasitas penggunaan</p></div></div><div class="storage-empty"><div><i class="fas fa-database" aria-hidden="true"></i>Informasi penyimpanan belum tersedia</div></div></section>
+        </div>
+
+        <section class="dashboard-panel" aria-labelledby="accessTitle" style="margin-top:14px"><div class="panel-title"><span class="panel-title-icon"><i class="fas fa-user-lock" aria-hidden="true"></i></span><div><h2 id="accessTitle">Akses Sistem</h2><p>Informasi sesi administrator saat ini</p></div></div>
+            <div class="access-list">
+                <div class="access-row"><span class="access-label">User login</span><span class="access-value" id="accessUser">Memverifikasi sesi…</span></div>
+                <div class="access-row"><span class="access-label">Role</span><span class="access-value" id="accessRole">—</span></div>
+                <div class="access-row"><span class="access-label">Authentication mode</span><span class="access-value" id="accessAuthMode">Firebase Auth</span></div>
+                <div class="access-row"><span class="access-label">Session</span><span class="access-value">Timeout idle 30 menit</span></div>
+                <div class="access-row"><span class="access-label">Akun diverifikasi</span><span class="access-value" id="accessVerifiedAt">—</span></div>
+            </div>
+        </section>
+    </main>
+    <footer class="dashboard-footer">SIPAPUA · Dashboard Administrator</footer>
+</div>
+
+<script>
+    function updateAdminDashboardClock() {
+        const now = new Date();
+        const time = document.getElementById("dashboardTime");
+        const date = document.getElementById("dashboardDate");
+        const heroDate = document.getElementById("heroDate");
+        const formattedDate = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
+        if (time) time.textContent = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(now);
+        if (date) date.textContent = formattedDate;
+        if (heroDate) heroDate.textContent = formattedDate;
+    }
+    updateAdminDashboardClock();
+    window.setInterval(updateAdminDashboardClock, 1000);
+</script>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -123,7 +439,20 @@
     const db = firebase.firestore();
 
 const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
-    const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
+    // Authorization: exactly the active admin roles firestore.rules accepts
+    // (isActiveAdmin()). The transitional "superadmin" role is not accepted
+    // until its admin_users data becomes "super_admin".
+    const AUTHORIZED_ADMIN_ROLES = new Set(["master", "super_admin", "viewer", "admin"]);
+
+    // Display only (header label). Never used for authorization.
+    const SUPERADMIN_ROLES = new Set(["master", "super_admin", "superadmin"]);
+    const VIEWER_ROLES = new Set(["viewer", "admin"]);
+
+    function adminRoleGroup(role) {
+        if (SUPERADMIN_ROLES.has(role)) return "superadmin";
+        if (VIEWER_ROLES.has(role)) return "viewer";
+        return null;
+    }
     const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
     const IDLE_WARNING_MS = 29 * 60 * 1000;
 
@@ -219,6 +548,46 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
         resetIdleTimer();
     }
 
+    // Display only: role and account come from the verified Firebase user and
+    // admin_users/{uid} read by the auth gate below, never from localStorage.
+    function adminRoleLabel(role) {
+        return adminRoleGroup(role) === "superadmin" ? "SuperAdmin" : "Admin Viewer";
+    }
+
+    // Visual only: manajemen-user.html enforces its own role gate. Only
+    // master/super_admin get the admin_users list from firestore.rules, so the
+    // transitional "superadmin" role does not see this menu.
+    function applyAdminMenuAccess(role) {
+        const userManagementLink = document.getElementById("menuManajemenUser");
+
+        if (userManagementLink) {
+            userManagementLink.style.display =
+                role === "master" || role === "super_admin" ? "" : "none";
+        }
+    }
+
+    function renderAdminIdentity(user, adminData, role) {
+        const box = document.getElementById("adminIdentity");
+        if (!box) return;
+
+        const account = String(adminData.username || "").trim() || user.email || "";
+
+        document.getElementById("adminIdentityGreeting").textContent =
+            `Selamat Datang, ${adminRoleLabel(role)}`;
+        document.getElementById("adminIdentityAccount").textContent = account;
+        document.getElementById("heroUser").textContent = account;
+        document.getElementById("accessUser").textContent = account;
+        document.getElementById("accessRole").textContent = adminRoleLabel(role);
+        document.getElementById("accessAuthMode").textContent = "Firebase Auth";
+        document.getElementById("accessVerifiedAt").textContent = new Date().toLocaleString("id-ID");
+        document.getElementById("authStatus").textContent = "Terverifikasi";
+        document.getElementById("authStatus").classList.add("verified");
+        document.getElementById("databaseStatus").textContent = "Akses terverifikasi";
+        document.getElementById("databaseStatus").classList.add("verified");
+        document.querySelector(".online-indicator").style.display = "inline-flex";
+        box.style.display = "block";
+    }
+
     ["click", "mousedown", "keydown", "scroll", "touchstart", "mousemove"].forEach((eventName) => {
         window.addEventListener(eventName, registerIdleActivity, {passive: true});
     });
@@ -241,7 +610,7 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             const role = String(adminData.role || "").trim().toLowerCase();
             const status = adminData.status || "inactive";
 
-            if (!ADMIN_ROLES.has(role)) {
+            if (!AUTHORIZED_ADMIN_ROLES.has(role)) {
                 throw new Error("ADMIN_NOT_AUTHORIZED");
             }
 
@@ -262,6 +631,9 @@ const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
             localStorage.setItem("adminUid", user.uid);
             localStorage.setItem("adminRole", role);
             localStorage.setItem("adminAuthMode", "firebase");
+
+            renderAdminIdentity(user, adminData, role);
+            applyAdminMenuAccess(role);
 
             // Database Jemaat dipisahkan ke database-jemaat.html.
             resetIdleTimer();
