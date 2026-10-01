@@ -73,18 +73,21 @@
         position: absolute;
         top: 15px;
         right: 15px;
-        width: 34px;
+        min-width: 34px;
         height: 34px;
+        padding: 0 12px;
         border: none;
-        border-radius: 50%;
+        border-radius: 17px;
         background: rgba(0, 51, 102, 0.92);
         color: white;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 6px;
         z-index: 10;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-weight: 600;
     }
 
     .btn-hide-personal:hover {
@@ -195,7 +198,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove, get, set, child, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, collection, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -209,7 +211,6 @@ import { getDatabase, ref, push, onValue, remove, get, set, child, update } from
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const firestore = getFirestore(app);
     let currentUser = null;
     let resolveAuthReady;
     const authReady = new Promise((resolve) => {
@@ -234,44 +235,28 @@ import { getDatabase, ref, push, onValue, remove, get, set, child, update } from
         }
     });
 
-    async function loadHiddenEvents() {
-        await authReady;
-        const user = currentUser;
-        if (!user?.uid) return { uid: null, ids: new Set() };
+    const HIDDEN_EVENTS_STORAGE_KEY = "sipapua_event_jemaat_hidden_ids_v1";
 
-        const hidden = new Set();
-        const snapshot = await getDocs(collection(firestore, "event_user_hidden", user.uid, "events"));
-        if ((currentUser?.uid || null) !== user.uid) return null;
-
-        snapshot.forEach((item) => {
-            if (item.data()?.hidden === true) hidden.add(item.id);
-        });
-        return { uid: user.uid, ids: hidden };
+    function loadHiddenEvents() {
+        try {
+            const storedIds = JSON.parse(localStorage.getItem(HIDDEN_EVENTS_STORAGE_KEY) || "[]");
+            return new Set(Array.isArray(storedIds) ? storedIds.map(String) : []);
+        } catch (error) {
+            console.error("[EVENT] Gagal membaca daftar event tersembunyi:", error);
+            return new Set();
+        }
     }
-    async function hideEventForMe(eventId) {
-        const user = auth.currentUser;
-        if (!user?.uid) {
-            return false;
-        }
 
-        if (!eventId) {
-            console.error("[EVENT] ID event tidak valid.");
-            return false;
-        }
+    function hideEventForMe(eventId) {
+        if (!eventId) return false;
 
         try {
-            await setDoc(
-                doc(firestore, "event_user_hidden", user.uid, "events", String(eventId)),
-                {
-                    hidden: true,
-                    hiddenAt: serverTimestamp()
-                }
-            );
-
+            const hiddenIds = loadHiddenEvents();
+            hiddenIds.add(String(eventId));
+            localStorage.setItem(HIDDEN_EVENTS_STORAGE_KEY, JSON.stringify([...hiddenIds]));
             return true;
         } catch (error) {
-            console.error("[EVENT] Gagal menyembunyikan event:", error);
-            alert("Event belum dapat disembunyikan. Silakan coba lagi.");
+            console.error("[EVENT] Gagal menyimpan event tersembunyi:", error);
             return false;
         }
     }
@@ -393,21 +378,10 @@ const NO_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Ima
                 ownerNama: item.pemilik_nama || ""
             }));
 
-            let hiddenState;
-            try {
-                hiddenState = await loadHiddenEvents();
-            } catch (error) {
-                console.error("[EVENT] Gagal membaca event tersembunyi pribadi:", error);
-                hiddenState = { uid: currentUser?.uid || null, ids: new Set() };
-            }
+            if (loadId !== publishedEventsLoadId) return;
 
-            if (
-                loadId !== publishedEventsLoadId
-                || !hiddenState
-                || hiddenState.uid !== (currentUser?.uid || null)
-            ) return;
-
-            const visibleList = list.filter(item => !hiddenState.ids.has(String(item.id)));
+            const hiddenIds = loadHiddenEvents();
+            const visibleList = list.filter(item => !hiddenIds.has(String(item.id)));
 
             window.currentEvents = visibleList;
             newsList.innerHTML = "";
@@ -415,23 +389,22 @@ const NO_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Ima
             if (visibleList.length === 0) {
                 newsList.innerHTML = `
                     <div style="text-align:center;padding:40px;color:#777;">
-                        Belum ada event jemaat yang dipublikasikan.
+                        ${list.length ? "Tidak ada event yang ditampilkan." : "Belum ada event jemaat yang dipublikasikan."}
                     </div>
                 `;
                 return;
             }
 
             visibleList.forEach(item => {
-                const hideButton = currentUser
-                      ? `
-                          <button class="btn-hide-personal ${window.currentAdmin ? "with-admin-delete" : ""}"
-                             title="Sembunyikan dari saya"
-                             data-event-id="${escapeHtmlAttribute(item.id)}"
-                             onclick="event.stopPropagation(); window.confirmHideEvent(this.dataset.eventId)">
-                              <i class="fas fa-ellipsis-vertical"></i>
-                          </button>
-                      `
-                      : "";
+                const hideButton = `
+                    <button class="btn-hide-personal ${window.currentAdmin ? "with-admin-delete" : ""}"
+                       type="button"
+                       title="Sembunyikan event ini dari tampilan browser"
+                       data-event-id="${escapeHtmlAttribute(item.id)}"
+                       onclick="event.stopPropagation(); window.hideEventLocally(this.dataset.eventId)">
+                        Sembunyikan
+                    </button>
+                `;
 
                 const deleteButton = window.currentAdmin
                     ? `
@@ -443,7 +416,7 @@ const NO_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Ima
                     : "";
 
                 newsList.innerHTML += `
-                <div class="news-card" onclick="detailEvent('${item.id}')">
+                <div class="news-card" data-event-card-id="${escapeHtmlAttribute(item.id)}" onclick="detailEvent('${item.id}')">
                     <img src="${(item.fotos && item.fotos[0]) || NO_IMG}" class="news-img">
                     <div class="news-body">
                         ${deleteButton}
@@ -472,51 +445,20 @@ const NO_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Ima
     }
 
     loadPublishedEvents();
-    window.confirmHideEvent = async (eventId) => {
-    if (!auth.currentUser?.uid) {
-        await Swal.fire({
-            icon: "warning",
-            title: "Login diperlukan",
-            text: "Silakan masuk terlebih dahulu."
-        });
-        return;
-    }
+    window.hideEventLocally = (eventId) => {
+        if (!hideEventForMe(eventId)) return;
 
-    const result = await Swal.fire({
-        icon: "question",
-        title: "Sembunyikan event?",
-        text: "Event ini hanya akan disembunyikan dari tampilan Anda. Data event pusat tidak akan dihapus.",
-        showCancelButton: true,
-        confirmButtonText: "SEMBUNYIKAN",
-        cancelButtonText: "BATAL",
-        reverseButtons: true
-    });
+        document.querySelector(`[data-event-card-id="${CSS.escape(String(eventId))}"]`)?.remove();
+        window.currentEvents = window.currentEvents.filter(item => String(item.id) !== String(eventId));
 
-    if (!result.isConfirmed) return;
-
-    if (!auth.currentUser?.uid) {
-        await Swal.fire({
-            icon: "warning",
-            title: "Login diperlukan",
-            text: "Silakan masuk terlebih dahulu."
-        });
-        return;
-    }
-
-    const success = await hideEventForMe(eventId);
-
-    if (success) {
-        await Swal.fire({
-            icon: "success",
-            title: "Event disembunyikan",
-            text: "Event ini tidak akan tampil lagi di feed Anda.",
-            timer: 1600,
-            showConfirmButton: false
-        });
-
-        await loadPublishedEvents();
-    }
-};
+        if (window.currentEvents.length === 0) {
+            document.getElementById("newsList").innerHTML = `
+                <div style="text-align:center;padding:40px;color:#777;">
+                    Tidak ada event yang ditampilkan.
+                </div>
+            `;
+        }
+    };
 window.hapusBerita = async (id, creator) => {
         const user = window.currentAdmin;
         if (!user) return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat menghapus.', 'error');
