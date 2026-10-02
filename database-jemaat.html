@@ -519,28 +519,360 @@
             text-align: left;
         }
 </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style id="sipapua-command-center-ui">
+        /* =========================================================
+         * DATA BASE JEMAAT SIPAPUA — presentation layer (command center)
+         * Hanya tampilan. Seluruh ID, handler, dan logic existing dipertahankan.
+         * ========================================================= */
+        :root {
+            --cc-bg: #07111f;
+            --cc-bg-2: #0b1930;
+            --cc-panel: #0f1f3a;
+            --cc-panel-2: #132848;
+            --cc-line: rgba(120, 160, 230, 0.14);
+            --cc-line-strong: rgba(120, 160, 230, 0.26);
+            --cc-text: #e7eef9;
+            --cc-muted: #8fa3c4;
+            --cc-faint: #5f7397;
+            --cc-blue: #3b82f6;
+            --cc-cyan: #22d3ee;
+            --cc-green: #22c55e;
+            --cc-gold: #d4af37;
+            --cc-purple: #a78bfa;
+            --cc-red: #ef4444;
+            --cc-orange: #f59e0b;
+            --cc-radius: 18px;
+            --cc-sidebar-w: 252px;
+            --cc-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        body.cc-body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+            color: var(--cc-text);
+            background:
+                radial-gradient(1100px 560px at 90% -10%, rgba(34, 211, 238, 0.09), transparent 60%),
+                radial-gradient(900px 500px at -10% 5%, rgba(59, 130, 246, 0.11), transparent 60%),
+                var(--cc-bg);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        body.cc-body *, body.cc-body *::before, body.cc-body *::after { box-sizing: border-box; }
+
+        /* ---------- Sidebar ---------- */
+        .cc-sidebar {
+            position: fixed; inset: 0 auto 0 0; width: var(--cc-sidebar-w); z-index: 1000;
+            display: flex; flex-direction: column; padding: 20px 16px;
+            background: linear-gradient(180deg, #0a1730 0%, #081325 100%);
+            border-right: 1px solid var(--cc-line); transition: transform .25s ease;
+        }
+        .cc-brand { display: flex; align-items: center; gap: 12px; padding: 0 6px 18px; border-bottom: 1px solid var(--cc-line); }
+        /* Logo resmi "logo ibn.png" 683x1024: hanya resize, proporsi dijaga, tanpa crop */
+        .cc-brand-logo { height: 96px; width: auto; aspect-ratio: 683 / 1024; object-fit: contain; flex-shrink: 0; display: block; }
+        .cc-brand-title { font-size: 18px; font-weight: 800; letter-spacing: .1em; color: var(--cc-gold); }
+        .cc-brand-sub { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--cc-muted); margin-top: 2px; }
+        .cc-nav { display: flex; flex-direction: column; gap: 2px; }
+        .cc-nav-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--cc-faint); margin: 20px 10px 8px; }
+        .cc-nav-link {
+            display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px;
+            color: var(--cc-muted); text-decoration: none; font-size: 13.5px; font-weight: 600; transition: background .2s, color .2s;
+        }
+        .cc-nav-link i { width: 18px; text-align: center; }
+        .cc-nav-link:hover { background: rgba(59, 130, 246, .10); color: var(--cc-text); }
+        .cc-nav-link.is-active { color: #fff; background: linear-gradient(90deg, rgba(59,130,246,.22), rgba(34,211,238,.05)); box-shadow: inset 3px 0 0 var(--cc-cyan); }
+        .cc-sidebar-foot { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid var(--cc-line); font-size: 11.5px; color: var(--cc-faint); }
+        .cc-backdrop { display: none; position: fixed; inset: 0; background: rgba(2, 8, 20, .6); z-index: 999; }
+
+        /* ---------- Main & topbar ---------- */
+        .cc-main { margin-left: var(--cc-sidebar-w); min-width: 0; }
+        .cc-topbar {
+            position: sticky; top: 0; z-index: 900; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            padding: 14px 28px; background: rgba(7, 17, 31, .84); backdrop-filter: blur(12px); border-bottom: 1px solid var(--cc-line);
+        }
+        .cc-topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .cc-menu-toggle { display: none; width: 40px; height: 40px; border-radius: 11px; border: 1px solid var(--cc-line-strong); background: var(--cc-panel); color: var(--cc-text); cursor: pointer; flex-shrink: 0; }
+        .cc-topbar-logo { display: none; height: 50px; width: auto; aspect-ratio: 683 / 1024; object-fit: contain; flex-shrink: 0; }
+        .cc-topbar-title { min-width: 0; }
+        .cc-topbar-title h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: .03em; color: var(--cc-text); }
+        .cc-topbar-title h1 span { background: linear-gradient(90deg, var(--cc-blue), var(--cc-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .cc-topbar-title p { margin: 2px 0 0; font-size: 12.5px; color: var(--cc-muted); }
+        .cc-topbar-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .cc-pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--cc-panel); border: 1px solid var(--cc-line-strong); color: var(--cc-muted); }
+        .cc-pill[hidden] { display: none; }
+        .cc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cc-faint); }
+        .cc-pill.is-live { color: #bbf7d0; border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.10); }
+        .cc-pill.is-live .cc-dot { background: var(--cc-green); }
+        .cc-back { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 11px; text-decoration: none; white-space: nowrap; font-size: 12.5px; font-weight: 700; color: #cfe0ff; background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.38); }
+        .cc-back:hover { background: rgba(59,130,246,.24); }
+
+        body.cc-body .admin-container { max-width: none; margin: 0; padding: 22px 28px 40px; background: transparent; border-radius: 0; box-shadow: none; }
+
+        /* ---------- KPI ---------- */
+        .cc-kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .cc-kpi { position: relative; overflow: hidden; padding: 16px; border-radius: var(--cc-radius); background: linear-gradient(160deg, var(--cc-panel-2), var(--cc-panel)); border: 1px solid var(--cc-line); box-shadow: var(--cc-shadow); }
+        .cc-kpi::after { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--k); }
+        .cc-kpi-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--cc-muted); }
+        .cc-kpi-top i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 14px; color: var(--k); background: var(--k-soft); flex-shrink: 0; }
+        .cc-kpi-value { margin: 10px 0 2px; font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--cc-text); }
+        .cc-kpi-sub { font-size: 11.5px; color: var(--cc-faint); }
+
+        /* ---------- Panels ---------- */
+        .cc-panel { padding: 18px; border-radius: var(--cc-radius); background: var(--cc-panel); border: 1px solid var(--cc-line); box-shadow: var(--cc-shadow); min-width: 0; }
+        .cc-panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+        .cc-panel-head h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--cc-text); display: flex; align-items: center; gap: 8px; }
+        .cc-panel-head h3 i { color: var(--cc-cyan); }
+        .cc-panel-head small { display: block; margin-top: 4px; font-size: 12px; color: var(--cc-faint); }
+        .cc-link-btn { border: 0; background: none; color: var(--cc-cyan); font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; padding: 2px 0; }
+        .cc-link-btn:hover { text-decoration: underline; }
+        .cc-empty-mini { padding: 34px 0; text-align: center; color: var(--cc-faint); font-size: 12.5px; }
+
+        /* ---------- Filter panel (styling ulang komponen existing) ---------- */
+        .cc-filter-panel { margin-bottom: 20px; position: relative; z-index: 20; }
+        body.cc-body #actionMenu { background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .4); color: #fde68a; border-radius: 14px; flex-wrap: wrap; }
+        body.cc-body .table-controls { margin-bottom: 0; align-items: start !important; }
+        body.cc-body .search-container { min-width: 0; }
+        body.cc-body .search-container input { background: var(--cc-bg-2); border: 1px solid var(--cc-line-strong); color: var(--cc-text); border-radius: 12px; font-family: inherit; }
+        body.cc-body .search-container input::placeholder { color: var(--cc-faint); }
+        body.cc-body .search-container input:focus { border-color: var(--cc-cyan); box-shadow: 0 0 0 3px rgba(34, 211, 238, .15); }
+        body.cc-body .search-container input:disabled { opacity: .6; }
+        body.cc-body .search-container i { color: var(--cc-faint); }
+        body.cc-body .filter-accordion { background: var(--cc-bg-2); border-color: var(--cc-line-strong); box-shadow: none; }
+        body.cc-body .filter-accordion-header { background: transparent; }
+        body.cc-body .filter-accordion-header strong { color: var(--cc-text); }
+        body.cc-body .filter-accordion-header small,
+        body.cc-body .filter-accordion-main-icon { color: var(--cc-muted); }
+        body.cc-body .filter-accordion-body { background: var(--cc-panel); border-color: var(--cc-line-strong); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+        body.cc-body .filter-category { border-bottom-color: var(--cc-line); }
+        body.cc-body .filter-category-toggle,
+        body.cc-body .komsel-region-toggle { background: transparent; color: var(--cc-text); font-family: inherit; }
+        body.cc-body .komsel-region-group { border-color: var(--cc-line); }
+        body.cc-body .komsel-region-toggle { background: rgba(120, 160, 230, .06); }
+        body.cc-body .filter-value-button,
+        body.cc-body .filter-location-button { background: var(--cc-bg-2); border: 1px solid var(--cc-line); color: var(--cc-text); border-radius: 8px; font-family: inherit; }
+        body.cc-body .filter-value-button:hover,
+        body.cc-body .filter-location-button:hover { background: rgba(59, 130, 246, .14); border-color: var(--cc-blue); }
+        body.cc-body .filter-value-button.is-selected,
+        body.cc-body .filter-location-button.is-selected { background: linear-gradient(135deg, var(--cc-blue), #0891b2); border-color: transparent; color: #fff; }
+        body.cc-body .filter-location-title { color: var(--cc-muted); }
+        body.cc-body .selected-filter-summary { background: rgba(34, 211, 238, .06); border-color: rgba(34, 211, 238, .3); color: var(--cc-muted); }
+        body.cc-body .table-controls .btn-action { min-height: 42px; border-radius: 11px; font-weight: 700; font-family: inherit; letter-spacing: .03em; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 0; }
+        body.cc-body #categorySearchButton { background: linear-gradient(135deg, var(--cc-blue), #1d4ed8) !important; }
+        body.cc-body #resetMemberSearchButton { background: var(--cc-panel-2) !important; border: 1px solid var(--cc-line-strong); color: var(--cc-text); }
+        body.cc-body .cc-btn-export { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        body.cc-body .table-controls .btn-action:disabled { opacity: .5; cursor: not-allowed; }
+        body.cc-body .btn-cetak-kartu-main { justify-content: center; border-radius: 12px; min-height: 42px; background: linear-gradient(135deg, #b8860b, var(--cc-gold)); color: #0b1930; font-family: inherit; }
+        body.cc-body .btn-cetak-kartu-main:hover { filter: brightness(1.08); background: linear-gradient(135deg, #b8860b, var(--cc-gold)); }
+
+        /* ---------- Analytics ---------- */
+        .cc-analytics { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 14px; margin-bottom: 20px; }
+        .cc-donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: center; }
+        .cc-donut { width: 140px; height: 140px; position: relative; flex-shrink: 0; }
+        .cc-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+        .cc-donut circle { fill: none; stroke-width: 16; }
+        .cc-donut-center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+        .cc-donut-center b { display: block; font-size: 24px; font-weight: 800; line-height: 1; }
+        .cc-donut-center small { font-size: 10.5px; color: var(--cc-muted); }
+        .cc-legend { display: grid; gap: 9px; font-size: 12.5px; min-width: 140px; }
+        .cc-legend-item { display: flex; align-items: center; gap: 9px; color: var(--cc-text); }
+        .cc-legend-item i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+        .cc-legend-item b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; }
+        .cc-bars { display: grid; gap: 11px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
+        .cc-bar-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 5px; }
+        .cc-bar-meta span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cc-bar-meta span:last-child { color: var(--cc-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .cc-bar-track { height: 8px; border-radius: 99px; background: rgba(120, 160, 230, .10); overflow: hidden; }
+        .cc-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--cc-blue), var(--cc-cyan)); }
+        .cc-ultah-list { display: grid; gap: 8px; max-height: 240px; overflow-y: auto; padding-right: 4px; }
+        .cc-ultah-item { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 12px; background: var(--cc-bg-2); border: 1px solid var(--cc-line); }
+        .cc-ultah-item.is-today { border-color: rgba(244, 114, 182, .55); background: rgba(244, 114, 182, .08); }
+        .cc-ultah-date { width: 44px; flex-shrink: 0; text-align: center; border-radius: 10px; padding: 5px 0; background: rgba(244, 114, 182, .14); color: #f9a8d4; line-height: 1.1; }
+        .cc-ultah-date b { display: block; font-size: 16px; }
+        .cc-ultah-date small { font-size: 10px; text-transform: uppercase; }
+        .cc-ultah-name { font-size: 13px; font-weight: 600; color: var(--cc-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cc-ultah-sub { font-size: 11.5px; color: var(--cc-faint); }
+        .cc-ultah-more { text-align: center; font-size: 12px; color: var(--cc-muted); padding-top: 2px; }
+
+        /* ---------- Birthday datalist (komponen existing) ---------- */
+        body.cc-body #birthdayPanel { background: var(--cc-panel) !important; border: 1px solid var(--cc-line) !important; border-radius: var(--cc-radius) !important; box-shadow: var(--cc-shadow) !important; margin: 0 0 20px !important; }
+        body.cc-body #birthdayPanel > summary div[style*="color:var(--primary)"],
+        body.cc-body #birthdayPanel > summary i { color: var(--cc-text) !important; }
+        body.cc-body #birthdayPanel > summary .fa-birthday-cake { color: #f472b6 !important; }
+        body.cc-body #birthdayPanel > summary div[style*="color:#666"] { color: var(--cc-muted) !important; }
+        body.cc-body #birthdayPanel > div { border-top-color: var(--cc-line) !important; }
+        body.cc-body #birthdaySummary { color: var(--cc-muted) !important; }
+        body.cc-body #birthdayList > div { background: var(--cc-bg-2) !important; border-color: var(--cc-line) !important; color: var(--cc-text); }
+        body.cc-body #birthdayList div[style*="color:var(--primary)"] { color: var(--cc-text) !important; }
+        body.cc-body #birthdayList div[style*="color:#666"],
+        body.cc-body #birthdayList div[style*="color:#555"],
+        body.cc-body #birthdayList div[style*="color:#777"] { color: var(--cc-muted) !important; }
+        body.cc-body #birthdayList div[style*="color:var(--accent)"] { color: var(--cc-cyan) !important; }
+        .cc-range-chips { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 14px; }
+        .cc-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--cc-line-strong); background: var(--cc-bg-2); color: var(--cc-muted); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .cc-chip.is-active { background: rgba(244, 114, 182, .16); border-color: rgba(244, 114, 182, .5); color: #f9a8d4; }
+
+        /* ---------- Tabel jemaat ---------- */
+        .cc-table-card { border-radius: var(--cc-radius); background: var(--cc-panel); border: 1px solid var(--cc-line); box-shadow: var(--cc-shadow); overflow: hidden; }
+        .cc-table-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 18px; border-bottom: 1px solid var(--cc-line); }
+        .cc-table-head h3 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .05em; color: var(--cc-text); display: flex; align-items: center; gap: 9px; }
+        .cc-table-head h3 i { color: var(--cc-cyan); }
+        .cc-table-head small { display: block; margin-top: 3px; font-size: 12px; color: var(--cc-faint); }
+        .cc-table-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .cc-count { font-size: 12.5px; color: var(--cc-muted); }
+        .cc-page-size { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--cc-muted); }
+        .cc-page-size select { padding: 7px 10px; border-radius: 10px; background: var(--cc-bg-2); color: var(--cc-text); border: 1px solid var(--cc-line-strong); font-family: inherit; cursor: pointer; }
+        body.cc-body .cc-table-card .table-responsive { border: 0; border-radius: 0; max-height: 70vh; overflow: auto; -webkit-overflow-scrolling: touch; }
+        body.cc-body #memberTable { border-collapse: separate; border-spacing: 0; }
+        body.cc-body #memberTable thead th {
+            position: sticky; top: 0; z-index: 2; background: #0b1930; color: var(--cc-muted);
+            font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap;
+            padding: 13px 10px; border-bottom: 1px solid var(--cc-line-strong);
+        }
+        body.cc-body #memberTable tbody td { color: var(--cc-text); border-bottom: 1px solid var(--cc-line); font-size: 12.5px; }
+        body.cc-body #memberTable tbody tr:nth-child(even) td { background: rgba(120, 160, 230, .035); }
+        body.cc-body #memberTable tbody tr:hover td { background: rgba(59, 130, 246, .09); }
+        body.cc-body #memberTable small { color: var(--cc-muted); }
+        body.cc-body #memberTable a { color: var(--cc-cyan); }
+        body.cc-body #memberTable input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--cc-cyan); cursor: pointer; }
+        body.cc-body #memberTable .nij-col { color: var(--cc-cyan); font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 12px; }
+        body.cc-body #memberTable .family-name-btn { color: #93c5fd; font-weight: 700; }
+        body.cc-body #memberTable .badge-aktif { background: rgba(34, 197, 94, .14); color: #bbf7d0; border: 1px solid rgba(34, 197, 94, .4); border-radius: 8px; }
+        body.cc-body #memberTable .badge-pending { background: rgba(245, 158, 11, .14); color: #fde68a; border: 1px solid rgba(245, 158, 11, .4); border-radius: 8px; }
+        body.cc-body #memberTable td:last-child .btn-action { width: 32px; height: 32px; padding: 0; border-radius: 9px; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); transition: transform .15s, filter .15s; }
+        body.cc-body #memberTable td:last-child .btn-action:hover { transform: translateY(-1px); filter: brightness(1.12); }
+        body.cc-body #memberData tr.cc-page-hidden { display: none !important; }
+        .cc-empty { padding: 44px 16px; text-align: center; color: var(--cc-muted); font-size: 13.5px; }
+        .cc-empty[hidden] { display: none; }
+        .cc-empty i { display: block; font-size: 28px; color: var(--cc-faint); margin-bottom: 10px; }
+        .cc-pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--cc-line); }
+        .cc-pagination[hidden] { display: none; }
+        .cc-page-label { font-size: 12.5px; color: var(--cc-muted); }
+        .cc-page-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+        .cc-page-btn { min-width: 34px; height: 34px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--cc-line-strong); background: var(--cc-bg-2); color: var(--cc-text); font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .cc-page-btn:hover:not(:disabled) { border-color: var(--cc-cyan); }
+        .cc-page-btn.is-current { background: linear-gradient(135deg, var(--cc-blue), #0891b2); border-color: transparent; color: #fff; }
+        .cc-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+        .cc-page-gap { align-self: center; color: var(--cc-faint); padding: 0 2px; }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 1360px) {
+            .cc-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .cc-analytics { grid-template-columns: 1fr 1fr; }
+            .cc-analytics > .cc-panel:last-child { grid-column: 1 / -1; }
+        }
+        @media (max-width: 1024px) {
+            .cc-sidebar { transform: translateX(-100%); }
+            body.cc-sidebar-open .cc-sidebar { transform: translateX(0); box-shadow: 20px 0 40px rgba(0, 0, 0, .45); }
+            body.cc-sidebar-open .cc-backdrop { display: block; }
+            .cc-main { margin-left: 0; }
+            .cc-menu-toggle { display: grid; place-items: center; }
+            .cc-topbar-logo { display: block; }
+            .cc-topbar { padding: 12px 16px; }
+            body.cc-body .admin-container { padding: 18px 16px 32px; }
+            .cc-analytics { grid-template-columns: 1fr; }
+            body.cc-body .table-controls { grid-template-columns: minmax(0, 1fr) !important; }
+        }
+        @media (max-width: 640px) {
+            .cc-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+            .cc-kpi { padding: 14px; }
+            .cc-kpi-value { font-size: 24px; }
+            .cc-topbar-title h1 { font-size: 15px; }
+            .cc-topbar-title p { font-size: 11px; }
+            .cc-topbar-logo { height: 42px; }
+            .cc-pill-clock, .cc-pill-session, .cc-back span { display: none !important; }
+            .cc-table-head, .cc-pagination { padding: 14px; }
+            body.cc-body .table-controls > div { flex-wrap: wrap; }
+        }
+        @media (max-width: 380px) {
+            .cc-kpi-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 
-<body>
+<body class="cc-body">
 
-<div class="admin-container">
-
-    <div class="database-header">
-        <div class="database-title">
-            <h2>
-                <i class="fas fa-users"></i>
-                DATA BASE JEMAAT
-            </h2>
-            <small>
-                Manajemen seluruh data jemaat secara real-time
-            </small>
+<aside class="cc-sidebar" id="ccSidebar">
+    <div class="cc-brand">
+        <img src="logo ibn.png" alt="Logo Pondok Pemulihan Papua" class="cc-brand-logo">
+        <div>
+            <div class="cc-brand-title">SIPAPUA</div>
+            <div class="cc-brand-sub">DATA BASE JEMAAT</div>
         </div>
-
-        <a href="admin.html" class="database-back">
-            <i class="fas fa-arrow-left"></i>
-            KEMBALI KE DASHBOARD
-        </a>
     </div>
+
+    <nav class="cc-nav">
+        <div class="cc-nav-label">Menu</div>
+        <a href="#ccOverview" class="cc-nav-link is-active" onclick="ccCloseSidebar()"><i class="fas fa-gauge-high"></i> Dashboard</a>
+        <a href="#ccDaftar" class="cc-nav-link" onclick="ccCloseSidebar()"><i class="fas fa-users"></i> Data Jemaat</a>
+        <a href="#birthdayPanel" class="cc-nav-link" onclick="ccOpenBirthdays(); ccCloseSidebar(); return false;"><i class="fas fa-birthday-cake"></i> Ulang Tahun</a>
+        <a href="#" class="cc-nav-link" onclick="ccCloseSidebar(); generateMemberCards(); return false;"><i class="fas fa-id-card"></i> Kartu Digital</a>
+        <a href="#" class="cc-nav-link" onclick="ccCloseSidebar(); extractToPDF(); return false;"><i class="fas fa-file-export"></i> Import / Export</a>
+        <a href="#ccFilter" class="cc-nav-link" onclick="ccOpenFilter(); ccCloseSidebar(); return false;"><i class="fas fa-filter"></i> Filter</a>
+
+        <div class="cc-nav-label">Navigasi</div>
+        <a href="admin.html" class="cc-nav-link"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+    </nav>
+
+    <div class="cc-sidebar-foot">Pondok Pemulihan Papua</div>
+</aside>
+<div class="cc-backdrop" onclick="ccCloseSidebar()"></div>
+
+<div class="cc-main">
+
+<header class="cc-topbar">
+    <div class="cc-topbar-left">
+        <button type="button" class="cc-menu-toggle" onclick="ccToggleSidebar()" aria-label="Buka menu"><i class="fas fa-bars"></i></button>
+        <img src="logo ibn.png" alt="Logo Pondok Pemulihan Papua" class="cc-topbar-logo">
+        <div class="cc-topbar-title">
+            <h1><span>DATA BASE JEMAAT</span> SIPAPUA</h1>
+            <p>Manajemen seluruh data jemaat secara real-time</p>
+        </div>
+    </div>
+    <div class="cc-topbar-meta">
+        <span class="cc-pill" id="ccSyncStatus"><span class="cc-dot"></span><span id="ccSyncText">Menunggu data...</span></span>
+        <span class="cc-pill cc-pill-clock"><i class="far fa-clock"></i> <span id="ccClock">--:--</span></span>
+        <span class="cc-pill cc-pill-session" id="ccSession" hidden><i class="fas fa-user-shield"></i> <span id="ccSessionText"></span></span>
+        <a href="admin.html" class="cc-back"><i class="fas fa-arrow-left"></i> <span>Dashboard</span></a>
+    </div>
+</header>
+
+<div class="admin-container" id="ccOverview">
+
+    <section class="cc-kpi-grid" aria-label="Ringkasan data jemaat">
+        <div class="cc-kpi" style="--k: #3b82f6; --k-soft: rgba(59,130,246,.16);">
+            <div class="cc-kpi-top"><span>Total Jemaat</span><i class="fas fa-users"></i></div>
+            <div class="cc-kpi-value" id="ccKpiTotal">--</div>
+            <div class="cc-kpi-sub">Seluruh data terdaftar</div>
+        </div>
+        <div class="cc-kpi" style="--k: #22c55e; --k-soft: rgba(34,197,94,.16);">
+            <div class="cc-kpi-top"><span>Jemaat Aktif</span><i class="fas fa-user-check"></i></div>
+            <div class="cc-kpi-value" id="ccKpiAktif">--</div>
+            <div class="cc-kpi-sub" id="ccKpiAktifSub">Status akun Aktif</div>
+        </div>
+        <div class="cc-kpi" style="--k: #d4af37; --k-soft: rgba(212,175,55,.18);">
+            <div class="cc-kpi-top"><span>Jemaat Menikah</span><i class="fas fa-ring"></i></div>
+            <div class="cc-kpi-value" id="ccKpiMenikah">--</div>
+            <div class="cc-kpi-sub">Status pernikahan Menikah</div>
+        </div>
+        <div class="cc-kpi" style="--k: #22d3ee; --k-soft: rgba(34,211,238,.16);">
+            <div class="cc-kpi-top"><span>Jemaat Single</span><i class="fas fa-user"></i></div>
+            <div class="cc-kpi-value" id="ccKpiSingle">--</div>
+            <div class="cc-kpi-sub">Status pernikahan Single</div>
+        </div>
+        <div class="cc-kpi" style="--k: #a78bfa; --k-soft: rgba(167,139,250,.16);">
+            <div class="cc-kpi-top"><span>Data Lengkap</span><i class="fas fa-clipboard-check"></i></div>
+            <div class="cc-kpi-value">--</div>
+            <div class="cc-kpi-sub">Belum tersedia</div>
+        </div>
+        <div class="cc-kpi" style="--k: #f472b6; --k-soft: rgba(244,114,182,.16);">
+            <div class="cc-kpi-top"><span>Ulang Tahun Bulan Ini</span><i class="fas fa-cake-candles"></i></div>
+            <div class="cc-kpi-value" id="ccKpiUltah">--</div>
+            <div class="cc-kpi-sub" id="ccKpiUltahSub">Bulan berjalan</div>
+        </div>
+    </section>
 
     <div id="actionMenu">
         <span style="font-size: 13px; font-weight: bold; margin-right: 20px;" id="selectedCount">0 Terpilih</span>
@@ -549,6 +881,13 @@
         <button class="btn-action" style="background: var(--orange);" onclick="extractToPDF()">
             <i class="fas fa-file-pdf"></i> Extract PDF
         </button>
+    </div>
+    <section class="cc-panel cc-filter-panel" id="ccFilter">
+    <div class="cc-panel-head">
+        <div>
+            <h3><i class="fas fa-magnifying-glass"></i> Cari Data Jemaat</h3>
+            <small>Cari cepat berdasarkan nama, NIJ, WhatsApp, atau alamat — atau pilih kategori &amp; wilayah pada Filter Jemaat.</small>
+        </div>
     </div>
     <div
         class="table-controls"
@@ -1425,7 +1764,7 @@
                 onclick="filterMembersByCategory()"
             >
                 <i class="fas fa-search"></i>
-                SEARCH
+                CARI
             </button>
 
             <button
@@ -1441,6 +1780,17 @@
                 <i class="fas fa-rotate-left"></i>
                 RESET
             </button>
+
+            <button
+                type="button"
+                class="btn-action cc-btn-export"
+                style="flex:1;"
+                onclick="extractToPDF()"
+                title="Export PDF jemaat yang dipilih (centang di tabel)"
+            >
+                <i class="fas fa-file-pdf"></i>
+                EXPORT
+            </button>
         </div>
 <button
             class="btn-cetak-kartu-main"
@@ -1449,8 +1799,35 @@
             <i class="fas fa-print"></i> CETAK KARTU JEMAAT
         </button>
     </div>
+    </section>
+
+    <section class="cc-analytics" aria-label="Analitik jemaat">
+        <div class="cc-panel">
+            <div class="cc-panel-head">
+                <div><h3><i class="fas fa-chart-pie"></i> Distribusi Status Pernikahan</h3></div>
+                <small id="ccNikahTotal"></small>
+            </div>
+            <div id="ccChartNikah" class="cc-chart-body"><div class="cc-empty-mini">Belum tersedia</div></div>
+        </div>
+        <div class="cc-panel">
+            <div class="cc-panel-head">
+                <div><h3><i class="fas fa-map-location-dot"></i> Jemaat per Wilayah</h3></div>
+                <small id="ccWilayahTotal"></small>
+            </div>
+            <div id="ccChartWilayah" class="cc-chart-body"><div class="cc-empty-mini">Belum tersedia</div></div>
+        </div>
+        <div class="cc-panel">
+            <div class="cc-panel-head">
+                <div><h3><i class="fas fa-cake-candles"></i> Ulang Tahun Bulan Ini</h3></div>
+                <button type="button" class="cc-link-btn" onclick="ccOpenBirthdays()">Lihat Semua <i class="fas fa-arrow-right"></i></button>
+            </div>
+            <div id="ccUltahList" class="cc-chart-body"><div class="cc-empty-mini">Belum tersedia</div></div>
+        </div>
+    </section>
+
 <details
         id="birthdayPanel"
+        class="cc-birthday-panel"
         style="
             margin:20px 0;
             background:#fff;
@@ -1510,6 +1887,11 @@
                 border-top:1px solid #eee;
             "
         >
+            <div class="cc-range-chips" role="group" aria-label="Rentang ulang tahun">
+                <button type="button" class="cc-chip is-active" data-range="today" onclick="ccSetBirthdayRange(this)">Hari Ini</button>
+                <button type="button" class="cc-chip" data-range="7days" onclick="ccSetBirthdayRange(this)">7 Hari</button>
+                <button type="button" class="cc-chip" data-range="30days" onclick="ccSetBirthdayRange(this)">30 Hari</button>
+            </div>
             <div
                 id="birthdaySummary"
                 style="
@@ -1537,6 +1919,26 @@
             </div>
         </div>
     </details>
+    <section class="cc-table-card" id="ccDaftar">
+    <div class="cc-table-head">
+        <div>
+            <h3><i class="fas fa-table-list"></i> DAFTAR JEMAAT</h3>
+            <small>Menampilkan seluruh data jemaat berdasarkan filter yang dipilih</small>
+        </div>
+        <div class="cc-table-tools">
+            <span class="cc-count" id="ccRowInfo">Memuat data...</span>
+            <label class="cc-page-size">
+                <span>Tampil</span>
+                <select id="ccPageSize" onchange="ccChangePageSize(this.value)">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="0">Semua</option>
+                </select>
+            </label>
+        </div>
+    </div>
     <div class="table-responsive">
         <table id="memberTable">
             <thead>
@@ -1593,6 +1995,16 @@
             </tbody>
         </table>
     </div>
+    <div class="cc-empty" id="ccEmptyState" hidden>
+        <i class="fas fa-users-slash"></i>
+        Belum ada data jemaat pada filter ini.
+    </div>
+    <div class="cc-pagination" id="ccPagination" hidden>
+        <span class="cc-page-label" id="ccPageLabel"></span>
+        <div class="cc-page-buttons" id="ccPageButtons"></div>
+    </div>
+    </section>
+</div>
 </div>
 
 <div
@@ -1708,8 +2120,6 @@
             <div class="card-qrcode-box" id="qrbox"></div>
         </div>
     </div>
-</div>
-
 </div>
 
 <div id="modalFamilyRelevance" class="family-modal-overlay">
@@ -6620,6 +7030,335 @@ snapshot.forEach(doc => {
     }
 bindFilterAccordionEvents();
     bindDemografiFilterEvents();
+</script>
+
+<script id="sipapua-command-center-ui-script">
+    /* =========================================================
+     * PRESENTATION LAYER — DATA BASE JEMAAT SIPAPUA
+     * Read-only: tidak ada query/listener Firestore baru.
+     * Sumber data: window.__sipapuaBirthdayMembers (diisi oleh onSnapshot existing)
+     * dan baris #memberData yang dirender oleh logic existing.
+     * ========================================================= */
+    (function () {
+        const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        const NIKAH_COLORS = { "Menikah": "#d4af37", "Single": "#22d3ee", "Duda": "#a78bfa", "Janda": "#f472b6", "Belum diisi": "#5f7397" };
+        const FALLBACK_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#94a3b8"];
+
+        const pager = { size: 25, page: 1 };
+        let lastMembersRef = null;
+        let scheduled = null;
+
+        function esc(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function getMembers() {
+            return Array.isArray(window.__sipapuaBirthdayMembers) ? window.__sipapuaBirthdayMembers : null;
+        }
+
+        function memberWilayah(m) {
+            return String(m.wilayah || m.lokasi_berjemaat || m.jemaat || "").trim() || "Belum diisi";
+        }
+
+        function memberNikah(m) {
+            const raw = String(m.status_pernikahan || "").trim();
+            if (!raw) return "Belum diisi";
+            const known = Object.keys(NIKAH_COLORS).find(k => k.toLowerCase() === raw.toLowerCase());
+            return known || raw;
+        }
+
+        function birthDateOf(m) {
+            // Memakai parser tanggal lahir existing (read-only) agar konsisten dengan Datalist Ulang Tahun
+            if (typeof parseBirthdaySourceDate !== "function" || typeof getBirthdaySourceDate !== "function") return null;
+            return parseBirthdaySourceDate(getBirthdaySourceDate(m));
+        }
+
+        /* ---------------- KPI ---------------- */
+        function renderKpis(members) {
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            const now = new Date();
+            const total = members.length;
+            const aktif = members.filter(m => (m.status_akun || "Pending") === "Aktif").length;
+            const menikah = members.filter(m => memberNikah(m) === "Menikah").length;
+            const single = members.filter(m => memberNikah(m) === "Single").length;
+            const ultah = members.filter(m => { const d = birthDateOf(m); return d && d.getMonth() === now.getMonth(); }).length;
+
+            set("ccKpiTotal", total.toLocaleString("id-ID"));
+            set("ccKpiAktif", aktif.toLocaleString("id-ID"));
+            set("ccKpiAktifSub", total ? `${Math.round((aktif / total) * 100)}% dari total jemaat` : "Status akun Aktif");
+            set("ccKpiMenikah", menikah.toLocaleString("id-ID"));
+            set("ccKpiSingle", single.toLocaleString("id-ID"));
+            set("ccKpiUltah", ultah.toLocaleString("id-ID"));
+            set("ccKpiUltahSub", now.toLocaleDateString("id-ID", { month: "long", year: "numeric" }));
+        }
+
+        /* ---------------- Analytics ---------------- */
+        function renderNikahChart(members) {
+            const el = document.getElementById("ccChartNikah");
+            const label = document.getElementById("ccNikahTotal");
+            if (!members.length) { el.innerHTML = `<div class="cc-empty-mini">Belum tersedia</div>`; label.textContent = ""; return; }
+
+            const counts = new Map();
+            members.forEach(m => { const k = memberNikah(m); counts.set(k, (counts.get(k) || 0) + 1); });
+            const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+            const total = members.length;
+            const r = 58, circ = 2 * Math.PI * r;
+            let offset = 0;
+
+            const arcs = entries.map(([name, count], i) => {
+                const len = (count / total) * circ;
+                const color = NIKAH_COLORS[name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+                const arc = `<circle cx="70" cy="70" r="${r}" stroke="${color}" stroke-dasharray="${len} ${circ}" stroke-dashoffset="${-offset}"></circle>`;
+                offset += len;
+                return arc;
+            }).join("");
+
+            const menikahPct = Math.round(((counts.get("Menikah") || 0) / total) * 100);
+            label.textContent = `${total.toLocaleString("id-ID")} jemaat`;
+            el.innerHTML = `
+                <div class="cc-donut-wrap">
+                    <div class="cc-donut">
+                        <svg viewBox="0 0 140 140" aria-hidden="true">
+                            <circle cx="70" cy="70" r="${r}" stroke="rgba(120,160,230,.14)"></circle>${arcs}
+                        </svg>
+                        <div class="cc-donut-center"><div><b>${menikahPct}%</b><small>menikah</small></div></div>
+                    </div>
+                    <div class="cc-legend">
+                        ${entries.map(([name, count], i) => `
+                            <div class="cc-legend-item">
+                                <i style="background:${NIKAH_COLORS[name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length]}"></i>
+                                ${esc(name)} <b>${count.toLocaleString("id-ID")}</b>
+                            </div>`).join("")}
+                    </div>
+                </div>`;
+        }
+
+        function renderWilayahChart(members) {
+            const el = document.getElementById("ccChartWilayah");
+            const label = document.getElementById("ccWilayahTotal");
+            if (!members.length) { el.innerHTML = `<div class="cc-empty-mini">Belum tersedia</div>`; label.textContent = ""; return; }
+
+            const counts = new Map();
+            members.forEach(m => { const k = memberWilayah(m); counts.set(k, (counts.get(k) || 0) + 1); });
+            const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+            const max = entries[0][1];
+            label.textContent = `${entries.length} wilayah`;
+            el.innerHTML = `<div class="cc-bars">${entries.map(([name, count]) => `
+                <div>
+                    <div class="cc-bar-meta"><span>${esc(name)}</span><span>${count.toLocaleString("id-ID")} · ${Math.round((count / members.length) * 100)}%</span></div>
+                    <div class="cc-bar-track"><div class="cc-bar-fill" style="width:${(count / max) * 100}%"></div></div>
+                </div>`).join("")}</div>`;
+        }
+
+        function renderUltahList(members) {
+            const el = document.getElementById("ccUltahList");
+            const now = new Date();
+            const list = members
+                .map(m => ({ m, d: birthDateOf(m) }))
+                .filter(x => x.d && x.d.getMonth() === now.getMonth())
+                .sort((a, b) => a.d.getDate() - b.d.getDate());
+
+            if (!list.length) {
+                el.innerHTML = `<div class="cc-empty-mini">Tidak ada ulang tahun bulan ini.</div>`;
+                return;
+            }
+
+            const shown = list.slice(0, 8);
+            el.innerHTML = `<div class="cc-ultah-list">${shown.map(({ m, d }) => {
+                const nama = m.nama || m.nama_lengkap || "Tanpa Nama";
+                const wilayah = memberWilayah(m);
+                const isToday = d.getDate() === now.getDate();
+                return `
+                    <div class="cc-ultah-item${isToday ? " is-today" : ""}">
+                        <div class="cc-ultah-date"><b>${d.getDate()}</b><small>${MONTHS_SHORT[d.getMonth()]}</small></div>
+                        <div style="min-width:0;">
+                            <div class="cc-ultah-name">${esc(nama)}</div>
+                            <div class="cc-ultah-sub">${isToday ? "Hari ini · " : ""}${esc(wilayah)}</div>
+                        </div>
+                    </div>`;
+            }).join("")}</div>${list.length > shown.length ? `<div class="cc-ultah-more">+${list.length - shown.length} jemaat lainnya</div>` : ""}`;
+        }
+
+        /* ---------------- Pagination (tampilan saja) ----------------
+         * Tidak mengubah filter/search existing: baris yang disembunyikan search
+         * (style.display = "none") tetap dihormati; halaman hanya memakai class CSS.
+         */
+        function memberRows() {
+            return Array.from(document.querySelectorAll("#memberData tr[data-search-text]"));
+        }
+
+        function applyPagination() {
+            const rows = memberRows();
+            const members = getMembers();
+            const loaded = members !== null;
+            const matched = rows.filter(row => row.style.display !== "none");
+            const total = matched.length;
+            const size = pager.size > 0 ? pager.size : Math.max(total, 1);
+            const pages = Math.max(1, Math.ceil(total / size));
+            if (pager.page > pages) pager.page = pages;
+            if (pager.page < 1) pager.page = 1;
+            const start = (pager.page - 1) * size;
+            const end = start + size;
+
+            rows.forEach(row => row.classList.remove("cc-page-hidden"));
+            matched.forEach((row, index) => {
+                if (index < start || index >= end) row.classList.add("cc-page-hidden");
+            });
+
+            const info = document.getElementById("ccRowInfo");
+            const empty = document.getElementById("ccEmptyState");
+            const pagination = document.getElementById("ccPagination");
+            const tableWrap = document.querySelector("#ccDaftar .table-responsive");
+
+            if (!loaded) {
+                info.textContent = "Memuat data...";
+                empty.hidden = true;
+                pagination.hidden = true;
+                return;
+            }
+
+            const allCount = rows.length;
+            info.textContent = total === allCount
+                ? `${total.toLocaleString("id-ID")} jemaat`
+                : `${total.toLocaleString("id-ID")} dari ${allCount.toLocaleString("id-ID")} jemaat`;
+
+            empty.hidden = total !== 0;
+            if (tableWrap) tableWrap.style.display = total === 0 ? "none" : "";
+            pagination.hidden = total === 0;
+
+            document.getElementById("ccPageLabel").textContent = total
+                ? `Menampilkan ${(start + 1).toLocaleString("id-ID")}–${Math.min(end, total).toLocaleString("id-ID")} dari ${total.toLocaleString("id-ID")} · Halaman ${pager.page} / ${pages}`
+                : "";
+
+            renderPageButtons(pages);
+        }
+
+        function renderPageButtons(pages) {
+            const box = document.getElementById("ccPageButtons");
+            const cur = pager.page;
+            const nums = new Set([1, pages, cur - 1, cur, cur + 1].filter(n => n >= 1 && n <= pages));
+            const sorted = [...nums].sort((a, b) => a - b);
+            let html = `<button type="button" class="cc-page-btn" data-page="${cur - 1}" ${cur <= 1 ? "disabled" : ""} aria-label="Sebelumnya"><i class="fas fa-chevron-left"></i></button>`;
+            let prev = 0;
+            sorted.forEach(n => {
+                if (n - prev > 1) html += `<span class="cc-page-gap">…</span>`;
+                html += `<button type="button" class="cc-page-btn${n === cur ? " is-current" : ""}" data-page="${n}" ${n === cur ? 'aria-current="page"' : ""}>${n}</button>`;
+                prev = n;
+            });
+            html += `<button type="button" class="cc-page-btn" data-page="${cur + 1}" ${cur >= pages ? "disabled" : ""} aria-label="Berikutnya"><i class="fas fa-chevron-right"></i></button>`;
+            box.innerHTML = html;
+        }
+
+        document.getElementById("ccPageButtons").addEventListener("click", event => {
+            const button = event.target.closest(".cc-page-btn");
+            if (!button || button.disabled) return;
+            pager.page = Number(button.dataset.page) || 1;
+            applyPagination();
+            document.getElementById("ccDaftar").scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        window.ccChangePageSize = function (value) {
+            pager.size = Number(value) || 0;
+            pager.page = 1;
+            applyPagination();
+        };
+
+        /* ---------------- Sinkronisasi dengan render existing ---------------- */
+        function refresh() {
+            scheduled = null;
+            const members = getMembers();
+            if (members && members !== lastMembersRef) {
+                lastMembersRef = members;
+                renderKpis(members);
+                renderNikahChart(members);
+                renderWilayahChart(members);
+                renderUltahList(members);
+
+                const pill = document.getElementById("ccSyncStatus");
+                pill.classList.add("is-live");
+                document.getElementById("ccSyncText").textContent =
+                    `Realtime · ${new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+
+                // Data hanya dimuat setelah otorisasi existing selesai — label sesi bisa langsung diisi
+                tick();
+            }
+            applyPagination();
+        }
+
+        function schedule() {
+            if (scheduled) return;
+            scheduled = setTimeout(refresh, 30);
+        }
+
+        // Mengamati DOM tabel yang dirender ulang oleh onSnapshot existing dan perubahan display dari search existing
+        new MutationObserver(schedule).observe(document.getElementById("memberData"), {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["style"]
+        });
+
+        // Search & reset existing tetap berjalan via handler aslinya; di sini hanya kembali ke halaman 1
+        document.getElementById("searchInput").addEventListener("input", () => { pager.page = 1; schedule(); });
+        document.getElementById("resetMemberSearchButton").addEventListener("click", () => { pager.page = 1; schedule(); });
+
+        /* ---------------- Header: jam & sesi ---------------- */
+        function tick() {
+            const now = new Date();
+            document.getElementById("ccClock").textContent =
+                now.toLocaleDateString("id-ID", { weekday: "short", day: "2-digit", month: "short" }) + " · " +
+                now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+            // Membaca sesi yang sudah ada (tanpa listener auth baru)
+            const user = window.firebase && firebase.auth ? firebase.auth().currentUser : null;
+            const role = typeof currentAdminRole === "string" ? currentAdminRole : "";
+            const session = document.getElementById("ccSession");
+            if (user && role) {
+                const label = typeof canDeleteAdminData === "function" && canDeleteAdminData() ? "SuperAdmin" : "Admin Viewer";
+                document.getElementById("ccSessionText").textContent = `${label} · ${user.email || ""}`.replace(/ · $/, "");
+                session.hidden = false;
+            } else {
+                session.hidden = true;
+            }
+        }
+        tick();
+        setInterval(tick, 15000); // jam tampilan saja, bukan Firestore
+
+        /* ---------------- Navigasi sidebar ---------------- */
+        window.ccToggleSidebar = () => document.body.classList.toggle("cc-sidebar-open");
+        window.ccCloseSidebar = () => document.body.classList.remove("cc-sidebar-open");
+
+        window.ccOpenBirthdays = function () {
+            const panel = document.getElementById("birthdayPanel");
+            if (!panel) return;
+            panel.open = true;
+            const chip = document.querySelector('.cc-chip[data-range="30days"]');
+            if (chip) window.ccSetBirthdayRange(chip);
+            panel.scrollIntoView({ behavior: "smooth", block: "start" });
+        };
+
+        window.ccSetBirthdayRange = function (button) {
+            document.querySelectorAll(".cc-chip[data-range]").forEach(chip => chip.classList.toggle("is-active", chip === button));
+            if (typeof setBirthdayRange === "function") setBirthdayRange(button.dataset.range);
+        };
+
+        window.ccOpenFilter = function () {
+            const panel = document.getElementById("ccFilter");
+            panel.scrollIntoView({ behavior: "smooth", block: "start" });
+            const input = document.getElementById("searchInput");
+            if (input && !input.disabled) setTimeout(() => input.focus({ preventScroll: true }), 300);
+        };
+
+        document.querySelectorAll('.cc-nav-link[href^="#cc"]').forEach(link => {
+            link.addEventListener("click", () => {
+                document.querySelectorAll(".cc-nav-link").forEach(item => item.classList.toggle("is-active", item === link));
+            });
+        });
+
+        schedule();
+    })();
 </script>
 
 </body>
