@@ -169,6 +169,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
@@ -181,24 +182,60 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
 
     let currentUserData = null;
+    let unsubscribeKesaksian = null;
 
-    window.onload = function() {
-        const email = localStorage.getItem("userEmail");
-        if (!email) return window.location.href = "index.html";
+    function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[character]);
+    }
 
-        db.collection("users").where("email", "==", email).get().then(snap => {
-            if (!snap.empty) {
-                currentUserData = snap.docs[0].data();
-                loadRubrikKesaksian();
+    function safePhotoUrl(value) {
+        const fallback = "https://via.placeholder.com/100";
+        if (!value) return fallback;
+
+        const candidate = String(value).trim();
+        const dataUrlMatch = candidate.match(
+            /^data:image\/(jpeg|png|webp|gif);base64,([A-Za-z0-9+/]+={0,2})$/i
+        );
+
+        if (dataUrlMatch) {
+            const base64 = dataUrlMatch[2];
+            const validBase64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+            if (base64.length > 0 && validBase64.test(base64)) {
+                return candidate;
             }
-        });
-    };
+        }
+
+        try {
+            const url = new URL(candidate, window.location.href);
+            return ["https:", "http:"].includes(url.protocol)
+                ? url.href
+                : fallback;
+        } catch (_) {
+            return fallback;
+        }
+    }
+
+    function showProfileError(message) {
+        document.getElementById("rubrik-kesaksian-container").textContent = message;
+        showToast(message);
+    }
 
     function loadRubrikKesaksian() {
-        db.collection("kesaksian").orderBy("timestamp", "desc").onSnapshot(snap => {
+        if (unsubscribeKesaksian) unsubscribeKesaksian();
+
+        unsubscribeKesaksian = db.collection("kesaksian")
+            .orderBy("timestamp", "desc")
+            .onSnapshot(snap => {
             let html = "";
             if (snap.empty) {
                 html = "<p style='text-align:center; color:#888; margin-top:30px;'>Belum ada kesaksian.</p>";
@@ -206,40 +243,63 @@
             snap.forEach(doc => {
                 const data = doc.data();
                 const id = doc.id;
-                
-                const isiMurni = data.isi_kesaksian ? data.isi_kesaksian.replace(/\n/g, " ") : "";
+                const isiMurni = String(data.isi_kesaksian || "").replace(/\s+/g, " ");
                 const namaPenulis = data.author_nama || "Anonim";
                 const nijPenulis = data.author_nij || "-";
                 const komselPenulis = data.author_komsel || "Umum";
-                const foto = data.author_foto || 'https://via.placeholder.com/100';
-                const canDelete = data.author_email === (currentUserData ? currentUserData.email : "");
+                const foto = safePhotoUrl(data.author_foto);
+                const canDelete = Boolean(
+                    auth.currentUser && data.author_uid === auth.currentUser.uid
+                );
 
-                html += `
-                    <div class="kesaksian-card" id="card-${id}">
-                        <div class="card-controls">
-                            ${canDelete ? `<button class="btn-delete" onclick="hapusKesaksian('${id}')"><i class="fa-solid fa-trash-can"></i> Hapus</button>` : ''}
-                        </div>
+                const deleteButton = canDelete
+                    ? '<button class="btn-delete" type="button" data-delete-id="' + escapeHTML(id) + '"><i class="fa-solid fa-trash-can"></i> Hapus</button>'
+                    : '';
 
-                        <div class="kesaksian-text">"${data.isi_kesaksian}"</div>
-
-                        <div class="share-panel">
-                            <button class="btn-share bg-wa" onclick="shareWA('${isiMurni}', '${namaPenulis}', '${nijPenulis}', '${komselPenulis}')">
-                                <i class="fa-brands fa-whatsapp"></i> BAGIKAN KE WHATSAPP
-                            </button>
-                        </div>
-
-                        <div class="kesaksian-footer">
-                            <img src="${foto}" class="author-img" onerror="this.src='https://via.placeholder.com/100'">
-                            <div class="author-info">
-                                <p class="author-name">${namaPenulis}</p>
-                                <p class="author-meta">NIJ: ${nijPenulis} • ${komselPenulis}</p>
-                            </div>
-                        </div>
-                    </div>`;
+                html += [
+                    '<div class="kesaksian-card" id="card-' + escapeHTML(id) + '">',
+                    '<div class="card-controls">' + deleteButton + '</div>',
+                    '<div class="kesaksian-text">&quot;' + escapeHTML(data.isi_kesaksian || "") + '&quot;</div>',
+                    '<div class="share-panel">',
+                    '<button class="btn-share bg-wa" type="button" data-share-story="' + escapeHTML(isiMurni) + '" data-share-name="' + escapeHTML(namaPenulis) + '" data-share-nij="' + escapeHTML(nijPenulis) + '" data-share-komsel="' + escapeHTML(komselPenulis) + '">',
+                    '<i class="fa-brands fa-whatsapp"></i> BAGIKAN KE WHATSAPP',
+                    '</button>',
+                    '</div>',
+                    '<div class="kesaksian-footer">',
+                    '<img src="' + escapeHTML(foto) + '" class="author-img" alt="Foto ' + escapeHTML(namaPenulis) + '" onerror="this.src=\'https://via.placeholder.com/100\'">',
+                    '<div class="author-info">',
+                    '<p class="author-name">' + escapeHTML(namaPenulis) + '</p>',
+                    '<p class="author-meta">NIJ: ' + escapeHTML(nijPenulis) + ' • ' + escapeHTML(komselPenulis) + '</p>',
+                    '</div>',
+                    '</div>',
+                    '</div>'
+                ].join("");
             });
-            document.getElementById('rubrik-kesaksian-container').innerHTML = html;
+            document.getElementById("rubrik-kesaksian-container").innerHTML = html;
+        }, error => {
+            showProfileError(error.code === "permission-denied"
+                ? "Login diperlukan untuk membaca kesaksian."
+                : "Kesaksian belum dapat dimuat.");
         });
     }
+
+    document.getElementById("rubrik-kesaksian-container").addEventListener("click", event => {
+        const deleteButton = event.target.closest("[data-delete-id]");
+        if (deleteButton) {
+            hapusKesaksian(deleteButton.dataset.deleteId);
+            return;
+        }
+
+        const shareButton = event.target.closest("[data-share-story]");
+        if (shareButton) {
+            shareWA(
+                shareButton.dataset.shareStory,
+                shareButton.dataset.shareName,
+                shareButton.dataset.shareNij,
+                shareButton.dataset.shareKomsel
+            );
+        }
+    });
 
     function shareWA(isi, nama, nij, komsel) {
         const teks = `*SIPAPUA*\n(Sistem Informasi Pondok Pemulihan Papua)\n_Pope Shelter_\n\n*Kesaksian:*\n"${isi}"\n\n---\n*Penulis:* ${nama}\n*NIJ:* ${nij}\n*Komsel:* ${komsel}`;
@@ -248,33 +308,52 @@
     }
 
     async function hapusKesaksian(id) {
+        if (!auth.currentUser) {
+            window.location.replace("index.html");
+            return;
+        }
+
         if(confirm("Apakah Anda yakin ingin menghapus kesaksian ini?")) {
             try {
                 await db.collection("kesaksian").doc(id).delete();
                 showToast("Kesaksian telah dihapus");
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                showToast(e.code === "permission-denied"
+                    ? "Anda hanya dapat menghapus kesaksian milik sendiri."
+                    : "Kesaksian gagal dihapus.");
+            }
         }
     }
 
     async function simpanKesaksian() {
         const cerita = document.getElementById('add-cerita').value.trim();
         if (!cerita) return;
+        const user = auth.currentUser;
+        if (!user || !currentUserData) {
+            window.location.replace("index.html");
+            return;
+        }
+
         const btn = document.getElementById('btnKirim');
         btn.disabled = true;
         try {
             await db.collection("kesaksian").add({
                 isi_kesaksian: cerita,
-                author_nama: currentUserData.nama,
-                author_nij: currentUserData.nij || "-",
-                author_komsel: currentUserData.komsel || "Umum",
-                author_foto: currentUserData.foto_profil || "", 
-                author_email: currentUserData.email,
+                author_uid: user.uid,
+                author_nama: currentUserData.nama_lengkap || currentUserData.nama || user.displayName || "Jemaat SIPAPUA",
+                author_nij: currentUserData.nij || currentUserData.no_komsel || "-",
+                author_komsel: currentUserData.nama_komsel || currentUserData.lokasi_komsel || currentUserData.komsel || "Umum",
+                author_foto: currentUserData.foto_profil || currentUserData.foto || user.photoURL || "",
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             tutupPopup();
             document.getElementById('add-cerita').value = "";
             showToast("Kesaksian Berhasil Diposting!");
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            showToast(e.code === "permission-denied"
+                ? "Posting ditolak. Silakan login ulang lalu coba lagi."
+                : "Kesaksian gagal diposting.");
+        }
         finally { btn.disabled = false; }
     }
 
@@ -287,6 +366,36 @@
 
     function bukaPopupAdd() { document.getElementById('popup-add').style.display = 'flex'; }
     function tutupPopup() { document.getElementById('popup-add').style.display = 'none'; }
+
+    auth.onAuthStateChanged(async user => {
+        currentUserData = null;
+        if (unsubscribeKesaksian) {
+            unsubscribeKesaksian();
+            unsubscribeKesaksian = null;
+        }
+
+        if (!user) {
+            window.location.replace("index.html");
+            return;
+        }
+
+        try {
+            const profileSnapshot = await db.collection("users").doc(user.uid).get();
+            if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
+
+            if (!profileSnapshot.exists) {
+                showProfileError("Profil pengguna tidak ditemukan.");
+                return;
+            }
+
+            currentUserData = profileSnapshot.data() || {};
+            loadRubrikKesaksian();
+        } catch (error) {
+            showProfileError(error.code === "permission-denied"
+                ? "Profil tidak dapat dibaca. Silakan login ulang."
+                : "Profil pengguna belum dapat dimuat.");
+        }
+    });
 </script>
 </body>
 </html>

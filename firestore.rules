@@ -572,7 +572,12 @@ service cloud.firestore {
     }
 
     match /kesaksian/{document=**} {
-      allow read, write: if true;
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.author_uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.author_uid == request.auth.uid;
     }
 
     match /running_text_history/{document=**} {
