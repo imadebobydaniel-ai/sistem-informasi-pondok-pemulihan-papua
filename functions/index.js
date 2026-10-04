@@ -1,4 +1,4 @@
-﻿const { onCall } = require("firebase-functions/v2/https");
+const { onCall } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const {
@@ -9,6 +9,7 @@ const {
 const { getAuth } = require("firebase-admin/auth");
 const { HttpsError } = require("firebase-functions/v2/https");
 const { buildRaporStatistics } = require("./rapor-stats");
+const { buildPublicStatistics } = require("./public-statistics");
 
 initializeApp();
 
@@ -27,6 +28,10 @@ exports.healthCheck = onCall(
 
 
 const db = getFirestore();
+const PUBLIC_STATISTICS_CACHE_MS = 60 * 1000;
+let publicStatisticsCache = null;
+let publicStatisticsCacheAt = 0;
+let publicStatisticsRequest = null;
 
 exports.findNearbyMembers = onCall(
     {
@@ -1455,6 +1460,38 @@ exports.getRaporStatistics = onCall(
             db,
             request.auth.uid
         );
+    }
+);
+
+exports.getPublicStatistics = onCall(
+    {
+        region: "asia-southeast2",
+        enforceAppCheck: false,
+        timeoutSeconds: 120,
+        memory: "1GiB",
+        maxInstances: 2
+    },
+    async () => {
+        if (
+            publicStatisticsCache &&
+            Date.now() - publicStatisticsCacheAt < PUBLIC_STATISTICS_CACHE_MS
+        ) {
+            return publicStatisticsCache;
+        }
+
+        if (!publicStatisticsRequest) {
+            publicStatisticsRequest = buildPublicStatistics(db)
+                .then(rows => {
+                    publicStatisticsCache = rows;
+                    publicStatisticsCacheAt = Date.now();
+                    return rows;
+                })
+                .finally(() => {
+                    publicStatisticsRequest = null;
+                });
+        }
+
+        return publicStatisticsRequest;
     }
 );
 const DEMO_PKS_WILAYAH = [

@@ -6,6 +6,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script> 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -254,8 +255,38 @@
         appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
     };
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     const db = firebase.firestore();
     const originalDataStore = {};
+    const CARD_ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    let currentCardAdmin = false;
+
+    async function verifyCardAdmin(user) {
+        if (!user) {
+            currentCardAdmin = false;
+            return false;
+        }
+
+        const adminSnapshot = await db.collection("admin_users")
+            .doc(user.uid)
+            .get();
+
+        if (!adminSnapshot.exists) {
+            currentCardAdmin = false;
+            return false;
+        }
+
+        const adminData = adminSnapshot.data() || {};
+        const role = String(adminData.role || "").trim().toLowerCase();
+        currentCardAdmin = adminData.status === "active" && CARD_ADMIN_ROLES.has(role);
+        return currentCardAdmin;
+    }
+
+    function requireCardAdmin() {
+        if (!auth.currentUser || !currentCardAdmin) {
+            throw new Error("Simpan permanen hanya tersedia untuk administrator aktif.");
+        }
+    }
 
     function previewEditorPhoto(input) {
         const file =
@@ -443,6 +474,13 @@
     }
 
     async function openEditor(id) {
+        try {
+            requireCardAdmin();
+        } catch (error) {
+            alert(error.message);
+            return;
+        }
+
         document.getElementById("editCardId").value = id;
 
         document.getElementById("editNIJ").value =
@@ -631,6 +669,7 @@
         }
 
         try {
+            requireCardAdmin();
             let newPhoto =
                 originalDataStore[id]?.foto || "";
 
@@ -742,6 +781,12 @@
 
     async function savePermanently(id) {
         try {
+            requireCardAdmin();
+
+            if (!originalDataStore[id]) {
+                throw new Error("Dokumen kartu tidak dimuat atau tidak valid.");
+            }
+
             await db.collection("users").doc(id).update({
                 nama_lengkap: document.getElementById(`v-nama-${id}`).innerText.replace(': ', ''),
                 tanggal_lahir: document.getElementById(`v-ttl-${id}`).innerText.replace(': ', ''),
@@ -791,10 +836,25 @@
         }
     }
 
-    async function drawCards() {
+    async function drawCards(user) {
+        const container = document.getElementById('cardContainer');
+
+        try {
+            if (!(await verifyCardAdmin(user))) {
+                container.textContent = user
+                    ? "Akses mencetak dan menyimpan kartu hanya tersedia untuk administrator aktif."
+                    : "Silakan login sebagai administrator untuk membuka kartu jemaat.";
+                return;
+            }
+        } catch (error) {
+            console.error("Verifikasi administrator kartu gagal:", error);
+            container.textContent = "Status administrator gagal diverifikasi. Tidak ada data kartu yang dimuat.";
+            return;
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const ids = urlParams.get('ids') ? urlParams.get('ids').split(',') : [];
-        const container = document.getElementById('cardContainer');
+        container.textContent = "";
         
         for (const id of ids) {
             const doc = await db.collection("users").doc(id).get();
@@ -849,7 +909,9 @@
             }
         }
     }
-    window.onload = drawCards;
+    auth.onAuthStateChanged(user => {
+        drawCards(user);
+    });
 </script>
 </body>
 </html>
