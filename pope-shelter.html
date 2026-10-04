@@ -230,6 +230,19 @@
         showToast(message);
     }
 
+    // Keep the Firestore error code visible so mobile failures can be told apart.
+    function firestoreErrorMessage(error, fallback, deniedMessage) {
+        const code = String((error && error.code) || "").replace(/^firestore\//, "");
+        const messages = {
+            "permission-denied": deniedMessage,
+            "unauthenticated": "Sesi login berakhir. Silakan login ulang.",
+            "unavailable": "Server tidak dapat dihubungi. Periksa koneksi internet lalu muat ulang halaman.",
+            "failed-precondition": "Permintaan belum dapat diproses server. Muat ulang halaman.",
+            "deadline-exceeded": "Koneksi terlalu lambat. Silakan coba lagi."
+        };
+        return (messages[code] || fallback) + (code ? " (" + code + ")" : "");
+    }
+
     function loadRubrikKesaksian() {
         if (unsubscribeKesaksian) unsubscribeKesaksian();
 
@@ -277,9 +290,11 @@
             });
             document.getElementById("rubrik-kesaksian-container").innerHTML = html;
         }, error => {
-            showProfileError(error.code === "permission-denied"
-                ? "Login diperlukan untuk membaca kesaksian."
-                : "Kesaksian belum dapat dimuat.");
+            showProfileError(firestoreErrorMessage(
+                error,
+                "Kesaksian belum dapat dimuat.",
+                "Login diperlukan untuk membaca kesaksian."
+            ));
         });
     }
 
@@ -329,8 +344,12 @@
         const cerita = document.getElementById('add-cerita').value.trim();
         if (!cerita) return;
         const user = auth.currentUser;
-        if (!user || !currentUserData) {
+        if (!user) {
             window.location.replace("index.html");
+            return;
+        }
+        if (!currentUserData) {
+            showToast("Profil Anda belum selesai dimuat. Tunggu sebentar lalu coba lagi.");
             return;
         }
 
@@ -350,9 +369,11 @@
             document.getElementById('add-cerita').value = "";
             showToast("Kesaksian Berhasil Diposting!");
         } catch (e) {
-            showToast(e.code === "permission-denied"
-                ? "Posting ditolak. Silakan login ulang lalu coba lagi."
-                : "Kesaksian gagal diposting.");
+            showToast(firestoreErrorMessage(
+                e,
+                "Kesaksian gagal diposting.",
+                "Posting ditolak. Silakan login ulang lalu coba lagi."
+            ));
         }
         finally { btn.disabled = false; }
     }
@@ -379,6 +400,8 @@
             return;
         }
 
+        document.getElementById("rubrik-kesaksian-container").textContent = "Memuat kesaksian…";
+
         try {
             const profileSnapshot = await db.collection("users").doc(user.uid).get();
             if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
@@ -391,9 +414,11 @@
             currentUserData = profileSnapshot.data() || {};
             loadRubrikKesaksian();
         } catch (error) {
-            showProfileError(error.code === "permission-denied"
-                ? "Profil tidak dapat dibaca. Silakan login ulang."
-                : "Profil pengguna belum dapat dimuat.");
+            showProfileError(firestoreErrorMessage(
+                error,
+                "Profil pengguna belum dapat dimuat.",
+                "Profil tidak dapat dibaca. Silakan login ulang."
+            ));
         }
     });
 </script>
