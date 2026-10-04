@@ -442,6 +442,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
 
@@ -457,7 +458,10 @@
     };
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const auth = firebase.auth();
     const db = firebase.firestore();
+    const EDIT_ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+    let editAdminVerified = false;
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('edit'); 
 
@@ -467,6 +471,35 @@
     }
 
     let txtProv = "", txtKota = "", txtKec = "", txtDesa = "";
+
+    async function verifyActiveEditAdmin(user = auth.currentUser) {
+        if (!user || !auth.currentUser || auth.currentUser.uid !== user.uid) {
+            editAdminVerified = false;
+            return false;
+        }
+
+        const adminSnapshot = await db.collection("admin_users")
+            .doc(user.uid)
+            .get();
+
+        if (!adminSnapshot.exists || !auth.currentUser || auth.currentUser.uid !== user.uid) {
+            editAdminVerified = false;
+            return false;
+        }
+
+        const adminData = adminSnapshot.data() || {};
+        const role = String(adminData.role || "").trim().toLowerCase();
+        editAdminVerified = adminData.status === "active" && EDIT_ADMIN_ROLES.has(role);
+        return editAdminVerified;
+    }
+
+    function denyEditAccess(message) {
+        editAdminVerified = false;
+        document.querySelector(".edit-container").style.display = "none";
+        const loading = document.getElementById("loading");
+        loading.style.display = "flex";
+        loading.textContent = message;
+    }
 
     async function loadProvinsi(selectedName = "") {
         const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
@@ -976,7 +1009,7 @@
             angkatan.value = "";
         }
     }
-    window.onload = async function() {
+    async function loadEditData() {
         initializeProfilePhotoWidget();
         try {
             const doc = await db.collection("users").doc(userId).get();
@@ -1247,7 +1280,38 @@
             console.error(error);
             alert("Gagal memuat data: " + error.message);
         }
-    };
+    }
+
+    let editPageInitialized = false;
+    auth.onAuthStateChanged(async (user) => {
+        if (editPageInitialized) {
+            if (!user) {
+                denyEditAccess("Sesi administrator berakhir. Mengalihkan ke halaman login...");
+                window.location.replace("login_cyber.html");
+            }
+            return;
+        }
+
+        if (!user) {
+            denyEditAccess("Sesi administrator diperlukan. Mengalihkan ke halaman login...");
+            window.location.replace("login_cyber.html");
+            return;
+        }
+
+        try {
+            if (!(await verifyActiveEditAdmin(user))) {
+                denyEditAccess("Akses hanya tersedia untuk administrator aktif.");
+                window.location.replace("database-jemaat.html");
+                return;
+            }
+
+            editPageInitialized = true;
+            await loadEditData();
+        } catch (error) {
+            denyEditAccess("Status administrator gagal diverifikasi. Data tidak dimuat.");
+            window.location.replace("database-jemaat.html");
+        }
+    });
 
     function previewProfilePhoto(input) {
         const file =
@@ -1475,6 +1539,11 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
         try {
+            if (!(await verifyActiveEditAdmin(auth.currentUser))) {
+                denyEditAccess("Sesi administrator tidak aktif atau hak akses sudah dicabut. Perubahan tidak disimpan.");
+                throw new Error("Hanya administrator aktif yang dapat menyimpan perubahan.");
+            }
+
 const emailNormalized = document.getElementById("email").value.trim().toLowerCase();
             const whatsappDigits =
                 document.getElementById("whatsapp").value.replace(/\D/g, "");
@@ -1683,6 +1752,12 @@ const emailNormalized = document.getElementById("email").value.trim().toLowerCas
                 updateData.foto_profil =
                     profilePhotoUrl;
             }
+
+            if (!(await verifyActiveEditAdmin(auth.currentUser))) {
+                denyEditAccess("Status administrator tidak valid. Perubahan tidak disimpan.");
+                throw new Error("Hanya administrator aktif yang dapat menyimpan perubahan.");
+            }
+
             await db.collection("users").doc(userId).update(updateData);
             alert("Data User Berhasil Diperbarui!");
             window.location.href = 'database-jemaat.html';

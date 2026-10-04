@@ -129,11 +129,15 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     let authenticatedUser = null;
+    let accountDeletionCompleted = false;
 
     auth.onAuthStateChanged(function(user) {
         if (!user) {
             authenticatedUser = null;
             localStorage.removeItem("userEmail");
+            if (accountDeletionCompleted) {
+                return;
+            }
             window.location.replace("index.html");
             return;
         }
@@ -298,25 +302,52 @@
 
         try {
             const currentEmail = currentUser.email;
+            const profileRefs = new Map();
+            const uidProfile = await db.collection("users")
+                .doc(currentUser.uid)
+                .get();
 
-            const snap = currentEmail
-                ? await db.collection("users")
+            if (uidProfile.exists) {
+                profileRefs.set(uidProfile.id, uidProfile.ref);
+            }
+
+            // Keep compatibility with profiles created before users/{uid} became standard.
+            if (currentEmail) {
+                const legacyProfiles = await db.collection("users")
                     .where("email", "==", currentEmail)
-                    .get()
-                : null;
+                    .get();
 
-            /*
-             * Hapus akun Firebase Authentication terlebih dahulu.
-             * Jika operasi ini gagal karena recent-login, data Firestore
-             * sengaja TIDAK dihapus agar data tidak menjadi orphan.
-             */
-            await currentUser.delete();
+                legacyProfiles.docs.forEach(doc => {
+                    const data = doc.data() || {};
+                    if (doc.id === currentUser.uid || data.uid === currentUser.uid) {
+                        profileRefs.set(doc.id, doc.ref);
+                    } else {
+                        throw new Error(
+                            "Ditemukan profil lama dengan email akun ini, tetapi kepemilikannya tidak dapat diverifikasi. Akun tidak dihapus. Hubungi administrator untuk pemeriksaan profil legacy."
+                        );
+                    }
+                });
+            }
 
-            if (snap && !snap.empty) {
-                await Promise.all(
-                    snap.docs.map(doc => doc.ref.delete())
+            if (profileRefs.size === 0) {
+                throw new Error(
+                    "Profil akun tidak ditemukan. Akun Firebase tidak dihapus; hubungi administrator untuk pemeriksaan data profil."
                 );
             }
+
+            // Delete every verifiably owned profile before deleting Firebase Auth.
+            for (const profileRef of profileRefs.values()) {
+                await profileRef.delete();
+            }
+
+            await currentUser.delete();
+            accountDeletionCompleted = true;
+            sessionStorage.removeItem("sipapua_session_started_at");
+            sessionStorage.removeItem("sipapua_popup_dismissed");
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("userUid");
+            localStorage.removeItem("setSuara");
+            localStorage.removeItem("setTimer");
 
             tutupNotif();
 
@@ -324,7 +355,7 @@
                 "fa-trash-can",
                 "#dc3545",
                 "Akun Dihapus",
-                "Akun dan data profil Anda telah dihapus secara permanen."
+                "Profil dan akun Anda telah dihapus secara permanen."
             );
 
             setTimeout(() => {
@@ -340,10 +371,12 @@
         } catch (e) {
             let pesan = e.message;
 
-            if (e.code === "auth/requires-recent-login") {
-                pesan = "Demi keamanan, silakan login ulang terlebih dahulu sebelum menghapus akun.";
+            if (e.code === "permission-denied" || e.code === "firestore/permission-denied") {
+                pesan = "Penghapusan profil dari database gagal. Akun Firebase tidak dihapus; jika akun memiliki beberapa profil, sebagian mungkin sudah terhapus. Pastikan profil legacy terkait UID yang sama, lalu coba lagi atau hubungi administrator.";
+            } else if (e.code === "auth/requires-recent-login") {
+                pesan = "Profil sudah dihapus, tetapi Firebase Authentication belum dapat menghapus akun karena login ulang diperlukan. Akun masih aktif pada sesi ini; silakan login ulang lalu hubungi administrator untuk penanganan profil.";
             } else if (e.code === "auth/user-token-expired") {
-                pesan = "Sesi keamanan telah berakhir. Silakan login ulang terlebih dahulu.";
+                pesan = "Profil sudah dihapus, tetapi Firebase Authentication belum dapat menghapus akun karena sesi keamanan berakhir. Akun masih aktif; login ulang lalu hubungi administrator untuk penanganan profil.";
             }
 
             tutupNotif();

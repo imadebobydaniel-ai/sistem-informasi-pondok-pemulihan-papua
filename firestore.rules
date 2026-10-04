@@ -270,8 +270,28 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    match /users/{document=**} {
-      allow read, write: if true;
+    match /users/{uid} {
+      // Profile reads remain compatible with existing registration lookups.
+      // Writes must come from the profile owner or an active administrator.
+      allow read: if true;
+      allow create: if isActiveAdmin()
+        || (signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid);
+      allow update: if isActiveAdmin()
+        || (signedIn()
+          && (request.auth.uid == uid
+            || resource.data.get("uid", "") == request.auth.uid));
+      allow delete: if isActiveAdmin()
+        || (signedIn()
+          && (request.auth.uid == uid
+            || resource.data.get("uid", "") == request.auth.uid));
+    }
+
+    match /users/{uid}/{document=**} {
+      allow read: if true;
+      allow write: if isActiveAdmin()
+        || (signedIn() && request.auth.uid == uid);
     }
 
     match /login_logs/{document=**} {
@@ -525,7 +545,8 @@ service cloud.firestore {
     }
 
     match /statistik_jemaat_pusat/{document=**} {
-      allow read: if true;
+      // Raw report copies remain internal to active administrators.
+      allow read: if isActiveAdmin();
 
       allow create: if
         signedIn()
