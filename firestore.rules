@@ -488,8 +488,33 @@ service cloud.firestore {
       allow delete: if signedIn() && uid == request.auth.uid;
     }
 
-    match /game_scores/{document=**} {
-      allow read, write: if true;
+    // Game leaderboard: one document per player, keyed by auth uid. Points are earned
+    // client-side (20 per correct answer, up to 100 questions per round), so each write may
+    // add at most one full round (2000) and the running total can never go down.
+    function validGameScore(uid) {
+      let data = request.resource.data;
+      return signedIn()
+        && request.auth.uid == uid
+        && data.uid == uid
+        && data.keys().hasOnly(['uid', 'nama', 'skor', 'streak', 'predikat', 'updatedAt'])
+        && data.keys().hasAll(['uid', 'nama', 'skor', 'streak', 'predikat', 'updatedAt'])
+        && data.nama is string && data.nama.size() > 0 && data.nama.size() <= 80
+        && data.skor is int && data.skor >= 0 && data.skor % 20 == 0
+        && data.streak is int && data.streak >= 0 && data.streak <= 100000
+        && data.predikat == (data.streak >= 7 ? '🏆 GOLD'
+          : data.streak >= 4 ? '🥈 SILVER'
+          : data.streak >= 2 ? '🥉 BRONZE' : '')
+        && data.updatedAt == request.time;
+    }
+
+    match /game_scores/{uid} {
+      allow read: if signedIn();
+      allow create: if validGameScore(uid)
+        && request.resource.data.skor <= 2000;
+      allow update: if validGameScore(uid)
+        && request.resource.data.skor >= resource.data.skor
+        && request.resource.data.skor - resource.data.skor <= 2000;
+      allow delete: if isActiveAdmin();
     }
 
     match /pengumuman_komsel/{document=**} {
