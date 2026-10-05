@@ -87,6 +87,14 @@
             border-bottom: 1px dashed #eee;
         }
 
+        .testimony-date {
+            margin-right: auto;
+            color: #777;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .btn-delete { color: var(--merah); cursor: pointer; font-size: 14px; background: none; border: none; font-weight: bold; }
 
         .kesaksian-text { font-size: 15px; color: #333; line-height: 1.6; margin-bottom: 15px; font-style: italic; white-space: pre-wrap; }
@@ -261,6 +269,7 @@
                 const nijPenulis = data.author_nij || "-";
                 const komselPenulis = data.author_komsel || "Umum";
                 const foto = safePhotoUrl(data.author_foto);
+                const tanggalKesaksian = formatTestimonyDate(data.timestamp);
                 const canDelete = Boolean(
                     auth.currentUser && data.author_uid === auth.currentUser.uid
                 );
@@ -271,7 +280,9 @@
 
                 html += [
                     '<div class="kesaksian-card" id="card-' + escapeHTML(id) + '">',
-                    '<div class="card-controls">' + deleteButton + '</div>',
+                    '<div class="card-controls">' + (tanggalKesaksian
+                        ? '<time class="testimony-date" datetime="' + tanggalKesaksian.iso + '">' + escapeHTML(tanggalKesaksian.label) + '</time>'
+                        : '') + deleteButton + '</div>',
                     '<div class="kesaksian-text">&quot;' + escapeHTML(data.isi_kesaksian || "") + '&quot;</div>',
                     '<div class="share-panel">',
                     '<button class="btn-share bg-wa" type="button" data-share-story="' + escapeHTML(isiMurni) + '" data-share-name="' + escapeHTML(namaPenulis) + '" data-share-nij="' + escapeHTML(nijPenulis) + '" data-share-komsel="' + escapeHTML(komselPenulis) + '">',
@@ -296,6 +307,25 @@
                 "Login diperlukan untuk membaca kesaksian."
             ));
         });
+    }
+
+    function formatTestimonyDate(value) {
+        if (!value) return null;
+        try {
+            const date = typeof value.toDate === "function"
+                ? value.toDate()
+                : value instanceof Date ? value : null;
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+            return {
+                label: new Intl.DateTimeFormat("id-ID", {
+                    day: "2-digit", month: "short", year: "numeric",
+                    timeZone: "Asia/Jayapura"
+                }).format(date),
+                iso: date.toISOString()
+            };
+        } catch (_) {
+            return null;
+        }
     }
 
     document.getElementById("rubrik-kesaksian-container").addEventListener("click", event => {
