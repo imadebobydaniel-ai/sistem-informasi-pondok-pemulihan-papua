@@ -794,6 +794,8 @@ body {
     background: linear-gradient(160deg, #123b73, #0b2a55 60%);
     color: #fff;
     isolation: isolate;
+    /* Lets the hero media size itself from the shell width (cqw). */
+    container-type: inline-size;
 }
 
 .hero-panel::before {
@@ -822,6 +824,7 @@ body {
 
 .portal-topbar {
     position: relative;
+    z-index: 2;
     display: grid;
     grid-template-columns: 42px 1fr 82px;
     align-items: center;
@@ -848,7 +851,7 @@ button.topbar-button { padding: 0; cursor: pointer; }
 .topbar-button i, .inbox-shortcut i { color: #fff !important; font-size: 15px !important; }
 .portal-brand { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; text-align: left; }
 .portal-brand img { width: 34px; height: 34px; flex: 0 0 34px; object-fit: contain; border-radius: 50%; background: #fff; }
-.portal-brand div { display: flex; flex-direction: column; gap: 1px; color: #fff; line-height: 1.05; }
+.portal-brand div { display: flex; flex-direction: column; gap: 1px; color: #fff; line-height: 1.05; text-shadow: 0 1px 6px rgba(8,24,52,.55); }
 .portal-brand span { font-size: 9px; font-weight: 700; letter-spacing: 1.1px; opacity: .78; }
 .portal-brand strong { font-size: 13px; font-weight: 800; letter-spacing: 1.25px; }
 .topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
@@ -874,10 +877,12 @@ button.topbar-button { padding: 0; cursor: pointer; }
     line-height: 1 !important;
 }
 
+/* Static on purpose: #media-display-area then positions against .hero-panel and spans the full
+   shell width as the hero media, while the profile card stays in this box's flow. */
 .top-section-container {
-    position: relative;
+    position: static;
     width: 100%;
-    height: 139px;
+    height: max(139px, calc(75cqw - 100px));
     margin: 20px auto 0;
     overflow: visible;
     border: 0;
@@ -886,31 +891,44 @@ button.topbar-button { padding: 0; cursor: pointer; }
     box-shadow: none;
 }
 
+/* Hero media: full-bleed back layer from the top edge down to where the quick-access card overlaps. */
 #media-display-area {
     position: absolute;
     z-index: 0;
-    inset: 0;
+    inset: 0 0 66px;
     overflow: hidden;
-    border-radius: 20px;
-    opacity: .14;
-    transition: opacity .3s ease;
+    border-radius: 0;
+    opacity: 1;
     container-type: size;
 }
 
-.top-section-container:has(#profileCard.closed) #media-display-area { opacity: 1; }
+/* Navy scrim keeps the overlaid header and profile legible; clicks still reach the player. */
+#media-display-area::after {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8,24,52,.66) 0%, rgba(8,24,52,.16) 26%, rgba(8,24,52,.52) 46%, rgba(11,42,85,.88) 70%, #0b2a55 100%);
+    content: '';
+    pointer-events: none;
+    transition: opacity .3s ease;
+}
+
+/* Profile hidden: show the video almost clear, keeping only the top fade for the header. */
+.top-section-container:has(#profileCard.closed) #media-display-area::after {
+    background: linear-gradient(180deg, rgba(8,24,52,.66) 0%, rgba(8,24,52,0) 30%, rgba(8,24,52,0) 82%, #0b2a55 100%);
+}
 
 #audioPlayer, #textDisplay { max-width: 100%; }
 /* Cover the rounded media area like object-fit: cover; a 16:9 player is cropped, never pillarboxed. */
 #media-display-area #player { position: absolute; top: 50%; left: 50%; width: max(100%, 177.78cqh); height: max(100%, 56.25cqw); max-width: none; transform: translate(-50%, -50%); }
 #media-display-area #videoPlayer, #media-display-area #imageDisplay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .profile-card {
-    position: absolute;
+    position: relative;
     z-index: 2;
-    inset: 0;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    justify-content: flex-start;
+    justify-content: flex-end;
     width: 100%;
     height: 100%;
     padding: 0;
@@ -923,6 +941,19 @@ button.topbar-button { padding: 0; cursor: pointer; }
 }
 
 .profile-card.closed { transform: translateX(-110%); }
+/* Navy veil behind the profile only (not the whole hero): strongest from the card's middle down,
+   bleeding to the hero edges and down to the media's bottom fade. Slides away with .closed. */
+.profile-card::before {
+    position: absolute;
+    z-index: -1;
+    top: -18px;
+    right: -18px;
+    bottom: -22px;
+    left: -18px;
+    background: linear-gradient(180deg, rgba(11,42,85,0) 0%, rgba(11,42,85,.5) 26%, rgba(11,42,85,.74) 46%, rgba(11,42,85,.84) 70%, rgba(11,42,85,.9) 100%);
+    content: '';
+    pointer-events: none;
+}
 .profile-greeting-row { display: flex; align-items: center; gap: 13px; min-width: 0; }
 .profile-photo-wrap {
     position: relative;
