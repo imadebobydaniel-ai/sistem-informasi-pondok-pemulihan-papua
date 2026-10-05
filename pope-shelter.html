@@ -87,6 +87,14 @@
             border-bottom: 1px dashed #eee;
         }
 
+        .testimony-date {
+            margin-right: auto;
+            color: #777;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .btn-delete { color: var(--merah); cursor: pointer; font-size: 14px; background: none; border: none; font-weight: bold; }
 
         .kesaksian-text { font-size: 15px; color: #333; line-height: 1.6; margin-bottom: 15px; font-style: italic; white-space: pre-wrap; }
@@ -254,13 +262,15 @@
                 html = "<p style='text-align:center; color:#888; margin-top:30px;'>Belum ada kesaksian.</p>";
             }
             snap.forEach(doc => {
-                const data = doc.data();
+                // A just-posted testimony shows the estimated server time until the write is confirmed.
+                const data = doc.data({ serverTimestamps: "estimate" });
                 const id = doc.id;
                 const isiMurni = String(data.isi_kesaksian || "").replace(/\s+/g, " ");
                 const namaPenulis = data.author_nama || "Anonim";
                 const nijPenulis = data.author_nij || "-";
                 const komselPenulis = data.author_komsel || "Umum";
                 const foto = safePhotoUrl(data.author_foto);
+                const tanggalKesaksian = formatTestimonyDate(data.timestamp);
                 const canDelete = Boolean(
                     auth.currentUser && data.author_uid === auth.currentUser.uid
                 );
@@ -271,7 +281,9 @@
 
                 html += [
                     '<div class="kesaksian-card" id="card-' + escapeHTML(id) + '">',
-                    '<div class="card-controls">' + deleteButton + '</div>',
+                    '<div class="card-controls">' + (tanggalKesaksian
+                        ? '<time class="testimony-date" datetime="' + tanggalKesaksian.iso + '">' + escapeHTML(tanggalKesaksian.label) + '</time>'
+                        : '') + deleteButton + '</div>',
                     '<div class="kesaksian-text">&quot;' + escapeHTML(data.isi_kesaksian || "") + '&quot;</div>',
                     '<div class="share-panel">',
                     '<button class="btn-share bg-wa" type="button" data-share-story="' + escapeHTML(isiMurni) + '" data-share-name="' + escapeHTML(namaPenulis) + '" data-share-nij="' + escapeHTML(nijPenulis) + '" data-share-komsel="' + escapeHTML(komselPenulis) + '">',
@@ -296,6 +308,47 @@
                 "Login diperlukan untuk membaca kesaksian."
             ));
         });
+    }
+
+    // Upload time of a testimony, e.g. "Senin, 05 Okt 2026 \u2022 13:19 WIT" (Asia/Jayapura).
+    // Returns null when the timestamp is missing or invalid, so no date is ever invented.
+    const TESTIMONY_DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
+        weekday: "long",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+        timeZone: "Asia/Jayapura"
+    });
+
+    function formatTestimonyDate(value) {
+        if (!value) return null;
+        try {
+            const date = typeof value.toDate === "function"
+                ? value.toDate()
+                : value instanceof Date
+                    ? value
+                    : typeof value.seconds === "number"
+                        ? new Date(value.seconds * 1000)
+                        : null;
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+
+            const parts = {};
+            TESTIMONY_DATE_FORMAT.formatToParts(date).forEach(part => {
+                parts[part.type] = part.value;
+            });
+            if (!parts.weekday || !parts.day || !parts.month || !parts.year || !parts.hour || !parts.minute) return null;
+
+            return {
+                label: parts.weekday + ", " + parts.day + " " + parts.month + " " + parts.year
+                    + " \u2022 " + parts.hour + ":" + parts.minute + " WIT",
+                iso: date.toISOString()
+            };
+        } catch (_) {
+            return null;
+        }
     }
 
     document.getElementById("rubrik-kesaksian-container").addEventListener("click", event => {
