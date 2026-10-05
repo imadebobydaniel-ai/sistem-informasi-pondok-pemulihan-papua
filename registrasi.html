@@ -1190,7 +1190,7 @@
                 "Koordinator Multimedia dan Sound", "Koordinator Cleaning Service", "Koordinator Perparkiran dan Keamanan"
             ],
             "PKS Komsel": ["Ketua Komsel", "Wakil Ketua Komsel", "Anggota Komsel"],
-            "Fulltimer": ["Sekretaris Kantor", "Bendahara kantor", "Koordinator PPA", "Staff dan Tutor PPA", "Koordinator Paud", "Guru Paud", "General Affairs"],
+            "Fulltimer": ["Sekretaris Kantor", "Bendahara kantor", "Koordinator PPA", "Staff dan Tutor PPA", "Koordinator Paud", "Guru Paud", "Guru Sekolah Minggu", "General Affairs"],
             "Anggota Jemaat": ["Jemaat Aktif", "Jemaat Simpatisan"]
         };
 
@@ -1256,8 +1256,99 @@
         }
     }
 
+/* Required field validation for registration finalization. */
+function collectMissingRequiredFields() {
+    const form = document.getElementById("formRegistrasi");
+    if (!form) return [];
+
+    const missing = [];
+
+    form.querySelectorAll(".form-step .form-group > label").forEach(function (label) {
+        const labelText = (label.textContent || "").replace(/\s+/g, " ").trim();
+
+        if (!labelText.endsWith("*")) return;
+
+        const group = label.closest(".form-group");
+        if (!group) return;
+
+        const control = group.querySelector("input, select, textarea");
+        if (!control || control.disabled) return;
+
+        const value = (control.value || "").trim();
+
+        if (!value) {
+            missing.push({
+                label: labelText.replace(/\*+$/, "").trim(),
+                control: control,
+                step: control.closest(".form-step")
+            });
+        }
+    });
+
+    return missing;
+}
+
+function highlightMissingRegistrationField(control) {
+    if (!control) return;
+
+    control.style.outline = "2px solid #dc3545";
+    control.style.outlineOffset = "2px";
+    control.style.backgroundColor = "#fff5f5";
+
+    setTimeout(function () {
+        if (control) {
+            control.style.outline = "";
+            control.style.outlineOffset = "";
+            control.style.backgroundColor = "";
+        }
+    }, 5000);
+}
+
+function validateRegistrationRequiredFields() {
+    const missing = collectMissingRequiredFields();
+
+    if (!missing.length) return true;
+
+    missing.forEach(function (item) {
+        highlightMissingRegistrationField(item.control);
+    });
+
+    const firstMissing = missing[0];
+
+    if (firstMissing.step) {
+        const stepMatch = firstMissing.step.id.match(/^step-(\d+)$/);
+
+        if (stepMatch && typeof nextStep === "function") {
+            nextStep(Number(stepMatch[1]));
+        }
+
+        setTimeout(function () {
+            firstMissing.control.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+            firstMissing.control.focus();
+        }, 100);
+    }
+
+    const message = [
+        "Mohon lengkapi field wajib berikut:",
+        "",
+        missing.map(function (item, index) {
+            return (index + 1) + ". " + item.label;
+        }).join("\n")
+    ].join("\n");
+
+    alert(message);
+
+    return false;
+}
+
     // --- LOGIKA REGISTRASI (VERSI TERUPDATE) ---
     async function handleRegistrasi() {
+        if (!validateRegistrationRequiredFields()) return;
+
         const btnSubmit = document.getElementById("btnSubmit");
         const lokasiKode = document.getElementById("lokasi").value; 
         const rawEmail = document.getElementById("email").value.trim();
@@ -1545,8 +1636,11 @@ document.getElementById("status_pernikahan").value,
                 );
             });
 
+            // Registration succeeded; remove the saved local draft.
+            clearRegistrationDraft();
             // Tampilkan modal sukses setelah data Firestore berhasil disimpan.
             document.getElementById("notif-email-sent").style.display = "flex";
+
         } catch (e) {
             btnSubmit.disabled = false;
             btnSubmit.innerText = "FINALISASI & DAFTAR";
@@ -2920,8 +3014,7 @@ document.getElementById("status_pernikahan").value,
                 ? "block"
                 : "none";
 
-        wilayahEl.required =
-            aktif;
+        wilayahEl.required = false;
 
         if (!aktif) {
             wilayahEl.value = "";
@@ -3146,6 +3239,263 @@ document.getElementById("status_pernikahan").value,
         if(kL) kL.addEventListener("change", () => loadKecamatan("lahir"));
         if(kcL) kcL.addEventListener("change", () => loadDesa("lahir"));
     });
+
+/* Registration draft autosave and resume. */
+const REGISTRATION_DRAFT_KEY = "sipapua_registrasi_draft_v1";
+const REGISTRATION_DRAFT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const REGISTRATION_DRAFT_SKIP_IDS = new Set(["pass", "nij-display"]);
+const REGISTRATION_DRAFT_DEPENDENT_IDS = new Set([
+    "provinsi_lahir", "kota_lahir", "kecamatan_lahir", "desa_lahir",
+    "provinsi", "kota", "kecamatan", "desa", "jumlah_anak",
+    "status_pernikahan", "nama_pasangan", "orang_tua_berjemaat",
+    "nama_ayah", "nama_ibu", "wilayah_orang_tua", "pemuridan_kd",
+    "pemuridan_kd_angkatan", "sudah_alpha", "alpha_angkatan", "lokasi",
+    "komsel", "jabatan_jemaat", "sub_jabatan", "pelayanan",
+    "pelayanan_spesifik_non"
+]);
+let registrationDraftRestoreInProgress = false;
+let registrationDraftSaveTimer = null;
+
+function getRegistrationForm() {
+    return document.getElementById("formRegistrasi");
+}
+
+function collectRegistrationDraft() {
+    const form = getRegistrationForm();
+    if (!form) return null;
+
+    const fields = {};
+    form.querySelectorAll("input[id], select[id], textarea[id]").forEach(function (control) {
+        if (control.disabled || control.type === "password" || REGISTRATION_DRAFT_SKIP_IDS.has(control.id)) return;
+        fields[control.id] = control.type === "checkbox" || control.type === "radio"
+            ? control.checked
+            : control.value;
+    });
+
+    const children = Array.from(form.querySelectorAll(".nama-anak-input")).map(function (control) {
+        return {
+            index: Number(control.dataset.childIndex),
+            value: control.value || ""
+        };
+    });
+    const activeStep = form.querySelector(".form-step.active");
+    const activeStepNumber = activeStep ? Number(activeStep.id.replace("step-", "")) : 1;
+
+    return {
+        version: 1,
+        savedAt: Date.now(),
+        activeStep: Number.isInteger(activeStepNumber) ? activeStepNumber : 1,
+        fields: fields,
+        children: children
+    };
+}
+
+function clearRegistrationDraft() {
+    try {
+        localStorage.removeItem(REGISTRATION_DRAFT_KEY);
+    } catch (_) {
+    }
+}
+
+function saveRegistrationDraft() {
+    if (registrationDraftRestoreInProgress) return;
+
+    try {
+        const draft = collectRegistrationDraft();
+        if (draft) localStorage.setItem(REGISTRATION_DRAFT_KEY, JSON.stringify(draft));
+    } catch (_) {
+    }
+}
+
+function scheduleRegistrationDraftSave() {
+    if (registrationDraftRestoreInProgress) return;
+    clearTimeout(registrationDraftSaveTimer);
+    registrationDraftSaveTimer = setTimeout(saveRegistrationDraft, 150);
+}
+
+function restoreRegistrationField(id, fields) {
+    const control = document.getElementById(id);
+    if (!control || !(id in fields) || control.disabled || control.type === "password") return false;
+
+    const value = fields[id];
+    if (control.type === "checkbox" || control.type === "radio") {
+        control.checked = Boolean(value);
+        return true;
+    }
+
+    if (control.tagName === "SELECT") {
+        const optionExists = Array.from(control.options).some(function (option) {
+            return option.value === String(value == null ? "" : value);
+        });
+        if (!optionExists) return false;
+    }
+
+    control.value = value == null ? "" : String(value);
+    return true;
+}
+
+function waitForRegistrationOptions(select, timeoutMs) {
+    return new Promise(function (resolve) {
+        if (!select) return resolve(false);
+        if (select.options.length > 1) return resolve(true);
+
+        const observer = new MutationObserver(function () {
+            if (select.options.length > 1) {
+                observer.disconnect();
+                clearTimeout(timer);
+                resolve(true);
+            }
+        });
+        const timer = setTimeout(function () {
+            observer.disconnect();
+            resolve(select.options.length > 1);
+        }, timeoutMs);
+        observer.observe(select, { childList: true });
+    });
+}
+
+async function restoreRegistrationRegion(suffix, fields) {
+    const idFor = function (base) {
+        return suffix ? base + "_" + suffix : base;
+    };
+    const provinceId = idFor("provinsi");
+    const province = document.getElementById(provinceId);
+    if (!(provinceId in fields) || !await waitForRegistrationOptions(province, 8000)) return;
+    if (!restoreRegistrationField(provinceId, fields)) return;
+
+    const cityId = idFor("kota");
+    await loadKota(suffix);
+    if (!restoreRegistrationField(cityId, fields)) return;
+
+    const districtId = idFor("kecamatan");
+    await loadKecamatan(suffix);
+    if (!restoreRegistrationField(districtId, fields)) return;
+
+    const villageId = idFor("desa");
+    await loadDesa(suffix);
+    restoreRegistrationField(villageId, fields);
+}
+
+function restoreRegistrationChildren(children) {
+    const controls = document.querySelectorAll("#child_fields_container .nama-anak-input");
+    controls.forEach(function (control) {
+        const index = Number(control.dataset.childIndex);
+        const savedChild = children.find(function (child) {
+            return child && child.index === index;
+        });
+        if (savedChild) control.value = savedChild.value || "";
+    });
+}
+
+async function restoreRegistrationDraft() {
+    const form = getRegistrationForm();
+    if (!form) return;
+
+    let draft;
+    try {
+        const raw = localStorage.getItem(REGISTRATION_DRAFT_KEY);
+        if (!raw) return;
+        draft = JSON.parse(raw);
+    } catch (_) {
+        clearRegistrationDraft();
+        return;
+    }
+
+    if (!draft || draft.version !== 1 || !Number.isFinite(draft.savedAt) ||
+        Date.now() - draft.savedAt > REGISTRATION_DRAFT_MAX_AGE_MS ||
+        !draft.fields || typeof draft.fields !== "object") {
+        clearRegistrationDraft();
+        return;
+    }
+
+    registrationDraftRestoreInProgress = true;
+    const fields = draft.fields;
+    const children = Array.isArray(draft.children) ? draft.children : [];
+
+    try {
+        form.querySelectorAll("input[id], select[id], textarea[id]").forEach(function (control) {
+            if (REGISTRATION_DRAFT_DEPENDENT_IDS.has(control.id) || REGISTRATION_DRAFT_SKIP_IDS.has(control.id)) return;
+            restoreRegistrationField(control.id, fields);
+        });
+
+        restoreRegistrationField("status_pernikahan", fields);
+        restoreRegistrationField("jumlah_anak", fields);
+        handleStatusNikah();
+        if (["Menikah", "Duda", "Janda"].includes(document.getElementById("status_pernikahan").value)) {
+            restoreRegistrationChildren(children);
+        }
+
+        restoreRegistrationField("orang_tua_berjemaat", fields);
+        handleOrangTuaBerjemaat();
+        if (document.getElementById("orang_tua_berjemaat").value === "Ya") {
+            restoreRegistrationField("wilayah_orang_tua", fields);
+        }
+
+        restoreRegistrationField("pemuridan_kd", fields);
+        togglePemuridanKD();
+        if (document.getElementById("pemuridan_kd").value === "Sudah") {
+            restoreRegistrationField("pemuridan_kd_angkatan", fields);
+        }
+
+        restoreRegistrationField("sudah_alpha", fields);
+        toggleAlpha();
+        if (document.getElementById("sudah_alpha").value === "Sudah") {
+            restoreRegistrationField("alpha_angkatan", fields);
+        }
+
+        restoreRegistrationField("lokasi", fields);
+        updateKomsel();
+        restoreRegistrationField("komsel", fields);
+
+        restoreRegistrationField("jabatan_jemaat", fields);
+        updateSubJabatan();
+        restoreRegistrationField("sub_jabatan", fields);
+        updateSpesifikPelayanan();
+        restoreRegistrationField("pelayanan", fields);
+        updateNonStruktural();
+        restoreRegistrationField("pelayanan_spesifik_non", fields);
+
+        await Promise.all([
+            restoreRegistrationRegion("lahir", fields),
+            restoreRegistrationRegion("", fields)
+        ]);
+
+        const activeStep = Number(draft.activeStep);
+        nextStep(Number.isInteger(activeStep) && activeStep >= 1 && activeStep <= 6 ? activeStep : 1);
+
+        const notice = document.createElement("div");
+        notice.textContent = "Draft registrasi dipulihkan. Password tidak disimpan; silakan isi ulang.";
+        notice.style.cssText = "margin:10px 0;padding:10px;border:1px solid #b6d4fe;border-radius:8px;background:#e7f1ff;color:#084298;font-size:13px;";
+        form.insertBefore(notice, form.firstChild);
+        setTimeout(function () {
+            if (notice.parentNode) notice.remove();
+        }, 7000);
+    } catch (_) {
+    } finally {
+        registrationDraftRestoreInProgress = false;
+    }
+}
+
+function bindRegistrationDraftAutosave() {
+    const form = getRegistrationForm();
+    if (!form) return;
+
+    form.addEventListener("input", scheduleRegistrationDraftSave);
+    form.addEventListener("change", scheduleRegistrationDraftSave);
+    form.addEventListener("click", function () {
+        setTimeout(scheduleRegistrationDraftSave, 0);
+    });
+    window.addEventListener("pagehide", saveRegistrationDraft);
+    document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") saveRegistrationDraft();
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    bindRegistrationDraftAutosave();
+    restoreRegistrationDraft();
+});
+
 </script>
 </body>
 </html>
