@@ -77,6 +77,9 @@
     .lb-table tr { border-bottom: 1px solid rgba(212, 175, 55, 0.2); }
     .lb-table th { color: var(--emas); text-align: left; padding: 5px; }
     .lb-table td { padding: 8px 5px; text-align: left; }
+    .lb-rank { display: inline-block; min-width: 22px; color: var(--emas); font-weight: bold; }
+    .lb-me td { background: rgba(212, 175, 55, 0.12); font-weight: bold; }
+    .lb-gap td { padding: 2px 5px; text-align: center; color: rgba(255, 255, 255, 0.45); }
     .rank-gold { color: #FFD700; font-weight: bold; }
     .rank-silver { color: #C0C0C0; font-weight: bold; }
     .rank-bronze { color: #CD7F32; font-weight: bold; }
@@ -159,6 +162,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script>
@@ -172,6 +176,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     // Inisialisasi Audio
     const soundOpening = new Audio('opening_sound.mp3');
@@ -295,7 +300,13 @@
     let timerInterval;
     let isGameStarted = false;
     let winStreak = parseInt(localStorage.getItem("winStreak")) || 0;
-    let userData = JSON.parse(localStorage.getItem("userData")) || null;
+
+    // Leaderboard identity comes from Firebase Auth (same login as the rest of SIPAPUA);
+    // one game_scores document per player, keyed by auth uid.
+    const LEADERBOARD_QUERY_LIMIT = 100;
+    const LEADERBOARD_VISIBLE_ROWS = 10;
+    let currentPlayer = null;
+    let unsubscribeLeaderboard = null;
 
     function toggleLeaderboard() {
         const lb = document.getElementById('leaderboard-container');
@@ -309,33 +320,162 @@
         }
     }
 
-    function fetchLeaderboard() {
-        db.collection("game_scores")
-          .orderBy("skor", "desc")
-          .limit(10)
-          .onSnapshot((querySnapshot) => {
-            const body = document.getElementById('leaderboard-body');
-            body.innerHTML = "";
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                let badgeClass = "";
-                let streakVal = data.streak || 0;
-                if(streakVal >= 7) badgeClass = "rank-gold";
-                else if(streakVal >= 4) badgeClass = "rank-silver";
-                else if(streakVal >= 2) badgeClass = "rank-bronze";
+    function setLeaderboardMessage(message) {
+        const body = document.getElementById('leaderboard-body');
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.style.textAlign = 'center';
+        cell.textContent = message;
+        row.appendChild(cell);
+        body.replaceChildren(row);
+    }
 
-                const row = `<tr>
-                    <td>${data.nama || "Anonim"}</td>
-                    <td>${data.skor || 0}</td>
-                    <td>${streakVal}x</td>
-                    <td class="${badgeClass}">${data.predikat || "-"}</td>
-                </tr>`;
-                body.innerHTML += row;
-            });
+    function updatedAtMillis(player) {
+        return player.updatedAt && typeof player.updatedAt.toMillis === 'function'
+            ? player.updatedAt.toMillis()
+            : Number.MAX_SAFE_INTEGER;
+    }
+
+    // Highest score first; ties go to the longer current streak, then to whoever reached the score first.
+    function compareLeaderboard(a, b) {
+        return (b.skor - a.skor)
+            || (b.streak - a.streak)
+            || (updatedAtMillis(a) - updatedAtMillis(b))
+            || a.nama.localeCompare(b.nama, 'id');
+    }
+
+    function leaderboardRow(player, rank, isMe) {
+        let badgeClass = "";
+        if(player.streak >= 7) badgeClass = "rank-gold";
+        else if(player.streak >= 4) badgeClass = "rank-silver";
+        else if(player.streak >= 2) badgeClass = "rank-bronze";
+
+        const row = document.createElement('tr');
+        if (isMe) row.className = 'lb-me';
+        const nameCell = document.createElement('td');
+        const rankLabel = document.createElement('span');
+        rankLabel.className = 'lb-rank';
+        rankLabel.textContent = `${rank}.`;
+        nameCell.append(rankLabel, ` ${player.nama}`);
+        const scoreCell = document.createElement('td');
+        scoreCell.textContent = player.skor;
+        const streakCell = document.createElement('td');
+        streakCell.textContent = `${player.streak}x`;
+        const medalCell = document.createElement('td');
+        if (badgeClass) medalCell.className = badgeClass;
+        medalCell.textContent = player.predikat || "-";
+        row.append(nameCell, scoreCell, streakCell, medalCell);
+        return row;
+    }
+
+    function fetchLeaderboard() {
+        if (unsubscribeLeaderboard) unsubscribeLeaderboard();
+        unsubscribeLeaderboard = db.collection("game_scores")
+          .orderBy("skor", "desc")
+          .limit(LEADERBOARD_QUERY_LIMIT)
+          .onSnapshot((querySnapshot) => {
+            // Only entries owned by an authenticated player (doc id == uid) are ranked;
+            // older email-keyed documents without a uid are left untouched but not shown.
+            const players = querySnapshot.docs
+                .map(doc => ({ id: doc.id, data: doc.data({ serverTimestamps: 'estimate' }) }))
+                .filter(({ id, data }) => data.uid === id)
+                .map(({ data }) => ({
+                    uid: data.uid,
+                    nama: String(data.nama || "Pemain"),
+                    skor: Number(data.skor) || 0,
+                    streak: Number(data.streak) || 0,
+                    predikat: data.predikat || "",
+                    updatedAt: data.updatedAt || null
+                }))
+                .sort(compareLeaderboard);
+
+            if (!players.length) {
+                setLeaderboardMessage("Belum ada pemain. Jadilah yang pertama!");
+                return;
+            }
+
+            const myUid = currentPlayer ? currentPlayer.uid : null;
+            const rows = players
+                .slice(0, LEADERBOARD_VISIBLE_ROWS)
+                .map((player, index) => leaderboardRow(player, index + 1, player.uid === myUid));
+
+            // Keep the signed-in player's own rank visible when it falls outside the top rows.
+            const myIndex = players.findIndex(player => player.uid === myUid);
+            if (myIndex >= LEADERBOARD_VISIBLE_ROWS) {
+                const gap = document.createElement('tr');
+                gap.className = 'lb-gap';
+                const gapCell = document.createElement('td');
+                gapCell.colSpan = 4;
+                gapCell.textContent = '⋯';
+                gap.appendChild(gapCell);
+                rows.push(gap, leaderboardRow(players[myIndex], myIndex + 1, true));
+            }
+            document.getElementById('leaderboard-body').replaceChildren(...rows);
+        }, (error) => {
+            console.error("[SIPAPUA] Peringkat gagal dimuat:", error);
+            setLeaderboardMessage(error.code === "permission-denied"
+                ? "Login diperlukan untuk melihat peringkat."
+                : "Peringkat belum dapat dimuat.");
         });
     }
 
-    window.onload = fetchLeaderboard;
+    async function resolvePlayerName(user) {
+        try {
+            let profile = null;
+            const byUid = await db.collection("users").doc(user.uid).get();
+            if (byUid.exists) {
+                profile = byUid.data();
+            } else if (user.email) {
+                // Profiles created before users/{uid} became standard are found by email.
+                const byEmail = await db.collection("users").where("email", "==", user.email).limit(1).get();
+                if (!byEmail.empty) profile = byEmail.docs[0].data();
+            }
+            const name = String((profile && (profile.nama_lengkap || profile.nama)) || user.displayName || (user.email || "").split("@")[0] || "").trim();
+            return name.slice(0, 60) || "Pemain";
+        } catch (error) {
+            console.error("[SIPAPUA] Nama pemain gagal dimuat:", error);
+            return String(user.displayName || (user.email || "").split("@")[0] || "Pemain").slice(0, 60);
+        }
+    }
+
+    // Adds this round's points to the player's own running total. A transaction keeps the
+    // read-add-write atomic, so two quick saves can never overwrite each other.
+    async function saveLeaderboard(addScore, streak, predikat) {
+        const user = auth.currentUser;
+        if (!user || !currentPlayer || currentPlayer.uid !== user.uid) return false;
+        const ref = db.collection("game_scores").doc(user.uid);
+        try {
+            await db.runTransaction(async (transaction) => {
+                const snapshot = await transaction.get(ref);
+                const previous = snapshot.exists ? (Number(snapshot.data().skor) || 0) : 0;
+                transaction.set(ref, {
+                    uid: user.uid,
+                    nama: currentPlayer.nama,
+                    skor: previous + addScore,
+                    streak: streak,
+                    predikat: predikat,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            return true;
+        } catch (error) {
+            console.error("[SIPAPUA] Skor gagal disimpan ke peringkat:", error);
+            return false;
+        }
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            currentPlayer = null;
+            if (unsubscribeLeaderboard) { unsubscribeLeaderboard(); unsubscribeLeaderboard = null; }
+            setLeaderboardMessage("Login diperlukan untuk melihat peringkat.");
+            return;
+        }
+        currentPlayer = { uid: user.uid, nama: await resolvePlayerName(user) };
+        if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
+        fetchLeaderboard();
+    });
 
     // FUNGSI ACAK ARRAY (Fisher-Yates)
     function shuffleArray(arr) {
@@ -436,6 +576,8 @@
     function handleFailure(title) {
         winStreak = 0;
         localStorage.setItem("winStreak", 0);
+        // A failed round adds no points; only the reset streak/medal is mirrored to the leaderboard.
+        saveLeaderboard(0, 0, "");
         soundBgGame.pause();
         soundGagal.play().catch(() => {});
         clearInterval(timerInterval);
@@ -458,25 +600,12 @@
         else if (winStreak >= 4) predikat = "🥈 SILVER";
         else if (winStreak >= 2) predikat = "🥉 BRONZE";
 
-        if(userData && userData.email) {
-            const ref = db.collection("game_scores").doc(userData.email);
-            const doc = await ref.get();
-            let totalSkorBaru = score;
-            if(doc.exists) totalSkorBaru = (doc.data().skor || 0) + score;
-
-            await ref.set({
-                nama: userData.nama || "Pemain",
-                email: userData.email,
-                skor: totalSkorBaru,
-                streak: winStreak,
-                predikat: predikat,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-        }
+        const saved = await saveLeaderboard(score, winStreak, predikat);
 
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         let msg = `Selesai! Skor +${score}. Streak: ${winStreak}x.`;
         if(predikat) msg += ` Predikat: ${predikat}!`;
+        if(!saved) msg += auth.currentUser ? " (Skor belum tersimpan ke peringkat.)" : " (Login untuk menyimpan skor ke peringkat.)";
         showNotif("LUAR BIASA!", msg, "success", () => location.reload());
     }
 
