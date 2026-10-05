@@ -691,43 +691,366 @@
         }
 </style>
 
+
 <style>
-.bottom-nav {
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --ui-navy: #0b2a55;
+    --ui-blue: #123b73;
+    --ui-gold: #e6b422;
+    --ui-gold-light: #f6dc8c;
+    --ui-teal: #0f8b8d;
+    --ui-bg: #eef2f7;
+    --ui-surface: #ffffff;
+    --ui-text: #12223b;
+    --ui-muted: #5d6b80;
 }
 
-.bottom-nav.is-hidden {
-    transform: translateY(calc(100% - 18px));
+* { box-sizing: border-box; }
+
+body {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
-.bottom-nav-toggle {
-    position: absolute;
-    top: -14px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 46px;
-    height: 24px;
+.app-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 480px;
+    height: 100%;
+    overflow: hidden;
+    background: var(--ui-bg);
+    box-shadow: 0 0 42px rgba(11, 42, 85, .12);
+}
+
+.announcement-ticker {
+    z-index: 5;
+    display: flex;
+    flex: 0 0 28px;
+    align-items: center;
+    height: 28px;
+    padding: 0;
+    overflow: hidden;
     border: 0;
-    border-radius: 14px;
-    background: #ffffff;
-    box-shadow: 0 -3px 10px rgba(0,0,0,0.12);
-    cursor: pointer;
-    z-index: 10000;
+    background: var(--ui-navy);
+    box-shadow: none;
+}
+
+.ticker-track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    width: 100%;
+    padding: 0 30px;
+    overflow: hidden;
+    color: var(--ui-gold-light);
+}
+
+/* Stars sit above the moving text so it slides underneath instead of through them. */
+.ticker-track > span { position: absolute; z-index: 1; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 9px; background: var(--ui-navy); color: var(--ui-gold); font-size: 11px; }
+.ticker-track > span:first-child { left: 0; box-shadow: 8px 0 8px -3px var(--ui-navy); }
+.ticker-track > span:last-child { right: 0; box-shadow: -8px 0 8px -3px var(--ui-navy); }
+.running-content {
+    flex: 0 0 auto;
+    width: max-content;
+    padding: 0;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.05px;
+    animation: marqueeTop 26s linear infinite;
+}
+
+/* The hero lives inside .container so header, profile and menu scroll as one page. */
+.hero-panel {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    margin: 0 -16px;
+    padding: 14px 18px 88px;
+    overflow: hidden;
+    border-radius: 0 0 30px 30px;
+    background: linear-gradient(160deg, #123b73, #0b2a55 60%);
+    color: #fff;
+    isolation: isolate;
+}
+
+.hero-panel::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.13) .7px, transparent .8px);
+    background-size: 13px 13px;
+    content: '';
+    opacity: .42;
+    pointer-events: none;
+}
+
+.hero-panel::after {
+    position: absolute;
+    z-index: -1;
+    top: -92px;
+    right: -78px;
+    width: 245px;
+    height: 245px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(230,180,34,.28) 0%, rgba(230,180,34,.08) 40%, transparent 72%);
+    content: '';
+    pointer-events: none;
+}
+
+.portal-topbar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 42px 1fr 82px;
+    align-items: center;
+    min-height: 44px;
+}
+
+.topbar-button,
+.inbox-shortcut {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--biru-tua);
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 13px;
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    box-shadow: 0 5px 14px rgba(0,0,0,.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+button.topbar-button { padding: 0; cursor: pointer; }
+.topbar-button i, .inbox-shortcut i { color: #fff !important; font-size: 15px !important; }
+.portal-brand { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; text-align: left; }
+.portal-brand img { width: 34px; height: 34px; flex: 0 0 34px; object-fit: contain; border-radius: 50%; background: #fff; }
+.portal-brand div { display: flex; flex-direction: column; gap: 1px; color: #fff; line-height: 1.05; }
+.portal-brand span { font-size: 9px; font-weight: 700; letter-spacing: 1.1px; opacity: .78; }
+.portal-brand strong { font-size: 13px; font-weight: 800; letter-spacing: 1.25px; }
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.theme-mark { width: 34px; height: 34px; border-radius: 12px; }
+.inbox-shortcut { position: relative; width: 38px; height: 38px; cursor: pointer; }
+#inbox-icon { font-size: 15px !important; }
+#email-badge {
+    position: absolute !important;
+    top: -5px !important;
+    right: -5px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px !important;
+    height: 17px !important;
+    padding: 0 4px !important;
+    border: 2px solid var(--ui-blue) !important;
+    border-radius: 99px !important;
+    background: #e84a5f !important;
+    color: #fff !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+}
+
+.top-section-container {
+    position: relative;
+    width: 100%;
+    height: 139px;
+    margin: 20px auto 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+#media-display-area {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 20px;
+    opacity: .14;
+    transition: opacity .3s ease;
+    container-type: size;
+}
+
+.top-section-container:has(#profileCard.closed) #media-display-area { opacity: 1; }
+
+#audioPlayer, #textDisplay { max-width: 100%; }
+/* Cover the rounded media area like object-fit: cover; a 16:9 player is cropped, never pillarboxed. */
+#media-display-area #player { position: absolute; top: 50%; left: 50%; width: max(100%, 177.78cqh); height: max(100%, 56.25cqw); max-width: none; transform: translate(-50%, -50%); }
+#media-display-area #videoPlayer, #media-display-area #imageDisplay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.profile-card {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 100%;
+    height: 100%;
     padding: 0;
-    touch-action: manipulation;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transition: transform .42s cubic-bezier(.2,.75,.25,1);
 }
 
-.bottom-nav-toggle i {
-    font-size: 12px;
-    transition: transform 0.3s ease;
+.profile-card.closed { transform: translateX(-110%); }
+.profile-greeting-row { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.profile-photo-wrap {
+    position: relative;
+    display: flex;
+    flex: 0 0 68px;
+    align-items: center;
+    justify-content: center;
+    width: 68px;
+    height: 68px;
+    overflow: hidden;
+    border: 3px solid var(--ui-gold);
+    border-radius: 50%;
+    background: rgba(255,255,255,.96);
+    box-shadow: 0 0 0 4px rgba(230,180,34,.17), 0 7px 16px rgba(0,0,0,.18);
 }
 
-.bottom-nav.is-hidden .bottom-nav-toggle i {
-    transform: rotate(180deg);
+#default-icon { color: var(--ui-teal) !important; font-size: 58px !important; }
+#user-photo { position: absolute; inset: 0; display: none; width: 100% !important; height: 100% !important; border-radius: 50%; object-fit: cover; }
+.online-indicator { position: absolute; right: 0; bottom: 1px; width: 15px; height: 15px; border: 3px solid #fff; border-radius: 50%; background: #3bc47d; }
+.profile-greeting-copy { min-width: 0; }
+.shalom-line { margin: 0 0 3px; color: rgba(255,255,255,.82); font-size: 11px; font-weight: 600; }
+#disp_nama { margin: 0 0 2px !important; overflow: hidden; color: #fff; font-family: 'Fraunces', Georgia, serif; font-size: clamp(20px, 6vw, 26px) !important; font-style: italic; font-weight: 600; line-height: 1.12; text-overflow: ellipsis; white-space: nowrap; }
+#disp_email { overflow: hidden; color: rgba(255,255,255,.72) !important; font-size: 11px !important; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.profile-chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 11px 0 0 81px; }
+.profile-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 4px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 99px; color: #fff; font-size: 10px; font-weight: 700; }
+.group-chip { border-color: rgba(246,220,140,.55); background: rgba(230,180,34,.18); color: #ffe59a; }
+.group-chip i { font-size: 10px; }
+#disp_komsel { margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: inherit !important; font-size: inherit !important; }
+.date-chip { background: rgba(255,255,255,.11); color: rgba(255,255,255,.88); }
+.date-chip i { font-size: 10px; }
+.btn-toggle-side { display: none; }
+
+.container {
+    position: relative;
+    z-index: 3;
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0 16px 115px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: none;
+    text-align: left;
+    -webkit-overflow-scrolling: touch;
+}
+
+.container::-webkit-scrollbar { display: none; }
+.quick-access-card { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); min-height: 86px; margin: -66px 0 18px; padding: 10px 4px; border: 1px solid rgba(18,34,59,.04); border-radius: 22px; background: #fff; box-shadow: 0 10px 25px rgba(18,34,59,.10); }
+.quick-access-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 4px; border: 0; background: transparent; color: var(--ui-text); font-family: inherit; font-size: 10px; font-weight: 800; letter-spacing: .2px; text-align: center; text-decoration: none; cursor: pointer; }
+.quick-access-item + .quick-access-item::before { position: absolute; top: 11px; bottom: 11px; left: 0; width: 1px; background: #e8edf3; content: ''; }
+.quick-access-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 12px; font-size: 15px; }
+.gold-soft { background: #fff4d7; color: #bd8d09; }
+.teal-soft { background: #e0f5f2; color: #0f8b8d; }
+.blue-soft { background: #e7efff; color: #3868b0; }
+.purple-soft { background: #f0eaff; color: #7757b7; }
+.coral-soft { background: #ffebe6; color: #d26b51; }
+
+.menu-search { display: flex; align-items: center; gap: 10px; height: 46px; margin: 0 0 22px; padding: 0 14px; border: 1px solid #e7ecf2; border-radius: 15px; background: #fff; color: #8390a1; box-shadow: 0 4px 12px rgba(18,34,59,.035); }
+.menu-search i { font-size: 14px; }
+/* 16px keeps iOS Safari from auto-zooming the page when the field is focused. */
+.menu-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ui-text); font: 500 16px 'Plus Jakarta Sans', sans-serif; }
+.menu-search input::placeholder { color: #929eac; font-size: 14px; opacity: 1; }
+.menu-search-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: -6px 0 22px; padding: 18px 16px; border: 1px dashed #d5dde7; border-radius: 16px; background: #fff; color: var(--ui-muted); font-size: 13px; font-weight: 600; text-align: center; }
+.menu-search-empty i { color: #9aa7b6; font-size: 20px; }
+.menu-search-empty strong { color: var(--ui-text); overflow-wrap: anywhere; }
+.menu-search-empty[hidden] { display: none !important; }
+.menu-group, .quick-links { margin: 0 0 23px; }
+.menu-group h2, .quick-links h2 { margin: 0 0 11px 2px; color: var(--ui-muted); font-size: 11px; font-weight: 800; letter-spacing: 1.1px; }
+.quick-links-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.quick-link { display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 52px; padding: 8px 10px; border: 1px solid #e8edf3; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px rgba(18,34,59,.045); color: var(--ui-text); font-size: 11px; font-weight: 700; line-height: 1.25; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.quick-link:active { transform: scale(.97); }
+.quick-link > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
+.quick-link-icon { display: flex; flex: 0 0 34px; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 11px; font-size: 14px; }
+.quick-link-arrow { flex: 0 0 auto; color: #b3bfcc; font-size: 10px; }
+.quick-links[hidden], .quick-link[hidden] { display: none !important; }
+.portal-footer { padding: 4px 8px 18px; color: var(--ui-muted); font-size: 10px; font-weight: 600; line-height: 1.5; text-align: center; }
+.menu-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; margin: 0; }
+.menu-box { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-width: 0; min-height: 98px; padding: 10px 4px 8px; overflow: hidden; border: 1px solid #e8edf3; border-radius: 18px; background: #fff; box-shadow: 0 4px 12px rgba(18,34,59,.045); color: var(--ui-text); font-size: 10px; font-weight: 800; line-height: 1.2; text-align: center; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; animation: tileRise .38s ease both; -webkit-tap-highlight-color: transparent; }
+.menu-box:nth-child(2n) { animation-delay: 35ms; }
+.menu-box:hover { transform: translateY(-3px); border-color: rgba(15,139,141,.26); box-shadow: 0 9px 18px rgba(18,34,59,.09); }
+.menu-box:active { transform: scale(.96); }
+.menu-box[hidden], .menu-group[hidden] { display: none !important; }
+.tile-icon { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; flex: 0 0 46px; margin-bottom: 7px; border-radius: 15px; font-size: 18px; }
+.tile-icon i { color: inherit; font-size: 18px; }
+.tile-label { display: -webkit-box; max-width: 100%; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.shelter-tile { padding: 3px; background: #e5f1f4; }
+.shelter-tile img { width: 40px; height: 40px; object-fit: contain; }
+.soon-badge { position: absolute; top: 4px; right: 4px; padding: 2px 4px; border-radius: 5px; background: #fff1c7; color: #966d00; font-size: 7px; font-weight: 800; letter-spacing: .2px; line-height: 1.2; }
+
+.bottom-nav { position: absolute; z-index: 20; right: auto; bottom: 13px; left: 50%; display: flex; align-items: center; justify-content: space-around; width: calc(100% - 28px); max-width: 452px; height: 66px; padding: 5px 6px; border: 1px solid rgba(255,255,255,.8); border-radius: 24px; background: rgba(255,255,255,.94); box-shadow: 0 12px 30px rgba(11,42,85,.19); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); transform: translateX(-50%); transition: transform .32s cubic-bezier(.2,.75,.25,1); }
+.bottom-nav.is-hidden { transform: translate(-50%, calc(100% - 17px)); }
+.nav-item { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-width: 0; color: #69778b; text-decoration: none; }
+.icon-circle { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin: 0 0 3px; border: 0; border-radius: 12px; background: transparent; box-shadow: none; color: #687890; transition: transform .2s ease, background .2s ease; }
+.icon-circle i { color: inherit; font-size: 15px; }
+.nav-item span { color: #64738a; font-size: 9px; font-weight: 800; letter-spacing: .2px; white-space: nowrap; }
+.nav-item.qr-action { z-index: 1; transform: translateY(-12px); }
+.qr-action .icon-circle { width: 48px; height: 48px; margin-bottom: 1px; border: 3px solid #fff; border-radius: 17px; background: linear-gradient(145deg,#f6dc8c,#e6b422); box-shadow: 0 7px 17px rgba(191,143,19,.3); color: #4b3904; }
+.qr-action .icon-circle i { color: #4b3904; font-size: 19px; }
+.qr-action span { color: var(--ui-navy); }
+.nav-item:hover .icon-circle, .nav-item:active .icon-circle, .nav-item.scroll-highlight .icon-circle { transform: translateY(-2px); background-color: #edf4f7; box-shadow: none; }
+.qr-action:hover .icon-circle, .qr-action:active .icon-circle, .qr-action.scroll-highlight .icon-circle { transform: translateY(-2px); background: linear-gradient(145deg,#f6dc8c,#e6b422); }
+.nav-item.logout-btn .icon-circle { background: transparent; color: #c44c56; }
+.nav-item.logout-btn .icon-circle i, .nav-item.logout-btn span { color: #c44c56; }
+/* Toggle rides on the nav's top edge (out of the item row), as in HEAD. */
+.bottom-nav-toggle { position: absolute; z-index: 2; top: -13px; left: 18px; display: flex; align-items: center; justify-content: center; width: 44px; height: 24px; padding: 0; border: 1px solid #e9edf2; border-radius: 14px; background: #fff; box-shadow: 0 -3px 10px rgba(0,0,0,.12); color: var(--ui-navy); cursor: pointer; touch-action: manipulation; }
+.bottom-nav-toggle::before { position: absolute; inset: -10px -4px; content: ''; }
+.bottom-nav-toggle i { color: var(--ui-navy); font-size: 12px; transition: transform .3s ease; }
+.bottom-nav.is-hidden .bottom-nav-toggle i { transform: rotate(180deg); }
+
+.modal-content-inbox { border-radius: 22px; background: #fff; box-shadow: 0 20px 55px rgba(11,42,85,.24); }
+.btn-toggle-side { display: none; }
+
+@keyframes tileRise { from { opacity: .65; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 360px) {
+    .hero-panel { padding-right: 14px; padding-left: 14px; }
+    .portal-topbar { grid-template-columns: 38px 1fr 76px; }
+    .portal-brand img { width: 30px; height: 30px; flex-basis: 30px; }
+    .portal-brand strong { font-size: 12px; }
+    .container { padding-right: 12px !important; padding-left: 12px !important; }
+    .hero-panel { margin-right: -12px; margin-left: -12px; }
+    .menu-grid, .quick-links-grid { gap: 7px; }
+    .menu-box { min-height: 94px; padding: 9px 3px 7px; font-size: 9.5px; }
+    .tile-icon { width: 42px; height: 42px; flex-basis: 42px; border-radius: 14px; }
+    .shelter-tile img { width: 36px; height: 36px; }
+    .soon-badge { top: 3px; right: 3px; font-size: 6.5px; }
+    .quick-link { gap: 7px; padding: 8px; font-size: 10.5px; }
+    .nav-item span { font-size: 8.5px; letter-spacing: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 </style>
 </head>
@@ -904,89 +1227,124 @@
     </div>
 </div>
 
-<div class="frozen-header-area">
-        <header style="width: 100%;">
-            <div id="rt_display" class="running-content">Selamat Datang di Portal Pondok Pemulihan Papua</div>
-        </header>
+<div class="app-shell">
+    <header class="announcement-ticker">
+        <div class="ticker-track"><span aria-hidden="true">&#9733;</span><div id="rt_display" class="running-content">Selamat Datang di Portal Pondok Pemulihan Papua</div><span aria-hidden="true">&#9733;</span></div>
+    </header>
 
-        <h3 style="text-transform: uppercase; color: var(--biru-tua); margin: 15px 0 5px 0; font-size: 14px; letter-spacing: 1px; font-weight: 800;">
-            PORTAL JEMAAT SIPAPUA
-        </h3>
-
-        <div class="top-section-container">
-            <div id="profileCard" class="profile-card">
-                <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 15px;">
-                    <i class="fas fa-id-card" onclick="bukaKartuDigital()" style="color: var(--emas-lux); font-size: 24px; cursor: pointer;"></i>
-                    <div style="position: relative;" onclick="bukaInbox()">
-                        <i id="inbox-icon" class="fas fa-envelope" style="font-size: 22px; color: var(--biru-tua); cursor: pointer;"></i>
-                        <span
-    id="email-badge"
-    style="
-        position:absolute;
-        top:-9px;
-        right:-10px;
-        min-width:21px;
-        height:21px;
-        padding:0 5px;
-        box-sizing:border-box;
-        align-items:center;
-        justify-content:center;
-        border-radius:999px;
-        background:#dc2626;
-        border:2px solid #ffffff;
-        color:#ffffff;
-        font-size:9px;
-        line-height:1;
-        font-weight:900;
-        box-shadow:
-            0 3px 10px rgba(220,38,38,.38);
-        z-index:20;
-    "
->0</span>
-                    </div>
-                </div>
-                <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--emas-lux); background: white; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-circle-user" id="default-icon" style="font-size: 70px; color: var(--biru-safir);"></i>
-                    <img id="user-photo" src="" style="display: none; width:100%; height:100%; object-fit:cover;">
-                </div>
-                <h2 id="disp_nama" style="margin: 5px 0 0 0; font-size: 18px;">Memuat...</h2>
-                <div id="disp_email" style="font-size: 11px; color: #666;">...</div>
-                <p id="disp_komsel" style="color: var(--hijau-zamrud); font-weight: bold; font-size: 12px; margin: 5px 0;">KOMSEL JC</p>
-            </div>
-
-            <button id="toggleProfile" class="btn-toggle-side">
+    <main class="container">
+    <section class="hero-panel">
+        <div class="hero-pattern" aria-hidden="true"></div>
+        <div class="portal-topbar">
+            <button id="toggleProfile" class="topbar-button" type="button" aria-label="Tampilkan atau sembunyikan profil">
                 <i class="fa-solid fa-chevron-left" id="toggleIcon"></i>
             </button>
+            <div class="portal-brand">
+                <img src="logo%20ibn.png" alt="Logo Pondok Pemulihan Papua">
+                <div><span>PORTAL JEMAAT</span><strong>SIPAPUA</strong></div>
+            </div>
+            <div class="topbar-actions">
+                <span class="topbar-button theme-mark" aria-label="Tema SIPAPUA"><i class="fa-solid fa-sun"></i></span>
+                <div class="inbox-shortcut" onclick="bukaInbox()" aria-label="Buka pesan">
+                    <i id="inbox-icon" class="fas fa-envelope"></i>
+                    <span id="email-badge">0</span>
+                </div>
+            </div>
+        </div>
 
+        <div class="top-section-container">
             <div id="media-display-area">
-                <div id="player"></div> 
+                <div id="player"></div>
                 <video id="videoPlayer" autoplay muted loop playsinline style="display:none;"></video>
                 <audio id="audioPlayer" controls style="display:none;"></audio>
                 <img id="imageDisplay" style="display:none;">
                 <div id="textDisplay" style="display:none;"></div>
             </div>
+            <div id="profileCard" class="profile-card">
+                <div class="profile-greeting-row">
+                    <div class="profile-photo-wrap">
+                        <i class="fa-solid fa-circle-user" id="default-icon"></i>
+                        <img id="user-photo" src="" alt="Foto profil jemaat">
+                        <span class="online-indicator" aria-label="Online"></span>
+                    </div>
+                    <div class="profile-greeting-copy">
+                        <p class="shalom-line">Shalom, selamat bertumbuh</p>
+                        <h1 id="disp_nama">Memuat...</h1>
+                        <div id="disp_email">...</div>
+                    </div>
+                </div>
+                <div class="profile-chips">
+                    <span class="profile-chip group-chip"><i class="fa-solid fa-people-group"></i><span id="disp_komsel">KOMSEL JC</span></span>
+                    <span class="profile-chip date-chip"><i class="fa-regular fa-calendar"></i><time class="date-value"></time></span>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <div class="container">
-        <div class="menu-grid">
-            <a href="profil.html" class="menu-box"><i class="fa-solid fa-user-shield"></i>PROFIL</a>
-            <a href="setting.html" class="menu-box"><i class="fa-solid fa-gear"></i>PENGATURAN</a>
-            <a href="kehadiran.html" class="menu-box"><i class="fa-solid fa-calendar-check"></i>LAPORAN KEHADIRAN</a>
-            <a href="baca-alkitab.html" class="menu-box"><i class="fa-solid fa-book-bible"></i>LAPORAN PEMBACAAN ALKITAB</a>
-            <a href="statistik.html" class="menu-box"><i class="fa-solid fa-chart-pie"></i>STATISTIK</a>
-            <a href="rapor.html" class="menu-box"><i class="fa-solid fa-file-invoice"></i>RAPOR ANDA</a>
-            <a href="agenda.html" class="menu-box"><i class="fa-solid fa-calendar-days"></i>AGENDA TAHUNAN</a>
-            <a href="leaderboard.html" class="menu-box"><i class="fa-solid fa-crown"></i>PERINGKAT</a>
-            <a href="laporan-pelayanan.html" class="menu-box"><i class="fa-solid fa-file-signature"></i>LAPORAN PELAYANAN</a>
-            <a href="games.html" class="menu-box"><i class="fa-solid fa-lightbulb"></i>SIAPA PINTAR</a>
-            <a href="pope-shelter.html" class="menu-box"><i class="fa-solid fa-dove"></i>POPE SHELTER</a>
-            <a href="event.html" class="menu-box"><i class="fa-solid fa-bullhorn"></i>EVENT JEMAAT</a>
-            <a href="umkm-jemaat.html" class="menu-box"><i class="fa-solid fa-shop"></i>UMKM SIPAPUA</a>
-            <a href="sipapua-news.html" class="menu-box"><i class="fa-solid fa-newspaper"></i>SIPAPUA NEWS</a>
-            <a href="readme-sipapua.html" class="menu-box"><i class="fa-solid fa-book-open"></i>README</a>
-            <a href="call-center.html" class="menu-box"><i class="fa-solid fa-headset"></i>CALL CENTER</a>
-    </div>
+        <section class="quick-access-card" aria-label="Akses cepat">
+            <button class="quick-access-item" type="button" onclick="bukaKartuDigital()">
+                <span class="quick-access-icon gold-soft"><i class="fa-solid fa-id-card"></i></span>
+                <span>KARTU JEMAAT</span>
+            </button>
+            <a href="rapor.html" class="quick-access-item">
+                <span class="quick-access-icon teal-soft"><i class="fa-solid fa-file-invoice"></i></span>
+                <span>RAPOR ANDA</span>
+            </a>
+            <a href="agenda.html" class="quick-access-item">
+                <span class="quick-access-icon blue-soft"><i class="fa-solid fa-calendar-days"></i></span>
+                <span>AGENDA</span>
+            </a>
+        </section>
+
+        <label class="menu-search">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            <input type="search" placeholder="Cari menu, misalnya &quot;event&quot;" aria-label="Cari menu">
+        </label>
+        <p class="menu-search-empty" role="status" aria-live="polite" hidden>
+            <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+            <span>Tidak ada menu yang cocok dengan &ldquo;<strong></strong>&rdquo;.</span>
+        </p>
+
+        <section class="menu-group">
+            <h2>PERTUMBUHAN ROHANI</h2>
+            <div class="menu-grid">
+                <a href="rapor.html" class="menu-box"><span class="tile-icon teal-soft"><i class="fa-solid fa-file-invoice"></i></span><span class="tile-label">RAPOR ANDA</span></a>
+                <a href="statistik.html" class="menu-box"><span class="tile-icon gold-soft"><i class="fa-solid fa-chart-pie"></i></span><span class="tile-label">STATISTIK</span><span class="soon-badge">SEGERA</span></a>
+                <a href="leaderboard.html" class="menu-box"><span class="tile-icon purple-soft"><i class="fa-solid fa-crown"></i></span><span class="tile-label">PERINGKAT</span><span class="soon-badge">SEGERA</span></a>
+                <a href="games.html" class="menu-box"><span class="tile-icon blue-soft"><i class="fa-solid fa-lightbulb"></i></span><span class="tile-label">SIAPA PINTAR</span></a>
+            </div>
+        </section>
+
+        <section class="menu-group">
+            <h2>PELAYANAN</h2>
+            <div class="menu-grid">
+                <a href="agenda.html" class="menu-box"><span class="tile-icon gold-soft"><i class="fa-solid fa-calendar-days"></i></span><span class="tile-label">AGENDA TAHUNAN</span></a>
+                <a href="laporan-pelayanan.html" class="menu-box"><span class="tile-icon blue-soft"><i class="fa-solid fa-file-signature"></i></span><span class="tile-label">LAPORAN PELAYANAN</span></a>
+                <a href="event.html" class="menu-box"><span class="tile-icon teal-soft"><i class="fa-solid fa-bullhorn"></i></span><span class="tile-label">EVENT JEMAAT</span></a>
+                <a href="pope-shelter.html" class="menu-box" title="Shelter of Light" aria-label="Shelter of Light"><span class="tile-icon shelter-tile"><img src="shelter-of-light-icon.svg" alt=""></span><span class="tile-label">SHELTER OF LIGHT</span></a>
+            </div>
+        </section>
+
+        <section class="menu-group">
+            <h2>KOMUNITAS &amp; INFORMASI</h2>
+            <div class="menu-grid">
+                <a href="umkm-jemaat.html" class="menu-box"><span class="tile-icon coral-soft"><i class="fa-solid fa-shop"></i></span><span class="tile-label">UMKM SIPAPUA</span><span class="soon-badge">SEGERA</span></a>
+                <a href="sipapua-news.html" class="menu-box"><span class="tile-icon blue-soft"><i class="fa-solid fa-newspaper"></i></span><span class="tile-label">SIPAPUA NEWS</span></a>
+                <a href="readme-sipapua.html" class="menu-box"><span class="tile-icon teal-soft"><i class="fa-solid fa-book-open"></i></span><span class="tile-label">README</span></a>
+                <a href="call-center.html" class="menu-box"><span class="tile-icon purple-soft"><i class="fa-solid fa-headset"></i></span><span class="tile-label">CALL CENTER</span></a>
+            </div>
+        </section>
+        <section class="quick-links" aria-label="Laporan dan akun">
+            <h2>LAPORAN &amp; AKUN</h2>
+            <div class="quick-links-grid">
+                <a href="kehadiran.html" class="quick-link"><span class="quick-link-icon teal-soft"><i class="fa-solid fa-calendar-check"></i></span><span>Laporan Kehadiran</span><i class="fa-solid fa-chevron-right quick-link-arrow" aria-hidden="true"></i></a>
+                <a href="baca-alkitab.html" class="quick-link"><span class="quick-link-icon gold-soft"><i class="fa-solid fa-book-bible"></i></span><span>Laporan Pembacaan Alkitab</span><i class="fa-solid fa-chevron-right quick-link-arrow" aria-hidden="true"></i></a>
+                <a href="profil.html" class="quick-link"><span class="quick-link-icon blue-soft"><i class="fa-solid fa-user-shield"></i></span><span>Profil</span><i class="fa-solid fa-chevron-right quick-link-arrow" aria-hidden="true"></i></a>
+                <a href="setting.html" class="quick-link"><span class="quick-link-icon purple-soft"><i class="fa-solid fa-gear"></i></span><span>Pengaturan</span><i class="fa-solid fa-chevron-right quick-link-arrow" aria-hidden="true"></i></a>
+            </div>
+        </section>
+        <footer class="portal-footer">Pondok Pemulihan Papua - Portal Jemaat SIPAPUA</footer>
+    </main>
 
     <nav class="bottom-nav" id="bottomNav">
 <button
@@ -1008,7 +1366,7 @@
             <span>LACAK DOMBA</span>
         </a>
 
-        <a href="qrcode.html" class="nav-item">
+        <a href="qrcode.html" class="nav-item qr-action">
             <div class="icon-circle"><i class="fas fa-qrcode"></i></div>
             <span>SCAN QR</span>
         </a>
@@ -1023,6 +1381,7 @@
             <span>KELUAR</span>
         </a>
     </nav>
+</div>
 
     <script>
 (() => {
@@ -3120,5 +3479,5 @@
     } else {
         startSipapuaPopupRuntime();
     }
-</script></body>
+</script><script src="menu-ui.js" defer></script></body>
 </html>
