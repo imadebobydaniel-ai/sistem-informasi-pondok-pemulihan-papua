@@ -1190,7 +1190,7 @@
                 "Koordinator Multimedia dan Sound", "Koordinator Cleaning Service", "Koordinator Perparkiran dan Keamanan"
             ],
             "PKS Komsel": ["Ketua Komsel", "Wakil Ketua Komsel", "Anggota Komsel"],
-            "Fulltimer": ["Sekretaris Kantor", "Bendahara kantor", "Koordinator PPA", "Staff dan Tutor PPA", "Koordinator Paud", "Guru Paud", "Guru Sekolah Minggu", "General Affairs"],
+            "Fulltimer": ["Sekretaris Kantor", "Bendahara kantor", "Koordinator PPA", "Staff dan Tutor PPA", "Koordinator Paud", "Guru Paud", "General Affairs"],
             "Anggota Jemaat": ["Jemaat Aktif", "Jemaat Simpatisan"]
         };
 
@@ -1210,7 +1210,7 @@
             "Music Player", "Worship Leader", "Singer", "Tamborin", "Flag", "Choirs", "Campers",
             "Streaming Operator", "Saoundman", "Floor Director", "Creativ Crew", "Peripheral",
             "Frontline User", "Guider User", "Lighting", "Set Design", "Parkir Man", "Security",
-            "Mission Team", "Prayer Team"
+            "Mission Team", "Prayer Team", "Guru Sekolah Minggu"
         ];
 
         listPel.forEach(i => pel.add(new Option(i, i)));
@@ -1285,6 +1285,17 @@ function collectMissingRequiredFields() {
         }
     });
 
+    // Child names are mandatory in handleRegistrasi() too; checking them here keeps the
+    // Firebase account from being created before the profile is complete.
+    form.querySelectorAll(".nama-anak-input").forEach(function (control) {
+        if (control.disabled || (control.value || "").trim()) return;
+        missing.push({
+            label: "Nama Anak " + (Number(control.dataset.childIndex) + 1),
+            control: control,
+            step: control.closest(".form-step")
+        });
+    });
+
     return missing;
 }
 
@@ -1304,43 +1315,97 @@ function highlightMissingRegistrationField(control) {
     }, 5000);
 }
 
+function getMissingRegistrationStep(item) {
+    const stepMatch = item.step ? item.step.id.match(/^step-(\d+)$/) : null;
+    return stepMatch ? Number(stepMatch[1]) : null;
+}
+
+// Opens the field's step, then scrolls to, focuses and briefly highlights the field.
+function focusMissingRegistrationField(item) {
+    const stepNumber = getMissingRegistrationStep(item);
+
+    if (stepNumber && typeof nextStep === "function") {
+        nextStep(stepNumber);
+    }
+
+    setTimeout(function () {
+        item.control.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+        try {
+            item.control.focus({ preventScroll: true });
+        } catch (_) {
+            item.control.focus();
+        }
+
+        highlightMissingRegistrationField(item.control);
+    }, 100);
+}
+
 function validateRegistrationRequiredFields() {
     const missing = collectMissingRequiredFields();
 
     if (!missing.length) return true;
 
-    missing.forEach(function (item) {
-        highlightMissingRegistrationField(item.control);
-    });
+    const stepText = function (item) {
+        const stepNumber = getMissingRegistrationStep(item);
+        return stepNumber ? " (Langkah " + stepNumber + ")" : "";
+    };
 
-    const firstMissing = missing[0];
-
-    if (firstMissing.step) {
-        const stepMatch = firstMissing.step.id.match(/^step-(\d+)$/);
-
-        if (stepMatch && typeof nextStep === "function") {
-            nextStep(Number(stepMatch[1]));
-        }
-
-        setTimeout(function () {
-            firstMissing.control.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-
-            firstMissing.control.focus();
-        }, 100);
+    if (typeof Swal === "undefined") {
+        alert([
+            "Mohon lengkapi field wajib berikut:",
+            "",
+            missing.map(function (item, index) {
+                return (index + 1) + ". " + item.label + stepText(item);
+            }).join("\n")
+        ].join("\n"));
+        focusMissingRegistrationField(missing[0]);
+        return false;
     }
 
-    const message = [
-        "Mohon lengkapi field wajib berikut:",
-        "",
-        missing.map(function (item, index) {
-            return (index + 1) + ". " + item.label;
-        }).join("\n")
-    ].join("\n");
+    // SweetAlert locks page scrolling until it has fully closed, so the jump to the
+    // chosen field runs in didClose.
+    let selectedItem = null;
 
-    alert(message);
+    const list = document.createElement("ol");
+    list.style.cssText = "margin:8px 0 0;padding:0;list-style:none;text-align:left;";
+
+    missing.forEach(function (item, index) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "reg-missing-link";
+        button.style.cssText = "width:100%;margin:4px 0;padding:8px 10px;border:1px solid #f1c3c8;border-radius:8px;background:#fff5f6;color:#b02a37;font-size:13px;font-weight:600;text-align:left;cursor:pointer;";
+        button.textContent = (index + 1) + ". " + item.label + stepText(item);
+        button.addEventListener("click", function () {
+            selectedItem = item;
+            Swal.close();
+        });
+
+        const row = document.createElement("li");
+        row.appendChild(button);
+        list.appendChild(row);
+    });
+
+    const wrapper = document.createElement("div");
+    const intro = document.createElement("p");
+    intro.style.cssText = "margin:0;font-size:13px;color:#555;";
+    intro.textContent = "Mohon lengkapi field wajib berikut. Ketuk nama field untuk langsung menuju ke sana:";
+    wrapper.appendChild(intro);
+    wrapper.appendChild(list);
+
+    Swal.fire({
+        icon: "warning",
+        title: "Data registrasi belum lengkap",
+        html: wrapper,
+        confirmButtonText: "Tutup",
+        confirmButtonColor: "#6c757d",
+        didClose: function () {
+            if (selectedItem) focusMissingRegistrationField(selectedItem);
+        }
+    });
 
     return false;
 }
@@ -1636,8 +1701,8 @@ document.getElementById("status_pernikahan").value,
                 );
             });
 
-            // Registration succeeded; remove the saved local draft.
-            clearRegistrationDraft();
+            // Registration succeeded; remove the saved local draft and stop autosaving.
+            completeRegistrationDraft();
             // Tampilkan modal sukses setelah data Firestore berhasil disimpan.
             document.getElementById("notif-email-sent").style.display = "flex";
 
@@ -3014,7 +3079,8 @@ document.getElementById("status_pernikahan").value,
                 ? "block"
                 : "none";
 
-        wilayahEl.required = false;
+        wilayahEl.required =
+            aktif;
 
         if (!aktif) {
             wilayahEl.value = "";
@@ -3255,6 +3321,8 @@ const REGISTRATION_DRAFT_DEPENDENT_IDS = new Set([
 ]);
 let registrationDraftRestoreInProgress = false;
 let registrationDraftSaveTimer = null;
+// Set once registration succeeded: later page events (pagehide, clicks) must not save a new draft.
+let registrationDraftCompleted = false;
 
 function getRegistrationForm() {
     return document.getElementById("formRegistrasi");
@@ -3297,8 +3365,14 @@ function clearRegistrationDraft() {
     }
 }
 
+function completeRegistrationDraft() {
+    registrationDraftCompleted = true;
+    clearTimeout(registrationDraftSaveTimer);
+    clearRegistrationDraft();
+}
+
 function saveRegistrationDraft() {
-    if (registrationDraftRestoreInProgress) return;
+    if (registrationDraftRestoreInProgress || registrationDraftCompleted) return;
 
     try {
         const draft = collectRegistrationDraft();
@@ -3308,7 +3382,7 @@ function saveRegistrationDraft() {
 }
 
 function scheduleRegistrationDraftSave() {
-    if (registrationDraftRestoreInProgress) return;
+    if (registrationDraftRestoreInProgress || registrationDraftCompleted) return;
     clearTimeout(registrationDraftSaveTimer);
     registrationDraftSaveTimer = setTimeout(saveRegistrationDraft, 150);
 }
@@ -3413,6 +3487,15 @@ async function restoreRegistrationDraft() {
     const children = Array.isArray(draft.children) ? draft.children : [];
 
     try {
+        // A draft only exists after the terms were accepted. Close the modal here so that
+        // accepting it again (closeTermsModal -> nextStep(1)) cannot send the user to step 1.
+        const agree = document.getElementById("check-agree");
+        if (agree) {
+            agree.checked = true;
+            toggleAgreeButton();
+            closeTermsModal();
+        }
+
         form.querySelectorAll("input[id], select[id], textarea[id]").forEach(function (control) {
             if (REGISTRATION_DRAFT_DEPENDENT_IDS.has(control.id) || REGISTRATION_DRAFT_SKIP_IDS.has(control.id)) return;
             restoreRegistrationField(control.id, fields);
@@ -3455,13 +3538,14 @@ async function restoreRegistrationDraft() {
         updateNonStruktural();
         restoreRegistrationField("pelayanan_spesifik_non", fields);
 
+        // Show the last step right away; region selects keep filling in while the API answers.
+        const activeStep = Number(draft.activeStep);
+        nextStep(Number.isInteger(activeStep) && activeStep >= 1 && activeStep <= 6 ? activeStep : 1);
+
         await Promise.all([
             restoreRegistrationRegion("lahir", fields),
             restoreRegistrationRegion("", fields)
         ]);
-
-        const activeStep = Number(draft.activeStep);
-        nextStep(Number.isInteger(activeStep) && activeStep >= 1 && activeStep <= 6 ? activeStep : 1);
 
         const notice = document.createElement("div");
         notice.textContent = "Draft registrasi dipulihkan. Password tidak disimpan; silakan isi ulang.";
