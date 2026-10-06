@@ -391,10 +391,10 @@
 
     <main class="media-main" id="media-home">
         <section class="quick-access" aria-label="Akses cepat">
-            <a class="quick-card quick-running" href="#section-running-text"><span class="quick-icon"><i class="fas fa-bullhorn"></i></span><span><small>01 · CONTROL</small><strong>RUNNING TEXT</strong><em>Pesan monitor</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
-            <a class="quick-card quick-content" href="#section-media-content"><span class="quick-icon"><i class="fas fa-photo-film"></i></span><span><small>02 · PUBLISH</small><strong>MEDIA CONTENT</strong><em>Kelola konten</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
-            <a class="quick-card quick-broadcast" href="#section-broadcast"><span class="quick-icon"><i class="fas fa-tower-broadcast"></i></span><span><small>03 · INFORM</small><strong>BROADCAST</strong><em>Informasi jemaat</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
-            <a class="quick-card quick-playlist" href="#section-playlist"><span class="quick-icon"><i class="fas fa-list-ul"></i></span><span><small>04 · DISPLAY</small><strong>PLAYLIST</strong><em>Konten aktif</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
+            <a class="quick-card quick-running" href="#section-running-text"><span class="quick-icon"><i class="fas fa-bullhorn"></i></span><span><small>01 Â· CONTROL</small><strong>RUNNING TEXT</strong><em>Pesan monitor</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
+            <a class="quick-card quick-content" href="#section-media-content"><span class="quick-icon"><i class="fas fa-photo-film"></i></span><span><small>02 Â· PUBLISH</small><strong>MEDIA CONTENT</strong><em>Kelola konten</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
+            <a class="quick-card quick-broadcast" href="#section-broadcast"><span class="quick-icon"><i class="fas fa-tower-broadcast"></i></span><span><small>03 Â· INFORM</small><strong>BROADCAST</strong><em>Informasi jemaat</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
+            <a class="quick-card quick-playlist" href="#section-playlist"><span class="quick-icon"><i class="fas fa-list-ul"></i></span><span><small>04 Â· DISPLAY</small><strong>PLAYLIST</strong><em>Konten aktif</em></span><i class="fas fa-arrow-up-right-from-square quick-arrow"></i></a>
         </section>
 
     <div class="card-modern media-section media-running" id="section-running-text">
@@ -492,7 +492,7 @@
             </span>
 
             <span class="section-badge badge-broadcast">
-                ADMIN → SEMUA USER
+                ADMIN â†’ SEMUA USER
             </span>
         </div>
 
@@ -681,11 +681,12 @@
     </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<!-- SweetAlert2: dipakai bila berhasil dimuat. Jika gagal/offline, helper di bawah otomatis memakai confirm()/alert(). -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     // --- 1. KONFIGURASI FIREBASE ---
@@ -704,6 +705,48 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
     let currentAdminRole = "";
+
+    // --- UI DIALOG HELPER ---
+    // SweetAlert2 digunakan jika tersedia. Jika CDN gagal dimuat,
+    // fungsi otomatis fallback ke confirm()/alert() bawaan browser.
+    async function uiConfirm(options = {}) {
+        if (typeof Swal !== "undefined" && typeof Swal.fire === "function") {
+            try {
+                return await Swal.fire(options);
+            } catch (error) {
+                console.warn("SweetAlert2 gagal digunakan, memakai confirm() fallback:", error);
+            }
+        }
+
+        const message = [
+            options.title || "Konfirmasi",
+            options.text || "",
+            "\n\n" + (options.confirmButtonText || "OK") + " / " + (options.cancelButtonText || "Batal")
+        ].join("\n");
+
+        return {
+            isConfirmed: window.confirm(message)
+        };
+    }
+
+    async function uiAlert(options = {}) {
+        if (typeof Swal !== "undefined" && typeof Swal.fire === "function") {
+            try {
+                await Swal.fire(options);
+                return;
+            } catch (error) {
+                console.warn("SweetAlert2 gagal digunakan, memakai alert() fallback:", error);
+            }
+        }
+
+        const message = [
+            options.title || "Informasi",
+            options.text || ""
+        ].filter(Boolean).join("\n\n");
+
+        window.alert(message);
+    }
+
     function canDeleteMedia() { return ["master", "super_admin", "superadmin"].includes(currentAdminRole); }
     function denyViewerDelete() {
         if (canDeleteMedia()) return false;
@@ -785,7 +828,7 @@
             prioritasEl.value = "normal";
 
             statusEl.innerText =
-                "✓ Broadcast berhasil dikirim ke semua pengguna SIPAPUA.";
+                "âœ“ Broadcast berhasil dikirim ke semua pengguna SIPAPUA.";
 
             statusEl.style.color =
                 "#218c55";
@@ -1179,7 +1222,7 @@
         }
 
         const result =
-            await Swal.fire({
+            await uiConfirm({
                 title: "Hapus Broadcast?",
                 text:
                     "Pesan akan dihapus dari riwayat Portal Media dan tidak dapat dipulihkan.",
@@ -1210,7 +1253,7 @@
                 error
             );
 
-            Swal.fire({
+            await uiAlert({
                 title: "Gagal",
                 text:
                     "Broadcast tidak dapat dihapus.",
@@ -1237,7 +1280,7 @@
         }
 
         const result =
-            await Swal.fire({
+            await uiConfirm({
                 title:
                     `Hapus ${selected.length} broadcast?`,
                 text:
@@ -1277,7 +1320,7 @@
                 error
             );
 
-            Swal.fire({
+            await uiAlert({
                 title: "Gagal",
                 text:
                     "Sebagian atau seluruh broadcast gagal dihapus.",
