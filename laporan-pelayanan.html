@@ -97,7 +97,6 @@
             cursor: not-allowed;
         }
 
-        /* Notif Block Display Style */
         #status-msg {
             display: none;
             padding: 30px 20px;
@@ -132,6 +131,8 @@
             border-radius: 8px;
             font-size: 14px;
             transition: 0.3s;
+            border: none;
+            cursor: pointer;
         }
 
         .btn-action:hover {
@@ -174,16 +175,13 @@
 
     <div class="container">
 
-        <!-- STATUS MESSAGE -->
         <div id="status-msg"></div>
 
 
-        <!-- FORM -->
         <div class="report-card" id="formContainer">
 
             <form id="pelayananForm">
 
-                <!-- BIDANG PELAYANAN -->
                 <div class="form-group">
 
                     <label>
@@ -260,10 +258,10 @@
                         </optgroup>
 
                     </select>
+
                 </div>
 
 
-                <!-- NAMA KEGIATAN -->
                 <div class="form-group">
 
                     <label>
@@ -281,7 +279,6 @@
                 </div>
 
 
-                <!-- LOKASI -->
                 <div class="form-group">
 
                     <label>
@@ -299,7 +296,6 @@
                 </div>
 
 
-                <!-- TANGGAL -->
                 <div class="form-group">
 
                     <label>
@@ -316,7 +312,6 @@
                 </div>
 
 
-                <!-- SUBMIT -->
                 <button
                     type="submit"
                     id="btnKirim"
@@ -331,7 +326,6 @@
         </div>
 
 
-        <!-- NAVIGATION -->
         <div id="navArea">
 
             <a
@@ -348,17 +342,12 @@
     </div>
 
 
-    <!-- FIREBASE -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 
     <script>
-
-        /* =========================================================
-           FIREBASE CONFIG
-        ========================================================= */
 
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -370,29 +359,16 @@
         };
 
 
-        /* =========================================================
-           INITIALIZE FIREBASE
-        ========================================================= */
-
         firebase.initializeApp(firebaseConfig);
 
         const db = firebase.firestore();
         const auth = firebase.auth();
 
 
-        /* =========================================================
-           FORM SUBMIT
-        ========================================================= */
-
         document
             .getElementById("pelayananForm")
             .addEventListener("submit", async function (e) {
 
-                /*
-                 * PENTING:
-                 * Mencegah browser melakukan submit HTML normal
-                 * yang dapat menyebabkan navigasi/404.
-                 */
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -410,10 +386,6 @@
                     document.getElementById("navArea");
 
 
-                /* =================================================
-                   DISABLE BUTTON
-                ================================================= */
-
                 btn.disabled = true;
 
                 btn.innerHTML =
@@ -421,10 +393,6 @@
 
 
                 try {
-
-                    /* =============================================
-                       CEK LOGIN FIREBASE
-                    ============================================= */
 
                     const authUser = auth.currentUser;
 
@@ -437,16 +405,6 @@
 
                     }
 
-
-                    /* =============================================
-                       EMAIL USER
-                    ============================================= */
-
-                    /*
-                     * Prioritas:
-                     * 1. Firebase Auth email
-                     * 2. localStorage userEmail
-                     */
 
                     const localEmail =
                         localStorage.getItem("userEmail");
@@ -463,10 +421,6 @@
 
                     }
 
-
-                    /* =============================================
-                       AMBIL DATA FORM
-                    ============================================= */
 
                     const kategori =
                         document
@@ -492,10 +446,6 @@
                             .value;
 
 
-                    /* =============================================
-                       VALIDASI
-                    ============================================= */
-
                     if (
                         !kategori ||
                         !namaKegiatan ||
@@ -509,10 +459,6 @@
 
                     }
 
-
-                    /* =============================================
-                       DATA LAPORAN
-                    ============================================= */
 
                     const dataLaporan = {
 
@@ -536,10 +482,6 @@
                     };
 
 
-                    /* =============================================
-                       SIMPAN LAPORAN
-                    ============================================= */
-
                     console.log(
                         "[SIPAPUA] Menyimpan laporan:",
                         dataLaporan
@@ -558,9 +500,13 @@
                     );
 
 
-                    /* =============================================
-                       UPDATE POIN LEADERBOARD
-                    ============================================= */
+                    /*
+                     * UPDATE POIN LEADERBOARD
+                     *
+                     * Jika update poin gagal, laporan tetap
+                     * dianggap berhasil karena data laporan
+                     * sudah tersimpan.
+                     */
 
                     try {
 
@@ -613,11 +559,6 @@
 
                     } catch (pointError) {
 
-                        /*
-                         * Jika update poin gagal, laporan tetap dianggap
-                         * berhasil karena data laporan sudah tersimpan.
-                         */
-
                         console.error(
                             "[SIPAPUA] Gagal update poin:",
                             pointError
@@ -626,20 +567,30 @@
                     }
 
 
-                    /* =============================================
-                       TAMPILKAN STATUS SUKSES
-                    ============================================= */
+                    /*
+                     * TAMPILKAN PESAN SUKSES
+                     */
 
                     formContainer.style.display = "none";
 
                     navArea.style.display = "none";
-
 
                     msg.style.display = "block";
 
                     msg.className =
                         "success-box";
 
+
+                    /*
+                     * PENTING:
+                     *
+                     * Tidak menggunakan href="menu.html".
+                     *
+                     * Tombol OK menggunakan history.back()
+                     * sehingga user kembali ke halaman MENU
+                     * LAPORAN PELAYANAN tempat sebelumnya
+                     * memilih jenis kegiatan.
+                     */
 
                     msg.innerHTML = `
 
@@ -671,22 +622,32 @@
                             Tuhan Yesus Memberkati!
                         </p>
 
-                        <a
-                            href="menu.html"
+                        <button
+                            type="button"
                             class="btn-action"
+                            id="btnKembaliMenuLaporan"
                         >
-                            <i class="fa-solid fa-house"></i>
-                            Selesai & Kembali ke Menu
-                        </a>
+                            <i class="fa-solid fa-check"></i>
+                            OK
+                        </button>
 
                     `;
 
 
-                } catch (error) {
+                    /*
+                     * KEMBALI KE MENU LAPORAN PELAYANAN
+                     */
 
-                    /* =============================================
-                       ERROR HANDLER
-                    ============================================= */
+                    document
+                        .getElementById("btnKembaliMenuLaporan")
+                        .addEventListener("click", function () {
+
+                            window.history.back();
+
+                        });
+
+
+                } catch (error) {
 
                     console.error(
                         "[SIPAPUA] Gagal mengirim laporan:",
@@ -790,10 +751,6 @@
                     `;
 
 
-                    /* =============================================
-                       COBA LAGI
-                    ============================================= */
-
                     const btnCobaLagi =
                         document.getElementById("btnCobaLagi");
 
@@ -816,10 +773,6 @@
 
                     }
 
-
-                    /* =============================================
-                       RESTORE BUTTON
-                    ============================================= */
 
                     btn.disabled = false;
 
