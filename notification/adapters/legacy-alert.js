@@ -1,0 +1,1 @@
+(function (global) { var r = global.__SIPAPUA_NOTIFICATION_MODULES__ = global.__SIPAPUA_NOTIFICATION_MODULES__ || {}; if (r.legacyAlert) return; r.legacyAlert = function (manager, message, options) { return manager.notify.info(Object.assign({ message: String(message || "") }, options || {})); }; }(window));
