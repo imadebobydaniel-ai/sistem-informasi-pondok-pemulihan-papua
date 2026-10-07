@@ -796,6 +796,9 @@ body {
     isolation: isolate;
     /* Lets the hero media size itself from the shell width (cqw). */
     container-type: inline-size;
+    /* Shared profile hide/show motion: the profile card and the header brand/actions slide together. */
+    --profile-shift: -110cqw;
+    --profile-slide: transform .42s cubic-bezier(.2,.75,.25,1);
 }
 
 .hero-panel::before {
@@ -855,6 +858,10 @@ button.topbar-button { padding: 0; cursor: pointer; }
 .portal-brand span { font-size: 9px; font-weight: 700; letter-spacing: 1.1px; opacity: .78; }
 .portal-brand strong { font-size: 13px; font-weight: 800; letter-spacing: 1.25px; }
 .topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+/* #toggleProfile stays in place so the profile can always be shown again. */
+.portal-brand, .topbar-actions { transition: var(--profile-slide); }
+.hero-panel:has(#profileCard.closed) .portal-brand,
+.hero-panel:has(#profileCard.closed) .topbar-actions { transform: translateX(var(--profile-shift)); }
 .theme-mark { width: 34px; height: 34px; border-radius: 12px; }
 .inbox-shortcut { position: relative; width: 38px; height: 38px; cursor: pointer; }
 #inbox-icon { font-size: 15px !important; }
@@ -937,10 +944,10 @@ button.topbar-button { padding: 0; cursor: pointer; }
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    transition: transform .42s cubic-bezier(.2,.75,.25,1);
+    transition: var(--profile-slide);
 }
 
-.profile-card.closed { transform: translateX(-110%); }
+.profile-card.closed { transform: translateX(var(--profile-shift)); }
 /* Navy veil behind the profile only (not the whole hero): strongest from the card's middle down,
    bleeding to the hero edges and down to the media's bottom fade. Slides away with .closed. */
 .profile-card::before {
