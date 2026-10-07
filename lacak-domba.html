@@ -10,6 +10,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="notification/styles/notification.css">
     <style>
         :root {
             --primary-color: #003366;
@@ -209,6 +210,17 @@
 </section>
 
 <a href="menu.html" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali ke Menu</a>
+
+<script src="notification/core/queue.js"></script>
+<script src="notification/core/lifecycle.js"></script>
+<script src="notification/core/error-normalizer.js"></script>
+<script src="notification/components/toast.js"></script>
+<script src="notification/components/validation.js"></script>
+<script src="notification/components/loading.js"></script>
+<script src="notification/components/confirmation.js"></script>
+<script src="notification/components/security-confirmation.js"></script>
+<script src="notification/core/manager.js"></script>
+<script src="notification/index.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -440,7 +452,10 @@
         } catch (error) {
             showOnlineToggle.checked = !showOnlineToggle.checked;
             console.error("Gagal mengubah visibilitas status online:", error);
-            Swal.fire("Gagal", "Pengaturan status online tidak dapat disimpan.", "error");
+            SIPAPUA.notify.error({
+                title: "Gagal",
+                message: "Pengaturan status online tidak dapat disimpan."
+            });
         } finally {
             showOnlineToggle.disabled = false;
         }
@@ -622,11 +637,17 @@
                 });
                 relationshipState.sent.add(member.uid);
                 renderNearbyMembers(Array.from(memberResults.values()), false);
-                Swal.fire("Permintaan terkirim", "Permintaan kontak menunggu persetujuan jemaat tersebut.", "success");
+                SIPAPUA.notify.success({
+                    title: "Permintaan terkirim",
+                    message: "Permintaan kontak menunggu persetujuan jemaat tersebut."
+                });
             } catch (error) {
                 button.disabled = false;
                 console.error("Permintaan kontak gagal:", error);
-                Swal.fire("Gagal", "Permintaan kontak tidak dapat dikirim.", "error");
+                SIPAPUA.notify.error({
+                    title: "Gagal",
+                    message: "Permintaan kontak tidak dapat dikirim."
+                });
             }
         } else if (button.dataset.action === "block") {
             const result = await Swal.fire({
@@ -664,10 +685,16 @@
             memberResults.delete(member.uid);
             await loadBlockedUsers();
             renderNearbyMembers(Array.from(memberResults.values()), false);
-            await Swal.fire("Pengguna diblokir", "Pengguna tersebut tidak akan muncul di Lacak Domba.", "success");
+            SIPAPUA.notify.success({
+                title: "Pengguna diblokir",
+                message: "Pengguna tersebut tidak akan muncul di Lacak Domba."
+            });
         } catch (error) {
             console.error("Blokir pengguna gagal:", error);
-            await Swal.fire("Gagal", "Pengguna tidak dapat diblokir sekarang.", "error");
+            SIPAPUA.notify.error({
+                title: "Gagal",
+                message: "Pengguna tidak dapat diblokir sekarang."
+            });
         }
     }
 
@@ -710,7 +737,10 @@
         } catch (error) {
             button.disabled = false;
             console.error("Buka blokir gagal:", error);
-            Swal.fire("Gagal", "Pengaturan blokir tidak dapat diperbarui.", "error");
+            SIPAPUA.notify.error({
+                title: "Gagal",
+                message: "Pengaturan blokir tidak dapat diperbarui."
+            });
         }
     });
 

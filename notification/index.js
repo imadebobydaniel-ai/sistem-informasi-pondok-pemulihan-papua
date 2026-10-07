@@ -1,0 +1,20 @@
+(function (global) {
+    var registry = global.__SIPAPUA_NOTIFICATION_MODULES__ = global.__SIPAPUA_NOTIFICATION_MODULES__ || {};
+    var existing = global.SIPAPUA;
+    if (existing && existing.__notificationInitialized) return;
+    var required = ["queue", "lifecycle", "errorNormalizer", "toast", "validation", "loading", "confirmation", "securityConfirmation", "manager"];
+    var missing = required.filter(function (name) { return !registry[name]; });
+    if (missing.length) throw new Error("SIPAPUA Notification modules must load before notification/index.js. Missing: " + missing.join(", "));
+    var api = existing || {};
+    var manager = registry.manager.create(existing && existing.__notificationManager);
+    if (!api.notify) api.notify = manager.notify;
+    if (!api.validation) api.validation = manager.validation;
+    if (!api.loading) api.loading = manager.loading;
+    if (!api.confirm) api.confirm = manager.confirm;
+    if (!api.confirmDelete) api.confirmDelete = manager.confirmDelete;
+    if (!api.securityConfirm) api.securityConfirm = manager.securityConfirm;
+    if (!api.error) api.error = manager.error;
+    if (!api.__notificationManager) api.__notificationManager = manager;
+    api.__notificationInitialized = true;
+    global.SIPAPUA = api;
+}(window));

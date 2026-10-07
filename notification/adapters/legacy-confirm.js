@@ -1,0 +1,1 @@
+(function (global) { var r = global.__SIPAPUA_NOTIFICATION_MODULES__ = global.__SIPAPUA_NOTIFICATION_MODULES__ || {}; if (r.legacyConfirm) return; r.legacyConfirm = function (manager, message, options) { return manager.confirm(Object.assign({ title: "Konfirmasi", message: String(message || "") }, options || {})); }; }(window));
