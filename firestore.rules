@@ -277,18 +277,23 @@ service cloud.firestore {
       allow create: if isActiveAdmin()
         || (signedIn()
           && request.auth.uid == uid
-          && request.resource.data.uid == request.auth.uid);
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.status_akun == "Menunggu Verifikasi");
+
       allow update: if isActiveAdmin()
         || (signedIn()
           && (request.auth.uid == uid
-            || resource.data.get("uid", "") == request.auth.uid));
+            || resource.data.get("uid", "") == request.auth.uid)
+          && !request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasAny(["status_akun"]));
       allow delete: if isActiveAdmin()
         || (signedIn()
           && (request.auth.uid == uid
             || resource.data.get("uid", "") == request.auth.uid));
     }
 
-    match /users/{uid}/{document=**} {
+    match /users/{uid}/{subcollection}/{document=**} {
       allow read: if true;
       allow write: if isActiveAdmin()
         || (signedIn() && request.auth.uid == uid);

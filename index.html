@@ -296,14 +296,42 @@
         let isTyping = false;
  
         // --- PERBAIKAN DI SINI: Menutup blok onAuthStateChanged dengan benar ---
-        auth.onAuthStateChanged((user) => {
-            if (user && user.emailVerified) {
-               localStorage.setItem("userUid", user.uid);
-               localStorage.setItem("userEmail", user.email);
-               window.location.replace("menu.html");
-            }
-        }); 
+        auth.onAuthStateChanged(async (user) => {
+            if (!user || !user.emailVerified) return;
 
+            // Validasi sesi yang sudah melewati login.
+            if (localStorage.getItem("userUid") !== user.uid) return;
+
+            try {
+                const userDoc = await db.collection("users").doc(user.uid).get();
+
+                if (!userDoc.exists) {
+                    localStorage.removeItem("userUid");
+                    localStorage.removeItem("userEmail");
+                    await auth.signOut();
+                    return;
+                }
+
+                const statusAkun = String(userDoc.data().status_akun || "").trim();
+
+                if (statusAkun !== "Aktif") {
+                    localStorage.removeItem("userUid");
+                    localStorage.removeItem("userEmail");
+                    showBlockNotif("Akun belum diaktifkan oleh administrator.");
+                    await auth.signOut();
+                    return;
+                }
+
+                localStorage.setItem("userUid", user.uid);
+                localStorage.setItem("userEmail", user.email);
+                window.location.replace("menu.html");
+            } catch (err) {
+                console.error("Gagal memeriksa status akun:", err);
+                localStorage.removeItem("userUid");
+                localStorage.removeItem("userEmail");
+                await auth.signOut();
+            }
+        });
         // FUNGSI TAMPIL NOTIFIKASI CUSTOM
         function showBlockNotif(message, duration = 2000) {
             const notif = document.getElementById('customNotif');
@@ -435,15 +463,57 @@
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, pass);
                 if (userCredential.user.emailVerified) {
-                   localStorage.setItem("userUid", userCredential.user.uid);
-                    localStorage.setItem("userEmail", userCredential.user.email);
-                   showBlockNotif("Anda berhasil login.");
-                   setTimeout(() => window.location.replace("menu.html"), 1500);
+                   try {
+                       const userDoc = await db.collection("users").doc(userCredential.user.uid).get();
+
+                       if (!userDoc.exists) {
+                           showBlockNotif("Data akun tidak ditemukan.");
+                           btn.innerText = "MASUK";
+                           btn.disabled = false;
+                           await auth.signOut();
+                           return;
+                       }
+
+                       const statusAkun = String(userDoc.data().status_akun || "").trim();
+
+                       if (statusAkun !== "Aktif") {
+                           showBlockNotif("Akun belum diaktifkan oleh administrator.");
+                           btn.innerText = "MASUK";
+                           btn.disabled = false;
+                           await auth.signOut();
+                           return;
+                       }
+
+                       localStorage.setItem("userUid", userCredential.user.uid);
+                       localStorage.setItem("userEmail", userCredential.user.email);
+                       showBlockNotif("Anda berhasil login.");
+                       setTimeout(() => window.location.replace("menu.html"), 1500);
+                   } catch (statusErr) {
+                       console.error("Gagal memeriksa status akun:", statusErr);
+                       showBlockNotif("Gagal memeriksa status akun. Silakan coba lagi.");
+                       btn.innerText = "MASUK";
+                       btn.disabled = false;
+                       await auth.signOut();
+                   }
                 } else {
-                   showBlockNotif("Email belum diverifikasi!");
+                   const unverifiedUser = userCredential.user;
+
+                   try {
+                       await unverifiedUser.sendEmailVerification();
+                       showBlockNotif("Email verifikasi telah dikirim ulang.");
+                   } catch (verifyErr) {
+                       console.error("Resend verification error:", verifyErr);
+
+                       if (verifyErr.code === "auth/too-many-requests") {
+                           showBlockNotif("Terlalu banyak permintaan. Silakan coba lagi nanti.");
+                       } else {
+                           showBlockNotif("Gagal mengirim email verifikasi.");
+                       }
+                   }
+
                    btn.innerText = "MASUK";
                    btn.disabled = false;
-                  auth.signOut();
+                   await auth.signOut();
                 }
             } catch (err) {
                showBlockNotif("Gagal Login! Periksa kembali email & password.");
