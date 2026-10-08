@@ -6,6 +6,7 @@
     <title>Bio Singkat Jemaat</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="notification/styles/notification.css">
     <style>
@@ -73,6 +74,7 @@
     };
     
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const auth = firebase.auth();
     const db = firebase.firestore();
 
     // Logika Utama: Deteksi Scan langsung di dalam APK
@@ -106,6 +108,7 @@
             const snap = await db.collection("users").where("email", "==", email).get();
             if (!snap.empty) {
                 const data = snap.docs[0].data();
+                const targetUid = snap.docs[0].id;
                 
                 // Isi Data ke UI
                 document.getElementById('p-nij').innerText = data.nij || "0000 0000";
@@ -120,31 +123,178 @@
                 // Tampilkan Pop-up
                 document.getElementById('popupBio').style.display = 'block';
 
-                // Logika Tombol Tambah (Koneksi)
+                // Logika Tombol Tambah: gunakan sistem friend_requests berbasis UID.
                 document.getElementById('btnAdd').onclick = async () => {
-                    const myEmail = localStorage.getItem("userEmail");
-                    if (myEmail === email) {
-                        SIPAPUA.notify.info({
-                            title: "Info",
-                            message: "Ini adalah kartu Anda sendiri."
+                    const btnAdd = document.getElementById('btnAdd');
+                    const currentUser = await new Promise(resolve => {
+                        let settled = false;
+                        const unsubscribe = auth.onAuthStateChanged(user => {
+                            if (settled) return;
+                            settled = true;
+                            unsubscribe();
+                            resolve(user);
+                        });
+                    });
+
+                    if (!currentUser) {
+                        await Swal.fire({
+                            title: 'Sesi Tidak Ditemukan',
+                            text: 'Silakan login ulang ke SIPAPUA.',
+                            icon: 'warning',
+                            heightAuto: false
+                        });
+                        window.location.href = 'index.html';
+                        return;
+                    }
+
+                    if (currentUser.uid === targetUid) {
+                        await Swal.fire({
+                            title: 'Info',
+                            text: 'Ini adalah kartu Anda sendiri.',
+                            icon: 'info',
+                            heightAuto: false
                         });
                         return;
                     }
-                    
-                    // Contoh logika simpan pertemanan sederhana
-                    await db.collection("friend_requests").add({
-                        from_email: myEmail,
-                        to_email: email,
-                        status: "pending",
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
 
-                    SIPAPUA.notify.success({
-                        title: "Berhasil!",
-                        message: "Permintaan koneksi telah dikirim!"
-                    });
-                };
-            } else {
+                    btnAdd.disabled = true;
+                    const originalText = btnAdd.textContent;
+                    btnAdd.textContent = 'MENGIRIM...';
+
+                    try {
+                        const targetContactRef = db
+                            .collection('contacts')
+                            .doc(currentUser.uid)
+                            .collection('friends')
+                            .doc(targetUid);
+                        const existingContact = await targetContactRef.get();
+
+                        if (existingContact.exists) {
+                            await Swal.fire({
+                                title: 'Sudah Berteman',
+                                text: 'Jemaat ini sudah ada di daftar kontak Anda.',
+                                icon: 'info',
+                                heightAuto: false
+                            });
+                            btnAdd.textContent = 'SUDAH BERTEMAN';
+                            return;
+                        }
+
+                        const pairRequestId = [currentUser.uid, targetUid].sort().join('_');
+                        const requestRef = db.collection('friend_requests').doc(pairRequestId);
+                        const requestSnapshot = await requestRef.get().catch(error => {
+                                if (error?.code === 'permission-denied') return null;
+                                throw error;
+                            });
+
+                        if (requestSnapshot.exists) {
+                            const requestData = requestSnapshot.data() || {};
+                            const requestStatus = String(requestData.status || '').trim().toLowerCase();
+
+                            if (requestStatus === 'pending') {
+                                await Swal.fire({
+                                    title: 'Sudah Dikirim',
+                                    text: 'Permintaan pertemanan sudah dikirim dan menunggu respons.',
+                                    icon: 'info',
+                                    heightAuto: false
+                                });
+                                btnAdd.textContent = 'TERKIRIM';
+                                return;
+                            }
+
+                            if (requestStatus === 'accepted') {
+                                await Swal.fire({
+                                    title: 'Sudah Berteman',
+                                    text: 'Permintaan sebelumnya sudah diterima.',
+                                    icon: 'success',
+                                    heightAuto: false
+                                });
+                                btnAdd.textContent = 'SUDAH BERTEMAN';
+                                return;
+                            }
+
+                            if (requestStatus === 'blocked') {
+                                await Swal.fire({
+                                    title: 'Tidak Dapat Menambahkan',
+                                    text: 'Permintaan pertemanan untuk akun ini sedang diblokir.',
+                                    icon: 'warning',
+                                    heightAuto: false
+                                });
+                                btnAdd.textContent = originalText;
+                                btnAdd.disabled = false;
+                                return;
+                            }
+
+                            if (requestStatus === 'rejected') {
+                                await Swal.fire({
+                                    title: 'Permintaan Sebelumnya Ditolak',
+                                    text: 'Permintaan pertemanan sebelumnya sudah ditolak.',
+                                    icon: 'info',
+                                    heightAuto: false
+                                });
+                                btnAdd.textContent = originalText;
+                                btnAdd.disabled = false;
+                                return;
+                            }
+                        }
+
+                        const ownPresenceSnapshot = await db.collection('presence').doc(currentUser.uid).get();
+                        if (!ownPresenceSnapshot.exists) {
+                            throw Object.assign(new Error('PRESENCE_NOT_READY'), { code: 'presence-not-ready' });
+                        }
+
+                        const ownPresence = ownPresenceSnapshot.data() || {};
+                        const fromDisplayName = typeof ownPresence.displayName === 'string' ? ownPresence.displayName : '';
+                        const fromPhotoURL = typeof ownPresence.photoURL === 'string' ? ownPresence.photoURL : '';
+
+                        await requestRef.set({
+                            fromUid: currentUser.uid,
+                            toUid: targetUid,
+                            status: 'pending',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            fromDisplayName,
+                            fromPhotoURL
+                        });
+
+                        await Swal.fire({
+                            title: 'Berhasil!',
+                            text: 'Permintaan pertemanan telah dikirim.',
+                            icon: 'success',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#003366',
+                            heightAuto: false
+                        });
+
+                        btnAdd.textContent = 'TERKIRIM';
+                    } catch (error) {
+                        console.error('Gagal mengirim permintaan pertemanan:', error);
+
+                        let message = 'Permintaan pertemanan gagal dikirim.';
+                        const code = String(error?.code || '').replace(/^firestore\//, '');
+
+                        if (code === 'permission-denied') {
+                            message = 'Permintaan ditolak. Pastikan akun tujuan dapat menerima koneksi dan tidak sedang memblokir Anda.';
+                        } else if (code === 'unauthenticated') {
+                            message = 'Sesi login tidak valid. Silakan login ulang.';
+                        } else if (code === 'presence-not-ready') {
+                            message = 'Profil koneksi Anda belum siap. Kembali ke menu utama lalu coba scan lagi.';
+                        } else if (code === 'already-exists') {
+                            message = 'Permintaan pertemanan sudah ada.';
+                        }
+
+                        await Swal.fire({
+                            title: 'Gagal',
+                            text: message,
+                            icon: 'error',
+                            confirmButtonColor: '#003366',
+                            heightAuto: false
+                        });
+
+                        btnAdd.textContent = originalText;
+                        btnAdd.disabled = false;
+                    }
+                };            } else {
                 SIPAPUA.notify.error({
                     title: "Error",
                     message: "Data jemaat tidak ditemukan.",
