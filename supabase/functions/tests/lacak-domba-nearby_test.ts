@@ -699,6 +699,40 @@ test("direct table and function access with the anon key is refused by PostgREST
     }
 });
 
+test("concurrent session calls of one user (tabs) never answer 500", async () => {
+    heartbeat(ALICE);
+    saveLocation(ALICE);
+    const statuses: number[] = [];
+    for (let round = 0; round < 8; round++) {
+        await sql!`delete from public.lacak_domba_presence where firebase_uid = ${ALICE}`;
+        // Several tabs press "Bisa Ditemukan" at the same moment.
+        const starts = await Promise.all(Array.from({ length: 6 }, () => call(ALICE, { action: "discovery_start" })));
+        statuses.push(...starts.map((r) => r.status));
+        const ids = new Set(starts.filter((r) => r.status === 200).map((r) => r.data.discovery.sessionId));
+        assertEquals(ids.size, 1);
+        const sessionId = [...ids][0];
+        // Start, extend, heartbeat and stop of the same user at once.
+        const mixed = await Promise.all([
+            call(ALICE, { action: "discovery_start" }),
+            call(ALICE, { action: "discovery_extend", sessionId }),
+            call(ALICE, { action: "sync" }),
+            call(ALICE, { action: "discovery_extend", sessionId }),
+            call(ALICE, { action: "clear", mode: "stop" }),
+            call(ALICE, { action: "discovery_start" }),
+        ]);
+        statuses.push(...mixed.map((r) => r.status));
+        const [bad] = await sql!`
+            select count(*)::int as n from public.lacak_domba_presence
+            where firebase_uid = ${ALICE}
+                and (discoverable_until > updated_at + interval '15 minutes'
+                     or discoverable_until > clock_timestamp() + interval '15 minutes'
+                     or latitude is null or longitude is null or location_updated_at is null)`;
+        assertEquals(bad.n, 0);
+    }
+    // 409 is the handled answer of an extend that lost to a stop or start.
+    assertEquals(statuses.filter((s) => s !== 200 && s !== 409), []);
+});
+
 Deno.test({
     name: "nothing left the process except calls to the local PostgREST",
     ignore,
