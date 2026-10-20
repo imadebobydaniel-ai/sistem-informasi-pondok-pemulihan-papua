@@ -415,3 +415,134 @@ sqlTest("the session lock is per user: Alice's open call never blocks Bob", asyn
     );
     assertEquals(bob.outcome, "started");
 });
+
+// --- stale transaction clock -----------------------------------------------
+// The interleaving that two tabs produce in practice: B's transaction starts
+// FIRST (so its now() is older), A's call takes the per-user lock and opens or
+// changes the session, B's call waits for that lock and runs after A commits.
+// Every session write must use the time after the lock, never B's older
+// transaction start, or the 15-minute CHECK refuses B (23514, HTTP 500).
+async function staleRace<T, U>(
+    first: (sql: Sql) => Promise<T>,
+    second: (sql: Sql) => Promise<U>,
+): Promise<[T, U]> {
+    const a = open();
+    const b = open();
+    const observer = open();
+    const ca = await a.reserve();
+    const cb = await b.reserve();
+    let openA = false;
+    let openB = false;
+    try {
+        const [{ pid }] = await cb`select pg_backend_pid() as pid`;
+        await cb`begin`;
+        openB = true;
+        await cb`select now()`;
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        await ca`begin`;
+        openA = true;
+        const firstResult = await first(ca as unknown as Sql);
+        const secondPromise = (async () => await second(cb as unknown as Sql))();
+        const blocked = await waitForLock(observer, pid);
+        await ca`commit`;
+        openA = false;
+        const secondResult = await secondPromise;
+        await cb`commit`;
+        openB = false;
+        assert(blocked, "the second connection did not wait for the first one's lock");
+        return [firstResult, secondResult];
+    } finally {
+        if (openA) await ca`rollback`.catch(() => {});
+        if (openB) await cb`rollback`.catch(() => {});
+        ca.release();
+        cb.release();
+        await Promise.all([a.end(), b.end(), observer.end()]);
+    }
+}
+
+// The stored row, when there is one, obeys the session rules and holds one
+// of the submitted locations, complete.
+async function assertConsistent(sql: Sql, uid = ALICE) {
+    const rows = await sql`
+        select latitude, longitude, location_updated_at,
+               discoverable_until <= updated_at + interval '15 minutes' as capped,
+               discoverable_until <= clock_timestamp() + interval '15 minutes' as within_now,
+               updated_at >= session_started_at as ordered
+        from public.lacak_domba_presence where firebase_uid = ${uid}`;
+    for (const r of rows) {
+        assertEquals([r.capped, r.within_now, r.ordered], [true, true, true]);
+        assertEquals([r.latitude, r.longitude], [-1, 131]);
+        assert(r.location_updated_at !== null, "location time missing");
+    }
+}
+
+const sessionCall = {
+    start: (tx: Sql) => start(tx),
+    refresh: (tx: Sql) => tx`select * from public.lacak_domba_discovery_refresh(${ALICE}, ${tx.json(row())}, now())`.then((r) => r[0]),
+    extend: (id: string) => (tx: Sql) =>
+        tx`select * from public.lacak_domba_discovery_extend(${ALICE}, ${id}::uuid, ${tx.json(row())})`.then((r) => r[0]),
+    stop: (tx: Sql) => tx`select * from public.lacak_domba_discovery_end(${ALICE}, 'stop', null)`.then((r) => r[0]),
+};
+
+sqlTest("stale clock start/start (two tabs): the later start adopts the session, no CHECK error", async (sql) => {
+    const [first, second] = await staleRace(sessionCall.start, sessionCall.start);
+    assertEquals([first.outcome, second.outcome], ["started", "already_active"]);
+    assertEquals(second.session_id, first.session_id);
+    assert(Number(second.expires_in_ms) <= 15 * 60 * 1000);
+    await assertConsistent(sql);
+});
+
+sqlTest("stale clock start (new session) / heartbeat refresh: the refresh keeps the session", async (sql) => {
+    const [first, second] = await staleRace(sessionCall.start, sessionCall.refresh);
+    assertEquals([first.outcome, second.outcome], ["started", "active"]);
+    assertEquals(second.expires_at.getTime(), first.expires_at.getTime());
+    await assertConsistent(sql);
+});
+
+sqlTest("stale clock extend / start: the start adopts the extended session", async (sql) => {
+    const s0 = await start(sql);
+    await elapse(sql, 60);
+    const [ext, st] = await staleRace(sessionCall.extend(s0.session_id), sessionCall.start);
+    assertEquals([ext.outcome, st.outcome], ["extended", "already_active"]);
+    assertEquals(st.expires_at.getTime(), ext.expires_at.getTime());
+    await assertConsistent(sql);
+});
+
+sqlTest("stale clock start (after expiry) / extend of the old session: reported, not extended", async (sql) => {
+    const s0 = await start(sql);
+    await elapse(sql, 15 * 60 + 1);
+    const [st, ext] = await staleRace(sessionCall.start, sessionCall.extend(s0.session_id));
+    assertEquals([st.outcome, ext.outcome], ["started", "session_changed"]);
+    assertEquals(ext.session_id, st.session_id);
+    await assertConsistent(sql);
+});
+
+sqlTest("stale clock extend / stop and stop / extend: the session always ends, never revived", async (sql) => {
+    const s0 = await start(sql);
+    const [ext, stop] = await staleRace(sessionCall.extend(s0.session_id), sessionCall.stop);
+    assertEquals([ext.outcome, stop.outcome], ["extended", "ended"]);
+    assertEquals(await stored(sql), undefined);
+    const s1 = await start(sql);
+    const [stop2, ext2] = await staleRace(sessionCall.stop, sessionCall.extend(s1.session_id));
+    assertEquals([stop2.outcome, ext2.outcome], ["ended", "expired"]);
+    assertEquals(await stored(sql), undefined);
+});
+
+sqlTest("stress: 10 connections, starts and mixed start/extend/refresh/stop, 10 rounds, no error", async (sql) => {
+    const conns = Array.from({ length: 10 }, open);
+    try {
+        for (let round = 0; round < 10; round++) {
+            await reset(sql);
+            const starts = await Promise.all(conns.map((c) => start(c)));
+            assertEquals(new Set(starts.map((r) => r.session_id)).size, 1);
+            assertEquals(starts.filter((r) => r.outcome === "started").length, 1);
+            await assertConsistent(sql);
+            const id = starts[0].session_id;
+            const calls = [sessionCall.start, sessionCall.refresh, sessionCall.extend(id), sessionCall.stop];
+            await Promise.all(conns.map((c, i) => calls[i % calls.length](c)));
+            await assertConsistent(sql);
+        }
+    } finally {
+        await Promise.all(conns.map((c) => c.end()));
+    }
+});

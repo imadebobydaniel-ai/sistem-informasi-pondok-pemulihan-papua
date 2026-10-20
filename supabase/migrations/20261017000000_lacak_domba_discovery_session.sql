@@ -15,8 +15,11 @@
 --     time and an end time together (a row is in one session or in none).
 --   * adds an index for the scan filter and the purge.
 --   * adds functions that start, extend, refresh and end a session, each in
---     one transaction, with every time taken from the database clock (now()),
---     never from the Edge Function or the browser:
+--     one transaction, with every time taken from the database clock, never
+--     from the Edge Function or the browser. The four session functions
+--     read that time once, with clock_timestamp() right after the per-user
+--     lock, and use it for every write and comparison of the call (see
+--     concurrency below):
 --       lacak_domba_discovery_start   - opens a 15-minute session, or keeps
 --                                       the running one (never lengthens it)
 --       lacak_domba_discovery_extend  - 15 minutes from now, only for the
@@ -32,6 +35,9 @@
 --     transaction-scoped advisory lock (pg_advisory_xact_lock), so the calls
 --     of one user run one after another; start is a single
 --     INSERT ... ON CONFLICT, so two starts open at most one session.
+--     now() would be the start of the caller's transaction, which can be
+--     older than a session another call committed while this one waited
+--     for the lock; the 15-minute CHECK then refused the write (23514).
 --   * every function is SECURITY DEFINER with a pinned search_path, and
 --     EXECUTE is revoked from public, anon and authenticated and granted to
 --     service_role only. No table grant changes.
@@ -48,6 +54,8 @@
 --   drop function if exists public.lacak_domba_discovery_end(text, text, uuid);
 --   drop function if exists public.lacak_domba_scan_candidates(text, double precision, double precision, integer, integer, integer);
 --   drop function if exists public.lacak_domba_purge_stale(integer);
+--   alter table public.lacak_domba_presence
+--       drop constraint if exists lacak_domba_presence_active_session_location;
 --   alter table public.lacak_domba_presence
 --       drop constraint if exists lacak_domba_presence_session_consistent;
 --   alter table public.lacak_domba_presence
@@ -110,6 +118,34 @@ begin
 end;
 $migration$;
 
+-- Legacy production deliberately allows null coordinates when there is no
+-- discovery session. Preserve that backwards-compatible column nullability,
+-- but reject an ACTIVE SESSION without complete, bounded coordinates and a
+-- location timestamp. SQL CHECK must explicitly test IS NOT NULL because
+-- PostgreSQL accepts a CHECK expression that evaluates to UNKNOWN.
+do $migration$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.lacak_domba_presence'::regclass
+          and conname = 'lacak_domba_presence_active_session_location'
+    ) then
+        alter table public.lacak_domba_presence
+            add constraint lacak_domba_presence_active_session_location
+            check (
+                discoverable_until is null
+                or (
+                    latitude is not null
+                    and longitude is not null
+                    and location_updated_at is not null
+                    and latitude between -90 and 90
+                    and longitude between -180 and 180
+                )
+            );
+    end if;
+end;
+$migration$;
+
 -- The row the Edge Function builds from the caller's own Firestore documents.
 -- Only these keys are read; anything else in p_row is ignored. Values are
 -- checked by the table's CHECK constraints.
@@ -131,6 +167,7 @@ set search_path = pg_catalog, public
 as $function$
 declare
     v_row public.lacak_domba_presence;
+    v_now timestamptz;
 begin
     if p_uid is null or char_length(p_uid) not between 1 and 128 then
         raise exception 'invalid firebase uid' using errcode = '22023';
@@ -138,6 +175,9 @@ begin
     -- One user at a time: concurrent session calls of the same user queue
     -- here until the first one commits.
     perform pg_advisory_xact_lock(hashtextextended('lacak_domba_presence:' || p_uid, 0));
+    -- The time of this call, read AFTER the lock: a call that waited for
+    -- another one of this user is never older than what that call wrote.
+    v_now := clock_timestamp();
     if p_row is null then
         raise exception 'presence row required' using errcode = '22023';
     end if;
@@ -165,10 +205,10 @@ begin
         coalesce((p_row ->> 'online')::boolean, false),
         (p_row ->> 'last_seen')::timestamptz,
         (p_row ->> 'location_updated_at')::timestamptz,
-        now(),
-        now() + interval '15 minutes',
+        v_now,
+        v_now + interval '15 minutes',
         gen_random_uuid(),
-        now()
+        v_now
     )
     on conflict (firebase_uid) do update set
         latitude = excluded.latitude,
@@ -182,22 +222,22 @@ begin
         online = excluded.online,
         last_seen = excluded.last_seen,
         location_updated_at = excluded.location_updated_at,
-        updated_at = now(),
+        updated_at = v_now,
         -- A running session keeps its id, start and end.
-        discoverable_until = case when p.discoverable_until > now()
+        discoverable_until = case when p.discoverable_until > v_now
             then p.discoverable_until else excluded.discoverable_until end,
-        discovery_session_id = case when p.discoverable_until > now()
+        discovery_session_id = case when p.discoverable_until > v_now
             then p.discovery_session_id else excluded.discovery_session_id end,
-        session_started_at = case when p.discoverable_until > now()
+        session_started_at = case when p.discoverable_until > v_now
             then p.session_started_at else excluded.session_started_at end
     returning p.* into v_row;
 
-    -- now() is this transaction's start: a session opened by this call has
-    -- exactly that start time; one opened by anybody else has an earlier one.
+    -- A session opened by this call starts exactly at v_now; one opened by
+    -- an earlier call (which held the lock before) starts earlier.
     return query select
-        case when v_row.session_started_at = now() then 'started' else 'already_active' end,
+        case when v_row.session_started_at = v_now then 'started' else 'already_active' end,
         v_row.discovery_session_id,
-        greatest(0, floor(extract(epoch from (v_row.discoverable_until - now())) * 1000))::bigint,
+        greatest(0, floor(extract(epoch from (v_row.discoverable_until - v_now)) * 1000))::bigint,
             v_row.discoverable_until;
 end;
 $function$;
@@ -217,6 +257,7 @@ set search_path = pg_catalog, public
 as $function$
 declare
     v_row public.lacak_domba_presence;
+    v_now timestamptz;
 begin
     if p_uid is null or char_length(p_uid) not between 1 and 128 then
         raise exception 'invalid firebase uid' using errcode = '22023';
@@ -224,6 +265,9 @@ begin
     -- One user at a time: concurrent session calls of the same user queue
     -- here until the first one commits.
     perform pg_advisory_xact_lock(hashtextextended('lacak_domba_presence:' || p_uid, 0));
+    -- The time of this call, read AFTER the lock: a call that waited for
+    -- another one of this user is never older than what that call wrote.
+    v_now := clock_timestamp();
     if p_row is null or p_session_id is null then
         raise exception 'presence row and session id required' using errcode = '22023';
     end if;
@@ -239,33 +283,33 @@ begin
         online = coalesce((p_row ->> 'online')::boolean, false),
         last_seen = (p_row ->> 'last_seen')::timestamptz,
         location_updated_at = (p_row ->> 'location_updated_at')::timestamptz,
-        updated_at = now(),
-        discoverable_until = now() + interval '15 minutes'
+        updated_at = v_now,
+        discoverable_until = v_now + interval '15 minutes'
     where p.firebase_uid = p_uid
         and p.discovery_session_id = p_session_id
-        and p.discoverable_until > now()
+        and p.discoverable_until > v_now
     returning p.* into v_row;
 
     if found then
         return query select 'extended'::text, v_row.discovery_session_id,
-            greatest(0, floor(extract(epoch from (v_row.discoverable_until - now())) * 1000))::bigint,
+            greatest(0, floor(extract(epoch from (v_row.discoverable_until - v_now)) * 1000))::bigint,
             v_row.discoverable_until;
         return;
     end if;
 
     select * into v_row
     from public.lacak_domba_presence p
-    where p.firebase_uid = p_uid and p.discoverable_until > now();
+    where p.firebase_uid = p_uid and p.discoverable_until > v_now;
     if found then
         return query select 'session_changed'::text, v_row.discovery_session_id,
-            greatest(0, floor(extract(epoch from (v_row.discoverable_until - now())) * 1000))::bigint,
+            greatest(0, floor(extract(epoch from (v_row.discoverable_until - v_now)) * 1000))::bigint,
             v_row.discoverable_until;
         return;
     end if;
 
     delete from public.lacak_domba_presence p
     where p.firebase_uid = p_uid
-        and (p.discoverable_until is null or p.discoverable_until <= now());
+        and (p.discoverable_until is null or p.discoverable_until <= v_now);
     return query select 'expired'::text, null::uuid, 0::bigint, null::timestamptz;
 end;
 $function$;
@@ -293,6 +337,7 @@ set search_path = pg_catalog, public
 as $function$
 declare
     v_row public.lacak_domba_presence;
+    v_now timestamptz;
 begin
     if p_uid is null or char_length(p_uid) not between 1 and 128 then
         raise exception 'invalid firebase uid' using errcode = '22023';
@@ -300,6 +345,9 @@ begin
     -- One user at a time: concurrent session calls of the same user queue
     -- here until the first one commits.
     perform pg_advisory_xact_lock(hashtextextended('lacak_domba_presence:' || p_uid, 0));
+    -- The time of this call, read AFTER the lock: a call that waited for
+    -- another one of this user is never older than what that call wrote.
+    v_now := clock_timestamp();
 
     if p_row is null then
         if p_read_at is null then
@@ -310,10 +358,10 @@ begin
             and (p.session_started_at is null or p.session_started_at <= p_read_at);
         select * into v_row
         from public.lacak_domba_presence p
-        where p.firebase_uid = p_uid and p.discoverable_until > now();
+        where p.firebase_uid = p_uid and p.discoverable_until > v_now;
         if found then
             return query select 'active'::text, v_row.discovery_session_id,
-                greatest(0, floor(extract(epoch from (v_row.discoverable_until - now())) * 1000))::bigint,
+                greatest(0, floor(extract(epoch from (v_row.discoverable_until - v_now)) * 1000))::bigint,
             v_row.discoverable_until;
         else
             return query select 'withdrawn'::text, null::uuid, 0::bigint, null::timestamptz;
@@ -333,21 +381,21 @@ begin
         online = coalesce((p_row ->> 'online')::boolean, false),
         last_seen = (p_row ->> 'last_seen')::timestamptz,
         location_updated_at = (p_row ->> 'location_updated_at')::timestamptz,
-        updated_at = now()
+        updated_at = v_now
     where p.firebase_uid = p_uid
-        and p.discoverable_until > now()
+        and p.discoverable_until > v_now
     returning p.* into v_row;
 
     if found then
         return query select 'active'::text, v_row.discovery_session_id,
-            greatest(0, floor(extract(epoch from (v_row.discoverable_until - now())) * 1000))::bigint,
+            greatest(0, floor(extract(epoch from (v_row.discoverable_until - v_now)) * 1000))::bigint,
             v_row.discoverable_until;
         return;
     end if;
 
     delete from public.lacak_domba_presence p
     where p.firebase_uid = p_uid
-        and (p.discoverable_until is null or p.discoverable_until <= now());
+        and (p.discoverable_until is null or p.discoverable_until <= v_now);
     return query select 'inactive'::text, null::uuid, 0::bigint, null::timestamptz;
 end;
 $function$;
@@ -376,6 +424,7 @@ set search_path = pg_catalog, public
 as $function$
 declare
     v_row public.lacak_domba_presence;
+    v_now timestamptz;
 begin
     if p_uid is null or char_length(p_uid) not between 1 and 128 then
         raise exception 'invalid firebase uid' using errcode = '22023';
@@ -383,6 +432,9 @@ begin
     -- One user at a time: concurrent session calls of the same user queue
     -- here until the first one commits.
     perform pg_advisory_xact_lock(hashtextextended('lacak_domba_presence:' || p_uid, 0));
+    -- The time of this call, read AFTER the lock: a call that waited for
+    -- another one of this user is never older than what that call wrote.
+    v_now := clock_timestamp();
 
     if p_mode = 'stop' then
         delete from public.lacak_domba_presence p where p.firebase_uid = p_uid;
@@ -394,21 +446,21 @@ begin
         where p.firebase_uid = p_uid
             and (p.discovery_session_id = p_session_id
                 or p.discoverable_until is null
-                or p.discoverable_until <= now());
+                or p.discoverable_until <= v_now);
     elsif p_mode = 'expired' then
         delete from public.lacak_domba_presence p
         where p.firebase_uid = p_uid
-            and (p.discoverable_until is null or p.discoverable_until <= now());
+            and (p.discoverable_until is null or p.discoverable_until <= v_now);
     else
         raise exception 'unknown mode' using errcode = '22023';
     end if;
 
     select * into v_row
     from public.lacak_domba_presence p
-    where p.firebase_uid = p_uid and p.discoverable_until > now();
+    where p.firebase_uid = p_uid and p.discoverable_until > v_now;
     if found then
         return query select 'active'::text, v_row.discovery_session_id,
-            greatest(0, floor(extract(epoch from (v_row.discoverable_until - now())) * 1000))::bigint,
+            greatest(0, floor(extract(epoch from (v_row.discoverable_until - v_now)) * 1000))::bigint,
             v_row.discoverable_until;
     else
         return query select 'ended'::text, null::uuid, 0::bigint, null::timestamptz;
