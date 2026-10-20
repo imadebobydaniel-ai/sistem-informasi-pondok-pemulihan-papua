@@ -7,7 +7,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="notification/styles/notification.css">
@@ -33,6 +32,7 @@
         }
 
         .header {
+            box-sizing: border-box;
             padding: 20px;
             text-align: center;
             width: 100%;
@@ -49,6 +49,15 @@
             border-radius: 50%;
             background: repeating-radial-gradient(circle, #0b0f19 0%, #0b0f19 15%, rgba(46, 204, 113, 0.2) 15.2%, #0b0f19 15.5%);
             box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+        }
+
+        /* Clips the rotating sweep to the circle, so its rotated corners do
+           not widen the page on phones. The user dots are outside it. */
+        .radar-sweep-clip {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            overflow: hidden;
         }
 
         .radar-sweep {
@@ -155,6 +164,19 @@
         .blocked-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
         .blocked-item span { flex: 1; }
         .empty-results { padding: 14px 0; color: #b8c4ce; font-size: 13px; }
+        .discovery-session { margin: 4px 0 8px 28px; font-size: 13px; color: #b8c4ce; }
+        .discovery-session[hidden] { display: none; }
+        .discovery-session strong { color: #75e6a3; font-variant-numeric: tabular-nums; }
+        .discovery-session .session-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .discovery-session button { border: 0; border-radius: 8px; padding: 8px 10px; font-weight: 700; font-size: 12px; background: var(--primary-color); color: #fff; }
+        .discovery-session button.secondary { background: #263746; }
+        .discovery-session button:disabled { opacity: 0.55; }
+        .discovery-notice { margin: 4px 0 8px 28px; font-size: 13px; color: #f5d06f; }
+        .endpoint-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; padding: 8px 10px; border: 1px dashed #f5d06f; border-radius: 8px; font-size: 13px; }
+        .endpoint-switch[hidden] { display: none; }
+        .endpoint-switch select { flex: 1; min-width: 140px; border: 0; border-radius: 8px; padding: 8px; font-weight: 700; }
+        .endpoint-status { flex-basis: 100%; color: #f5d06f; overflow-wrap: anywhere; }
+        .discovery-notice:empty { display: none; }
 
         .btn-back {
             position: fixed;
@@ -179,7 +201,24 @@
 </div>
 
 <section class="social-controls" aria-label="Pengaturan privasi dan pemindaian">
-    <label class="privacy-row"><input id="discoverableToggle" type="checkbox" disabled> Izinkan saya ditemukan</label>
+    <!-- Development hosts only (localhost / 127.0.0.1); removed on every other host. -->
+    <div id="endpointSwitch" class="endpoint-switch" hidden>
+        <label for="endpointSelect">Backend</label>
+        <select id="endpointSelect">
+            <option value="online">ONLINE</option>
+            <option value="dev">DEV LOCAL</option>
+        </select>
+        <div id="endpointStatus" class="endpoint-status" role="status" aria-live="polite"></div>
+    </div>
+    <label class="privacy-row"><input id="discoverableToggle" type="checkbox" disabled> Bisa Ditemukan (sesi 15 menit)</label>
+    <div id="discoverySession" class="discovery-session" hidden>
+        <div>Sesi berakhir dalam <strong id="discoveryRemaining">15:00</strong></div>
+        <div class="session-actions">
+            <button id="extendDiscoveryButton" type="button">Perpanjang 15 Menit</button>
+            <button id="stopDiscoveryButton" type="button" class="secondary">Matikan</button>
+        </div>
+    </div>
+    <div id="discoveryNotice" class="discovery-notice" role="status" aria-live="polite"></div>
     <label class="privacy-row"><input id="showOnlineToggle" type="checkbox" disabled> Tampilkan status online</label>
     <div class="scan-row">
         <label for="radiusSelect">Radius</label>
@@ -193,7 +232,7 @@
 </section>
 
 <div class="radar-box" id="radarScreen">
-    <div class="radar-sweep"></div>
+    <div class="radar-sweep-clip"><div class="radar-sweep"></div></div>
     <div class="center-dot"></div>
 </div>
 
@@ -235,7 +274,28 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    const functions = firebase.app().functions("asia-southeast2");
+    // Publishable key only; the Edge Function verifies the Firebase ID token.
+    const SUPABASE_URL = "https://cfnimvrxrnmefmxtzqks.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_wgucJVERaaymia6eNj2riw_oL31966i";
+    const LACAK_DOMBA_ENDPOINT = SUPABASE_URL + "/functions/v1/lacak-domba-nearby";
+    // Development switch: only a page opened on localhost or 127.0.0.1 may
+    // use the local test backend. On every other host the stored choice is
+    // never read and the switch is removed, whatever the URL or storage
+    // holds. The choice is kept in this tab's sessionStorage only, and a
+    // failed DEV request is never retried against the online backend.
+    const DEV_LOCAL_ENDPOINT = "http://127.0.0.1:54341/";
+    const ENDPOINT_STORAGE_KEY = "lacak-domba-endpoint";
+    const DEV_HOST = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    function storedEndpointMode() {
+        if (!DEV_HOST) return "online";
+        try {
+            return sessionStorage.getItem(ENDPOINT_STORAGE_KEY) === "dev" ? "dev" : "online";
+        } catch (_) {
+            return "online";
+        }
+    }
+    const ENDPOINT_MODE = storedEndpointMode();
+    const ACTIVE_ENDPOINT = ENDPOINT_MODE === "dev" ? DEV_LOCAL_ENDPOINT : LACAK_DOMBA_ENDPOINT;
     const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
     const discoverableToggle = document.getElementById("discoverableToggle");
     const showOnlineToggle = document.getElementById("showOnlineToggle");
@@ -243,11 +303,67 @@
     const scanButton = document.getElementById("scanButton");
     const nearbyResults = document.getElementById("nearbyResults");
     const blockedResults = document.getElementById("blockedResults");
+    const discoverySessionPanel = document.getElementById("discoverySession");
+    const discoveryRemaining = document.getElementById("discoveryRemaining");
+    const discoveryNotice = document.getElementById("discoveryNotice");
+    const extendDiscoveryButton = document.getElementById("extendDiscoveryButton");
+    const stopDiscoveryButton = document.getElementById("stopDiscoveryButton");
+    const endpointSwitch = document.getElementById("endpointSwitch");
+    const endpointSelect = document.getElementById("endpointSelect");
+    const endpointStatus = document.getElementById("endpointStatus");
     const placeholderPhoto = "https://ui-avatars.com/api/?name=Jemaat&background=003366&color=fff";
     let authUser = null;
     let publicProfile = { displayName: "Jemaat", photoURL: "", komsel: "", wilayah: "" };
     let heartbeatId = null;
     let scanInProgress = false;
+    let scanSequence = 0;
+    let lastScanRadius = 0;
+    let backendQueue = Promise.resolve();
+    let backendSyncPending = false;
+    let blocksSyncPending = true;
+    let lastIdToken = "";
+    // Discovery session as last reported by the server. The local timer only
+    // counts down to that expiry; the server enforces it.
+    const DISCOVERY_SESSION_MS = 15 * 60 * 1000;
+    const FIRESTORE_WRITE_TIMEOUT_MS = 15000;
+    // Session times are kept on this page's monotonic clock, so changing the
+    // device clock cannot stretch or cut a countdown. Only shown clock times
+    // are converted to the device clock (formatLatest).
+    function monoNow() {
+        return performance.timeOrigin + performance.now();
+    }
+    let discoveryExpiresAt = 0;
+    // Latest moment the server session can end (counted from when the reply
+    // arrived). Every "until / at the latest" statement shown to the user
+    // uses this bound, so it is never earlier than the real end.
+    let discoveryEndBound = 0;
+    // The session end the server reported on the DATABASE clock (epoch ms,
+    // 0 when unknown), and how far this device clock is off from the server
+    // (device minus server, ms; null until a reply carried an end time).
+    let discoveryServerEnd = 0;
+    let deviceClockSkewMs = null;
+    let discoverySessionId = null;
+    let discoveryTimerId = null;
+    let discoveryBusy = false;
+    let discoveryChangedAt = 0;
+    let firestoreDiscoverable = false;
+    // A "Matikan" that did not reach the server: retried for that session
+    // only, so a session started since then elsewhere is not ended.
+    let pendingStopSessionId = null;
+    // The local cleanup after a session ended still has to run.
+    let pendingEndCheck = false;
+    let pendingEndQuiet = false;
+    let endCheckRunning = false;
+    // Other open Lacak Domba tabs of this browser share the session; they
+    // learn about changes here and closing one of them does not end it.
+    const TAB_ID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const TAB_ALIVE_MS = 75000;
+    const otherTabs = new Map();
+    // Tabs on the other backend have their own channel: they never count as
+    // sharing this tab's session.
+    const tabChannel = typeof BroadcastChannel === "function"
+        ? new BroadcastChannel(ENDPOINT_MODE === "dev" ? "lacak-domba-discovery-dev" : "lacak-domba-discovery")
+        : null;
     let memberResults = new Map();
     let relationshipState = { contacts: new Set(), sent: new Set(), received: new Set() };
 
@@ -280,6 +396,169 @@
     // Must match pairRequestId() in firestore.rules: one request per user pair.
     function pairRequestRef(firstUid, secondUid) {
         return db.collection("friend_requests").doc([firstUid, secondUid].sort().join("_"));
+    }
+
+    function backendError(code, status, data, sentAt, receivedAt) {
+        const error = new Error("Lacak Domba backend: " + code);
+        error.code = code;
+        error.status = status || 0;
+        // A refused session change reports the session that is running.
+        if (data?.discovery) error.discovery = data.discovery;
+        error.requestSentAt = sentAt || 0;
+        error.responseReceivedAt = receivedAt || 0;
+        return error;
+    }
+
+    async function postLacakDomba(payload, forceRefresh) {
+        const user = auth.currentUser;
+        if (!user) throw backendError("missing_token", 401);
+        const uid = user.uid;
+        const idToken = await user.getIdToken(forceRefresh === true);
+        lastIdToken = idToken;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        // Session times are counted from the send time, so the local
+        // countdown can only end before the server's expiry, never after.
+        const sentAt = monoNow();
+        let response;
+        try {
+            response = await fetch(ACTIVE_ENDPOINT, {
+                method: "POST",
+                headers: {
+                    "apikey": SUPABASE_PUBLISHABLE_KEY,
+                    "Authorization": "Bearer " + idToken,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+        } catch (_) {
+            if (ENDPOINT_MODE === "dev") {
+                showEndpointStatus(false);
+                throw backendError("dev_backend_offline", 0);
+            }
+            throw backendError("network_error", 0);
+        } finally {
+            clearTimeout(timeoutId);
+        }
+        if (ENDPOINT_MODE === "dev") showEndpointStatus(true);
+
+        // The server answered before this moment, so its session cannot end
+        // later than this time plus the remaining time it reported.
+        const receivedAt = monoNow();
+        const data = await response.json().catch(() => null);
+        // A response for a session that has since changed must not be used.
+        if (auth.currentUser?.uid !== uid) throw backendError("session_changed", 0);
+        if (!response.ok) {
+            const code = typeof data?.error === "string"
+                ? data.error
+                : (response.status === 404 ? "service_unavailable" : "backend_error");
+            throw backendError(code, response.status, data, sentAt, receivedAt);
+        }
+        const result = data || {};
+        result.requestSentAt = sentAt;
+        result.responseReceivedAt = receivedAt;
+        return result;
+    }
+
+    // Requests run one at a time so an older sync can never land on the
+    // server after a newer clear or scan. An expired token is refreshed once.
+    function callLacakDomba(payload) {
+        const run = async () => {
+            try {
+                return await postLacakDomba(payload, false);
+            } catch (error) {
+                if (error.code !== "invalid_token") throw error;
+                return postLacakDomba(payload, true);
+            }
+        };
+        const result = backendQueue.then(run, run);
+        backendQueue = result.catch(() => {});
+        return result;
+    }
+
+    // Serialises session changes across the tabs of this browser (start,
+    // extend, stop and the cleanup after an end), so one tab never acts on
+    // a state another tab is changing. Without Web Locks it runs directly.
+    function withDiscoveryLock(task) {
+        const uid = authUser?.uid;
+        if (!uid || !navigator.locks?.request) return task();
+        return navigator.locks.request("lacak-domba-discovery:" + uid, task);
+    }
+
+    // Tells the other tabs that the session changed. The message carries no
+    // session state: it is only a hint to ask the server.
+    function broadcastDiscovery() {
+        if (!tabChannel || !authUser?.uid) return;
+        tabChannel.postMessage({ type: "state", tabId: TAB_ID, uid: authUser.uid });
+    }
+
+    // Another tab reported a change. This tab asks the server and shows only
+    // what the server reports, so a stale or crafted message can neither show
+    // nor hide a session. One check at a time; messages that arrive while it
+    // runs cause one more.
+    let tabConfirmRunning = false;
+    let tabConfirmAgain = false;
+    async function confirmTabChange() {
+        if (tabConfirmRunning) {
+            tabConfirmAgain = true;
+            return;
+        }
+        tabConfirmRunning = true;
+        try {
+            do {
+                tabConfirmAgain = false;
+                // Replies to requests sent before this point are stale.
+                discoveryChangedAt = monoNow();
+                const before = discoverySessionId + "|" + discoveryServerEnd;
+                await syncBackend();
+                if (discoverySessionId && discoverySessionId + "|" + discoveryServerEnd !== before) {
+                    discoveryNotice.textContent = "Sesi Bisa Ditemukan diperbarui dari tab lain, berakhir paling lambat pukul "
+                        + endText(discoveryEndBound, discoveryServerEnd) + ".";
+                }
+            } while (tabConfirmAgain);
+        } finally {
+            tabConfirmRunning = false;
+        }
+    }
+
+    function otherTabOpen() {
+        const now = monoNow();
+        for (const [tabId, seenAt] of otherTabs) {
+            if (now - seenAt > TAB_ALIVE_MS) otherTabs.delete(tabId);
+        }
+        return otherTabs.size > 0;
+    }
+
+    // Mirrors the caller's own presence (and block list when it changed) to
+    // the search backend and adopts the session the server reports, also
+    // one started or extended in another tab. It never ends a session:
+    // the server decides from Firestore. Failures are retried by the next
+    // heartbeat.
+    async function syncBackend() {
+        if (!auth.currentUser) return;
+        if (pendingStopSessionId) {
+            const stoppedSession = pendingStopSessionId;
+            try {
+                const response = await callLacakDomba({ action: "clear", mode: "stop_retry", sessionId: stoppedSession });
+                if (pendingStopSessionId === stoppedSession) pendingStopSessionId = null;
+                applyDiscoveryState(response);
+            } catch (error) {
+                backendSyncPending = true;
+                console.warn("Penghentian Lacak Domba tertunda.", error.code || "unknown");
+                return;
+            }
+        }
+        const includeBlocks = blocksSyncPending;
+        try {
+            const response = await callLacakDomba({ action: "sync", syncBlocks: includeBlocks });
+            backendSyncPending = false;
+            if (includeBlocks) blocksSyncPending = false;
+            applyDiscoveryState(response);
+        } catch (error) {
+            backendSyncPending = true;
+            console.warn("Sinkronisasi Lacak Domba tertunda.", error.code || "unknown");
+        }
     }
 
     async function readOwnProfile(user) {
@@ -321,7 +600,9 @@
         await ref.set(presenceData, { merge: true });
         if (initialize) {
             const latest = await ref.get();
-            discoverableToggle.checked = latest.data()?.discoverable === true;
+            // The toggle follows the server session (first sync), not this flag.
+            firestoreDiscoverable = latest.data()?.discoverable === true;
+            discoverableToggle.checked = false;
             showOnlineToggle.checked = latest.data()?.showOnline === true;
         }
     }
@@ -336,17 +617,40 @@
         scanButton.disabled = false;
         document.getElementById("statusScan").textContent = "Sesi Firebase aktif. Aktifkan pemindaian saat siap.";
         await loadBlockedUsers();
+        syncBackend();
 
         if (heartbeatId) clearInterval(heartbeatId);
         heartbeatId = setInterval(() => {
             if (auth.currentUser?.uid === user.uid) {
-                updatePresence(user).catch((error) => console.warn("Presence heartbeat gagal.", error));
+                updatePresence(user)
+                    .then(refreshBackendPresence)
+                    .catch((error) => console.warn("Presence heartbeat gagal.", error));
             }
         }, 90000);
     }
 
+    // Only discoverable users keep a backend row fresh; others have nothing
+    // to refresh unless an earlier sync is still owed. The server re-reads
+    // the block list on every sync, so a block made on another page or
+    // device (kontak.html) applies with the next successful sync.
+    function refreshBackendPresence() {
+        if (discoverableToggle.checked || backendSyncPending || blocksSyncPending
+            || pendingStopSessionId || pendingEndCheck) {
+            return syncBackend();
+        }
+    }
+
     auth.onAuthStateChanged((user) => {
         authUser = user || null;
+        scanSequence++;
+        lastIdToken = "";
+        backendSyncPending = false;
+        blocksSyncPending = true;
+        firestoreDiscoverable = false;
+        pendingStopSessionId = null;
+        pendingEndCheck = false;
+        showDiscoverySession(0);
+        discoveryNotice.textContent = "";
         if (!user) {
             if (heartbeatId) clearInterval(heartbeatId);
             heartbeatId = null;
@@ -368,9 +672,35 @@
 
     document.addEventListener("visibilitychange", () => {
         if (!document.hidden && auth.currentUser) {
-            updatePresence(auth.currentUser).catch((error) => console.warn("Presence saat halaman aktif gagal diperbarui.", error));
+            // Background tabs throttle timers; catch up on the countdown,
+            // then adopt the session the server reports (another tab may
+            // have started, extended or stopped it).
+            tickDiscoverySession();
+            updatePresence(auth.currentUser)
+                .then(syncBackend)
+                .catch((error) => console.warn("Presence saat halaman aktif gagal diperbarui.", error));
         }
     });
+
+    if (tabChannel) {
+        tabChannel.onmessage = (event) => {
+            const message = event.data || {};
+            if (!message.tabId || message.tabId === TAB_ID) return;
+            if (message.type === "bye") {
+                otherTabs.delete(message.tabId);
+                return;
+            }
+            otherTabs.set(message.tabId, monoNow());
+            if (message.type === "hello") {
+                tabChannel.postMessage({ type: "here", tabId: TAB_ID });
+                return;
+            }
+            if (message.type !== "state" || message.uid !== authUser?.uid || discoveryBusy) return;
+            confirmTabChange();
+        };
+        tabChannel.postMessage({ type: "hello", tabId: TAB_ID });
+        setInterval(() => tabChannel.postMessage({ type: "here", tabId: TAB_ID }), 30000);
+    }
 
     function getCurrentPosition() {
         return new Promise((resolve, reject) => {
@@ -399,46 +729,354 @@
         });
     }
 
-    discoverableToggle.addEventListener("change", async () => {
-        if (!authUser?.uid) return;
-        const enablingDiscovery = discoverableToggle.checked;
-        discoverableToggle.disabled = true;
+    // Firestore writes made while offline stay pending; the UI must not wait
+    // on them forever or report them as done.
+    function withTimeout(promise, ms) {
+        let timeoutId;
+        const timeout = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(backendError("timeout", 0)), ms);
+        });
+        return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+    }
+
+    function formatRemaining(ms) {
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        return String(Math.floor(totalSeconds / 60)).padStart(2, "0")
+            + ":" + String(totalSeconds % 60).padStart(2, "0");
+    }
+
+    function formatClock(timestamp) {
+        return new Date(timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    // "At the latest" clock time for a monoNow() timestamp, on the device
+    // clock as it reads now, rounded UP to the minute: a statement like
+    // "berakhir paling lambat pukul 10:16" is never earlier than true.
+    function formatLatest(monoTimestamp) {
+        const deviceTime = Date.now() + (monoTimestamp - monoNow());
+        return formatClock(Math.ceil(deviceTime / 60000) * 60000);
+    }
+
+    // The clock time a session ends at the latest, for messages. When the
+    // server reported its end (database clock) that time is shown and
+    // labelled as server time, with a note if this device clock is off;
+    // otherwise the bound is an estimate from this device clock and says so.
+    // Both are rounded up to the minute.
+    function endText(bound, serverEnd) {
+        if (serverEnd) {
+            let text = formatClock(Math.ceil(serverEnd / 60000) * 60000) + " (waktu server";
+            if (deviceClockSkewMs !== null && Math.abs(deviceClockSkewMs) >= 60000) {
+                text += "; jam perangkat Anda " + (deviceClockSkewMs > 0 ? "lebih cepat" : "lebih lambat")
+                    + " sekitar " + Math.round(Math.abs(deviceClockSkewMs) / 60000) + " menit";
+            }
+            return text + ")";
+        }
+        return formatLatest(bound) + " (perkiraan dari jam perangkat)";
+    }
+
+    // Local expiry for a server-reported session, capped at one session.
+    function sessionExpiry(state, sentAt) {
+        const remaining = Math.min(Number(state?.expiresInMs) || 0, DISCOVERY_SESSION_MS);
+        return (sentAt || monoNow()) + remaining;
+    }
+
+    // Shows the session a reply (or a refused request) reported. The
+    // countdown runs to the earliest possible end (send time + remaining),
+    // the shown clock times to the latest (arrival time + remaining).
+    function showServerSession(state, reply) {
+        const serverEnd = typeof state.expiresAt === "string" ? Date.parse(state.expiresAt) : NaN;
+        if (Number.isFinite(serverEnd) && reply.responseReceivedAt) {
+            // Server "now" when it answered = its end minus the time left.
+            // The device read at arrival is later by at most the round trip.
+            const deviceAtArrival = Date.now() - (monoNow() - reply.responseReceivedAt);
+            deviceClockSkewMs = deviceAtArrival - (serverEnd - Number(state.expiresInMs));
+        }
+        showDiscoverySession(
+            sessionExpiry(state, reply.requestSentAt),
+            state.sessionId,
+            sessionExpiry(state, reply.responseReceivedAt),
+            Number.isFinite(serverEnd) ? serverEnd : 0
+        );
+    }
+
+    const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    function activeState(state) {
+        const remaining = state?.expiresInMs;
+        return state?.active === true
+            && typeof remaining === "number" && Number.isFinite(remaining) && remaining > 0
+            && typeof state.sessionId === "string" && SESSION_ID.test(state.sessionId);
+    }
+
+    function setDiscoveryControlsDisabled(disabled) {
+        discoverableToggle.disabled = disabled || !auth.currentUser;
+        extendDiscoveryButton.disabled = disabled;
+        stopDiscoveryButton.disabled = disabled;
+    }
+
+    // expiresAt = 0 hides the session; otherwise counts down to it.
+    function showDiscoverySession(expiresAt, sessionId, endBound, serverEnd) {
+        const now = monoNow();
+        // Never more than one session ahead, never NaN or Infinity (values
+        // may come from another tab).
+        const finite = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+        const expiry = Math.min(finite(expiresAt), now + DISCOVERY_SESSION_MS);
+        discoveryExpiresAt = expiry > now && sessionId ? expiry : 0;
+        discoveryEndBound = discoveryExpiresAt
+            ? Math.max(Math.min(finite(endBound), now + DISCOVERY_SESSION_MS), discoveryExpiresAt)
+            : 0;
+        discoveryServerEnd = discoveryExpiresAt && finite(serverEnd) > 0 ? finite(serverEnd) : 0;
+        discoverySessionId = discoveryExpiresAt ? sessionId : null;
+        if (discoveryTimerId) clearInterval(discoveryTimerId);
+        discoveryTimerId = null;
+        discoverableToggle.checked = discoveryExpiresAt > 0;
+        discoverySessionPanel.hidden = discoveryExpiresAt <= 0;
+        if (discoveryExpiresAt) {
+            firestoreDiscoverable = true;
+            discoveryTimerId = setInterval(tickDiscoverySession, 1000);
+            tickDiscoverySession();
+        }
+    }
+
+    function tickDiscoverySession() {
+        if (!discoveryExpiresAt) return;
+        const remaining = discoveryExpiresAt - monoNow();
+        discoveryRemaining.textContent = formatRemaining(remaining);
+        // A running extend or stop decides the outcome itself.
+        if (remaining <= 0 && !discoveryBusy) confirmDiscoveryEnded("expired");
+    }
+
+    // Applies the session state of a sync, scan or clear response. A
+    // response to a request sent before the latest start, extend or stop is
+    // ignored, so an older request cannot undo a newer user action.
+    function applyDiscoveryState(response) {
+        const state = response?.discovery;
+        if (!state || discoveryBusy) return;
+        if ((response.requestSentAt || 0) < discoveryChangedAt) return;
+        if (activeState(state)) {
+            const changed = state.sessionId !== discoverySessionId;
+            showServerSession(state, response);
+            if (changed) broadcastDiscovery();
+        } else if (discoveryExpiresAt || firestoreDiscoverable || pendingEndCheck) {
+            confirmDiscoveryEnded(discoveryExpiresAt ? "expired" : "previous");
+        }
+    }
+
+    // Removes this browser's copies of the location and the public
+    // discoverable flag. Only called once the server has confirmed that no
+    // session is running, so it cannot undo a session of another tab.
+    async function removeLocalDiscovery(uid) {
+        firestoreDiscoverable = false;
+        await withTimeout(Promise.all([
+            privateLocationRef(uid).delete(),
+            userPresenceRef(uid).update({
+                discoverable: false,
+                updatedAt: serverTimestamp(),
+                lastSeen: serverTimestamp()
+            })
+        ]), FIRESTORE_WRITE_TIMEOUT_MS);
+    }
+
+    // The countdown reached zero, or the server reported no session. Asks
+    // the server first (clear mode "expired" removes only an ENDED session):
+    // if another tab or device extended or restarted it, this tab adopts it
+    // instead of ending it. Only a confirmed end removes the local copies.
+    function confirmDiscoveryEnded(reason) {
+        if (endCheckRunning || !authUser?.uid) return;
+        endCheckRunning = true;
+        const uid = authUser.uid;
+        const hadSession = discoveryExpiresAt > 0;
+        const endBound = discoveryEndBound;
+        const serverEnd = discoveryServerEnd;
+        // The countdown runs to the earliest possible end; until the server
+        // confirms, the user is told the latest one.
+        if (hadSession) showDiscoverySession(0);
+        withDiscoveryLock(async () => {
+            const response = await callLacakDomba({ action: "clear", mode: "expired" });
+            if (auth.currentUser?.uid !== uid) return;
+            if (activeState(response.discovery)) {
+                pendingEndCheck = false;
+                showServerSession(response.discovery, response);
+                discoveryNotice.textContent = "Sesi Bisa Ditemukan masih aktif dari tab atau perangkat lain, berakhir paling lambat pukul "
+                    + endText(discoveryEndBound, discoveryServerEnd) + ".";
+                return;
+            }
+            await removeLocalDiscovery(uid);
+            const quiet = pendingEndQuiet && !hadSession;
+            pendingEndCheck = false;
+            pendingEndQuiet = false;
+            // After a failed start the start's own message stays.
+            if (!quiet) {
+                discoveryNotice.textContent = reason === "expired"
+                    ? "Sesi Bisa Ditemukan telah berakhir. Anda tidak lagi muncul di hasil pemindaian. Aktifkan lagi untuk sesi baru."
+                    : "Sesi Bisa Ditemukan sebelumnya sudah berakhir. Aktifkan lagi bila perlu.";
+            }
+            broadcastDiscovery();
+        }).catch((error) => {
+            // Not confirmed: the server ends the session on its own clock;
+            // the local cleanup is retried by the next heartbeat.
+            pendingEndCheck = true;
+            backendSyncPending = true;
+            if (hadSession) {
+                // Without the server's answer, "no longer listed" is only
+                // certain once the latest possible end has passed.
+                discoveryNotice.textContent = monoNow() >= endBound
+                    ? "Sesi Bisa Ditemukan telah berakhir. Anda tidak lagi muncul di hasil pemindaian."
+                    : "Waktu sesi di perangkat ini habis, tetapi server belum dapat dihubungi. "
+                        + "Server mengakhiri sesi paling lambat pukul " + endText(endBound, serverEnd) + ".";
+            }
+            console.warn("Pemeriksaan akhir sesi tertunda.", error?.code || "unknown");
+        }).finally(() => {
+            endCheckRunning = false;
+        });
+    }
+
+    async function startDiscovery() {
+        if (!authUser?.uid || discoveryBusy) return;
+        const uid = authUser.uid;
+        discoveryBusy = true;
+        setDiscoveryControlsDisabled(true);
+        discoveryNotice.textContent = "Meminta izin lokasi untuk mengaktifkan Bisa Ditemukan...";
         try {
-            if (enablingDiscovery) {
-                document.getElementById("statusScan").textContent = "Meminta izin lokasi untuk mengaktifkan penemuan...";
+            await withDiscoveryLock(async () => {
                 const position = await getCurrentPosition();
-                await savePrivateLocation(position);
-                await userPresenceRef().update({
+                await withTimeout(savePrivateLocation(position), FIRESTORE_WRITE_TIMEOUT_MS);
+                await withTimeout(userPresenceRef(uid).update({
                     discoverable: true,
                     online: true,
                     lastSeen: serverTimestamp(),
                     updatedAt: serverTimestamp()
-                });
-                document.getElementById("statusScan").textContent = "Anda mengizinkan jemaat lain menemukan Anda saat aktif.";
-            } else {
-                await privateLocationRef().delete();
-                await userPresenceRef().update({
-                    discoverable: false,
-                    updatedAt: serverTimestamp(),
-                    lastSeen: serverTimestamp()
-                });
-                memberResults.clear();
-                nearbyResults.innerHTML = '<div class="empty-results">Anda tidak sedang mengizinkan untuk ditemukan.</div>';
-                document.getElementById("statusScan").textContent = "Pengaturan penemuan dimatikan.";
-            }
+                }), FIRESTORE_WRITE_TIMEOUT_MS);
+                firestoreDiscoverable = true;
+                pendingStopSessionId = null;
+                const response = await callLacakDomba({ action: "discovery_start" });
+                if (!activeState(response.discovery)) throw backendError("discovery_not_ready", 0);
+                showServerSession(response.discovery, response);
+                discoveryNotice.textContent = "Bisa Ditemukan aktif paling lambat sampai pukul " + endText(discoveryEndBound, discoveryServerEnd) + ".";
+                broadcastDiscovery();
+            });
         } catch (error) {
-            if (enablingDiscovery) {
-                await privateLocationRef().delete().catch(() => {});
-            }
-            discoverableToggle.checked = !enablingDiscovery;
-            console.error("Gagal mengubah pengaturan penemuan:", error);
-            document.getElementById("statusScan").textContent = error.code === 1
-                ? "Izin lokasi ditolak. Anda tetap dapat mematikan pengaturan ini."
-                : "Pengaturan lokasi tidak dapat diperbarui. Coba lagi.";
+            console.error("Gagal mengaktifkan Bisa Ditemukan:", error?.code || "unknown");
+            showDiscoverySession(0);
+            // The server may have opened the session before the reply was
+            // lost: the next sync adopts it, or confirms there is none and
+            // removes the local copies then.
+            pendingEndCheck = true;
+            pendingEndQuiet = true;
+            backendSyncPending = true;
+            discoveryNotice.textContent = "Bisa Ditemukan belum aktif. " + scanErrorMessage(error);
         } finally {
-            discoverableToggle.disabled = false;
+            discoveryChangedAt = monoNow();
+            discoveryBusy = false;
+            setDiscoveryControlsDisabled(false);
+            if (backendSyncPending) syncBackend();
         }
+    }
+
+    // Only this explicit action moves the session end forward, and only for
+    // the session this tab shows.
+    async function extendDiscovery() {
+        if (!authUser?.uid || discoveryBusy || !discoveryExpiresAt) return;
+        discoveryBusy = true;
+        setDiscoveryControlsDisabled(true);
+        extendDiscoveryButton.textContent = "Memperpanjang...";
+        let ended = false;
+        try {
+            await withDiscoveryLock(async () => {
+                // The lock may have waited for another tab: use its session.
+                const sessionId = discoverySessionId;
+                if (!sessionId || discoveryExpiresAt <= monoNow()) throw backendError("discovery_expired", 409);
+                // A longer session needs a current location: the old one
+                // expires with the old session.
+                const position = await getCurrentPosition();
+                await withTimeout(savePrivateLocation(position), FIRESTORE_WRITE_TIMEOUT_MS);
+                const response = await callLacakDomba({ action: "discovery_extend", sessionId });
+                if (!activeState(response.discovery)) throw backendError("discovery_expired", 409);
+                showServerSession(response.discovery, response);
+                discoveryNotice.textContent = "Sesi diperpanjang paling lambat sampai pukul " + endText(discoveryEndBound, discoveryServerEnd) + ".";
+                broadcastDiscovery();
+            });
+        } catch (error) {
+            console.error("Perpanjangan Bisa Ditemukan gagal:", error?.code || "unknown");
+            if (error?.code === "discovery_session_changed" && activeState(error.discovery)) {
+                // Another tab or device holds a newer session: show it, do
+                // not extend it without a new click.
+                showServerSession(error.discovery, error);
+                discoveryNotice.textContent = "Sesi sudah diperbarui di tab atau perangkat lain dan berakhir paling lambat pukul "
+                    + endText(discoveryEndBound, discoveryServerEnd) + ". Tekan Perpanjang lagi bila perlu.";
+            } else {
+                ended = ["discovery_expired", "discovery_not_ready"].includes(error?.code);
+                if (!ended) {
+                    // Not extended: keep counting down to the earlier end.
+                    discoveryNotice.textContent = discoveryExpiresAt > monoNow()
+                        ? "Sesi tidak diperpanjang dan tetap berakhir paling lambat pukul " + endText(discoveryEndBound, discoveryServerEnd) + ". " + scanErrorMessage(error)
+                        : "Sesi tidak diperpanjang. " + scanErrorMessage(error);
+                }
+            }
+        } finally {
+            discoveryChangedAt = monoNow();
+            discoveryBusy = false;
+            extendDiscoveryButton.textContent = "Perpanjang 15 Menit";
+            setDiscoveryControlsDisabled(false);
+            if (ended) confirmDiscoveryEnded("expired");
+            else tickDiscoverySession();
+        }
+    }
+
+    // "Matikan": ends discovery on the server for this account at once,
+    // whichever tab started the session. A failed request is retried later
+    // for this session only.
+    async function stopDiscovery() {
+        if (!authUser?.uid || discoveryBusy) return;
+        const uid = authUser.uid;
+        const stoppedSession = discoverySessionId;
+        const previousEndBound = discoveryEndBound;
+        const previousServerEnd = discoveryServerEnd;
+        discoveryBusy = true;
+        setDiscoveryControlsDisabled(true);
+        // Off at once in the UI; the steps below remove the location copies.
+        showDiscoverySession(0);
+        discoveryNotice.textContent = "Mematikan Bisa Ditemukan...";
+        let cleared = true;
+        try {
+            await withDiscoveryLock(async () => {
+                firestoreDiscoverable = false;
+                await removeLocalDiscovery(uid).catch(() => {});
+                try {
+                    await callLacakDomba({ action: "clear", mode: "stop" });
+                    pendingStopSessionId = null;
+                } catch (_) {
+                    cleared = false;
+                    // Retried by the next heartbeat, for this session only.
+                    if (stoppedSession) pendingStopSessionId = stoppedSession;
+                    backendSyncPending = true;
+                }
+                broadcastDiscovery();
+            });
+        } finally {
+            memberResults.clear();
+            nearbyResults.innerHTML = '<div class="empty-results">Anda tidak sedang mengizinkan untuk ditemukan.</div>';
+            discoveryNotice.textContent = cleared
+                ? "Bisa Ditemukan dimatikan. Anda tidak lagi muncul di hasil pemindaian."
+                : "Bisa Ditemukan dimatikan di perangkat ini, tetapi server belum dapat dihubungi. "
+                    + (previousEndBound
+                        ? "Server tetap mengakhiri sesi paling lambat pukul " + endText(previousEndBound, previousServerEnd) + "."
+                        : "Penghapusan akan dicoba lagi otomatis.");
+            discoveryChangedAt = monoNow();
+            discoveryBusy = false;
+            setDiscoveryControlsDisabled(false);
+        }
+    }
+
+    discoverableToggle.addEventListener("change", () => {
+        if (!authUser?.uid || discoveryBusy) {
+            discoverableToggle.checked = discoveryExpiresAt > 0;
+            return;
+        }
+        if (discoverableToggle.checked) startDiscovery();
+        else stopDiscovery();
     });
+    extendDiscoveryButton.addEventListener("click", extendDiscovery);
+    stopDiscoveryButton.addEventListener("click", stopDiscovery);
 
     showOnlineToggle.addEventListener("change", async () => {
         if (!authUser?.uid) return;
@@ -458,6 +1096,7 @@
             });
         } finally {
             showOnlineToggle.disabled = false;
+            if (discoverableToggle.checked) syncBackend();
         }
     });
 
@@ -486,7 +1125,8 @@
             return;
         }
 
-        const radius = Number(radiusSelect.value);
+        // The radius the results were scanned with, not a later selection.
+        const radius = lastScanRadius || Number(radiusSelect.value);
         const center = document.createElement("div");
         center.className = "center-dot";
         const radar = document.getElementById("radarScreen");
@@ -576,38 +1216,95 @@
         });
     }
 
+    // Error codes come from the Edge Function, the browser geolocation API
+    // (numeric), or postLacakDomba(). Server text is never shown directly.
+    function scanErrorMessage(error) {
+        if (!navigator.onLine) return "Koneksi internet terputus. Periksa jaringan lalu pindai ulang.";
+        switch (error?.code) {
+            case 1:
+                return "Izin lokasi ditolak. Izinkan akses lokasi di browser untuk memindai.";
+            case 2:
+            case 3:
+                return "Lokasi perangkat belum dapat ditentukan. Pastikan GPS aktif lalu coba lagi.";
+            case "network_error":
+                return "Layanan pencarian tidak dapat dihubungi. Periksa koneksi lalu coba lagi.";
+            case "dev_backend_offline":
+                return "Backend pengujian lokal tidak aktif. Jalankan backend uji di " + DEV_LOCAL_ENDPOINT + " lalu coba lagi.";
+            case "timeout":
+                return "Koneksi lambat atau terputus. Periksa jaringan lalu coba lagi.";
+            case "discovery_not_ready":
+                return "Lokasi terbaru belum tersedia. Coba lagi.";
+            case "discovery_expired":
+                return "Sesi Bisa Ditemukan sudah berakhir. Aktifkan sesi baru.";
+            case "discovery_session_changed":
+                return "Sesi Bisa Ditemukan sudah diperbarui di tab atau perangkat lain.";
+            case "scan_too_soon":
+                return "Tunggu 15 detik sebelum memindai kembali.";
+            case "too_many_candidates":
+                return "Terlalu banyak jemaat aktif di area ini. Perkecil radius lalu coba lagi.";
+            case "location_expired":
+                return "Lokasi Anda belum tersedia atau sudah kedaluwarsa. Pindai ulang.";
+            case "missing_token":
+            case "invalid_token":
+                return "Sesi login berakhir. Silakan login ulang melalui halaman utama SIPAPUA.";
+            case "account_not_active":
+                return "Akun SIPAPUA belum aktif atau belum terverifikasi.";
+            case "service_unavailable":
+                return "Layanan pencarian belum tersedia. Hubungi administrator SIPAPUA.";
+            default:
+                return "Lokasi atau data sekitar belum dapat dimuat. Periksa izin lokasi dan coba lagi.";
+        }
+    }
+
     async function runScan() {
         if (!authUser?.uid || scanInProgress) return;
+        const uid = authUser.uid;
+        const sequence = ++scanSequence;
+        const radiusKm = Number(radiusSelect.value);
+        // False once the session changed or a newer scan started.
+        const isCurrent = () => sequence === scanSequence && auth.currentUser?.uid === uid;
         scanInProgress = true;
         scanButton.disabled = true;
         document.getElementById("statusScan").textContent = "Meminta lokasi untuk pemindaian satu kali...";
         let temporaryScanLocation = false;
         try {
             const position = await getCurrentPosition();
-            if (auth.currentUser?.uid !== authUser.uid) throw new Error("Sesi Firebase berubah.");
+            if (!isCurrent()) return;
             // The server reads the caller location from presence_locations/{uid}.
             // Non-discoverable users store it only for this scan.
             temporaryScanLocation = !discoverableToggle.checked;
             await savePrivateLocation(position);
 
-            const findNearby = functions.httpsCallable("findNearbyMembers");
-            const response = await findNearby({
-                radiusKm: Number(radiusSelect.value)
-            });
-            relationshipState = await getRelationshipState();
-            renderNearbyMembers(response.data.results || [], response.data.truncated === true);
+            document.getElementById("statusScan").textContent = "Mencari jemaat di sekitar...";
+            const response = await callLacakDomba({ action: "scan", radiusKm });
+            // A scan always re-syncs the caller's block list on the server.
+            blocksSyncPending = false;
+            // A scan reports the session but never extends it.
+            applyDiscoveryState(response);
+            const relationships = await getRelationshipState();
+            if (!isCurrent()) return;
+            relationshipState = relationships;
+            lastScanRadius = radiusKm;
+            renderNearbyMembers(
+                Array.isArray(response.results) ? response.results : [],
+                response.truncated === true
+            );
         } catch (error) {
-            console.error("Pemindaian Lacak Domba gagal:", error);
-            document.getElementById("statusScan").textContent = error.code === "functions/not-found"
-                ? "Layanan pencarian belum tersedia. Hubungi administrator SIPAPUA."
-                : "Lokasi atau data sekitar belum dapat dimuat. Periksa izin lokasi dan coba lagi.";
-            nearbyResults.innerHTML = '<div class="empty-results">Pemindaian gagal. Lokasi Anda tidak ditampilkan kepada pengguna lain.</div>';
+            if (!isCurrent()) return;
+            console.error("Pemindaian Lacak Domba gagal:", error?.code || "unknown");
+            document.getElementById("statusScan").textContent = scanErrorMessage(error);
+            // A rate-limited scan leaves the previous results on screen.
+            if (error?.code !== "scan_too_soon") {
+                memberResults.clear();
+                document.querySelectorAll(".user-dot").forEach((dot) => dot.remove());
+                nearbyResults.innerHTML = '<div class="empty-results">Pemindaian gagal. Lokasi Anda tidak ditampilkan kepada pengguna lain.</div>';
+            }
         } finally {
-            if (temporaryScanLocation && !discoverableToggle.checked && authUser?.uid) {
-                privateLocationRef(authUser.uid).delete().catch(() => {});
+            if (temporaryScanLocation && !discoverableToggle.checked && auth.currentUser?.uid === uid) {
+                privateLocationRef(uid).delete().catch(() => {});
             }
             scanInProgress = false;
-            scanButton.disabled = false;
+            scanButton.disabled = !auth.currentUser;
         }
     }
 
@@ -682,6 +1379,8 @@
             batch.delete(db.collection("contacts").doc(uid).collection("friends").doc(member.uid));
             batch.delete(db.collection("contacts").doc(member.uid).collection("friends").doc(uid));
             await batch.commit();
+            blocksSyncPending = true;
+            syncBackend();
             memberResults.delete(member.uid);
             await loadBlockedUsers();
             renderNearbyMembers(Array.from(memberResults.values()), false);
@@ -732,6 +1431,8 @@
         button.disabled = true;
         try {
             await db.collection("user_blocks").doc(authUser.uid).collection("blocked").doc(button.dataset.unblockUid).delete();
+            blocksSyncPending = true;
+            syncBackend();
             await clearBlockedRequest(authUser.uid, button.dataset.unblockUid);
             await loadBlockedUsers();
         } catch (error) {
@@ -744,9 +1445,117 @@
         }
     });
 
+    function showEndpointStatus(reachable) {
+        if (!endpointStatus) return;
+        endpointStatus.textContent = reachable
+            ? "DEV LOCAL aktif: " + DEV_LOCAL_ENDPOINT + ". Login Firebase tidak berubah."
+            : "Backend pengujian lokal tidak aktif (" + DEV_LOCAL_ENDPOINT + "). Permintaan tidak dialihkan ke backend online.";
+    }
+
+    if (DEV_HOST) {
+        endpointSelect.value = ENDPOINT_MODE;
+        endpointSwitch.hidden = false;
+        if (ENDPOINT_MODE === "dev") {
+            endpointStatus.textContent = "DEV LOCAL: memeriksa " + DEV_LOCAL_ENDPOINT + "...";
+            // Any reply (a 401 without a token) means the test backend runs.
+            fetch(DEV_LOCAL_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+                .then(() => showEndpointStatus(true), () => showEndpointStatus(false));
+        }
+    } else {
+        endpointSwitch.remove();
+    }
+
+    // Switching backends ends this tab's session on the backend in use,
+    // clears locations and results, signs out and reloads: the other backend
+    // starts with a new login and a new, explicit Bisa Ditemukan.
+    async function switchEndpoint(target) {
+        const answer = await Swal.fire({
+            title: "Ganti backend Lacak Domba?",
+            text: "Sesi Bisa Ditemukan di backend sekarang dimatikan, hasil pindaian dihapus, dan Anda perlu login serta mengaktifkan sesi lagi.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "GANTI",
+            cancelButtonText: "BATAL"
+        });
+        if (!answer.isConfirmed) return false;
+        if (discoveryBusy) {
+            endpointStatus.textContent = "Tunggu proses Bisa Ditemukan selesai, lalu ganti backend lagi.";
+            return false;
+        }
+        endpointSelect.disabled = true;
+        endpointStatus.textContent = "Mengganti backend...";
+        if (authUser?.uid && (discoverySessionId || discoverableToggle.checked || firestoreDiscoverable)) {
+            await stopDiscovery();
+            if (pendingStopSessionId) {
+                const proceed = await Swal.fire({
+                    title: "Sesi belum dimatikan di server",
+                    text: "Backend sekarang belum dapat dihubungi; sesi di sana berakhir sendiri paling lambat 15 menit setelah dimulai. Tetap ganti backend?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "TETAP GANTI",
+                    cancelButtonText: "BATAL"
+                });
+                if (!proceed.isConfirmed) {
+                    endpointSelect.disabled = false;
+                    endpointStatus.textContent = "";
+                    return false;
+                }
+            }
+        }
+        scanSequence++;
+        if (heartbeatId) clearInterval(heartbeatId);
+        heartbeatId = null;
+        memberResults.clear();
+        document.querySelectorAll(".user-dot").forEach((dot) => dot.remove());
+        nearbyResults.innerHTML = '<div class="empty-results">Backend diganti. Login dan pindai ulang.</div>';
+        if (authUser?.uid) await privateLocationRef(authUser.uid).delete().catch(() => {});
+        lastIdToken = "";
+        try {
+            if (target === "dev") sessionStorage.setItem(ENDPOINT_STORAGE_KEY, "dev");
+            else sessionStorage.removeItem(ENDPOINT_STORAGE_KEY);
+        } catch (_) {
+            endpointSelect.disabled = false;
+            endpointStatus.textContent = "Pilihan backend tidak dapat disimpan di tab ini.";
+            return false;
+        }
+        await auth.signOut().catch(() => {});
+        location.reload();
+        return true;
+    }
+
+    endpointSelect?.addEventListener("change", async () => {
+        const target = endpointSelect.value === "dev" ? "dev" : "online";
+        if (!DEV_HOST || target === ENDPOINT_MODE) return;
+        const switched = await switchEndpoint(target).catch((error) => {
+            console.error("Penggantian backend gagal:", error?.code || "unknown");
+            return false;
+        });
+        if (!switched) {
+            endpointSelect.value = ENDPOINT_MODE;
+            endpointSelect.disabled = false;
+        }
+    });
+
+    // Leaving the page ends discovery, as before, unless another Lacak Domba
+    // tab of this browser is still open: that tab keeps showing the session
+    // and its countdown. The server removes only the session this tab shows.
     window.addEventListener("pagehide", () => {
-        if (authUser?.uid && discoverableToggle.checked) {
-            privateLocationRef(authUser.uid).delete().catch(() => {});
+        tabChannel?.postMessage({ type: "bye", tabId: TAB_ID });
+        if (!authUser?.uid || !discoverySessionId || otherTabOpen()) return;
+        privateLocationRef(authUser.uid).delete().catch(() => {});
+        // Best effort: also drop the backend copy of the location. It
+        // expires server-side anyway if this request does not get out.
+        if (lastIdToken) {
+            fetch(ACTIVE_ENDPOINT, {
+                method: "POST",
+                keepalive: true,
+                headers: {
+                    "apikey": SUPABASE_PUBLISHABLE_KEY,
+                    "Authorization": "Bearer " + lastIdToken,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ action: "clear", mode: "leave", sessionId: discoverySessionId })
+            }).catch(() => {});
         }
     });
 </script>
