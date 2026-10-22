@@ -1568,6 +1568,8 @@ button.topbar-button { padding: 0; cursor: pointer; }
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+    <script src="sipapua-maintenance.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 <script>
     const firebaseConfig = { 
@@ -3177,7 +3179,17 @@ button.topbar-button { padding: 0; cursor: pointer; }
                 document.getElementById('dnij').innerText = d.nij || "0000 0000";
                 const qrBox = document.getElementById("qrbox");
                 qrBox.innerHTML = "";
-                new QRCode(qrBox, { text: userEmail, width: 200, height: 200, colorDark : "#003366", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+                if (memberCardPaused()) {
+                    qrBox.innerText = memberCardMaintenanceMessage();
+                    document.getElementById('modalKartuDigital').style.display = 'flex';
+                    return;
+                }
+                // The QR carries a random card token issued by the server, never the email.
+                firebase.app().functions("asia-southeast2").httpsCallable("getMyCardToken")()
+                    .then((result) => {
+                        new QRCode(qrBox, { text: "sipapua://scan?t=" + encodeURIComponent(result.data.token), width: 200, height: 200, colorDark : "#003366", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+                    })
+                    .catch(() => { qrBox.innerText = "QR kartu tersedia setelah akun aktif."; });
                 document.getElementById('modalKartuDigital').style.display = 'flex';
             }
         });
@@ -3197,22 +3209,45 @@ button.topbar-button { padding: 0; cursor: pointer; }
         });
     }
 
+    // The QR card and card lookups need the Cloud Functions getMyCardToken and
+    // lookupMemberCard; while they are paused (sipapua-maintenance.js, or that
+    // file did not load) a notice replaces them and nothing is called.
+    function memberCardPaused() {
+        return !window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("memberCard");
+    }
+
+    function memberCardMaintenanceMessage() {
+        return window.SIPAPUA_MAINTENANCE
+            ? window.SIPAPUA_MAINTENANCE.message("memberCard")
+            : "Kartu QR jemaat sedang dalam pemeliharaan.";
+    }
+
     function onScanSuccess(decodedText, decodedResult) {
-        let targetEmail = decodedText;
-        if(decodedText.includes("email=")) {
-            targetEmail = decodedText.split("email=")[1];
+        if (memberCardPaused()) {
+            Swal.fire({ title: "Sedang Dalam Pemeliharaan", text: memberCardMaintenanceMessage(), icon: "info", heightAuto: false });
+            return;
+        }
+        // Card QR: sipapua://scan?t=<token>. Older cards held the email,
+        // which no longer identifies a member.
+        const match = /[?&]t=([A-Za-z0-9_-]+)/.exec(String(decodedText || ""));
+        if (!match) {
+            Swal.fire({ title: "Kartu tidak dikenali", text: "QR ini versi lama atau bukan kartu SIPAPUA. Minta pemilik kartu membuka Kartu Digital terbaru.", icon: "warning", heightAuto: false });
+            return;
         }
 
-        db.collection("users").where("email", "==", targetEmail).get()
-        .then((s) => {
-            if (!s.empty) {
-                const data = s.docs[0].data();
-                renderDetailBiodata(data);
+        // Profiles are private; the card fields come from a Cloud Function.
+        firebase.app().functions("asia-southeast2").httpsCallable("lookupMemberCard")({ token: match[1] })
+        .then((result) => {
+            if (result.data && result.data.found) {
+                renderDetailBiodata(result.data);
             } else {
                 Swal.fire({ title: "Ops!", text: "Biodata tidak ditemukan.", icon: "error", heightAuto: false });
             }
         })
-        .catch((error) => { console.error("Error:", error); });
+        .catch((error) => {
+            console.error("Error:", error);
+            Swal.fire({ title: "Ops!", text: error.message || "Kartu tidak dapat diperiksa.", icon: "error", heightAuto: false });
+        });
     }
 
     function renderDetailBiodata(data) {
@@ -3220,11 +3255,10 @@ button.topbar-button { padding: 0; cursor: pointer; }
             title: 'Biodata Terdeteksi',
             html: `
                 <div style="text-align:left; font-size:14px;">
-                    <center><img src="${data.foto_profil || 'https://via.placeholder.com/100'}" style="width:80px; border-radius:10px; margin-bottom:10px;"></center>
-                    <b>Nama:</b> ${data.nama}<br>
-                    <b>NIJ:</b> ${data.nij || '-'}<br>
-                    <b>Email:</b> ${data.email}<br>
-                    <b>Komsel:</b> JC ${data.komsel || '-'}
+                    <center><img src="${escapeInboxText(data.foto_profil || 'https://via.placeholder.com/100')}" style="width:80px; border-radius:10px; margin-bottom:10px;"></center>
+                    <b>Nama:</b> ${escapeInboxText(data.nama)}<br>
+                    <b>NIJ:</b> ${escapeInboxText(data.nij || '-')}<br>
+                    <b>Komsel:</b> JC ${escapeInboxText(data.komsel || '-')}
                 </div>
             `,
             confirmButtonText: 'Tutup',

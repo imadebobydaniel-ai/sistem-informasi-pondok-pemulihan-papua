@@ -7,6 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="notification/styles/notification.css">
     <style>
@@ -62,9 +63,10 @@
 <script src="notification/components/security-confirmation.js"></script>
 <script src="notification/core/manager.js"></script>
 <script src="notification/index.js"></script>
+<script src="sipapua-maintenance.js"></script>
 
 <script>
-    const firebaseConfig = { 
+    const firebaseConfig = {
         apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM", 
         authDomain: "boby-apps-project.firebaseapp.com", 
         projectId: "boby-apps-project", 
@@ -79,12 +81,30 @@
 
     // Logika Utama: Deteksi Scan langsung di dalam APK
     window.onload = async () => {
+        // Card lookups need the Cloud Function lookupMemberCard; while it is
+        // paused (sipapua-maintenance.js, or that file did not load) only a
+        // notice is shown and nothing is looked up.
+        if (!window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("memberCard")) {
+            const box = document.getElementById('msg-error');
+            const text = document.getElementById('errorText');
+            const button = box.querySelector('button');
+            box.style.display = 'block';
+            text.style.color = '#5d4037';
+            text.innerText = window.SIPAPUA_MAINTENANCE
+                ? window.SIPAPUA_MAINTENANCE.message("memberCard")
+                : "Pemindaian kartu jemaat sedang dalam pemeliharaan.";
+            button.innerText = 'KEMBALI KE MENU';
+            button.onclick = () => { window.location.href = 'menu.html'; };
+            return;
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
-        
-        // Cek parameter 'email' (sesuai protokol baru sipapua://scan?email=...)
-        // atau 'scan' (jika masih menggunakan link lama)
-        const targetEmail = urlParams.get('email') || urlParams.get('scan'); 
-        
+
+        // Kartu QR: sipapua://scan?t=<token acak dari server>. QR lama berisi
+        // email ('email' / 'scan') tidak lagi dipakai untuk mencari anggota.
+        const cardToken = urlParams.get('t');
+        const legacyEmailScan = urlParams.has('legacy') || urlParams.has('email') || urlParams.has('scan');
+
         // Karena ini dijalankan di dalam APK, kita asumsikan user sudah login 
         // saat mengakses scanner di menu aplikasi.
         const myEmail = localStorage.getItem("userEmail");
@@ -95,20 +115,28 @@
             return;
         }
 
-        if (targetEmail) {
-            muatDataProfil(targetEmail);
+        if (cardToken) {
+            muatDataProfil(cardToken);
         } else {
             document.getElementById('msg-error').style.display = 'block';
-            document.getElementById('errorText').innerText = "Data Scan Tidak Valid.";
+            document.getElementById('errorText').innerText = legacyEmailScan
+                ? "Kartu QR versi lama. Minta pemilik kartu membuka Kartu Digital terbaru."
+                : "Data Scan Tidak Valid.";
         }
     };
 
-    async function muatDataProfil(email) {
+    async function muatDataProfil(token) {
         try {
-            const snap = await db.collection("users").where("email", "==", email).get();
-            if (!snap.empty) {
-                const data = snap.docs[0].data();
-                const targetUid = snap.docs[0].id;
+            // Profiles are private; the card fields come from a Cloud Function,
+            // called once the signed-in session is restored.
+            await new Promise(resolve => {
+                const unsubscribe = auth.onAuthStateChanged(() => { unsubscribe(); resolve(); });
+            });
+            const result = await firebase.app().functions("asia-southeast2")
+                .httpsCallable("lookupMemberCard")({ token });
+            if (result.data && result.data.found) {
+                const data = result.data;
+                const targetUid = data.uid;
                 
                 // Isi Data ke UI
                 document.getElementById('p-nij').innerText = data.nij || "0000 0000";
