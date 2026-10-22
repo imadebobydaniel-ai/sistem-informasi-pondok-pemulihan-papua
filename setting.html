@@ -210,16 +210,19 @@
             const emailChanged = nEmail.toLowerCase() !== String(oldEmail || "").toLowerCase();
             const emailNormalized = nEmail.trim().toLowerCase();
 
+            // Profiles are readable by email only while the signed-in
+            // account still holds that verified email, so look it up
+            // before the email changes.
+            const snap = await db
+                .collection("users")
+                .where("email", "==", oldEmail)
+                .get();
+
             if (emailChanged) {
                 await currentUser.updateEmail(nEmail);
             }
 
             await currentUser.updatePassword(nPass);
-
-            const snap = await db
-                .collection("users")
-                .where("email", "==", oldEmail)
-                .get();
 
             if (!snap.empty) {
                 await db

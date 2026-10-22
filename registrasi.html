@@ -1038,6 +1038,8 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
+<script src="sipapua-maintenance.js"></script>
 
 
 <script>
@@ -1052,6 +1054,16 @@
     };
     const firebaseConfig = { apiKey: _ENV.k, authDomain: _ENV.aD, projectId: _ENV.pI, storageBucket: _ENV.sB, messagingSenderId: _ENV.mS, appId: _ENV.aI };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
+    // App Check: checkRegistrationDuplicate and getNextNijNumber accept only
+    // requests carrying an App Check token. Set the reCAPTCHA v3 site key
+    // registered for this web app in Firebase Console > App Check; while it
+    // is empty those calls are refused and registration stops with an error.
+    const APP_CHECK_SITE_KEY = "";
+    if (APP_CHECK_SITE_KEY && firebase.appCheck) {
+        firebase.appCheck().activate(APP_CHECK_SITE_KEY, true);
+    }
+
     const db = firebase.firestore();
     const auth = firebase.auth();
 
@@ -1063,39 +1075,51 @@
     ) {
 }
 
-    const checkRegistrationDuplicate = async ({ email, whatsapp }) => {
-        const candidateIds = new Set();
-        const matchedBy = [];
+    // users is private: duplicate check and the next NIJ number come from
+    // Cloud Functions that return only a match flag or a number. The NIJ
+    // shown before submit is a preview; allocateNij assigns the final,
+    // unique number to the new account.
+    const checkRegistrationDuplicate =
+        functions.httpsCallable("checkRegistrationDuplicate");
+    const getNextNijNumberCallable =
+        functions.httpsCallable("getNextNijNumber");
+    const allocateNijCallable =
+        functions.httpsCallable("allocateNij");
 
-        const checks = [
-            ["email_normalized", email, "email"],
-            ["whatsapp_normalized", whatsapp, "whatsapp"],
-            ["email", email, "email_legacy"],
-            ["whatsapp", whatsapp, "whatsapp_legacy"]
-        ];
+    // While registration is paused (sipapua-maintenance.js, or that file did
+    // not load) the form is replaced by a notice and no Cloud Function or
+    // account creation runs, so nothing can report a false success.
+    const registrationPaused =
+        !window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("registration");
 
-        for (const [field, value, label] of checks) {
-            if (!value) continue;
+    function showRegistrationMaintenance() {
+        const form = document.getElementById("formRegistrasi");
+        if (!form || document.getElementById("registrasi-maintenance")) return;
+        const notice = document.createElement("div");
+        notice.id = "registrasi-maintenance";
+        notice.setAttribute("role", "status");
+        notice.style.cssText = "margin:20px 0;padding:24px 20px;border-radius:12px;background:#fff8e1;border:1px solid #ffe082;color:#5d4037;text-align:center;";
+        notice.innerHTML = '<i class="fa-solid fa-screwdriver-wrench" style="font-size:28px;color:#ffa000;"></i>' +
+            '<h3 style="margin:12px 0 8px;">Pendaftaran Sedang Dalam Pemeliharaan</h3>' +
+            '<p style="margin:0 0 16px;font-size:14px;line-height:1.5;"></p>' +
+            '<a href="index.html" style="display:inline-block;padding:10px 18px;border-radius:8px;background:#003366;color:#fff;text-decoration:none;font-weight:600;">Kembali ke Halaman Masuk</a>';
+        notice.querySelector("p").textContent = window.SIPAPUA_MAINTENANCE
+            ? window.SIPAPUA_MAINTENANCE.message("registration")
+            : "Pendaftaran anggota baru sedang dalam pemeliharaan. Silakan coba kembali nanti.";
+        form.parentNode.insertBefore(notice, form);
+        form.style.display = "none";
+    }
 
-            const snapshot = await db.collection("users")
-                .where(field, "==", value)
-                .limit(2)
-                .get();
+    if (registrationPaused) {
+        showRegistrationMaintenance();
+        document.addEventListener("DOMContentLoaded", showRegistrationMaintenance);
+    }
 
-            if (!snapshot.empty) {
-                matchedBy.push(label);
-                snapshot.forEach(doc => candidateIds.add(doc.id));
-            }
-        }
-
-        return {
-            data: {
-                duplicate: candidateIds.size > 0,
-                matchedBy: [...new Set(matchedBy)],
-                candidateCount: candidateIds.size
-            }
-        };
-    };
+    async function getNextNijNumber(wilayah) {
+        if (registrationPaused) throw new Error("Pendaftaran sedang dalam pemeliharaan.");
+        const result = await getNextNijNumberCallable({ wilayah });
+        return Number(result.data && result.data.nextNumber) || 1;
+    }
 
     // --- KONFIGURASI API WILAYAH ---
     const BASE_URL_WILAYAH = 'https://www.emsifa.com/api-wilayah-indonesia/api';
@@ -1240,15 +1264,7 @@
 
         displayInput.value = "Menghitung nomor...";
         try {
-            const snapshot = await db.collection("users")
-                .where("wilayah", "==", namaWilayahFull) 
-                .orderBy("nij_number", "desc")
-                .limit(1).get();
-            let nextNum = 1;
-            if (!snapshot.empty) {
-                const lastData = snapshot.docs[0].data();
-                nextNum = (lastData.nij_number || 0) + 1;
-            }
+            const nextNum = await getNextNijNumber(namaWilayahFull);
             const tahun = new Date().getFullYear();
             displayInput.value = `NIJ-PPP-${lokasiKode}-${String(nextNum).padStart(3, '0')}-${tahun}`;
         } catch (e) {
@@ -1412,6 +1428,10 @@ function validateRegistrationRequiredFields() {
 
     // --- LOGIKA REGISTRASI (VERSI TERUPDATE) ---
     async function handleRegistrasi() {
+        if (registrationPaused) {
+            showRegistrationMaintenance();
+            return;
+        }
         if (!validateRegistrationRequiredFields()) return;
 
         const btnSubmit = document.getElementById("btnSubmit");
@@ -1435,6 +1455,11 @@ function validateRegistrationRequiredFields() {
 
         btnSubmit.disabled = true;
         btnSubmit.innerText = "Mengamankan NIJ...";
+
+        // An account created below is removed again if its profile could not
+        // be saved, so the same email can simply register again.
+        let createdUser = null;
+        let profileSaved = false;
 
         try {
             const getTxt = (id) => {
@@ -1486,19 +1511,6 @@ function validateRegistrationRequiredFields() {
                 );
             }
 
-            const snapshot = await db.collection("users")
-                .where("wilayah", "==", namaWilayahFull)
-                .orderBy("nij_number", "desc")
-                .limit(1).get();
-
-            let newNumber = 1;
-            if (!snapshot.empty) {
-                newNumber = (snapshot.docs[0].data().nij_number || 0) + 1;
-            }
-
-            const tahun = new Date().getFullYear();
-            const finalNIJ = `NIJ-PPP-${lokasiKode}-${String(newNumber).padStart(3, '0')}-${tahun}`;
-            
 
             // ============================================================
             // VALIDASI USIA MINIMAL REGISTRASI SIPAPUA
@@ -1553,6 +1565,7 @@ function validateRegistrationRequiredFields() {
 // 1. BUAT AKUN DI AUTHENTICATION
             const userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
             const user = userCredential.user;
+            createdUser = user;
 
             // 2. KIRIM EMAIL VERIFIKASI (PENTING!)
             // Kumpulkan seluruh nama anak yang diinput.
@@ -1595,6 +1608,13 @@ return {
         selectedReference?.nij || ""
 };
                 });
+            // NIJ final: dialokasikan server sekali per akun (unik, aman
+            // diulang); rules hanya menerima profil dengan NIJ ini.
+            const allocation =
+                (await allocateNijCallable({ lokasi: lokasiKode })).data;
+            const finalNIJ = allocation.nij;
+            const newNumber = allocation.nij_number;
+
             // 2. SIMPAN DATA KE FIRESTORE
             await db.collection("users").doc(user.uid).set({
                 uid: user.uid,
@@ -1691,6 +1711,7 @@ document.getElementById("status_pernikahan").value,
                 status_akun: "Menunggu Verifikasi", // Kita tandai agar admin tahu
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            profileSaved = true;
 
             // Fire-and-forget email verification.
             // Registrasi tidak lagi menunggu proses email selesai.
@@ -1707,6 +1728,9 @@ document.getElementById("status_pernikahan").value,
             document.getElementById("notif-email-sent").style.display = "flex";
 
         } catch (e) {
+            if (createdUser && !profileSaved) {
+                await createdUser.delete().catch(() => {});
+            }
             btnSubmit.disabled = false;
             btnSubmit.innerText = "FINALISASI & DAFTAR";
             alert(e.message);

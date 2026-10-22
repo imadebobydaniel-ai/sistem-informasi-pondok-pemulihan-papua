@@ -98,32 +98,51 @@
         <p><i class="fas fa-expand"></i> Arahkan kamera ke QR Code Jemaat</p>
     </div>
 
+    <script src="sipapua-maintenance.js"></script>
     <script>
         let html5QrCode;
+
+        // Scanned cards are looked up by the Cloud Function lookupMemberCard;
+        // while it is paused (sipapua-maintenance.js, or that file did not
+        // load) the camera stays off and a notice is shown instead.
+        function showScanMaintenance() {
+            const container = document.querySelector(".scanner-container");
+            container.innerHTML = "";
+            const notice = document.createElement("div");
+            notice.setAttribute("role", "status");
+            notice.style.cssText = "padding:24px 20px;border-radius:12px;background:#fff8e1;color:#5d4037;text-align:center;font-size:14px;line-height:1.5;";
+            notice.textContent = window.SIPAPUA_MAINTENANCE
+                ? window.SIPAPUA_MAINTENANCE.message("memberCard")
+                : "Pemindaian kartu jemaat sedang dalam pemeliharaan.";
+            container.appendChild(notice);
+            document.querySelector(".instruction p").textContent = "Pemindaian kartu sementara tidak tersedia.";
+        }
 
         function onScanSuccess(decodedText, decodedResult) {
             // Memberikan getaran sukses
             if (navigator.vibrate) navigator.vibrate(100);
 
-            // Cek apakah hasil scan mengandung protokol sipapua:// atau langsung email
+            // Kartu QR: sipapua://scan?t=<token>. QR lama (email) diarahkan
+            // ke pesan kartu versi lama tanpa membawa emailnya.
             if (decodedText.includes("sipapua://scan") || decodedText.includes("@")) {
-                let email = "";
-                
-                if (decodedText.includes("?email=")) {
-                    const urlParams = new URLSearchParams(decodedText.split('?')[1]);
-                    email = urlParams.get('email');
+                const tokenMatch = /[?&]t=([A-Za-z0-9_-]+)/.exec(decodedText);
+                let target = "";
+
+                if (tokenMatch) {
+                    target = "bio-singkat-jemaat.html?t=" + tokenMatch[1];
                 } else {
-                    email = decodedText; // Jika QR hanya berisi email mentah
+                    // QR lama berisi email: email tidak dibawa ke URL.
+                    target = "bio-singkat-jemaat.html?legacy=1";
                 }
 
-                if (email) {
+                if (target) {
                     // Berhenti scan agar tidak terjadi pemindaian ganda
                     html5QrCode.stop().then(() => {
                         // Arahkan ke halaman bio singkat
-                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                        window.location.href = target;
                     }).catch(err => {
                         console.error("Gagal menghentikan scanner", err);
-                        window.location.href = "bio-singkat-jemaat.html?email=" + email;
+                        window.location.href = target;
                     });
                 }
             } else {
@@ -152,7 +171,13 @@
         }
 
         // Jalankan otomatis saat halaman siap
-        window.addEventListener('DOMContentLoaded', startScanner);
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("memberCard")) {
+                showScanMaintenance();
+                return;
+            }
+            startScanner();
+        });
     </script>
 </body>
 </html>
