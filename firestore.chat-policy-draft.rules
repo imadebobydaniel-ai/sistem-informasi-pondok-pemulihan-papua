@@ -1,0 +1,1025 @@
+rules_version = '2';
+
+// DRAFT - NOT DEPLOYED. firestore.emergency-a2.rules plus the mutual_chats
+// rules for chat.html (private 1:1 chat between accepted contacts) and the
+// sipapua_group_rooms rules for chat-group.html (the one default group room)
+// with server-side anti-spam (rate_limits: 5 s between messages, at most 60
+// per rolling hour and 200 per rolling day) and moderation by active master /
+// super_admin accounts (reports, hiding, moderation_log). Built from
+// firestore.chat-moderation-draft.rules with the PO-approved chat policy.
+// Review and a separate PO approval are needed before any deployment.
+//
+// EMERGENCY A2 - firestore.rules (Fase 1B) with member profiles private:
+// users is never readable or listable without the owner's or an active
+// administrator's sign-in. Registration and QR card lookups need the Cloud
+// Functions (checkRegistrationDuplicate, getNextNijNumber, allocateNij,
+// getMyCardToken, lookupMemberCard), so those pages run in maintenance mode
+// (sipapua-maintenance.js) until the Functions and App Check are live.
+// Only difference from firestore.rules: owners also never change uid or
+// wilayah (the account binding and the region the NIJ was allocated for).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myAdminDoc() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+    }
+
+    function myRole() {
+      return myAdminDoc()
+        ? get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.role
+        : null;
+    }
+
+    // An admin account that was set inactive keeps no administrative power.
+    function myAdminActive() {
+      return myAdminDoc()
+        && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.status == "active";
+    }
+
+    function isMaster() {
+      return myRole() == "master" && myAdminActive();
+    }
+
+    function isSuperAdmin() {
+      return myRole() == "super_admin" && myAdminActive();
+    }
+
+    function isAdminManager() {
+      return isMaster() || isSuperAdmin();
+    }
+
+    function isActiveAdmin() {
+      return signedIn()
+        && myAdminDoc()
+        && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.status == "active"
+        && myRole() in ["master", "super_admin", "admin", "viewer"];
+    }
+
+    function blockedBetween(firstUid, secondUid) {
+      return exists(/databases/$(database)/documents/user_blocks/$(firstUid)/blocked/$(secondUid))
+        || exists(/databases/$(database)/documents/user_blocks/$(secondUid)/blocked/$(firstUid));
+    }
+
+    function requestBlockedAfter(firstUid, secondUid) {
+      return existsAfter(/databases/$(database)/documents/user_blocks/$(firstUid)/blocked/$(secondUid))
+        || existsAfter(/databases/$(database)/documents/user_blocks/$(secondUid)/blocked/$(firstUid));
+    }
+
+    // One friend request document per user pair, regardless of direction.
+    function pairRequestId(firstUid, secondUid) {
+      return firstUid < secondUid
+        ? firstUid + "_" + secondUid
+        : secondUid + "_" + firstUid;
+    }
+
+    // Contacts may only be created in the same batch that moves the pair's
+    // request from pending to accepted, so an old accepted request is never
+    // reusable. Display fields are bound to the request or the accepter's
+    // presence instead of being chosen freely by the writer.
+    function validAcceptedContact(uid, friendUid) {
+      let requestPath = /databases/$(database)/documents/friend_requests/$(request.resource.data.requestId);
+      let presencePath = /databases/$(database)/documents/presence/$(request.auth.uid);
+      return request.resource.data.requestId == pairRequestId(uid, friendUid)
+        && exists(requestPath)
+        && get(requestPath).data.status == "pending"
+        && getAfter(requestPath).data.status == "accepted"
+        && getAfter(requestPath).data.toUid == request.auth.uid
+        && ((uid == getAfter(requestPath).data.fromUid && friendUid == getAfter(requestPath).data.toUid)
+          || (uid == getAfter(requestPath).data.toUid && friendUid == getAfter(requestPath).data.fromUid))
+        && !requestBlockedAfter(uid, friendUid)
+        && (friendUid == getAfter(requestPath).data.fromUid
+          ? (request.resource.data.displayName == getAfter(requestPath).data.fromDisplayName
+              || (getAfter(requestPath).data.fromDisplayName == "" && request.resource.data.displayName == "Jemaat SIPAPUA"))
+            && request.resource.data.photoURL == getAfter(requestPath).data.fromPhotoURL
+          : (exists(presencePath)
+            ? (request.resource.data.displayName == get(presencePath).data.displayName
+                || (get(presencePath).data.displayName == "" && request.resource.data.displayName == "Jemaat SIPAPUA"))
+              && request.resource.data.photoURL == get(presencePath).data.photoURL
+            : request.resource.data.displayName == "Jemaat SIPAPUA" && request.resource.data.photoURL == ""));
+    }
+
+    function validPresence() {
+      return request.resource.data.keys().hasOnly([
+          "online", "lastSeen", "displayName", "photoURL", "updatedAt",
+          "discoverable", "showOnline", "komsel", "wilayah"
+        ])
+        && request.resource.data.keys().hasAll([
+          "online", "lastSeen", "displayName", "photoURL", "updatedAt",
+          "discoverable", "showOnline", "komsel", "wilayah"
+        ])
+        && request.resource.data.online is bool
+        && request.resource.data.discoverable is bool
+        && request.resource.data.showOnline is bool
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2048
+        && request.resource.data.komsel is string
+        && request.resource.data.komsel.size() <= 120
+        && request.resource.data.wilayah is string
+        && request.resource.data.wilayah.size() <= 120
+        && request.resource.data.lastSeen == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+    function targetIsMaster() {
+      return resource.data.role == "master"
+        || resource.data.protected == true;
+    }
+
+    function newTargetIsMaster() {
+      return request.resource.data.role == "master"
+        || request.resource.data.protected == true;
+    }
+
+    // =========================================================
+    // ADMIN USERS - SECURED PHASE 1
+    // =========================================================
+    match /admin_users/{uid} {
+
+      // Dashboard admin management membutuhkan daftar admin.
+      allow read: if signedIn() && (uid == request.auth.uid || isAdminManager());
+
+      // Membuat akun admin baru:
+      // Master boleh membuat semua non-master.
+      // Super Admin hanya boleh membuat admin/viewer.
+      allow create: if
+        (
+          isMaster()
+          && request.resource.data.role in ["super_admin", "admin", "viewer"]
+          && request.resource.data.protected == false
+        )
+        ||
+        (
+          isSuperAdmin()
+          && request.resource.data.role in ["admin", "viewer"]
+          && request.resource.data.protected == false
+        );
+
+      // Update:
+      // Master boleh mengelola akun non-master.
+      // Master sendiri hanya boleh mempertahankan role master/protected.
+      // Super Admin tidak boleh menyentuh Master.
+      allow update: if
+        (
+          isMaster()
+          && uid == request.auth.uid
+          && resource.data.role == "master"
+          && request.resource.data.role == "master"
+          && request.resource.data.protected == true
+          && request.resource.data.status == "active"
+        )
+        ||
+        (
+          isMaster()
+          && uid != request.auth.uid
+          && !targetIsMaster()
+          && !newTargetIsMaster()
+        )
+        ||
+        (
+          isSuperAdmin()
+          && !targetIsMaster()
+          && !newTargetIsMaster()
+          && request.resource.data.role in ["admin", "viewer"]
+        );
+
+      // Hapus langsung dari admin_users kita tahan dulu.
+      // Modul sekarang menggunakan status inactive.
+      allow delete: if false;
+    }
+    // =========================================================
+    // SIPAPUA NEWS - SECURED
+    // =========================================================
+
+    function isNewsAdmin() {
+      return isActiveAdmin();
+    }
+
+    function isNewsEditor() {
+      return isActiveAdmin()
+        && myRole() in ["master", "super_admin", "admin"];
+    }
+
+    match /sipapua_news/{newsId} {
+      allow read: if
+        resource.data.status == "published"
+        || isNewsAdmin();
+
+      allow create: if
+        isNewsEditor()
+        && request.resource.data.status in ["draft", "published"]
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if
+        isNewsEditor()
+        && request.resource.data.status in ["draft", "published"]
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAdminManager();
+    }
+    // =========================================================
+    // SIPAPUA POPUP BANNER - SECURED
+    // =========================================================
+
+    function isPopupAdmin() {
+      return isActiveAdmin();
+    }
+
+    function isPopupEditor() {
+      return isActiveAdmin()
+        && myRole() in ["master", "super_admin", "admin"];
+    }
+
+    function isValidPopupSlot(slotId) {
+      return slotId in [
+        "popup_1",
+        "popup_2",
+        "popup_3",
+        "popup_4",
+        "popup_5"
+      ];
+    }
+
+    match /sipapua_popups/{popupId} {
+      allow read: if
+        resource.data.status == "published" || isPopupAdmin();
+
+      allow create: if
+        isValidPopupSlot(popupId)
+        && isPopupEditor()
+        && request.resource.data.status in ["draft", "published"]
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if
+        isValidPopupSlot(popupId)
+        && isPopupEditor()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.status in ["draft", "published"];
+
+      allow delete: if
+        isValidPopupSlot(popupId)
+        && isAdminManager();
+    }
+    // EXISTING COLLECTIONS - TEMPORARY COMPATIBILITY
+    // =========================================================
+
+    // Legacy member data: no current page uses it, administrators only.
+    match /jemaat/{document=**} {
+      allow read, write: if isActiveAdmin();
+    }
+
+    // Media playlist and running text: shown to signed-in members (menu.html),
+    // managed by administrators (portal-media.html).
+    match /portal_media/{mediaId} {
+      allow read: if signedIn();
+      allow write: if isActiveAdmin();
+    }
+
+    // Members read only the two documents menu.html listens to; any other
+    // configuration document (and every subcollection) stays with administrators.
+    match /config/{configId} {
+      allow read: if isActiveAdmin()
+        || (signedIn() && configId in ["running_text", "playlist"]);
+      allow write: if isActiveAdmin();
+    }
+
+    // A profile belongs to the signed-in user whose uid is its document id
+    // or its uid field, or (older profiles) whose verified email it holds.
+    // Each branch is an equality the rules can check against a query
+    // filtered on that same field, so where("email" or "uid", "==", mine)
+    // stays allowed while any other query on users is rejected.
+    function ownsProfile(uid) {
+      return signedIn()
+        && (request.auth.uid == uid
+          || resource.data.uid == request.auth.uid
+          || (request.auth.token.email_verified == true
+            && resource.data.email == request.auth.token.email));
+    }
+
+    // A self-registered profile carries exactly the NIJ the Cloud Function
+    // allocateNij allocated to this account (server-only document), so the
+    // client cannot choose a number or reuse another account's number.
+    function hasAllocatedNij(uid) {
+      let allocation = /databases/$(database)/documents/nij_allocations/$(uid);
+      return exists(allocation)
+        && request.resource.data.nij == get(allocation).data.nij
+        && request.resource.data.nij_number == get(allocation).data.nij_number
+        && request.resource.data.wilayah == get(allocation).data.wilayah;
+    }
+
+    match /users/{uid} {
+      // Private profile: owner or active administrator only. Registration
+      // and QR card lookups go through the Cloud Functions
+      // checkRegistrationDuplicate, getNextNijNumber, allocateNij and
+      // lookupMemberCard, which return only the fields they need.
+      // Writes must come from the profile owner or an active administrator.
+      allow read: if ownsProfile(uid) || isActiveAdmin();
+      allow create: if isActiveAdmin()
+        || (signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.status_akun == "Menunggu Verifikasi"
+          && hasAllocatedNij(uid));
+
+      // Owners never change their status, NIJ, account binding or NIJ region.
+      allow update: if isActiveAdmin()
+        || (signedIn()
+          && (request.auth.uid == uid
+            || resource.data.get("uid", "") == request.auth.uid)
+          && !request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasAny(["status_akun", "nij", "nij_number", "uid", "wilayah"]));
+      allow delete: if isActiveAdmin()
+        || (signedIn()
+          && (request.auth.uid == uid
+            || resource.data.get("uid", "") == request.auth.uid));
+    }
+
+    match /users/{uid}/{subcollection}/{document=**} {
+      allow read: if (signedIn() && request.auth.uid == uid) || isActiveAdmin();
+      allow write: if isActiveAdmin()
+        || (signedIn() && request.auth.uid == uid);
+    }
+
+    // Read by manajemen-user.html (administrators). No page writes it and a
+    // client-written entry could claim any user, time or activity, so entries
+    // may only come from the server (Admin SDK) and are never changed.
+    match /login_logs/{logId} {
+      allow read: if isActiveAdmin();
+      allow write: if false;
+    }
+
+    // Annual agenda: only admin_agenda.html (administrators) uses it.
+    match /agenda_tahunan/{document=**} {
+      allow read, write: if isActiveAdmin();
+    }
+
+    // A ticket exactly as call-center.html sends it, under the sender's own
+    // verified sign-in email, opened ("proses") at server time.
+    function validNewTicket() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(["nomor_tiket", "nama", "email", "jc", "kategori", "isi_saran",
+          "status", "timestamp", "tanggal_kirim", "jam_kirim", "sla_days"])
+        && data.keys().hasAll(["nomor_tiket", "nama", "email", "jc", "kategori", "isi_saran",
+          "status", "timestamp", "tanggal_kirim", "jam_kirim", "sla_days"])
+        && request.auth.token.email_verified == true
+        && data.email == request.auth.token.email
+        && data.nomor_tiket is string && data.nomor_tiket.matches("^CALL-[0-9]{3}-[0-9]{4}$")
+        && data.nama is string && data.nama.size() > 0 && data.nama.size() <= 120
+        && data.jc is string && data.jc.size() <= 130
+        && data.kategori in ["Call Operator", "Kritik dan Saran", "Permohonan Doa",
+          "Appointment", "Pelayanan Pastoral", "Gangguan Aplikasi"]
+        && data.isi_saran is string && data.isi_saran.size() > 0 && data.isi_saran.size() <= 2000
+        && data.status == "proses"
+        && data.timestamp == request.time
+        && data.tanggal_kirim is string && data.tanggal_kirim.size() <= 60
+        && data.jam_kirim is string && data.jam_kirim.size() <= 16
+        && data.sla_days == 0;
+    }
+
+    // Tickets: a signed-in member submits one (call-center.html);
+    // administrators read them and close them (admin-tiket.html); only
+    // Master / Super Admin delete one, as admin-tiket.html allows.
+    match /saran_masukan/{ticketId} {
+      allow read: if isActiveAdmin();
+      allow create: if signedIn() && validNewTicket();
+      allow update: if isActiveAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])
+        && request.resource.data.status in ["proses", "Selesai"];
+      allow delete: if isAdminManager();
+    }
+
+    // UMKM (still "Dalam Pengerjaan"): a seller sees its own store, products,
+    // ratings and chats (dashboard-umkm.html, chat-dashboard-umkm.html).
+    match /umkm_stores/{storeId} {
+      allow read: if isActiveAdmin() || (signedIn() && storeId == request.auth.uid);
+      allow write: if isActiveAdmin();
+    }
+
+    match /umkm_products/{productId} {
+      allow read: if isActiveAdmin()
+        || (signedIn() && resource.data.seller_uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.seller_uid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.seller_uid == request.auth.uid
+        && request.resource.data.seller_uid == request.auth.uid;
+      allow delete: if isActiveAdmin()
+        || (signedIn() && resource.data.seller_uid == request.auth.uid);
+    }
+
+    match /rating_toko/{ratingId} {
+      allow read: if isActiveAdmin()
+        || (signedIn() && resource.data.seller_uid == request.auth.uid);
+      allow write: if isActiveAdmin();
+    }
+
+    // Seller side only: the anonymous customer chat (chat-umkm.html) has no
+    // account to bind a message to and stays closed until it gets one.
+    match /chats/{messageId} {
+      allow read: if isActiveAdmin()
+        || (signedIn() && resource.data.seller_uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.seller_uid == request.auth.uid
+        && request.resource.data.sender == "seller";
+      allow update: if signedIn()
+        && resource.data.seller_uid == request.auth.uid
+        && request.resource.data.seller_uid == request.auth.uid
+        && request.resource.data.customer_id == resource.data.customer_id
+        && request.resource.data.sender == resource.data.sender
+        && request.resource.data.message == resource.data.message;
+      allow delete: if isActiveAdmin()
+        || (signedIn() && resource.data.seller_uid == request.auth.uid);
+    }
+
+    // SOCIAL PRESENCE - public fields only; exact GPS coordinates are private.
+    match /presence/{uid} {
+      allow read: if signedIn()
+        && (uid == request.auth.uid
+          || (resource.data.discoverable == true
+            && resource.data.showOnline == true
+            && !blockedBetween(uid, request.auth.uid)));
+
+      allow create, update: if signedIn()
+        && uid == request.auth.uid
+        && validPresence();
+
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    match /presence_locations/{uid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+
+      allow create, update: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["latitude", "longitude", "updatedAt"])
+        && request.resource.data.keys().hasAll(["latitude", "longitude", "updatedAt"])
+        && request.resource.data.latitude is number
+        && request.resource.data.latitude >= -90
+        && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number
+        && request.resource.data.longitude >= -180
+        && request.resource.data.longitude <= 180
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    match /friend_requests/{requestId} {
+      allow read: if signedIn()
+        && (resource.data.fromUid == request.auth.uid
+          || resource.data.toUid == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.keys().hasAll([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid != request.auth.uid
+        && requestId == pairRequestId(request.resource.data.fromUid, request.resource.data.toUid)
+        && exists(/databases/$(database)/documents/presence/$(request.auth.uid))
+        && request.resource.data.fromDisplayName == get(/databases/$(database)/documents/presence/$(request.auth.uid)).data.displayName
+        && request.resource.data.fromPhotoURL == get(/databases/$(database)/documents/presence/$(request.auth.uid)).data.photoURL
+        && exists(/databases/$(database)/documents/presence/$(request.resource.data.toUid))
+        && get(/databases/$(database)/documents/presence/$(request.resource.data.toUid)).data.discoverable == true
+        && request.resource.data.status == "pending"
+        && request.resource.data.fromDisplayName is string
+        && request.resource.data.fromDisplayName.size() <= 100
+        && request.resource.data.fromPhotoURL is string
+        && request.resource.data.fromPhotoURL.size() <= 2048
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && !blockedBetween(request.auth.uid, request.resource.data.toUid);
+
+      allow update: if signedIn()
+        && resource.data.status in ["pending", "accepted"]
+        && request.resource.data.keys().hasOnly([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.keys().hasAll([
+          "fromUid", "toUid", "status", "createdAt", "updatedAt",
+          "fromDisplayName", "fromPhotoURL"
+        ])
+        && request.resource.data.fromUid == resource.data.fromUid
+        && request.resource.data.toUid == resource.data.toUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.fromDisplayName == resource.data.fromDisplayName
+        && request.resource.data.fromPhotoURL == resource.data.fromPhotoURL
+        && request.resource.data.updatedAt == request.time
+        && (
+          (resource.data.status == "pending"
+            && resource.data.toUid == request.auth.uid
+            && request.resource.data.status == "rejected")
+          || (resource.data.status == "pending"
+            && resource.data.toUid == request.auth.uid
+            && request.resource.data.status == "accepted"
+            && !requestBlockedAfter(resource.data.fromUid, resource.data.toUid))
+          || (request.resource.data.status == "blocked"
+            && resource.data.fromUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(resource.data.toUid)))
+          || (request.resource.data.status == "blocked"
+            && resource.data.toUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(resource.data.fromUid)))
+        );
+
+      // Sender may cancel a pending request. A blocked pair's request may be
+      // cleared by either side only once no block remains, so the pair can
+      // connect again after unblocking.
+      allow delete: if signedIn()
+        && (
+          (resource.data.fromUid == request.auth.uid
+            && resource.data.status == "pending")
+          || ((resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid)
+            && resource.data.status == "blocked"
+            && !requestBlockedAfter(resource.data.fromUid, resource.data.toUid))
+        );
+    }
+
+    match /contacts/{uid}/friends/{friendUid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          "friendUid", "createdAt", "displayName", "photoURL", "status", "requestId"
+        ])
+        && request.resource.data.keys().hasAll([
+          "friendUid", "createdAt", "displayName", "photoURL", "status", "requestId"
+        ])
+        && request.resource.data.friendUid == friendUid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2048
+        && request.resource.data.status == "accepted"
+        && validAcceptedContact(uid, friendUid);
+
+      allow update: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.friendUid == resource.data.friendUid
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.status == "accepted"
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      // Owner may remove any entry. A user who has blocked the owner may only
+      // remove their own entry from the owner's list (block cleanup).
+      allow delete: if signedIn()
+        && (uid == request.auth.uid
+          || (friendUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/user_blocks/$(request.auth.uid)/blocked/$(uid))));
+    }
+
+    match /user_blocks/{uid}/blocked/{blockedUid} {
+      allow read: if signedIn() && uid == request.auth.uid;
+
+      allow create: if signedIn()
+        && uid == request.auth.uid
+        && blockedUid != request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "blockedUid", "createdAt", "displayName", "photoURL"
+        ])
+        && request.resource.data.keys().hasAll([
+          "blockedUid", "createdAt", "displayName", "photoURL"
+        ])
+        && request.resource.data.blockedUid == blockedUid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2048;
+
+      allow update: if false;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+    // Game leaderboard: one document per player, keyed by auth uid. Points are earned
+    // client-side (20 per correct answer, up to 100 questions per round), so each write may
+    // add at most one full round (2000) and the running total can never go down.
+    function validGameScore(uid) {
+      let data = request.resource.data;
+      return signedIn()
+        && request.auth.uid == uid
+        && data.uid == uid
+        && data.keys().hasOnly(['uid', 'nama', 'skor', 'streak', 'predikat', 'updatedAt'])
+        && data.keys().hasAll(['uid', 'nama', 'skor', 'streak', 'predikat', 'updatedAt'])
+        && data.nama is string && data.nama.size() > 0 && data.nama.size() <= 80
+        && data.skor is int && data.skor >= 0 && data.skor % 20 == 0
+        && data.streak is int && data.streak >= 0 && data.streak <= 100000
+        && data.predikat == (data.streak >= 7 ? '🏆 GOLD'
+          : data.streak >= 4 ? '🥈 SILVER'
+          : data.streak >= 2 ? '🥉 BRONZE' : '')
+        && data.updatedAt == request.time;
+    }
+
+    match /game_scores/{uid} {
+      allow read: if signedIn();
+      allow create: if validGameScore(uid)
+        && request.resource.data.skor <= 2000;
+      allow update: if validGameScore(uid)
+        && request.resource.data.skor >= resource.data.skor
+        && request.resource.data.skor - resource.data.skor <= 2000;
+      allow delete: if isActiveAdmin();
+    }
+
+    // A member may only add its own uid to readBy / deletedBy of a broadcast.
+    function addsOnlyMe(field) {
+      let before = resource.data.get(field, []);
+      let after = request.resource.data.get(field, []);
+      return after is list
+        && after.toSet() == before.toSet().union([request.auth.uid].toSet())
+        && after.size() <= before.size() + 1;
+    }
+
+    // Broadcasts: read by signed-in members (menu.html), written by
+    // administrators (portal-media.html).
+    match /pengumuman_komsel/{announcementId} {
+      allow read: if signedIn();
+      allow create, delete: if isActiveAdmin();
+      allow update: if isActiveAdmin()
+        || (signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["readBy", "deletedBy"])
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["readBy"]) || addsOnlyMe("readBy"))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(["deletedBy"]) || addsOnlyMe("deletedBy")));
+    }
+
+    match /laporan_doa/{document=**} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
+    }
+
+    match /laporan_bacaan/{document=**} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
+    }
+
+    match /kehadiran_jemaat/{document=**} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
+    }
+
+    match /laporan_komsel_umum/{document=**} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
+    }
+
+    match /statistik_jemaat_pusat/{document=**} {
+      // Raw report copies remain internal to active administrators.
+      allow read: if isActiveAdmin();
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
+    }
+
+    match /laporan_pelayanan/{document=**} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if
+        signedIn()
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update, delete: if isActiveAdmin();
+    }
+
+    // No current page uses it: administrators only.
+    match /kehadiran/{document=**} {
+      allow read, write: if isActiveAdmin();
+    }
+
+    match /kesaksian/{document=**} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.author_uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.author_uid == request.auth.uid;
+    }
+
+    // Running text history: portal-media.html (administrators) only.
+    match /running_text_history/{document=**} {
+      allow read, write: if isActiveAdmin();
+    }
+
+    match /pks_users/{uid} {
+      allow read: if
+        isActiveAdmin()
+        || (signedIn() && uid == request.auth.uid);
+
+      allow create, update, delete: if false;
+    }
+    match /event_user_hidden/{uid}/events/{eventId} {
+      allow read: if
+        signedIn()
+        && uid == request.auth.uid;
+
+      allow create, update: if
+        signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.hidden == true;
+
+      allow delete: if
+        signedIn()
+        && uid == request.auth.uid;
+    }
+    // MUTUAL CHAT (chat.html) - private 1:1 text chat between two accepted
+    // contacts. Never /chats (the UMKM seller collection). The conversation id
+    // is pairRequestId(a, b), so a pair has exactly one conversation. Access is
+    // decided from the path on every read and write: both contact entries
+    // accepted, the pair request accepted, and no block in either direction.
+    // When the friendship ends or a block is added, history is kept but
+    // neither side can read it or send until they are contacts again.
+    function chatPair(pairId) {
+      return pairId.split("_");
+    }
+
+    function mutualContacts(firstUid, secondUid) {
+      let firstContact = /databases/$(database)/documents/contacts/$(firstUid)/friends/$(secondUid);
+      let secondContact = /databases/$(database)/documents/contacts/$(secondUid)/friends/$(firstUid);
+      let pairRequest = /databases/$(database)/documents/friend_requests/$(pairRequestId(firstUid, secondUid));
+      return firstUid != secondUid
+        && exists(firstContact)
+        && get(firstContact).data.status == "accepted"
+        && exists(secondContact)
+        && get(secondContact).data.status == "accepted"
+        && exists(pairRequest)
+        && get(pairRequest).data.status == "accepted"
+        && !blockedBetween(firstUid, secondUid);
+    }
+
+    // The signed-in user is one of the two members of an existing friendship.
+    function chatMember(pairId) {
+      let pair = chatPair(pairId);
+      return signedIn()
+        && pair.size() == 2
+        && pairId == pairRequestId(pair[0], pair[1])
+        && request.auth.uid in pair
+        && mutualContacts(pair[0], pair[1]);
+    }
+
+    match /mutual_chats/{pairId} {
+      // get only: no listing of conversations in this first version.
+      allow get: if chatMember(pairId);
+      allow list: if false;
+
+      allow create: if chatMember(pairId)
+        && request.resource.data.keys().hasOnly(["members", "createdAt", "lastMessageAt"])
+        && request.resource.data.keys().hasAll(["members", "createdAt", "lastMessageAt"])
+        && request.resource.data.members == chatPair(pairId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.lastMessageAt == request.time;
+
+      // Only the activity time moves; members and createdAt never change.
+      allow update: if chatMember(pairId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["lastMessageAt"])
+        && request.resource.data.lastMessageAt == request.time;
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if chatMember(pairId);
+
+        // Text only, written by the signed-in member as themself, server time,
+        // into a conversation that exists (or is created in the same batch).
+        allow create: if chatMember(pairId)
+          && existsAfter(/databases/$(database)/documents/mutual_chats/$(pairId))
+          && request.resource.data.keys().hasOnly(["senderUid", "text", "createdAt"])
+          && request.resource.data.keys().hasAll(["senderUid", "text", "createdAt"])
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.text.trim().size() > 0
+          && request.resource.data.createdAt == request.time;
+
+        // Messages are never edited or removed by clients.
+        allow update, delete: if false;
+      }
+    }
+
+    // GROUP CHAT (chat-group.html) - the single default room "Ruang Bersama
+    // SIPAPUA" (sipapua_group_rooms/official-general) for every official,
+    // active account with a verified email. No membership list: eligibility is
+    // read from the caller's own profile on every request, so an account set
+    // inactive loses access with its next read or write. Status cannot be
+    // changed by the owner (users rules above). The room document itself is
+    // created by an administrator outside the app; clients never create,
+    // rename or delete rooms. Personal blocks do not apply here.
+    //
+    // Anti-spam: every message is written together with the sender's
+    // rate_limits/{uid} document, which names that message and the server time.
+    // The document also keeps the sender's earlier send times (server times
+    // only, newest last, at most 200 in all), so the limits are rolling windows:
+    // 5 s since the last message, 60 in the last hour, 200 in the last 24 h.
+    //
+    // Moderation: members report a message (one report per member and
+    // message, readable only by moderators). A moderator hides or shows a
+    // message again; every action is an append-only moderation_log entry
+    // written in the same batch. Hidden messages are not readable by members
+    // at all (rules), not just hidden in the page.
+    function activeOfficialAccount() {
+      let profile = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != "anonymous"
+        && request.auth.token.email_verified == true
+        && exists(profile)
+        && get(profile).data.get("status_akun", "") == "Aktif";
+    }
+
+    // PO policy: only active master and super_admin accounts (admin_users, A2)
+    // moderate. Admin and viewer do not; there is no delegation.
+    function isGroupModerator() {
+      return isMaster() || isSuperAdmin();
+    }
+
+    // h = the sender's earlier send times, oldest first (server times).
+    // Allowed when the 60th most recent is over an hour old and the 200th most
+    // recent is over a day old, so the new message keeps both windows in limit.
+    function groupSendHistoryAllows(h) {
+      return (h.size() < 60 || h[h.size() - 60] <= request.time - duration.value(1, "h"))
+        && (h.size() < 200 || h[h.size() - 200] <= request.time - duration.value(24, "h"));
+    }
+
+    // The earlier send times kept after this message: the newest 199, so with
+    // lastSentAt the document always holds the newest 200 send times.
+    function groupHistoryAfter(h) {
+      return h.size() > 199 ? h[h.size() - 199:h.size()] : h;
+    }
+
+    // Sender name and photo are copied from the sender's own profile, never chosen freely.
+    function groupSenderMatchesProfile() {
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return request.resource.data.senderName is string
+        && request.resource.data.senderName == profile.get("nama", "")
+        && request.resource.data.senderPhotoURL is string
+        && (request.resource.data.senderPhotoURL == ""
+          || (request.resource.data.senderPhotoURL == profile.get("foto_profil", "")
+            && request.resource.data.senderPhotoURL.size() <= 2048
+            && request.resource.data.senderPhotoURL.matches("https://.*")));
+    }
+
+    function groupRoomPath() {
+      return /databases/$(database)/documents/sipapua_group_rooms/official-general;
+    }
+
+    match /sipapua_group_rooms/{roomId} {
+      allow get: if roomId == "official-general" && (activeOfficialAccount() || isGroupModerator());
+      allow list: if false;
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        // Members read only visible messages (queries must filter hidden == false);
+        // moderators read everything.
+        allow read: if roomId == "official-general"
+          && ((activeOfficialAccount() && resource.data.hidden == false) || isGroupModerator());
+
+        allow create: if roomId == "official-general"
+          && activeOfficialAccount()
+          && exists(groupRoomPath())
+          && request.resource.data.keys().hasOnly(["senderUid", "senderName", "senderPhotoURL", "text", "createdAt", "hidden"])
+          && request.resource.data.keys().hasAll(["senderUid", "senderName", "senderPhotoURL", "text", "createdAt", "hidden"])
+          && request.resource.data.senderUid == request.auth.uid
+          && groupSenderMatchesProfile()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.text.trim().size() > 0
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.hidden == false
+          // Same batch: the sender's rate document points at this message.
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/rate_limits/$(request.auth.uid)).data.lastMessageId == messageId
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/rate_limits/$(request.auth.uid)).data.lastSentAt == request.time;
+
+        // Only a moderator, only the moderation fields, together with its log entry.
+        allow update: if roomId == "official-general"
+          && isGroupModerator()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["hidden", "moderatedBy", "moderatedAt", "moderationLogId"])
+          && request.resource.data.hidden is bool
+          && request.resource.data.hidden != resource.data.hidden
+          && request.resource.data.moderatedBy == request.auth.uid
+          && request.resource.data.moderatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/moderation_log/$(request.resource.data.moderationLogId));
+
+        allow delete: if false;
+      }
+
+      // One document per sender, written only together with that sender's new
+      // message. It can never be deleted, so the history cannot be reset, and
+      // each write must carry the previous history plus the previous lastSentAt
+      // exactly, so entries cannot be dropped, changed or invented.
+      match /rate_limits/{uid} {
+        allow get: if roomId == "official-general" && signedIn() && uid == request.auth.uid;
+        allow list: if false;
+        allow create: if roomId == "official-general"
+          && activeOfficialAccount()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.keys().hasAll(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.lastSentAt == request.time
+          && request.resource.data.recent == []
+          && request.resource.data.lastMessageId is string
+          && existsAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId))
+          && !exists(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId));
+        allow update: if roomId == "official-general"
+          && activeOfficialAccount()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.keys().hasAll(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.lastSentAt == request.time
+          && request.time >= resource.data.lastSentAt + duration.value(5, "s")
+          && resource.data.recent is list
+          && groupSendHistoryAllows(resource.data.recent.concat([resource.data.lastSentAt]))
+          && request.resource.data.recent == groupHistoryAfter(resource.data.recent.concat([resource.data.lastSentAt]))
+          && request.resource.data.lastMessageId is string
+          && existsAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId))
+          && !exists(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId));
+        allow delete: if false;
+      }
+
+      // Report id = messageId + "_" + reporter uid: one report per member and message.
+      match /reports/{reportId} {
+        allow read: if roomId == "official-general" && isGroupModerator();
+        allow create: if roomId == "official-general"
+          && activeOfficialAccount()
+          && request.resource.data.keys().hasOnly(["messageId", "reporterUid", "reason", "createdAt"])
+          && request.resource.data.keys().hasAll(["messageId", "reporterUid", "reason", "createdAt"])
+          && request.resource.data.reporterUid == request.auth.uid
+          && reportId == request.resource.data.messageId + "_" + request.auth.uid
+          && request.resource.data.reason in ["spam", "tidak_pantas", "penipuan", "lainnya"]
+          && request.resource.data.createdAt == request.time
+          && exists(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId))
+          && get(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId)).data.senderUid != request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Append-only audit trail; each entry belongs to the message change in the same batch.
+      match /moderation_log/{logId} {
+        allow read: if roomId == "official-general" && isGroupModerator();
+        allow create: if roomId == "official-general"
+          && isGroupModerator()
+          && request.resource.data.keys().hasOnly(["action", "messageId", "moderatorUid", "createdAt"])
+          && request.resource.data.keys().hasAll(["action", "messageId", "moderatorUid", "createdAt"])
+          && request.resource.data.action in ["hide", "show"]
+          && request.resource.data.moderatorUid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId)).data.moderationLogId == logId
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId)).data.hidden == (request.resource.data.action == "hide");
+        allow update, delete: if false;
+      }
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

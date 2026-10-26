@@ -116,6 +116,12 @@
         .social-contact-info { min-width: 0; flex: 1; }
         .social-contact-meta { margin-top: 4px; color: #64748b; font-size: 12px; }
         .social-contact button, .blocked-contact button { border: 0; border-radius: 7px; padding: 8px 9px; color: white; background: var(--danger-color); font-size: 11px; font-weight: 700; }
+        .social-contact .chat-button { background: var(--primary-color); }
+        .social-contact .chat-button:disabled { background: #94a3b8; }
+        .group-chat-entry { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 12px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; }
+        .group-chat-entry > div { flex: 1; min-width: 0; }
+        .group-chat-entry button { flex: 0 0 auto; border: 0; border-radius: 7px; padding: 8px 10px; color: white; background: #0f766e; font-size: 11px; font-weight: 700; }
+        .group-chat-entry button:disabled { background: #94a3b8; }
         .social-empty { color: #64748b; font-size: 13px; }
         .blocked-contact { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
         .blocked-contact span { flex: 1; }
@@ -227,7 +233,15 @@
         </div>
 
         <section id="socialSection" class="social-section" hidden>
+            <div class="group-chat-entry">
+                <div>
+                    <div class="contact-name">Ruang Bersama SIPAPUA</div>
+                    <div class="social-contact-meta">Chat grup untuk seluruh jemaat SIPAPUA yang aktif.</div>
+                </div>
+                <button id="groupChatButton" type="button">CHAT GRUP BERSAMA</button>
+            </div>
             <h4>Kontak Jemaat</h4>
+            <div class="social-contact-meta" style="margin:-6px 0 6px;">Tekan CHAT untuk chat personal dengan kontak.</div>
             <div id="socialContactList" class="social-empty">Memuat kontak jemaat...</div>
             <h4 style="margin-top:18px;">Pengguna Diblokir</h4>
             <div id="blockedContactList" class="social-empty">Memuat daftar blokir...</div>
@@ -369,6 +383,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="sipapua-chat-config.js"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
@@ -431,11 +446,24 @@
             status.className = "social-contact-meta";
             status.textContent = item.online ? "Online" : "Offline atau status disembunyikan";
             info.append(name, status);
+            // Private chat (chat.html) stays disabled until its rules are live (sipapua-chat-config.js).
+            const chatButton = document.createElement("button");
+            chatButton.type = "button";
+            chatButton.className = "chat-button";
+            chatButton.textContent = "CHAT";
+            if (window.SIPAPUA_CHAT && window.SIPAPUA_CHAT.isEnabled()) {
+                chatButton.addEventListener("click", () => {
+                    window.location.href = "chat.html?uid=" + encodeURIComponent(item.uid);
+                });
+            } else {
+                chatButton.disabled = true;
+                chatButton.title = window.SIPAPUA_CHAT ? window.SIPAPUA_CHAT.message : "Chat pribadi belum tersedia.";
+            }
             const blockButton = document.createElement("button");
             blockButton.type = "button";
             blockButton.textContent = "BLOKIR";
             blockButton.addEventListener("click", () => blockSocialContact(item));
-            row.append(photo, info, blockButton);
+            row.append(photo, info, chatButton, blockButton);
             socialContactList.appendChild(row);
         }
 
@@ -547,6 +575,17 @@
                 alert("Pengguna tidak dapat diblokir sekarang.");
             }
         }
+
+        // Group room (chat-group.html) stays disabled until its rules are live (sipapua-chat-config.js).
+        (function setupGroupChatButton() {
+            const groupButton = document.getElementById("groupChatButton");
+            if (window.SIPAPUA_CHAT && window.SIPAPUA_CHAT.isGroupEnabled && window.SIPAPUA_CHAT.isGroupEnabled()) {
+                groupButton.addEventListener("click", () => { window.location.href = "chat-group.html"; });
+            } else {
+                groupButton.disabled = true;
+                groupButton.title = window.SIPAPUA_CHAT && window.SIPAPUA_CHAT.groupMessage ? window.SIPAPUA_CHAT.groupMessage : "Chat grup belum tersedia.";
+            }
+        })();
 
         contactAuth.onAuthStateChanged(async (user) => {
             contactAuthUser = user || null;

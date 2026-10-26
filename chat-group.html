@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Ruang Bersama - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #0f766e;
+            --danger-color: #dc2626;
+            --bg-color: #f1f5f9;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --bubble-mine: #0f766e;
+            --bubble-theirs: #ffffff;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-dark);
+        }
+
+        /* Full screen on phones, a centred column on desktop. */
+        .chat-shell {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 720px;
+            height: 100vh;
+            height: 100dvh;
+            margin: 0 auto;
+            background: #e8f0ef;
+        }
+
+        @media (min-width: 760px) {
+            .chat-shell { box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12); }
+        }
+
+        .chat-header {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            padding-top: max(10px, env(safe-area-inset-top));
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .back-btn {
+            display: flex;
+            flex: 0 0 38px;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 18px;
+        }
+
+        .back-btn:hover, .back-btn:focus-visible { background: #f1f5f9; }
+
+        .room-icon {
+            display: flex;
+            flex: 0 0 42px;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            font-size: 18px;
+        }
+
+        .room-info { min-width: 0; }
+        .room-name { font-weight: 700; font-size: 16px; letter-spacing: 0.3px; }
+        .room-subtitle { color: var(--text-muted); font-size: 12px; }
+
+        .network-banner {
+            flex: 0 0 auto;
+            padding: 8px 14px;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .chat-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 12px 12px 4px;
+            overscroll-behavior: contain;
+        }
+
+        .load-older {
+            display: block;
+            margin: 0 auto 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 6px 14px;
+            background: white;
+            color: var(--primary-color);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* The display rule above would otherwise override the hidden attribute. */
+        .load-older[hidden] { display: none; }
+
+        .date-separator {
+            margin: 12px auto 8px;
+            width: fit-content;
+            border-radius: 10px;
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.85);
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .msg { display: flex; gap: 8px; max-width: min(84%, 560px); margin: 3px 0; }
+        .msg.mine { margin-left: auto; flex-direction: row-reverse; }
+        .msg.theirs { margin-right: auto; }
+        .msg.first { margin-top: 10px; }
+
+        .msg-avatar {
+            flex: 0 0 30px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #cbd5e1;
+            visibility: hidden;
+        }
+
+        .msg.theirs.first .msg-avatar { visibility: visible; }
+        .msg.mine .msg-avatar { display: none; }
+
+        .msg-content { display: flex; flex-direction: column; min-width: 0; }
+        .msg.mine .msg-content { align-items: flex-end; }
+        .msg.theirs .msg-content { align-items: flex-start; }
+
+        .msg-sender { margin: 0 4px 2px; color: var(--primary-color); font-size: 12px; font-weight: 700; }
+
+        .msg-bubble {
+            border-radius: 16px;
+            padding: 8px 12px;
+            font-size: 14.5px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            box-shadow: 0 1px 1px rgba(15, 23, 42, 0.08);
+        }
+
+        .msg.mine .msg-bubble { background: var(--bubble-mine); color: white; border-bottom-right-radius: 4px; }
+        .msg.theirs .msg-bubble { background: var(--bubble-theirs); color: var(--text-dark); border-bottom-left-radius: 4px; }
+
+        .msg-meta { margin-top: 2px; padding: 0 4px; color: var(--text-muted); font-size: 11px; }
+        .msg.pending .msg-bubble { opacity: 0.7; }
+
+        .chat-empty, .chat-notice {
+            margin: 40px auto;
+            max-width: 340px;
+            padding: 0 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .chat-notice h4 { margin: 10px 0 6px; color: var(--text-dark); font-size: 16px; }
+        .chat-notice i { color: var(--primary-color); font-size: 30px; }
+
+        .composer {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 8px 10px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .composer textarea {
+            flex: 1 1 auto;
+            min-height: 42px;
+            max-height: 140px;
+            resize: none;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 10px 14px;
+            font: inherit;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .composer textarea:focus { border-color: var(--primary-color); }
+
+        .send-btn {
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .send-btn:disabled { background: #94a3b8; cursor: default; }
+
+        .composer-status {
+            flex: 0 0 auto;
+            padding: 0 14px;
+            background: white;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .composer-status:not(:empty) { padding-bottom: 6px; }
+        .composer-status.error { color: var(--danger-color); }
+
+        /* Report and moderation actions under a message. */
+        .msg-actions { display: flex; gap: 10px; padding: 0 4px; }
+        .msg-actions button { border: 0; padding: 2px 0; background: none; color: var(--text-muted); font-size: 11px; cursor: pointer; }
+        .msg-actions button:hover, .msg-actions button:focus-visible { color: var(--danger-color); text-decoration: underline; }
+        .msg.moderated .msg-bubble { opacity: 0.55; border: 1px dashed var(--danger-color); }
+        .moderated-label { padding: 0 4px; color: var(--danger-color); font-size: 11px; font-weight: 700; }
+
+        .header-btn { margin-left: auto; border: 1px solid #cbd5e1; border-radius: 16px; padding: 6px 12px; background: white; color: var(--primary-color); font-size: 12px; font-weight: 700; cursor: pointer; }
+        .header-btn[hidden] { display: none; }
+
+        .reports-panel { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; padding: 10px 14px; background: #fff7ed; border-bottom: 1px solid #fed7aa; font-size: 13px; }
+        .reports-panel[hidden] { display: none; }
+        .report-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-top: 1px solid #fde4c8; }
+        .report-item:first-of-type { border-top: 0; }
+        .report-item > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+        .report-item button { flex: 0 0 auto; border: 0; border-radius: 7px; padding: 6px 9px; background: var(--danger-color); color: white; font-size: 11px; font-weight: 700; }
+        .report-meta { color: var(--text-muted); font-size: 11px; }
+
+        .dialog-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, 0.5); }
+        .dialog-backdrop[hidden] { display: none; }
+        .dialog { width: 100%; max-width: 340px; border-radius: 14px; padding: 18px; background: white; }
+        .dialog h4 { margin: 0 0 10px; }
+        .dialog select { width: 100%; margin: 6px 0 14px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px; font: inherit; }
+        .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .dialog-actions button { border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+        .dialog-actions .primary { background: var(--danger-color); color: white; }
+    </style>
+</head>
+<body>
+    <div class="chat-shell">
+        <header class="chat-header">
+            <a href="kontak.html" class="back-btn" aria-label="Kembali ke Kontak"><i class="fas fa-arrow-left"></i></a>
+            <div class="room-icon" aria-hidden="true"><i class="fas fa-users"></i></div>
+            <div class="room-info">
+                <div class="room-name">RUANG BERSAMA SIPAPUA</div>
+                <div class="room-subtitle">Chat grup jemaat SIPAPUA yang aktif</div>
+            </div>
+            <button id="reportsToggle" class="header-btn" type="button" hidden>Laporan</button>
+        </header>
+        <section id="reportsPanel" class="reports-panel" hidden aria-label="Laporan pesan"></section>
+        <div id="networkBanner" class="network-banner" hidden>Tidak ada koneksi internet. Pesan baru dapat dikirim setelah jaringan kembali.</div>
+        <main id="chatBody" class="chat-body">
+            <button id="loadOlder" class="load-older" type="button" hidden>Muat pesan sebelumnya</button>
+            <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
+            <div id="chatNotice" class="chat-notice" hidden>
+                <i class="fas fa-comment-slash" aria-hidden="true"></i>
+                <h4 id="chatNoticeTitle"></h4>
+                <div id="chatNoticeText"></div>
+            </div>
+        </main>
+        <form id="composer" class="composer" autocomplete="off">
+            <textarea id="messageInput" rows="1" maxlength="1000" placeholder="Tulis pesan untuk Ruang Bersama..." aria-label="Tulis pesan" disabled></textarea>
+            <button id="sendButton" class="send-btn" type="submit" aria-label="Kirim pesan" disabled><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
+        </form>
+        <div id="composerStatus" class="composer-status" aria-live="polite"></div>
+    </div>
+
+    <div id="reportDialog" class="dialog-backdrop" hidden>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+            <h4 id="reportTitle">Laporkan pesan</h4>
+            <div style="font-size: 13px; color: #64748b;">Laporan hanya dapat dilihat moderator. Identitas Anda tidak ditampilkan kepada jemaat lain.</div>
+            <select id="reportReason" aria-label="Alasan laporan">
+                <option value="spam">Spam atau pesan beruntun</option>
+                <option value="tidak_pantas">Isi tidak pantas</option>
+                <option value="penipuan">Penipuan</option>
+                <option value="lainnya">Lainnya</option>
+            </select>
+            <div class="dialog-actions">
+                <button id="reportCancel" type="button">Batal</button>
+                <button id="reportSend" class="primary" type="button">Laporkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="sipapua-chat-config.js"></script>
+    <script>
+        // The one default group room for every official, active account with a
+        // verified email (sipapua_group_rooms/official-general). There is no
+        // other room and no way to create one. Who may read and send is decided
+        // by the Firestore rules (firestore.chat-policy-draft.rules); the checks
+        // here only explain the state. The rules also enforce the send cooldown
+        // (rate_limits), reports and moderation; the cooldown shown here only
+        // saves a refused request.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.appspot.com",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        };
+
+        const ROOM_ID = "official-general";
+        const PAGE_SIZE = 50;
+        const MAX_LENGTH = 1000;
+        const SEND_WAIT_MS = 8000;
+        // The rules allow one message per 5 s per account; the page waits a little longer.
+        const COOLDOWN_MS = 6000;
+        // PO policy: only active master and super_admin accounts moderate.
+        const MODERATOR_ROLES = ["master", "super_admin"];
+        const DEFAULT_PHOTO = "https://ui-avatars.com/api/?name=Jemaat&background=0f766e&color=fff";
+        const NOT_ELIGIBLE = ["Ruang Bersama tidak tersedia", "Ruang Bersama hanya untuk akun SIPAPUA resmi yang aktif dengan email terverifikasi."];
+        const UNAVAILABLE = ["Ruang Bersama tidak tersedia", "Akses ke Ruang Bersama tidak tersedia untuk akun ini."];
+        const NOT_READY = ["Ruang Bersama belum disiapkan", "Pengurus SIPAPUA belum membuka Ruang Bersama."];
+        const OFFLINE = ["Ruang Bersama belum dapat dimuat", "Periksa koneksi internet, lalu buka kembali halaman ini."];
+
+        const chatBody = document.getElementById("chatBody");
+        const messageList = document.getElementById("messageList");
+        const loadOlderButton = document.getElementById("loadOlder");
+        const composer = document.getElementById("composer");
+        const messageInput = document.getElementById("messageInput");
+        const sendButton = document.getElementById("sendButton");
+        const composerStatus = document.getElementById("composerStatus");
+        const networkBanner = document.getElementById("networkBanner");
+
+        let db = null;
+        let auth = null;
+        let myUid = null;
+        let roomRef = null;
+        let messagesRef = null;
+        let sender = { name: "", photoURL: "" };
+        let unsubscribeMessages = null;
+        let oldestDoc = null;
+        let loaded = false;
+        let sending = false;
+        let chatClosed = true;
+        let canSend = false;
+        let isModerator = false;
+        let cooldownUntil = 0;
+        let cooldownTimer = null;
+        let reportTarget = null;
+        const messages = new Map();
+
+        function showNotice(notice) {
+            chatClosed = true;
+            stopListening();
+            messages.clear();
+            messageList.replaceChildren();
+            loadOlderButton.hidden = true;
+            document.getElementById("chatNoticeTitle").textContent = notice[0];
+            document.getElementById("chatNoticeText").textContent = notice[1];
+            document.getElementById("chatNotice").hidden = false;
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            document.getElementById("reportsToggle").hidden = true;
+            document.getElementById("reportsPanel").hidden = true;
+            setStatus("");
+        }
+
+        function setStatus(text, isError) {
+            composerStatus.textContent = text;
+            composerStatus.classList.toggle("error", !!isError);
+        }
+
+        function safePhoto(value) {
+            try {
+                const parsed = new URL(String(value || ""));
+                return parsed.protocol === "https:" ? parsed.href : "";
+            } catch (_) {
+                return "";
+            }
+        }
+
+        function stopListening() {
+            if (unsubscribeMessages) unsubscribeMessages();
+            unsubscribeMessages = null;
+        }
+
+        // --- Eligibility --------------------------------------------------------
+
+        // Name and photo are sent exactly as they are in the caller's own
+        // profile (the rules compare them). A photo is only sent when it is a
+        // short https URL; uploaded photos stored inline are not copied.
+        async function readOwnProfile(user) {
+            const profile = await db.collection("users").doc(user.uid).get();
+            if (!profile.exists) return null;
+            const data = profile.data();
+            const photo = typeof data.foto_profil === "string" ? data.foto_profil : "";
+            return {
+                active: String(data.status_akun || "") === "Aktif",
+                name: typeof data.nama === "string" ? data.nama : "",
+                photoURL: /^https:\/\//.test(photo) && photo.length <= 2048 ? photo : ""
+            };
+        }
+
+        async function openRoom(user) {
+            myUid = user.uid;
+            roomRef = db.collection("sipapua_group_rooms").doc(ROOM_ID);
+            messagesRef = roomRef.collection("messages");
+            setStatus("Memuat Ruang Bersama...");
+            let profile = null;
+            try {
+                [profile, isModerator] = await Promise.all([
+                    user.emailVerified ? readOwnProfile(user) : null,
+                    readModeratorRole(user)
+                ]);
+            } catch (error) {
+                console.warn("Profil belum dapat dibaca.", error.code || error);
+                return showNotice(error.code === "permission-denied" ? NOT_ELIGIBLE : OFFLINE);
+            }
+            if (auth.currentUser?.uid !== myUid) return;
+            canSend = !!(user.emailVerified && profile && profile.active);
+            // A moderator without an active member profile may moderate but not send.
+            if (!canSend && !isModerator) return showNotice(NOT_ELIGIBLE);
+            if (canSend) sender = { name: profile.name, photoURL: profile.photoURL };
+
+            try {
+                if (!(await roomRef.get()).exists) return showNotice(NOT_READY);
+            } catch (error) {
+                if (error.code === "permission-denied") return showNotice(UNAVAILABLE);
+                console.warn("Ruang Bersama belum dapat dibuka.", error.code || error);
+                return showNotice(OFFLINE);
+            }
+            chatClosed = false;
+            document.getElementById("chatNotice").hidden = true;
+            setStatus(canSend ? "" : "Akun moderator tanpa profil jemaat aktif hanya dapat memoderasi.");
+            messageInput.disabled = !canSend;
+            document.getElementById("reportsToggle").hidden = !isModerator;
+            updateSendButton();
+            listenMessages();
+        }
+
+        // UI only: shows the moderation actions. Every action is checked again
+        // by the rules against admin_users (active master, super_admin or admin).
+        async function readModeratorRole(user) {
+            try {
+                const admin = await db.collection("admin_users").doc(user.uid).get();
+                return admin.exists && admin.data().status === "active" && MODERATOR_ROLES.includes(admin.data().role);
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // --- Messages ---------------------------------------------------------
+
+        function toMessage(doc) {
+            const data = doc.data({ serverTimestamps: "estimate" });
+            const created = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
+            return {
+                id: doc.id,
+                senderUid: String(data.senderUid || ""),
+                mine: data.senderUid === myUid,
+                name: String(data.senderName || "").trim().slice(0, 100) || "Jemaat SIPAPUA",
+                photoURL: safePhoto(data.senderPhotoURL),
+                text: String(data.text || ""),
+                time: created,
+                hidden: data.hidden === true,
+                pending: doc.metadata.hasPendingWrites
+            };
+        }
+
+        // Members may only query visible messages (the rules refuse anything
+        // else); moderators see every message, hidden ones marked.
+        function messageQuery() {
+            const ordered = isModerator ? messagesRef : messagesRef.where("hidden", "==", false);
+            return ordered.orderBy("createdAt", "desc");
+        }
+
+        // A message that left a member's live window either dropped behind the
+        // newest page (still readable) or was hidden by a moderator (no longer
+        // readable): one read tells which.
+        function checkLeftMessage(id) {
+            messagesRef.doc(id).get()
+                .then((doc) => {
+                    if (!doc.exists || doc.data().hidden === true) {
+                        messages.delete(id);
+                        render(false);
+                    }
+                })
+                .catch((error) => {
+                    if (error.code === "permission-denied") {
+                        messages.delete(id);
+                        render(false);
+                    }
+                });
+        }
+
+        // One listener on the newest page while this page is open; older pages
+        // are fetched once on request. Messages that drop out of the live
+        // window stay in the map (history).
+        function listenMessages() {
+            stopListening();
+            messages.clear();
+            oldestDoc = null;
+            loaded = false;
+            unsubscribeMessages = messageQuery()
+                .limit(PAGE_SIZE)
+                .onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type !== "removed") {
+                            messages.set(change.doc.id, toMessage(change.doc));
+                        } else if (messages.get(change.doc.id)?.pending) {
+                            // A local message the server refused; older ones only left the live window.
+                            messages.delete(change.doc.id);
+                        } else if (!isModerator && messages.has(change.doc.id)) {
+                            checkLeftMessage(change.doc.id);
+                        }
+                    });
+                    if (!loaded && !snapshot.metadata.fromCache) {
+                        loaded = true;
+                        oldestDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+                        loadOlderButton.hidden = snapshot.size < PAGE_SIZE;
+                    }
+                    render(true);
+                }, (error) => {
+                    if (error.code === "permission-denied") {
+                        showNotice(UNAVAILABLE);
+                        return;
+                    }
+                    console.warn("Pesan belum dapat dimuat.", error.code || error);
+                    setStatus("Koneksi ke Ruang Bersama terputus. Buka kembali halaman ini untuk memuat ulang.", true);
+                });
+        }
+
+        loadOlderButton.addEventListener("click", async () => {
+            if (!oldestDoc || chatClosed) return;
+            loadOlderButton.disabled = true;
+            const previousHeight = chatBody.scrollHeight;
+            try {
+                const snapshot = await messageQuery().startAfter(oldestDoc).limit(PAGE_SIZE).get();
+                snapshot.docs.forEach((doc) => messages.set(doc.id, toMessage(doc)));
+                if (snapshot.docs.length) oldestDoc = snapshot.docs[snapshot.docs.length - 1];
+                loadOlderButton.hidden = snapshot.size < PAGE_SIZE;
+                render(false);
+                chatBody.scrollTop += chatBody.scrollHeight - previousHeight;
+            } catch (error) {
+                if (error.code === "permission-denied") return showNotice(UNAVAILABLE);
+                setStatus("Pesan sebelumnya belum dapat dimuat.", true);
+            } finally {
+                loadOlderButton.disabled = false;
+            }
+        });
+
+        function dayLabel(date) {
+            const today = new Date();
+            const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+            if (date.toDateString() === today.toDateString()) return "Hari ini";
+            if (date.toDateString() === yesterday.toDateString()) return "Kemarin";
+            return date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        }
+
+        // Message text and sender names are only ever set through textContent.
+        function render(followBottom) {
+            const nearBottom = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight < 80;
+            const sorted = Array.from(messages.values()).sort((a, b) => a.time - b.time || (a.id < b.id ? -1 : 1));
+            messageList.replaceChildren();
+            if (!sorted.length) {
+                if (!loaded) return;
+                const empty = document.createElement("div");
+                empty.className = "chat-empty";
+                empty.textContent = "Belum ada pesan di Ruang Bersama. Sapa jemaat SIPAPUA lainnya.";
+                messageList.appendChild(empty);
+                return;
+            }
+            let lastDay = "";
+            let lastSender = "";
+            sorted.forEach((message) => {
+                const day = message.time.toDateString();
+                if (day !== lastDay) {
+                    lastDay = day;
+                    lastSender = "";
+                    const separator = document.createElement("div");
+                    separator.className = "date-separator";
+                    separator.textContent = dayLabel(message.time);
+                    messageList.appendChild(separator);
+                }
+                const first = message.senderUid !== lastSender;
+                lastSender = message.senderUid;
+                const row = document.createElement("div");
+                row.className = "msg " + (message.mine ? "mine" : "theirs") + (first ? " first" : "") + (message.pending ? " pending" : "") + (message.hidden ? " moderated" : "");
+                row.dataset.id = message.id;
+                const avatar = document.createElement("img");
+                avatar.className = "msg-avatar";
+                avatar.alt = "";
+                avatar.src = message.photoURL || DEFAULT_PHOTO;
+                const content = document.createElement("div");
+                content.className = "msg-content";
+                if (first && !message.mine) {
+                    const name = document.createElement("div");
+                    name.className = "msg-sender";
+                    name.textContent = message.name;
+                    content.appendChild(name);
+                }
+                const bubble = document.createElement("div");
+                bubble.className = "msg-bubble";
+                bubble.textContent = message.text;
+                const meta = document.createElement("div");
+                meta.className = "msg-meta";
+                const time = message.time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                meta.textContent = message.pending
+                    ? time + " · " + (navigator.onLine ? "mengirim..." : "menunggu jaringan")
+                    : time;
+                content.append(bubble, meta);
+                if (message.hidden) {
+                    const label = document.createElement("div");
+                    label.className = "moderated-label";
+                    label.textContent = "Disembunyikan moderator";
+                    content.appendChild(label);
+                }
+                const actions = messageActions(message);
+                if (actions) content.appendChild(actions);
+                row.append(avatar, content);
+                messageList.appendChild(row);
+            });
+            if (followBottom && nearBottom) chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        function messageActions(message) {
+            if (message.pending) return null;
+            const actions = document.createElement("div");
+            actions.className = "msg-actions";
+            if (!message.mine && canSend && !message.hidden) {
+                const report = document.createElement("button");
+                report.type = "button";
+                report.className = "report-btn";
+                report.textContent = "Laporkan";
+                report.addEventListener("click", () => openReportDialog(message.id));
+                actions.appendChild(report);
+            }
+            if (isModerator) {
+                const moderate = document.createElement("button");
+                moderate.type = "button";
+                moderate.className = "moderate-btn";
+                moderate.textContent = message.hidden ? "Tampilkan lagi" : "Sembunyikan";
+                moderate.addEventListener("click", () => setHidden(message.id, !message.hidden, moderate));
+                actions.appendChild(moderate);
+            }
+            return actions.childElementCount ? actions : null;
+        }
+
+        // --- Reports ----------------------------------------------------------
+
+        // One report per member and message: the report id is fixed, so a
+        // second report of the same message is refused by the rules.
+        function openReportDialog(messageId) {
+            reportTarget = messageId;
+            document.getElementById("reportReason").value = "spam";
+            document.getElementById("reportDialog").hidden = false;
+            document.getElementById("reportReason").focus();
+        }
+
+        function closeReportDialog() {
+            reportTarget = null;
+            document.getElementById("reportDialog").hidden = true;
+        }
+
+        document.getElementById("reportCancel").addEventListener("click", closeReportDialog);
+        document.getElementById("reportSend").addEventListener("click", async () => {
+            const messageId = reportTarget;
+            if (!messageId || chatClosed) return closeReportDialog();
+            const button = document.getElementById("reportSend");
+            button.disabled = true;
+            try {
+                await roomRef.collection("reports").doc(messageId + "_" + myUid).set({
+                    messageId,
+                    reporterUid: myUid,
+                    reason: document.getElementById("reportReason").value,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                setStatus("Terima kasih. Laporan Anda sudah diterima moderator.");
+            } catch (error) {
+                // An existing report of this message by this member is refused too.
+                setStatus(error.code === "permission-denied"
+                    ? "Pesan ini sudah Anda laporkan atau tidak dapat dilaporkan."
+                    : "Laporan belum terkirim. Periksa koneksi lalu coba lagi.", true);
+            } finally {
+                button.disabled = false;
+                closeReportDialog();
+            }
+        });
+
+        // --- Moderation (moderators only; enforced by the rules) ---------------
+
+        async function setHidden(messageId, hidden, button) {
+            if (!isModerator) return;
+            if (button) button.disabled = true;
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            const logRef = roomRef.collection("moderation_log").doc();
+            const batch = db.batch();
+            batch.update(messagesRef.doc(messageId), { hidden, moderatedBy: myUid, moderatedAt: timestamp, moderationLogId: logRef.id });
+            batch.set(logRef, { action: hidden ? "hide" : "show", messageId, moderatorUid: myUid, createdAt: timestamp });
+            try {
+                await batch.commit();
+                setStatus(hidden ? "Pesan disembunyikan dari jemaat." : "Pesan ditampilkan kembali.");
+                if (!document.getElementById("reportsPanel").hidden) loadReports();
+            } catch (error) {
+                console.warn("Tindakan moderasi gagal.", error.code || error);
+                setStatus(error.code === "permission-denied" ? "Akun ini tidak berwenang memoderasi." : "Tindakan moderasi gagal. Coba lagi.", true);
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        const REASON_LABELS = { spam: "Spam", tidak_pantas: "Tidak pantas", penipuan: "Penipuan", lainnya: "Lainnya" };
+
+        // Latest reports, read once when the panel opens (no extra listener).
+        // The reporter is not shown.
+        async function loadReports() {
+            const panel = document.getElementById("reportsPanel");
+            panel.textContent = "Memuat laporan...";
+            try {
+                const snapshot = await roomRef.collection("reports").orderBy("createdAt", "desc").limit(30).get();
+                panel.replaceChildren();
+                if (snapshot.empty) {
+                    panel.textContent = "Belum ada laporan.";
+                    return;
+                }
+                for (const doc of snapshot.docs) {
+                    const report = doc.data();
+                    const item = document.createElement("div");
+                    item.className = "report-item";
+                    const info = document.createElement("div");
+                    const reported = messages.get(report.messageId);
+                    const text = document.createElement("div");
+                    text.textContent = reported ? reported.name + ": " + reported.text.slice(0, 160) : "Pesan " + report.messageId;
+                    const meta = document.createElement("div");
+                    meta.className = "report-meta";
+                    const when = report.createdAt && report.createdAt.toDate ? report.createdAt.toDate().toLocaleString("id-ID") : "";
+                    meta.textContent = (REASON_LABELS[report.reason] || "Lainnya") + (when ? " · " + when : "") + (reported && reported.hidden ? " · sudah disembunyikan" : "");
+                    info.append(text, meta);
+                    item.appendChild(info);
+                    if (!(reported && reported.hidden)) {
+                        const hide = document.createElement("button");
+                        hide.type = "button";
+                        hide.textContent = "Sembunyikan";
+                        hide.addEventListener("click", () => setHidden(report.messageId, true, hide));
+                        item.appendChild(hide);
+                    }
+                    panel.appendChild(item);
+                }
+            } catch (error) {
+                panel.textContent = error.code === "permission-denied" ? "Akun ini tidak berwenang melihat laporan." : "Laporan belum dapat dimuat.";
+            }
+        }
+
+        document.getElementById("reportsToggle").addEventListener("click", () => {
+            const panel = document.getElementById("reportsPanel");
+            panel.hidden = !panel.hidden;
+            if (!panel.hidden) loadReports();
+        });
+
+        // --- Sending ----------------------------------------------------------
+
+        // Counts down only while a cooldown is running; no Firestore call.
+        function startCooldown(ms) {
+            cooldownUntil = Date.now() + ms;
+            clearInterval(cooldownTimer);
+            cooldownTimer = setInterval(cooldownTick, 1000);
+            cooldownTick();
+        }
+
+        // Shows the seconds left (unless an error is on screen) and re-enables Send at the end.
+        function cooldownTick() {
+            const left = Math.ceil((cooldownUntil - Date.now()) / 1000);
+            if (left <= 0) {
+                clearInterval(cooldownTimer);
+                cooldownTimer = null;
+                if (composerStatus.textContent.startsWith("Tunggu ")) setStatus("");
+            } else if (!composerStatus.classList.contains("error") || composerStatus.textContent.startsWith("Tunggu ")) {
+                setStatus("Tunggu " + left + " detik sebelum mengirim pesan berikutnya.");
+            }
+            updateSendButton();
+        }
+
+        function updateSendButton() {
+            const text = messageInput.value.trim();
+            sendButton.disabled = chatClosed || !canSend || sending || Date.now() < cooldownUntil || !text || messageInput.value.length > MAX_LENGTH;
+            if (messageInput.value.length > MAX_LENGTH - 100) {
+                setStatus(messageInput.value.length + "/" + MAX_LENGTH + " karakter", messageInput.value.length > MAX_LENGTH);
+            } else if (composerStatus.textContent.includes(" karakter")) {
+                setStatus("");
+            }
+        }
+
+        function autoGrow() {
+            messageInput.style.height = "auto";
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 140) + "px";
+        }
+
+        // The message and the sender's rate document are written in one
+        // transaction: the rate document keeps the sender's earlier send times
+        // (server times) and the rules refuse the pair when the last message is
+        // under 5 s old, or 60 were sent in the last hour, or 200 in the last day.
+        // The checks below only explain a refusal before it is sent; the rules
+        // decide. A transaction needs the network, so nothing is queued offline.
+        function commitMessage(text) {
+            const rateRef = roomRef.collection("rate_limits").doc(myUid);
+            const messageRef = messagesRef.doc();
+            return db.runTransaction(async (transaction) => {
+                const rate = await transaction.get(rateRef);
+                const history = rate.exists ? (rate.data().recent || []).concat([rate.data().lastSentAt]) : [];
+                const limit = groupLimitReached(history);
+                if (limit) throw limit;
+                const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+                transaction.set(messageRef, {
+                    senderUid: myUid,
+                    senderName: sender.name,
+                    senderPhotoURL: sender.photoURL,
+                    text,
+                    createdAt: timestamp,
+                    hidden: false
+                });
+                transaction.set(rateRef, { lastSentAt: timestamp, lastMessageId: messageRef.id, recent: history.slice(-199) });
+            });
+        }
+
+        // Same windows as the rules, on the device clock: only for the message shown.
+        function groupLimitReached(history) {
+            const now = Date.now();
+            const at = (index) => history[index] && history[index].toMillis ? history[index].toMillis() : 0;
+            if (history.length >= 200 && at(history.length - 200) > now - 24 * 3600000) {
+                return { code: "group-limit", text: "Batas 200 pesan per hari tercapai.", until: at(history.length - 200) + 24 * 3600000 };
+            }
+            if (history.length >= 60 && at(history.length - 60) > now - 3600000) {
+                return { code: "group-limit", text: "Batas 60 pesan per jam tercapai.", until: at(history.length - 60) + 3600000 };
+            }
+            return null;
+        }
+
+        async function sendMessage(text, retried) {
+            const commit = commitMessage(text);
+            let timer;
+            const waited = new Promise((resolve) => { timer = setTimeout(() => resolve("waiting"), SEND_WAIT_MS); });
+            try {
+                const outcome = await Promise.race([commit.then(() => "sent"), waited]);
+                if (outcome === "sent") {
+                    setStatus("");
+                    cooldownTick();
+                    return;
+                }
+                // Slow connection: the transaction is still running.
+                setStatus("Koneksi lambat, pesan masih dikirim...");
+                commit.then(() => setStatus("")).catch((error) => sendFailed(error, text));
+            } catch (error) {
+                if (error.code === "group-limit") return limitReached(error, text);
+                // The profile name or photo may have changed since the page opened,
+                // or the account is no longer active: read the profile again once.
+                if (error.code === "permission-denied" && !retried) {
+                    try {
+                        const profile = await readOwnProfile(auth.currentUser);
+                        if (!profile || !profile.active) return showNotice(NOT_ELIGIBLE);
+                        if (profile.name !== sender.name || profile.photoURL !== sender.photoURL) {
+                            sender = { name: profile.name, photoURL: profile.photoURL };
+                            return sendMessage(text, true);
+                        }
+                        // Still eligible with the same identity: the server cooldown refused it.
+                        return sentTooFast(text);
+                    } catch (_) { /* reported below */ }
+                }
+                sendFailed(error, text);
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        function limitReached(limit, text) {
+            if (!messageInput.value) {
+                messageInput.value = text;
+                autoGrow();
+            }
+            const when = new Date(limit.until).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+            setStatus(limit.text + " Pesan belum terkirim; coba lagi setelah sekitar pukul " + when + ".", true);
+        }
+
+        function sentTooFast(text) {
+            if (!messageInput.value) {
+                messageInput.value = text;
+                autoGrow();
+            }
+            startCooldown(COOLDOWN_MS);
+            setStatus("Terlalu cepat. Pesan belum terkirim; tunggu beberapa detik lalu kirim lagi.", true);
+        }
+
+        function sendFailed(error, text) {
+            if (error.code === "permission-denied") {
+                showNotice(UNAVAILABLE);
+                return;
+            }
+            console.warn("Pesan gagal terkirim.", error.code || error);
+            if (!messageInput.value) {
+                messageInput.value = text;
+                autoGrow();
+            }
+            setStatus("Pesan gagal terkirim. Periksa koneksi lalu coba lagi.", true);
+            updateSendButton();
+        }
+
+        composer.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (sending || chatClosed || !canSend) return;
+            if (Date.now() < cooldownUntil) return setStatus("Tunggu sebentar sebelum mengirim pesan berikutnya.");
+            const text = messageInput.value.trim();
+            if (!text) return setStatus("Pesan kosong tidak dapat dikirim.", true);
+            if (text.length > MAX_LENGTH) return setStatus("Pesan maksimal " + MAX_LENGTH + " karakter.", true);
+            sending = true;
+            sendButton.disabled = true;
+            startCooldown(COOLDOWN_MS);
+            messageInput.value = "";
+            autoGrow();
+            chatBody.scrollTop = chatBody.scrollHeight;
+            try {
+                await sendMessage(text, false);
+            } finally {
+                sending = false;
+                updateSendButton();
+            }
+        });
+
+        messageInput.addEventListener("input", () => { autoGrow(); updateSendButton(); });
+
+        // Enter sends on a physical keyboard; on touch screens Enter adds a new line.
+        messageInput.addEventListener("keydown", (event) => {
+            const touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+            if (event.key === "Enter" && !event.shiftKey && !touch && !event.isComposing) {
+                event.preventDefault();
+                composer.requestSubmit();
+            }
+        });
+
+        function updateNetwork() {
+            networkBanner.hidden = navigator.onLine;
+            if (!chatClosed) render(false);
+        }
+        window.addEventListener("online", updateNetwork);
+        window.addEventListener("offline", updateNetwork);
+        window.addEventListener("pagehide", stopListening);
+
+        // --- Start ------------------------------------------------------------
+
+        if (!window.SIPAPUA_CHAT || !window.SIPAPUA_CHAT.isGroupEnabled || !window.SIPAPUA_CHAT.isGroupEnabled()) {
+            showNotice(["Chat grup belum tersedia", window.SIPAPUA_CHAT && window.SIPAPUA_CHAT.groupMessage ? window.SIPAPUA_CHAT.groupMessage : "Chat grup belum tersedia."]);
+        } else {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            updateNetwork();
+            auth.onAuthStateChanged((user) => {
+                stopListening();
+                if (!user) return showNotice(["Login diperlukan", "Silakan login melalui halaman utama SIPAPUA."]);
+                openRoom(user);
+            });
+        }
+    </script>
+</body>
+</html>
