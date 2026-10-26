@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Chat - Pondok Pemulihan Papua</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --danger-color: #dc2626;
+            --bg-color: #f1f5f9;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --bubble-mine: #2563eb;
+            --bubble-theirs: #ffffff;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-dark);
+        }
+
+        /* Full screen on phones, a centred column on desktop. */
+        .chat-shell {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 720px;
+            height: 100vh;
+            height: 100dvh;
+            margin: 0 auto;
+            background: #e9eef5;
+        }
+
+        @media (min-width: 760px) {
+            .chat-shell { box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12); }
+        }
+
+        .chat-header {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            padding-top: max(10px, env(safe-area-inset-top));
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .back-btn {
+            display: flex;
+            flex: 0 0 38px;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 18px;
+        }
+
+        .back-btn:hover, .back-btn:focus-visible { background: #f1f5f9; }
+
+        .peer-photo {
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e2e8f0;
+        }
+
+        .peer-info { min-width: 0; }
+
+        .peer-name {
+            overflow: hidden;
+            font-weight: 600;
+            font-size: 16px;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .peer-subtitle { color: var(--text-muted); font-size: 12px; }
+
+        .network-banner {
+            flex: 0 0 auto;
+            padding: 8px 14px;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .chat-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 12px 12px 4px;
+            overscroll-behavior: contain;
+        }
+
+        .load-older {
+            display: block;
+            margin: 0 auto 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 6px 14px;
+            background: white;
+            color: var(--primary-color);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* The display rule above would otherwise override the hidden attribute. */
+        .load-older[hidden] { display: none; }
+
+        .date-separator {
+            margin: 12px auto 8px;
+            width: fit-content;
+            border-radius: 10px;
+            padding: 3px 10px;
+            background: rgba(255, 255, 255, 0.85);
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .msg {
+            display: flex;
+            flex-direction: column;
+            max-width: min(78%, 520px);
+            margin: 3px 0;
+        }
+
+        .msg.mine { align-items: flex-end; margin-left: auto; }
+        .msg.theirs { align-items: flex-start; margin-right: auto; }
+
+        .msg-bubble {
+            border-radius: 16px;
+            padding: 8px 12px;
+            font-size: 14.5px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            box-shadow: 0 1px 1px rgba(15, 23, 42, 0.08);
+        }
+
+        .msg.mine .msg-bubble { background: var(--bubble-mine); color: white; border-bottom-right-radius: 4px; }
+        .msg.theirs .msg-bubble { background: var(--bubble-theirs); color: var(--text-dark); border-bottom-left-radius: 4px; }
+
+        .msg-meta { margin-top: 2px; padding: 0 4px; color: var(--text-muted); font-size: 11px; }
+        .msg.pending .msg-bubble { opacity: 0.7; }
+
+        .chat-empty, .chat-notice {
+            margin: 40px auto;
+            max-width: 340px;
+            padding: 0 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .chat-notice h4 { margin: 10px 0 6px; color: var(--text-dark); font-size: 16px; }
+        .chat-notice i { color: var(--primary-color); font-size: 30px; }
+
+        .composer {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 8px 10px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .composer textarea {
+            flex: 1 1 auto;
+            min-height: 42px;
+            max-height: 140px;
+            resize: none;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 10px 14px;
+            font: inherit;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .composer textarea:focus { border-color: var(--primary-color); }
+
+        .send-btn {
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .send-btn:disabled { background: #94a3b8; cursor: default; }
+
+        .composer-status {
+            flex: 0 0 auto;
+            min-height: 0;
+            padding: 0 14px;
+            background: white;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .composer-status:not(:empty) { padding-bottom: 6px; }
+        .composer-status.error { color: var(--danger-color); }
+    </style>
+</head>
+<body>
+    <div class="chat-shell">
+        <header class="chat-header">
+            <a href="kontak.html" class="back-btn" aria-label="Kembali ke Kontak"><i class="fas fa-arrow-left"></i></a>
+            <img id="peerPhoto" class="peer-photo" alt="Foto profil" src="https://ui-avatars.com/api/?name=Jemaat&background=2563eb&color=fff">
+            <div class="peer-info">
+                <div id="peerName" class="peer-name">Chat Jemaat</div>
+                <div class="peer-subtitle">Chat pribadi</div>
+            </div>
+        </header>
+        <div id="networkBanner" class="network-banner" hidden>Tidak ada koneksi internet. Pesan akan dikirim saat jaringan kembali.</div>
+        <main id="chatBody" class="chat-body">
+            <button id="loadOlder" class="load-older" type="button" hidden>Muat pesan sebelumnya</button>
+            <div id="messageList" class="message-list" role="log" aria-live="polite"></div>
+            <div id="chatNotice" class="chat-notice" hidden>
+                <i class="fas fa-comment-slash" aria-hidden="true"></i>
+                <h4 id="chatNoticeTitle"></h4>
+                <div id="chatNoticeText"></div>
+            </div>
+        </main>
+        <form id="composer" class="composer" autocomplete="off">
+            <textarea id="messageInput" rows="1" maxlength="1000" placeholder="Tulis pesan..." aria-label="Tulis pesan" disabled></textarea>
+            <button id="sendButton" class="send-btn" type="submit" aria-label="Kirim pesan" disabled><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
+        </form>
+        <div id="composerStatus" class="composer-status" aria-live="polite"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="sipapua-chat-config.js"></script>
+    <script>
+        // Private 1:1 text chat between two accepted contacts (mutual_chats).
+        // Who may read and send is decided by the Firestore rules
+        // (firestore.chat-draft.rules); the checks here only explain the state.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            storageBucket: "boby-apps-project.appspot.com",
+            messagingSenderId: "125984859692",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        };
+
+        const PAGE_SIZE = 50;
+        const MAX_LENGTH = 1000;
+        const SEND_WAIT_MS = 8000;
+        const DEFAULT_PHOTO = "https://ui-avatars.com/api/?name=Jemaat&background=2563eb&color=fff";
+        const NOT_YET = ["Chat belum tersedia", "Chat tersedia setelah permintaan pertemanan diterima oleh kedua pihak."];
+        const UNAVAILABLE = ["Chat tidak tersedia", "Chat dengan pengguna ini tidak tersedia."];
+
+        const peerUid = String(new URLSearchParams(location.search).get("uid") || "").trim();
+        const chatBody = document.getElementById("chatBody");
+        const messageList = document.getElementById("messageList");
+        const loadOlderButton = document.getElementById("loadOlder");
+        const composer = document.getElementById("composer");
+        const messageInput = document.getElementById("messageInput");
+        const sendButton = document.getElementById("sendButton");
+        const composerStatus = document.getElementById("composerStatus");
+        const networkBanner = document.getElementById("networkBanner");
+
+        let db = null;
+        let auth = null;
+        let myUid = null;
+        let chatRef = null;
+        let messagesRef = null;
+        let chatExists = false;
+        let unsubscribeMessages = null;
+        let oldestDoc = null;
+        let loaded = false;
+        let sending = false;
+        let chatClosed = true;
+        let peerName = "Jemaat SIPAPUA";
+        const messages = new Map();
+
+        function showNotice(notice) {
+            chatClosed = true;
+            stopListening();
+            messages.clear();
+            messageList.replaceChildren();
+            loadOlderButton.hidden = true;
+            document.getElementById("chatNoticeTitle").textContent = notice[0];
+            document.getElementById("chatNoticeText").textContent = notice[1];
+            document.getElementById("chatNotice").hidden = false;
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            setStatus("");
+        }
+
+        function setStatus(text, isError) {
+            composerStatus.textContent = text;
+            composerStatus.classList.toggle("error", !!isError);
+        }
+
+        function safePhoto(value) {
+            try {
+                const parsed = new URL(String(value || ""));
+                return parsed.protocol === "https:" ? parsed.href : "";
+            } catch (_) {
+                return "";
+            }
+        }
+
+        function stopListening() {
+            if (unsubscribeMessages) unsubscribeMessages();
+            unsubscribeMessages = null;
+        }
+
+        // --- Relationship -----------------------------------------------------
+
+        // The caller's own view of the pair: own contact entry, own block and
+        // the pair request. A block or removal by the other side is only
+        // visible as a rules refusal when the conversation is opened.
+        async function relationshipState() {
+            const pairId = [myUid, peerUid].sort().join("_");
+            const [contact, block, request] = await Promise.all([
+                db.collection("contacts").doc(myUid).collection("friends").doc(peerUid).get(),
+                db.collection("user_blocks").doc(myUid).collection("blocked").doc(peerUid).get(),
+                // Rules deny reading a pair request that does not exist.
+                db.collection("friend_requests").doc(pairId).get().catch(() => null)
+            ]);
+            const status = request && request.exists ? request.data().status : "";
+            if (block.exists || status === "blocked") return { state: "unavailable" };
+            if (!contact.exists) return { state: status === "accepted" ? "unavailable" : "not-yet" };
+            if (status !== "accepted" || contact.data().status !== "accepted") return { state: "not-yet" };
+            return { state: "ok", contact: contact.data() };
+        }
+
+        async function openChat(user) {
+            myUid = user.uid;
+            const pairId = [myUid, peerUid].sort().join("_");
+            chatRef = db.collection("mutual_chats").doc(pairId);
+            messagesRef = chatRef.collection("messages");
+            setStatus("Memuat percakapan...");
+            let relation;
+            try {
+                relation = await relationshipState();
+            } catch (error) {
+                console.warn("Status pertemanan belum dapat dibaca.", error.code || error);
+                showNotice(["Chat belum dapat dimuat", "Periksa koneksi internet, lalu buka kembali halaman ini."]);
+                return;
+            }
+            if (auth.currentUser?.uid !== myUid) return;
+            if (relation.state === "not-yet") return showNotice(NOT_YET);
+            if (relation.state !== "ok") return showNotice(UNAVAILABLE);
+
+            peerName = String(relation.contact.displayName || "Jemaat SIPAPUA").slice(0, 100);
+            document.getElementById("peerName").textContent = peerName;
+            document.getElementById("peerPhoto").src = safePhoto(relation.contact.photoURL) || DEFAULT_PHOTO;
+
+            try {
+                chatExists = (await chatRef.get()).exists;
+            } catch (error) {
+                if (error.code === "permission-denied") return showNotice(UNAVAILABLE);
+                console.warn("Percakapan belum dapat dibuka.", error.code || error);
+                return showNotice(["Chat belum dapat dimuat", "Periksa koneksi internet, lalu buka kembali halaman ini."]);
+            }
+            chatClosed = false;
+            document.getElementById("chatNotice").hidden = true;
+            setStatus("");
+            messageInput.disabled = false;
+            updateSendButton();
+            listenMessages();
+        }
+
+        // --- Messages ---------------------------------------------------------
+
+        function toMessage(doc) {
+            const data = doc.data({ serverTimestamps: "estimate" });
+            const created = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
+            return {
+                id: doc.id,
+                mine: data.senderUid === myUid,
+                text: String(data.text || ""),
+                time: created,
+                pending: doc.metadata.hasPendingWrites
+            };
+        }
+
+        // One listener on the newest page; older pages are fetched once on request.
+        // Messages that drop out of the live window stay in the map (history).
+        function listenMessages() {
+            stopListening();
+            messages.clear();
+            oldestDoc = null;
+            loaded = false;
+            unsubscribeMessages = messagesRef
+                .orderBy("createdAt", "desc")
+                .limit(PAGE_SIZE)
+                .onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type !== "removed") {
+                            messages.set(change.doc.id, toMessage(change.doc));
+                        } else if (messages.get(change.doc.id)?.pending) {
+                            // A local message the server refused; older ones only left the live window.
+                            messages.delete(change.doc.id);
+                        }
+                    });
+                    if (!loaded && !snapshot.metadata.fromCache) {
+                        loaded = true;
+                        oldestDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+                        loadOlderButton.hidden = snapshot.size < PAGE_SIZE;
+                    }
+                    render(true);
+                }, (error) => {
+                    if (error.code === "permission-denied") {
+                        showNotice(UNAVAILABLE);
+                        return;
+                    }
+                    console.warn("Pesan belum dapat dimuat.", error.code || error);
+                    setStatus("Koneksi ke chat terputus. Buka kembali halaman ini untuk memuat ulang.", true);
+                });
+        }
+
+        loadOlderButton.addEventListener("click", async () => {
+            if (!oldestDoc || chatClosed) return;
+            loadOlderButton.disabled = true;
+            const previousHeight = chatBody.scrollHeight;
+            try {
+                const snapshot = await messagesRef.orderBy("createdAt", "desc").startAfter(oldestDoc).limit(PAGE_SIZE).get();
+                snapshot.docs.forEach((doc) => messages.set(doc.id, toMessage(doc)));
+                if (snapshot.docs.length) oldestDoc = snapshot.docs[snapshot.docs.length - 1];
+                loadOlderButton.hidden = snapshot.size < PAGE_SIZE;
+                render(false);
+                chatBody.scrollTop += chatBody.scrollHeight - previousHeight;
+            } catch (error) {
+                if (error.code === "permission-denied") return showNotice(UNAVAILABLE);
+                setStatus("Pesan sebelumnya belum dapat dimuat.", true);
+            } finally {
+                loadOlderButton.disabled = false;
+            }
+        });
+
+        function dayLabel(date) {
+            const today = new Date();
+            const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+            if (date.toDateString() === today.toDateString()) return "Hari ini";
+            if (date.toDateString() === yesterday.toDateString()) return "Kemarin";
+            return date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        }
+
+        // Message text is only ever set through textContent.
+        function render(followBottom) {
+            const nearBottom = chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight < 80;
+            const sorted = Array.from(messages.values()).sort((a, b) => a.time - b.time || (a.id < b.id ? -1 : 1));
+            messageList.replaceChildren();
+            if (!sorted.length) {
+                if (!loaded) return;
+                const empty = document.createElement("div");
+                empty.className = "chat-empty";
+                empty.textContent = "Belum ada pesan. Mulai percakapan dengan " + peerName + ".";
+                messageList.appendChild(empty);
+                return;
+            }
+            let lastDay = "";
+            sorted.forEach((message) => {
+                const day = message.time.toDateString();
+                if (day !== lastDay) {
+                    lastDay = day;
+                    const separator = document.createElement("div");
+                    separator.className = "date-separator";
+                    separator.textContent = dayLabel(message.time);
+                    messageList.appendChild(separator);
+                }
+                const row = document.createElement("div");
+                row.className = "msg " + (message.mine ? "mine" : "theirs") + (message.pending ? " pending" : "");
+                const bubble = document.createElement("div");
+                bubble.className = "msg-bubble";
+                bubble.textContent = message.text;
+                const meta = document.createElement("div");
+                meta.className = "msg-meta";
+                const time = message.time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                meta.textContent = message.pending
+                    ? time + " · " + (navigator.onLine ? "mengirim..." : "menunggu jaringan")
+                    : time;
+                row.append(bubble, meta);
+                messageList.appendChild(row);
+            });
+            if (followBottom && nearBottom) chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        // --- Sending ----------------------------------------------------------
+
+        function updateSendButton() {
+            const text = messageInput.value.trim();
+            sendButton.disabled = chatClosed || sending || !text || messageInput.value.length > MAX_LENGTH;
+            if (messageInput.value.length > MAX_LENGTH - 100) {
+                setStatus(messageInput.value.length + "/" + MAX_LENGTH + " karakter", messageInput.value.length > MAX_LENGTH);
+            } else if (composerStatus.textContent.includes(" karakter")) {
+                setStatus("");
+            }
+        }
+
+        function autoGrow() {
+            messageInput.style.height = "auto";
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 140) + "px";
+        }
+
+        function commitMessage(text) {
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            const batch = db.batch();
+            if (chatExists) {
+                batch.update(chatRef, { lastMessageAt: timestamp });
+            } else {
+                batch.set(chatRef, { members: [myUid, peerUid].sort(), createdAt: timestamp, lastMessageAt: timestamp });
+            }
+            batch.set(messagesRef.doc(), { senderUid: myUid, text, createdAt: timestamp });
+            return batch.commit();
+        }
+
+        async function sendMessage(text, retried) {
+            const commit = commitMessage(text);
+            let timer;
+            const waited = new Promise((resolve) => { timer = setTimeout(() => resolve("waiting"), SEND_WAIT_MS); });
+            try {
+                const outcome = await Promise.race([commit.then(() => "sent"), waited]);
+                if (outcome === "sent") {
+                    chatExists = true;
+                    setStatus("");
+                    return;
+                }
+                // Offline: Firestore keeps the write and sends it later.
+                setStatus("Menunggu jaringan. Pesan akan dikirim otomatis.");
+                commit.then(() => { chatExists = true; setStatus(""); }).catch((error) => sendFailed(error, text));
+            } catch (error) {
+                // The other member may have created the conversation meanwhile.
+                if (error.code === "permission-denied" && !chatExists && !retried) {
+                    try {
+                        chatExists = (await chatRef.get()).exists;
+                        if (chatExists) return sendMessage(text, true);
+                    } catch (_) { /* reported below */ }
+                }
+                sendFailed(error, text);
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        function sendFailed(error, text) {
+            if (error.code === "permission-denied") {
+                showNotice(UNAVAILABLE);
+                return;
+            }
+            console.warn("Pesan gagal terkirim.", error.code || error);
+            if (!messageInput.value) {
+                messageInput.value = text;
+                autoGrow();
+            }
+            setStatus("Pesan gagal terkirim. Periksa koneksi lalu coba lagi.", true);
+            updateSendButton();
+        }
+
+        composer.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (sending || chatClosed) return;
+            const text = messageInput.value.trim();
+            if (!text) return setStatus("Pesan kosong tidak dapat dikirim.", true);
+            if (text.length > MAX_LENGTH) return setStatus("Pesan maksimal " + MAX_LENGTH + " karakter.", true);
+            sending = true;
+            sendButton.disabled = true;
+            setStatus("Mengirim...");
+            messageInput.value = "";
+            autoGrow();
+            chatBody.scrollTop = chatBody.scrollHeight;
+            try {
+                await sendMessage(text, false);
+            } finally {
+                sending = false;
+                updateSendButton();
+            }
+        });
+
+        messageInput.addEventListener("input", () => { autoGrow(); updateSendButton(); });
+
+        // Enter sends on a physical keyboard; on touch screens Enter adds a new line.
+        messageInput.addEventListener("keydown", (event) => {
+            const touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+            if (event.key === "Enter" && !event.shiftKey && !touch && !event.isComposing) {
+                event.preventDefault();
+                composer.requestSubmit();
+            }
+        });
+
+        function updateNetwork() {
+            networkBanner.hidden = navigator.onLine;
+            if (!chatClosed) render(false);
+        }
+        window.addEventListener("online", updateNetwork);
+        window.addEventListener("offline", updateNetwork);
+        window.addEventListener("pagehide", stopListening);
+
+        // --- Start ------------------------------------------------------------
+
+        // Firebase UIDs are letters and digits; "_" would break the pair id.
+        const validPeer = /^[A-Za-z0-9-]{1,128}$/.test(peerUid);
+        if (!window.SIPAPUA_CHAT || !window.SIPAPUA_CHAT.isEnabled()) {
+            showNotice(["Chat belum tersedia", window.SIPAPUA_CHAT ? window.SIPAPUA_CHAT.message : "Chat pribadi belum tersedia."]);
+        } else if (!validPeer) {
+            showNotice(["Kontak tidak ditemukan", "Buka chat dari daftar Kontak Jemaat."]);
+        } else {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            updateNetwork();
+            auth.onAuthStateChanged((user) => {
+                stopListening();
+                if (!user) return showNotice(["Login diperlukan", "Silakan login melalui halaman utama SIPAPUA."]);
+                if (user.uid === peerUid) return showNotice(["Kontak tidak ditemukan", "Buka chat dari daftar Kontak Jemaat."]);
+                openChat(user);
+            });
+        }
+    </script>
+</body>
+</html>
