@@ -7,8 +7,8 @@
 // disabled and its page makes no Firestore call at all. Set a gate to true only
 // after those rules are reviewed and deployed with the PO's approval.
 (function () {
-    var enabled = false;
-    var groupEnabled = false;
+    var enabled = true;
+    var groupEnabled = true;
     window.SIPAPUA_CHAT = Object.freeze({
         isEnabled: function () { return enabled === true; },
         isGroupEnabled: function () { return groupEnabled === true; },
