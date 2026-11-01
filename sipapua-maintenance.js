@@ -6,7 +6,7 @@
 //   memberCard:   QR card in menu.html (getMyCardToken) and every card scan:
 //                 qrcode.html, bio-singkat-jemaat.html, menu.html (lookupMemberCard)
 (function () {
-    var paused = { registration: true, memberCard: true };
+    var paused = { registration: false, memberCard: true };
     var messages = {
         registration: "Pendaftaran anggota baru sedang dalam pemeliharaan untuk peningkatan keamanan data jemaat. " +
             "Silakan coba kembali dalam beberapa waktu atau hubungi pengurus Pondok Pemulihan Papua.",
