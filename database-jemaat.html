@@ -2434,6 +2434,8 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="sipapua-registration.js"></script>
+<script src="sipapua-registration-preparation.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -2452,6 +2454,10 @@ const firebaseConfig = {
 
     const auth = firebase.auth();
     const db = firebase.firestore();
+    function originalRegistrationService() {
+        if (!window.SIPAPUA_REGISTRATION) throw new Error("Komponen pendaftaran belum termuat. Muat ulang halaman sebelum mengubah data.");
+        return window.SIPAPUA_REGISTRATION.create(db, firebase.auth(), () => firebase.firestore.FieldValue.serverTimestamp());
+    }
 
     const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
     const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
@@ -5238,23 +5244,15 @@ snapshot.forEach(doc => {
             return;
         }
 
-        const ids =
-            checkboxes.map(
-                checkbox => checkbox.value
-            );
-
+        const ids = Array.from(new Set(checkboxes.map(checkbox => checkbox.value)));
+        let completed = 0;
         try {
-
-            const batch =
-                db.batch();
-
-            ids.forEach(id => {
-                batch.delete(
-                    db.collection("users").doc(id)
-                );
-            });
-
-            await batch.commit();
+            const registration = originalRegistrationService();
+            for (let start = 0; start < ids.length; start += 4) {
+                const group = ids.slice(start, start + 4);
+                await registration.deleteProfiles(group);
+                completed += group.length;
+            }
 
             const checkAll =
                 document.getElementById("checkAll");
@@ -5277,7 +5275,7 @@ snapshot.forEach(doc => {
             );
 
             alert(
-                "Gagal menghapus data jemaat. Silakan coba lagi."
+                `Penghapusan terkonfirmasi: ${completed} dari ${ids.length} profil. Sisa penghapusan belum terkonfirmasi; muat ulang daftar sebelum mencoba kembali.`
             );
         }
     }
@@ -6962,7 +6960,11 @@ snapshot.forEach(doc => {
             return;
         }
         if (confirm("Hapus data ini secara permanen?")) {
-            await db.collection("users").doc(id).delete();
+            try {
+                await originalRegistrationService().deleteProfile(id);
+            } catch (error) {
+                alert("Penghapusan belum terkonfirmasi. Muat ulang daftar sebelum mencoba kembali. " + error.message);
+            }
         }
     }
     function bindDemografiFilterEvents() {

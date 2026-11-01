@@ -443,6 +443,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="sipapua-registration.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
 
@@ -460,6 +461,10 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const auth = firebase.auth();
     const db = firebase.firestore();
+    function originalRegistrationService() {
+        if (!window.SIPAPUA_REGISTRATION) throw new Error("Komponen pendaftaran belum termuat. Muat ulang halaman sebelum mengubah data.");
+        return window.SIPAPUA_REGISTRATION.create(db, firebase.auth(), () => firebase.firestore.FieldValue.serverTimestamp());
+    }
     const EDIT_ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
     let editAdminVerified = false;
     const urlParams = new URLSearchParams(window.location.search);
@@ -471,6 +476,8 @@
     }
 
     let txtProv = "", txtKota = "", txtKec = "", txtDesa = "";
+    let originalMemberRegion = "";
+    let originalChildData = [];
 
     async function verifyActiveEditAdmin(user = auth.currentUser) {
         if (!user || !auth.currentUser || auth.currentUser.uid !== user.uid) {
@@ -1016,6 +1023,7 @@
             if (doc.exists) {
                 const data = doc.data();
                 const existingData = data;
+                originalChildData = Array.isArray(data.anak) ? data.anak : [];
 
                 document.getElementById('nama_lengkap').value =
                     data.nama ||
@@ -1023,7 +1031,7 @@
                     '';
                 document.getElementById('nij').value = data.nij || '';
                 document.getElementById('tanggal_lahir_murni').value =
-                    data.tanggal_lahir_murni || '';
+                    data.tgl_lahir || data.tanggal_lahir_murni || '';
 
                 document.getElementById('jenis_kelamin').value =
 
@@ -1210,7 +1218,8 @@
                     '';
                 document.getElementById('status_akun').value = data.status_akun || 'Pending';
                 
-                document.getElementById('wilayah').value = data.wilayah || '';
+                originalMemberRegion = data.wilayah || '';
+                document.getElementById('wilayah').value = ({ARS1:'Arso 1',ARS2:'Arso 2'})[originalMemberRegion] || originalMemberRegion;
                 updateKomsel(data.komsel);
                 document.getElementById('jabatan').value = data.jabatan || 'Anggota Jemaat';
                 document.getElementById('sub_bidang').value =
@@ -1227,12 +1236,12 @@
                 if(data.provinsi) {
                     const provEl = Array.from(document.getElementById('provinsi').options).find(o => o.text === data.provinsi);
                     if(provEl) {
-                        await loadKota(provEl.value, data.kota);
-                        const kotaEl = Array.from(document.getElementById('kota').options).find(o => o.text === data.kota);
+                        await loadKota(provEl.value, data.kabupaten_kota || data.kota);
+                        const kotaEl = Array.from(document.getElementById('kota').options).find(o => o.text === (data.kabupaten_kota || data.kota));
                         if(kotaEl) {
                             await loadKecamatan(kotaEl.value, data.kecamatan);
                             const kecEl = Array.from(document.getElementById('kecamatan').options).find(o => o.text === data.kecamatan);
-                            if(kecEl) await loadDesa(kecEl.value, data.desa);
+                            if(kecEl) await loadDesa(kecEl.value, data.desa_kelurahan || data.desa);
                         }
                     }
                 }
@@ -1270,6 +1279,23 @@
                         placeholder.style.display =
                             "none";
                     }
+                }
+                // Keep actual stored choices when the old editor's option list
+                // uses different labels from the original registration form.
+                const storedChoices = {
+                    orang_tua_berjemaat: data.orang_tua_berjemaat,
+                    wilayah_orang_tua: data.wilayah_orang_tua,
+                    komsel: data.komsel, jabatan: data.jabatan,
+                    sub_bidang: data.sub_jabatan || data.sub_bidang,
+                    fungsi_spesifik: data.pelayanan || data.fungsi_spesifik,
+                    detail_pelayanan: data.detail_pelayanan,
+                    status_akun: data.status_akun
+                };
+                for (const [id, value] of Object.entries(storedChoices)) {
+                    const field = document.getElementById(id);
+                    if (!field || typeof value !== 'string') continue;
+                    if (field.tagName === 'SELECT' && value && !Array.from(field.options).some(o => o.value === value)) field.add(new Option(value, value));
+                    field.value = value;
                 }
                 document.getElementById('loading').style.display = 'none';
             } else {
@@ -1564,10 +1590,11 @@ const emailNormalized = document.getElementById("email").value.trim().toLowerCas
 
             const anakData =
                 editedChildInputs.map(
-                    (input) => ({
-                        nama:
-                            input.value.trim()
-                    })
+                    (input, index) => {
+                        const nama = input.value.trim();
+                        const original = originalChildData[index];
+                        return original && original.nama === nama ? { ...original, nama } : { nama, uid: "", nij: "" };
+                    }
                 );
 
             const jumlahAnak =
@@ -1671,16 +1698,16 @@ const emailNormalized = document.getElementById("email").value.trim().toLowerCas
                     document.getElementById('alamat').value,
 
                 provinsi_lahir:
-                    document.getElementById('provinsi_lahir').value,
+                    (document.getElementById('provinsi_lahir').selectedOptions[0]?.dataset.nama || document.getElementById('provinsi_lahir').value),
 
                 kota_lahir:
-                    document.getElementById('kota_lahir').value,
+                    (document.getElementById('kota_lahir').selectedOptions[0]?.dataset.nama || document.getElementById('kota_lahir').value),
 
                 kecamatan_lahir:
-                    document.getElementById('kecamatan_lahir').value,
+                    (document.getElementById('kecamatan_lahir').selectedOptions[0]?.dataset.nama || document.getElementById('kecamatan_lahir').value),
 
                 desa_lahir:
-                    document.getElementById('desa_lahir').value,
+                    (document.getElementById('desa_lahir').selectedOptions[0]?.dataset.nama || document.getElementById('desa_lahir').value),
 
                 pekerjaan:
                     document.getElementById('pekerjaan').value,
@@ -1758,7 +1785,9 @@ const emailNormalized = document.getElementById("email").value.trim().toLowerCas
                 throw new Error("Hanya administrator aktif yang dapat menyimpan perubahan.");
             }
 
-            await db.collection("users").doc(userId).update(updateData);
+            const originalRegionLabel = ({ARS1:'Arso 1',ARS2:'Arso 2'})[originalMemberRegion] || originalMemberRegion;
+            if (updateData.wilayah === originalRegionLabel) updateData.wilayah = originalMemberRegion;
+            await originalRegistrationService().updateProfile(userId, updateData);
             alert("Data User Berhasil Diperbarui!");
             window.location.href = 'database-jemaat.html';
         } catch (error) {

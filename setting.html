@@ -114,6 +114,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="sipapua-registration.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -127,6 +128,10 @@
 
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
+    function originalRegistrationService() {
+        if (!window.SIPAPUA_REGISTRATION) throw new Error("Komponen pendaftaran belum termuat. Muat ulang halaman sebelum mengubah data.");
+        return window.SIPAPUA_REGISTRATION.create(db, firebase.auth(), () => firebase.firestore.FieldValue.serverTimestamp());
+    }
     const auth = firebase.auth();
     let authenticatedUser = null;
     let accountDeletionCompleted = false;
@@ -205,34 +210,41 @@
             return;
         }
 
+        let profileEmailCommitted = false;
+        const oldEmail = currentUser.email;
         try {
-            const oldEmail = currentUser.email;
             const emailChanged = nEmail.toLowerCase() !== String(oldEmail || "").toLowerCase();
             const emailNormalized = nEmail.trim().toLowerCase();
 
-            // Profiles are readable by email only while the signed-in
-            // account still holds that verified email, so look it up
-            // before the email changes.
-            const snap = await db
-                .collection("users")
-                .where("email", "==", oldEmail)
-                .get();
-
-            if (emailChanged) {
-                await currentUser.updateEmail(nEmail);
+            const registration = originalRegistrationService();
+            await registration.assertEditingReady();
+            let profile = await db.collection("users").doc(currentUser.uid).get({ source: "server" });
+            if (!profile.exists) {
+                const legacy = await db.collection("users").where("email", "==", oldEmail).get({ source: "server" });
+                if (legacy.size !== 1) throw new Error("Profil akun belum dapat ditentukan. Hubungi administrator.");
+                profile = legacy.docs[0];
             }
-
+            if (profile.id !== currentUser.uid && profile.data().uid !== currentUser.uid) {
+                throw new Error("Profil lama perlu dicocokkan dengan UID akun oleh administrator sebelum email diubah.");
+            }
+            if (emailChanged) await currentUser.updateEmail(nEmail);
+            try {
+                await registration.updateProfile(profile.id, { email: nEmail, email_normalized: emailNormalized });
+                profileEmailCommitted = emailChanged;
+            } catch (profileError) {
+                const confirmed = await profile.ref.get({ source: "server" }).catch(() => null);
+                const confirmedEmail = confirmed && confirmed.exists ? String(confirmed.data().email || "").trim().toLowerCase() : null;
+                if (confirmedEmail === emailNormalized) {
+                    profileEmailCommitted = emailChanged;
+                } else if (confirmedEmail === String(oldEmail || "").trim().toLowerCase() && emailChanged) {
+                    try { await currentUser.updateEmail(oldEmail); }
+                    catch (_) { throw new Error("Email Authentication sudah berubah, tetapi profil belum sesuai. Hubungi administrator sebelum mencoba perubahan berikutnya."); }
+                    throw profileError;
+                } else {
+                    throw new Error("Perubahan profil belum dapat dipastikan dari server. Periksa koneksi dan status akun sebelum mencoba kembali.");
+                }
+            }
             await currentUser.updatePassword(nPass);
-
-            if (!snap.empty) {
-                await db
-                    .collection("users")
-                    .doc(snap.docs[0].id)
-                    .update({
-                        email: nEmail,
-                        email_normalized: emailNormalized
-                    });
-            }
 
             localStorage.setItem("userEmail", nEmail);
 
@@ -268,6 +280,8 @@
                 pesan = "Password terlalu lemah. Gunakan password yang lebih kuat.";
             }
 
+            if (profileEmailCommitted) pesan = "Email akun dan profil sudah diperbarui. Perubahan password belum terkonfirmasi. " + pesan;
+            if (currentUser.email) localStorage.setItem("userEmail", currentUser.email);
             jalankanNotif(
                 "fa-circle-xmark",
                 "#dc3545",
@@ -340,7 +354,7 @@
 
             // Delete every verifiably owned profile before deleting Firebase Auth.
             for (const profileRef of profileRefs.values()) {
-                await profileRef.delete();
+                await originalRegistrationService().deleteProfile(profileRef.id);
             }
 
             await currentUser.delete();

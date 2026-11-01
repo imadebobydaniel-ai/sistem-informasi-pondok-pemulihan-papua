@@ -258,6 +258,19 @@
            </div>
         </div>
     </div>
+
+    <!-- Login dengan email yang belum terverifikasi: kirim ulang hanya lewat tombol. -->
+    <div id="verifyModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Email Belum Terverifikasi</h3>
+            <p id="verifyMessage" style="font-size: 13px; color: #666; margin-bottom: 10px;"></p>
+            <p id="verifyCode" style="display: none; font-size: 12px; color: #b02a37; margin-bottom: 10px;"></p>
+            <div style="display: flex; gap: 10px;">
+                <button id="resendVerification" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">KIRIM ULANG EMAIL VERIFIKASI</button>
+                <button id="closeVerify" style="flex: 1; padding: 10px; background: #eee; border: none; border-radius: 5px; cursor: pointer;">TUTUP</button>
+            </div>
+        </div>
+    </div>
  
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -296,8 +309,17 @@
         let isTyping = false;
  
         // --- PERBAIKAN DI SINI: Menutup blok onAuthStateChanged dengan benar ---
+        // True from MASUK until the login attempt has been handled.
+        let loginSubmitting = false;
         auth.onAuthStateChanged(async (user) => {
-            if (!user || !user.emailVerified) return;
+            if (!user) return;
+            // Sesi belum terverifikasi yang tertinggal (reload atau tab ditinggal
+            // saat modal kirim ulang terbuka) diakhiri. Selama login berjalan
+            // atau modal terbuka, sesi itu masih dibutuhkan untuk kirim ulang.
+            if (!user.emailVerified) {
+                if (!loginSubmitting && !verifyModalOpen()) await auth.signOut();
+                return;
+            }
 
             // Validasi sesi yang sudah melewati login.
             if (localStorage.getItem("userUid") !== user.uid) return;
@@ -459,6 +481,7 @@
  
            btn.innerText = "Memverifikasi...";
            btn.disabled = true;
+           loginSubmitting = true;
  
             try {
                 const userCredential = await auth.signInWithEmailAndPassword(email, pass);
@@ -496,32 +519,105 @@
                        await auth.signOut();
                    }
                 } else {
-                   const unverifiedUser = userCredential.user;
-
-                   try {
-                       await unverifiedUser.sendEmailVerification();
-                       showBlockNotif("Email verifikasi telah dikirim ulang.");
-                   } catch (verifyErr) {
-                       console.error("Resend verification error:", verifyErr);
-
-                       if (verifyErr.code === "auth/too-many-requests") {
-                           showBlockNotif("Terlalu banyak permintaan. Silakan coba lagi nanti.");
-                       } else {
-                           showBlockNotif("Gagal mengirim email verifikasi.");
-                       }
-                   }
-
+                   // Tidak dikirim otomatis: pengguna memilih lewat tombol.
+                   // Sesi tetap aktif sampai modal ditutup (dibutuhkan Firebase).
                    btn.innerText = "MASUK";
                    btn.disabled = false;
-                   await auth.signOut();
+                   openVerifyModal(userCredential.user.email);
                 }
             } catch (err) {
                showBlockNotif("Gagal Login! Periksa kembali email & password.");
                btn.innerText = "MASUK";
                btn.disabled = false;
+            } finally {
+               loginSubmitting = false;
             }
         };
  
+        // EMAIL VERIFIKASI: kirim ulang hanya atas klik, dengan jeda di perangkat.
+        // Batas sebenarnya dari Firebase dilaporkan sebagai auth/too-many-requests.
+        const VERIFY_COOLDOWN_MS = 60 * 1000;
+        const VERIFY_TOO_MANY_COOLDOWN_MS = 10 * 60 * 1000;
+        const VERIFY_ERRORS = {
+            "auth/too-many-requests": "Firebase menahan pengiriman karena terlalu banyak permintaan. Tunggu beberapa menit sebelum mencoba lagi.",
+            "auth/network-request-failed": "Koneksi internet bermasalah. Periksa koneksi, lalu coba lagi.",
+            "auth/quota-exceeded": "Kuota pengiriman email aplikasi sedang habis. Hubungi administrator.",
+            "auth/user-token-expired": "Sesi login berakhir. Tutup, lalu login ulang.",
+            "auth/no-current-user": "Sesi login berakhir. Tutup, lalu login ulang."
+        };
+        let verifySending = false;
+        let verifyCooldownUntil = 0;
+        let verifyTimer = null;
+
+        function updateVerifyButton() {
+            const button = document.getElementById('resendVerification');
+            const left = Math.ceil((verifyCooldownUntil - Date.now()) / 1000);
+            if (left <= 0 && verifyTimer) { clearInterval(verifyTimer); verifyTimer = null; }
+            button.disabled = verifySending || left > 0;
+            button.style.opacity = button.disabled ? '0.6' : '1';
+            button.innerText = verifySending ? 'MENGIRIM...'
+                : left > 0 ? 'TUNGGU ' + (left > 60 ? Math.ceil(left / 60) + ' MENIT' : left + ' DETIK')
+                : 'KIRIM ULANG EMAIL VERIFIKASI';
+        }
+
+        function startVerifyCooldown(ms) {
+            verifyCooldownUntil = Date.now() + ms;
+            if (verifyTimer) clearInterval(verifyTimer);
+            verifyTimer = setInterval(updateVerifyButton, 1000);
+            updateVerifyButton();
+        }
+
+        function verifyModalOpen() {
+            return document.getElementById('verifyModal').style.display === 'flex';
+        }
+
+        function openVerifyModal(email) {
+            document.getElementById('verifyMessage').innerText = 'Email ' + (email || 'akun ini')
+                + ' belum diverifikasi. Buka link verifikasi di email Anda (cek juga folder Spam/Promosi), atau minta email baru.';
+            document.getElementById('verifyCode').style.display = 'none';
+            updateVerifyButton();
+            document.getElementById('verifyModal').style.display = 'flex';
+        }
+
+        document.getElementById('resendVerification').onclick = async () => {
+            if (verifySending || Date.now() < verifyCooldownUntil) return;
+            const message = document.getElementById('verifyMessage');
+            const codeLine = document.getElementById('verifyCode');
+            verifySending = true;
+            updateVerifyButton();
+            let code = '';
+            try {
+                const user = auth.currentUser;
+                if (!user) throw { code: 'auth/no-current-user' };
+                await user.reload().catch(() => {});
+                if (auth.currentUser.emailVerified) {
+                    message.innerText = 'Email sudah terverifikasi. Tutup lalu login kembali.';
+                    codeLine.style.display = 'none';
+                    return;
+                }
+                await auth.currentUser.sendEmailVerification();
+                message.innerText = 'Firebase telah menerima permintaan pengiriman link verifikasi ke ' + auth.currentUser.email
+                    + '. Cek Inbox dan folder Spam/Promosi.';
+                codeLine.style.display = 'none';
+                startVerifyCooldown(VERIFY_COOLDOWN_MS);
+            } catch (verifyErr) {
+                code = /^auth\/[a-z0-9-]{1,60}$/.test(String(verifyErr && verifyErr.code)) ? verifyErr.code : 'auth/unknown-error';
+                console.error('Resend verification error:', code);
+                message.innerText = 'Email verifikasi BELUM terkirim. ' + (VERIFY_ERRORS[code] || 'Silakan coba lagi.');
+                codeLine.innerText = 'Kode error Firebase: ' + code;
+                codeLine.style.display = 'block';
+                if (code === 'auth/too-many-requests') startVerifyCooldown(VERIFY_TOO_MANY_COOLDOWN_MS);
+            } finally {
+                verifySending = false;
+                updateVerifyButton();
+            }
+        };
+
+        document.getElementById('closeVerify').onclick = async () => {
+            document.getElementById('verifyModal').style.display = 'none';
+            if (auth.currentUser && !auth.currentUser.emailVerified) await auth.signOut();
+        };
+
         // FORGOT PASSWORD (DIPERBARUI DENGAN EFEK DINAMIS)
         document.getElementById('btnForgot').onclick = () => document.getElementById('forgotModal').style.display = 'flex';
         document.getElementById('closeModal').onclick = () => document.getElementById('forgotModal').style.display = 'none';

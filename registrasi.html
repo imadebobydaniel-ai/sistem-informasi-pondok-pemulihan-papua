@@ -354,14 +354,15 @@
 
 <div id="notif-email-sent">
     <div class="modal-box">
-        <div style="background: #e7f3ff; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-            <i class="fa-solid fa-envelope-circle-check" style="font-size: 35px; color: #007bff;"></i>
+        <div id="verify-icon-wrap" style="background: #e7f3ff; width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <i id="verify-icon" class="fa-solid fa-envelope-circle-check" style="font-size: 35px; color: #007bff;"></i>
         </div>
-        <h3 style="margin-bottom: 10px; color: #333;">Verifikasi Terkirim!</h3>
-        <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 20px;">
-            Link verifikasi telah dikirim ke email Anda. <br>
-            <b>Silakan verifikasi email Anda</b> sebelum melakukan login ke sistem Pondok Pemulihan Papua.
-        </p>
+        <!-- Isi diatur oleh showVerificationResult() sesuai hasil pengiriman. -->
+        <h3 id="verify-title" style="margin-bottom: 10px; color: #333;">Verifikasi Terkirim!</h3>
+        <p id="verify-message" style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 12px;"></p>
+        <p id="verify-code" style="display: none; font-size: 12px; color: #b02a37; margin-bottom: 12px;"></p>
+        <p id="verify-status" role="status" aria-live="polite" style="font-size: 12px; color: #555; margin-bottom: 12px;"></p>
+        <button id="btn-resend-verification" type="button" onclick="resendVerificationEmail()" class="btn-next" style="background:#6c757d; margin-bottom: 10px;">KIRIM ULANG EMAIL VERIFIKASI</button>
         <button onclick="window.location.href='index.html'" class="btn-next" style="background:#007bff;">SAYA MENGERTI</button>
     </div>
 </div>
@@ -617,7 +618,7 @@
                 <label>Provinsi*</label>
                 <select
                     id="provinsi"
-                    onchange="loadKota('domisili')"
+                    onchange="loadKota('')"
                 >
                     <option value="">Pilih...</option>
                 </select>
@@ -1040,6 +1041,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
 <script src="sipapua-maintenance.js"></script>
+<script src="sipapua-registration.js"></script>
 
 
 <script>
@@ -1055,10 +1057,8 @@
     const firebaseConfig = { apiKey: _ENV.k, authDomain: _ENV.aD, projectId: _ENV.pI, storageBucket: _ENV.sB, messagingSenderId: _ENV.mS, appId: _ENV.aI };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-    // App Check: checkRegistrationDuplicate and getNextNijNumber accept only
-    // requests carrying an App Check token. Set the reCAPTCHA v3 site key
-    // registered for this web app in Firebase Console > App Check; while it
-    // is empty those calls are refused and registration stops with an error.
+    // Preserve the existing optional App Check initialization. Registration
+    // now uses Firestore transactions and the companion Rules, not callables.
     const APP_CHECK_SITE_KEY = "";
     if (APP_CHECK_SITE_KEY && firebase.appCheck) {
         firebase.appCheck().activate(APP_CHECK_SITE_KEY, true);
@@ -1067,30 +1067,16 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    const functions = firebase.app().functions("asia-southeast2");
-
-    if (
-        location.hostname === "localhost" ||
-        location.hostname === "127.0.0.1"
-    ) {
-}
-
-    // users is private: duplicate check and the next NIJ number come from
-    // Cloud Functions that return only a match flag or a number. The NIJ
-    // shown before submit is a preview; allocateNij assigns the final,
-    // unique number to the new account.
-    const checkRegistrationDuplicate =
-        functions.httpsCallable("checkRegistrationDuplicate");
-    const getNextNijNumberCallable =
-        functions.httpsCallable("getNextNijNumber");
-    const allocateNijCallable =
-        functions.httpsCallable("allocateNij");
+    const registrationService = window.SIPAPUA_REGISTRATION && window.SIPAPUA_REGISTRATION.create(
+        db, auth, () => firebase.firestore.FieldValue.serverTimestamp()
+    );
+    let registrationBusy = false;
 
     // While registration is paused (sipapua-maintenance.js, or that file did
     // not load) the form is replaced by a notice and no Cloud Function or
     // account creation runs, so nothing can report a false success.
     const registrationPaused =
-        !window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("registration");
+        !registrationService || !window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("registration");
 
     function showRegistrationMaintenance() {
         const form = document.getElementById("formRegistrasi");
@@ -1117,8 +1103,7 @@
 
     async function getNextNijNumber(wilayah) {
         if (registrationPaused) throw new Error("Pendaftaran sedang dalam pemeliharaan.");
-        const result = await getNextNijNumberCallable({ wilayah });
-        return Number(result.data && result.data.nextNumber) || 1;
+        return registrationService.preflight(wilayah);
     }
 
     // --- KONFIGURASI API WILAYAH ---
@@ -1426,13 +1411,143 @@ function validateRegistrationRequiredFields() {
     return false;
 }
 
+    // --- EMAIL VERIFIKASI ---
+    // Dikirim hanya atas tindakan pengguna (finalisasi atau tombol kirim
+    // ulang), tidak pernah diulang otomatis. Jeda antar-kirim ulang dihitung
+    // di perangkat; batas sebenarnya tetap dari Firebase (auth/too-many-requests).
+    const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+    const VERIFICATION_TOO_MANY_COOLDOWN_MS = 10 * 60 * 1000;
+    const VERIFICATION_ERROR_MESSAGES = {
+        "auth/too-many-requests": "Firebase menahan pengiriman karena terlalu banyak permintaan dari akun atau perangkat ini. Tunggu beberapa menit sebelum mengirim ulang.",
+        "auth/network-request-failed": "Koneksi internet bermasalah. Periksa koneksi, lalu kirim ulang.",
+        "auth/quota-exceeded": "Kuota pengiriman email aplikasi sedang habis. Hubungi administrator.",
+        "auth/user-token-expired": "Sesi login berakhir. Login dari halaman utama untuk meminta email verifikasi.",
+        "auth/requires-recent-login": "Sesi login berakhir. Login dari halaman utama untuk meminta email verifikasi.",
+        "auth/user-disabled": "Akun ini dinonaktifkan. Hubungi administrator.",
+        "auth/user-not-found": "Akun tidak ditemukan. Hubungi administrator.",
+        "auth/no-current-user": "Sesi pendaftaran tidak ditemukan. Login dari halaman utama untuk meminta email verifikasi."
+    };
+    let verificationSending = false;
+    let verificationCooldownUntil = 0;
+    let verificationCooldownTimer = null;
+
+    // Hanya kode berformat auth/... yang ditampilkan; pesan mentah tidak.
+    function safeAuthErrorCode(error) {
+        const code = String(error?.code || "");
+        return /^auth\/[a-z0-9-]{1,60}$/.test(code) ? code : "auth/unknown-error";
+    }
+
+    // Satu kali pengiriman. Hasil: { ok: true } atau { ok: false, code }.
+    async function sendVerificationEmail(user) {
+        if (!user) return { ok: false, code: "auth/no-current-user" };
+        if (user.emailVerified) return { ok: true, alreadyVerified: true };
+        try {
+            await user.sendEmailVerification();
+            return { ok: true };
+        } catch (error) {
+            const code = safeAuthErrorCode(error);
+            console.error("Gagal mengirim email verifikasi:", code);
+            return { ok: false, code };
+        }
+    }
+
+    function showVerificationResult(result, email) {
+        const title = document.getElementById("verify-title");
+        const message = document.getElementById("verify-message");
+        const codeLine = document.getElementById("verify-code");
+        const icon = document.getElementById("verify-icon");
+        const iconWrap = document.getElementById("verify-icon-wrap");
+        const address = String(email || auth.currentUser?.email || "email Anda");
+
+        message.textContent = "";
+        if (result.ok) {
+            title.textContent = result.alreadyVerified ? "Email Sudah Terverifikasi" : "Verifikasi Terkirim!";
+            icon.className = "fa-solid fa-envelope-circle-check";
+            icon.style.color = "#007bff";
+            iconWrap.style.background = "#e7f3ff";
+            message.append(
+                result.alreadyVerified
+                    ? "Email " + address + " sudah terverifikasi. Akun menunggu aktivasi administrator."
+                    : "Firebase telah menerima permintaan pengiriman link verifikasi ke " + address + ". ",
+            );
+            if (!result.alreadyVerified) {
+                const strong = document.createElement("b");
+                strong.textContent = "Cek Inbox dan folder Spam/Promosi.";
+                message.append(strong, " Bila dalam 10 menit belum ada, periksa ejaan email lalu kirim ulang.");
+            }
+            codeLine.style.display = "none";
+            codeLine.textContent = "";
+        } else {
+            title.textContent = "Email Verifikasi Belum Terkirim";
+            icon.className = "fa-solid fa-triangle-exclamation";
+            icon.style.color = "#b02a37";
+            iconWrap.style.background = "#fdecea";
+            message.textContent = "Pendaftaran Anda tersimpan, tetapi email verifikasi ke " + address
+                + " BELUM terkirim. " + (VERIFICATION_ERROR_MESSAGES[result.code] || "Silakan coba kirim ulang.");
+            codeLine.textContent = "Kode error Firebase: " + result.code;
+            codeLine.style.display = "block";
+        }
+
+        document.getElementById("notif-email-sent").style.display = "flex";
+        if (result.ok && !result.alreadyVerified) startVerificationCooldown(VERIFICATION_RESEND_COOLDOWN_MS);
+        else if (result.code === "auth/too-many-requests") startVerificationCooldown(VERIFICATION_TOO_MANY_COOLDOWN_MS);
+        else updateResendButton();
+    }
+
+    function startVerificationCooldown(ms) {
+        verificationCooldownUntil = Date.now() + ms;
+        if (verificationCooldownTimer) clearInterval(verificationCooldownTimer);
+        verificationCooldownTimer = setInterval(updateResendButton, 1000);
+        updateResendButton();
+    }
+
+    function updateResendButton() {
+        const button = document.getElementById("btn-resend-verification");
+        const left = Math.ceil((verificationCooldownUntil - Date.now()) / 1000);
+        if (left <= 0 && verificationCooldownTimer) {
+            clearInterval(verificationCooldownTimer);
+            verificationCooldownTimer = null;
+        }
+        const waiting = left > 0;
+        button.disabled = verificationSending || waiting;
+        button.style.opacity = button.disabled ? "0.6" : "1";
+        button.textContent = verificationSending
+            ? "MENGIRIM..."
+            : waiting
+                ? "KIRIM ULANG TERSEDIA DALAM " + (left > 60 ? Math.ceil(left / 60) + " MENIT" : left + " DETIK")
+                : "KIRIM ULANG EMAIL VERIFIKASI";
+    }
+
+    async function resendVerificationEmail() {
+        if (verificationSending || Date.now() < verificationCooldownUntil) return;
+        const status = document.getElementById("verify-status");
+        verificationSending = true;
+        updateResendButton();
+        status.textContent = "";
+        try {
+            const user = auth.currentUser;
+            // Status terbaru dari Firebase: bisa saja sudah diverifikasi.
+            if (user) await user.reload().catch(() => {});
+            const result = await sendVerificationEmail(auth.currentUser);
+            status.textContent = result.ok
+                ? (result.alreadyVerified ? "" : "Permintaan kirim ulang diterima Firebase pukul "
+                    + new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + ".")
+                : "Kirim ulang gagal.";
+            verificationSending = false;
+            showVerificationResult(result, auth.currentUser?.email);
+        } finally {
+            verificationSending = false;
+            updateResendButton();
+        }
+    }
+
     // --- LOGIKA REGISTRASI (VERSI TERUPDATE) ---
     async function handleRegistrasi() {
         if (registrationPaused) {
             showRegistrationMaintenance();
             return;
         }
-        if (!validateRegistrationRequiredFields()) return;
+        if (registrationBusy || !validateRegistrationRequiredFields()) return;
 
         const btnSubmit = document.getElementById("btnSubmit");
         const lokasiKode = document.getElementById("lokasi").value; 
@@ -1455,11 +1570,14 @@ function validateRegistrationRequiredFields() {
 
         btnSubmit.disabled = true;
         btnSubmit.innerText = "Mengamankan NIJ...";
+        registrationBusy = true;
 
-        // An account created below is removed again if its profile could not
-        // be saved, so the same email can simply register again.
+        // Remove a newly created Auth account only after a definite rejection
+        // and a server read confirming that no profile was saved.
         let createdUser = null;
         let profileSaved = false;
+        let profileWriteStarted = false;
+        let registrationUser = null;
 
         try {
             const getTxt = (id) => {
@@ -1472,45 +1590,13 @@ function validateRegistrationRequiredFields() {
             if (lokasiKode === "STN") namaWilayahFull = "Sentani";
             if (lokasiKode === "DYO") namaWilayahFull = "Doyo";
 
-            const duplicateResult =
-                await checkRegistrationDuplicate({
-                    email: emailNormalized,
-                    whatsapp: whatsappNormalized
-                });
+            // Readiness is checked before creating an Auth account. Private
+            // duplicate reservations are enforced together with profile/NIJ writes.
+            await registrationService.preflight(namaWilayahFull);
 
-            const duplicateData =
-                duplicateResult.data || {};
-
-            if (duplicateData.duplicate) {
-                const matchedBy = Array.isArray(
-                    duplicateData.matchedBy
-                )
-                    ? duplicateData.matchedBy
-                    : [];
-
-                if (
-                    matchedBy.includes("email") ||
-                    matchedBy.includes("email_legacy")
-                ) {
-                    throw new Error(
-                        "Email atau akun dengan email tersebut sudah terdaftar!"
-                    );
-                }
-
-                if (
-                    matchedBy.includes("whatsapp") ||
-                    matchedBy.includes("whatsapp_legacy")
-                ) {
-                    throw new Error(
-                        "Nomor WhatsApp tersebut sudah terdaftar!"
-                    );
-                }
-
-                throw new Error(
-                    "Data registrasi terdeteksi sudah terdaftar."
-                );
+            if (!/^62[0-9]{8,13}$/.test(whatsappNormalized)) {
+                throw new Error("Nomor WhatsApp belum sesuai. Gunakan nomor Indonesia yang diawali 08, 62, atau +62.");
             }
-
 
             // ============================================================
             // VALIDASI USIA MINIMAL REGISTRASI SIPAPUA
@@ -1562,12 +1648,7 @@ function validateRegistrationRequiredFields() {
                 );
             }
 
-// 1. BUAT AKUN DI AUTHENTICATION
-            const userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
-            const user = userCredential.user;
-            createdUser = user;
-
-            // 2. KIRIM EMAIL VERIFIKASI (PENTING!)
+            // Validate the complete family data before creating Auth.
             // Kumpulkan seluruh nama anak yang diinput.
             const childInputs =
                 Array.from(
@@ -1608,21 +1689,33 @@ return {
         selectedReference?.nij || ""
 };
                 });
-            // NIJ final: dialokasikan server sekali per akun (unik, aman
-            // diulang); rules hanya menerima profil dengan NIJ ini.
-            const allocation =
-                (await allocateNijCallable({ lokasi: lokasiKode })).data;
-            const finalNIJ = allocation.nij;
-            const newNumber = allocation.nij_number;
+// 1. BUAT AKUN DI AUTHENTICATION
+            let user = auth.currentUser;
+            if (user && String(user.email || "").toLowerCase() !== emailNormalized) {
+                throw new Error("Akun lain masih masuk. Keluar melalui halaman masuk sebelum mendaftar.");
+            }
+            if (!user) {
+                let userCredential;
+                try {
+                    userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
+                    createdUser = userCredential.user;
+                } catch (accountError) {
+                    if (accountError.code !== "auth/email-already-in-use") throw accountError;
+                    // Resume the same owned account after an interrupted attempt.
+                    userCredential = await auth.signInWithEmailAndPassword(rawEmail, rawPass);
+                }
+                user = userCredential.user;
+            }
 
-            // 2. SIMPAN DATA KE FIRESTORE
-            await db.collection("users").doc(user.uid).set({
+            // NIJ, duplicate reservations and the original complete profile
+            // are committed atomically; no Cloud Functions are called.
+            profileWriteStarted = true;
+            registrationUser = user;
+            const allocation = await registrationService.registerProfile(user, lokasiKode, {
                 uid: user.uid,
                 nama: rawNama,
                 email: rawEmail,
                 email_normalized: emailNormalized,
-                nij: finalNIJ,
-                nij_number: newNumber,
                 whatsapp: rawHp,
                 whatsapp_normalized: whatsappNormalized,
                 wilayah: namaWilayahFull, 
@@ -1712,28 +1805,45 @@ document.getElementById("status_pernikahan").value,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             profileSaved = true;
+            document.getElementById("nij-display").value = allocation.nij;
 
-            // Fire-and-forget email verification.
-            // Registrasi tidak lagi menunggu proses email selesai.
-            user.sendEmailVerification().catch((verificationError) => {
-                console.error(
-                    "Gagal mengirim email verifikasi:",
-                    verificationError
-                );
-            });
+            // Akun dan profil sudah tersimpan. Pengiriman email ditunggu agar
+            // modal hanya menyatakan "terkirim" bila Firebase menerimanya;
+            // kegagalan tidak membatalkan registrasi (mencegah akun ganda).
+            const verificationResult = await sendVerificationEmail(user);
 
             // Registration succeeded; remove the saved local draft and stop autosaving.
             completeRegistrationDraft();
-            // Tampilkan modal sukses setelah data Firestore berhasil disimpan.
-            document.getElementById("notif-email-sent").style.display = "flex";
+            showVerificationResult(verificationResult, rawEmail);
 
         } catch (e) {
-            if (createdUser && !profileSaved) {
+            // Never delete Auth after an ambiguous network/commit result.
+            // A server read resolves saved vs missing before an explicit retry.
+            if (profileWriteStarted && !profileSaved && registrationUser && auth.currentUser?.uid === registrationUser.uid) {
+                try {
+                    const saved = await registrationService.ownProfile(registrationUser);
+                    if (saved) {
+                        profileSaved = true;
+                        document.getElementById("nij-display").value = saved.nij || "";
+                        completeRegistrationDraft();
+                        alert("Profil sudah tersimpan di server. Gunakan halaman masuk untuk pemeriksaan email dan aktivasi admin.");
+                        return;
+                    }
+                } catch (_) {
+                    alert("Penyimpanan belum dapat dipastikan. Akun tidak dihapus. Periksa koneksi lalu coba kembali dengan akun yang sama.");
+                    return;
+                }
+            }
+            if (createdUser && auth.currentUser?.uid === createdUser.uid && !profileSaved && e.code === "permission-denied") {
                 await createdUser.delete().catch(() => {});
             }
-            btnSubmit.disabled = false;
-            btnSubmit.innerText = "FINALISASI & DAFTAR";
-            alert(e.message);
+            alert(e.code === "permission-denied"
+                ? "Pendaftaran ditolak. Email atau WhatsApp mungkin sudah terdaftar, atau persiapan pendaftaran belum sesuai. Hubungi pengurus."
+                : e.message);
+        } finally {
+            registrationBusy = false;
+            btnSubmit.disabled = profileSaved;
+            btnSubmit.innerText = profileSaved ? "PENDAFTARAN TERSIMPAN" : "FINALISASI & DAFTAR";
         }
     }
 
