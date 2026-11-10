@@ -1,16 +1,22 @@
 import fs from "node:fs";
-import {
+import { emulatorEnvironment, assertEmulatorsAvailable } from "./tests/registration/emulator-guard.mjs";
+
+// Guard configuration and local service availability before SDK initialization.
+await assertEmulatorsAvailable();
+const {
   initializeTestEnvironment,
   assertFails,
   assertSucceeds,
-} from "@firebase/rules-unit-testing";
+} = await import("@firebase/rules-unit-testing");
 
-const projectId = "boby-apps-project";
+const projectId = emulatorEnvironment.projectId;
 const rules = fs.readFileSync("./firestore.rules", "utf8");
 
 const env = await initializeTestEnvironment({
   projectId,
   firestore: {
+    host: "127.0.0.1",
+    port: 8080,
     rules,
   },
 });
@@ -56,6 +62,7 @@ try {
   );
 
   // 3. Admin aktif BOLEH mengubah status_akun.
+  // WP-04-03 must replace this legacy expectation with trusted activation only.
   await assertSucceeds(
     adminDb.doc(`users/${userUid}`).update({
       status_akun: "Aktif",
@@ -74,6 +81,7 @@ try {
 
   // 5. User baru BOLEH membuat akun dengan status awal
   //    Menunggu Verifikasi.
+  // WP-04-03 must replace this legacy expectation with backend-only creation.
   await assertSucceeds(
     newUserDb.doc(`users/${newUserUid}`).set({
       uid: newUserUid,
