@@ -12,17 +12,25 @@
     <div class="card">
         <h1 id="status-title">Memproses Verifikasi...</h1>
         <p id="status-desc">Mohon tunggu sebentar sementara kami memverifikasi akun Anda.</p>
-        <a href="login.html" class="btn">Kembali ke Login</a>
+        <a href="index.html" class="btn">Kembali ke Login</a>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+<script src="sipapua-app-check.js"></script>
+<script src="sipapua-spark-member.js"></script>
+<script src="sipapua-member-session.js"></script>
+<script src="sipapua-login.js"></script>
 
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
-            projectId: "boby-apps-project"
+            projectId: "boby-apps-project",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
         };
         firebase.initializeApp(firebaseConfig);
 
@@ -30,9 +38,18 @@
         const actionCode = urlParams.get('oobCode');
 
         if (actionCode) {
-            firebase.auth().applyActionCode(actionCode).then(() => {
+            firebase.auth().applyActionCode(actionCode).then(async () => {
                 document.getElementById('status-title').innerText = "✅ Verifikasi Berhasil!";
-                document.getElementById('status-desc').innerText = "Email Anda telah diverifikasi. Sekarang Anda bisa masuk ke aplikasi.";
+                document.getElementById('status-desc').innerText = "Email Anda telah diverifikasi. Masuk untuk pemeriksaan aktivasi oleh server.";
+                history.replaceState(null, "", location.pathname);
+                try {
+                    const user = await new Promise(resolve => { let off; off = firebase.auth().onAuthStateChanged(u => { if (off) off(); resolve(u); }); });
+                    if (user) {
+                        const login = window.SIPAPUA_LOGIN.create(firebase.auth(), window.SIPAPUA_MEMBER_SESSION.create(firebase));
+                        const status = await login.status(user);
+                        document.getElementById("status-desc").innerText = status.active ? "Email terverifikasi dan aktivasi dikonfirmasi server." : "Email terverifikasi. Akun belum diaktifkan; silakan hubungi pengurus.";
+                    }
+                } catch (_) { document.getElementById("status-desc").innerText = "Email terverifikasi. Masuk kembali untuk pemeriksaan aktivasi server."; }
             }).catch(error => {
                 document.getElementById('status-title').innerText = "❌ Verifikasi Gagal";
                 document.getElementById('status-desc').innerText = "Link sudah kadaluwarsa atau tidak valid: " + error.message;

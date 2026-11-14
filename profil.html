@@ -657,9 +657,14 @@
     </main>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+<script src="sipapua-app-check.js"></script>
+<script src="sipapua-spark-member.js"></script>
+<script src="sipapua-member-session.js"></script>
 <script src="sipapua-config.js"></script>
 
 <script>
@@ -963,11 +968,7 @@
              * PRIMARY:
              * langsung ambil users/{Firebase UID}
              */
-            let snap =
-                await db
-                    .collection("users")
-                    .doc(uid)
-                    .get();
+            let snap = await window.SIPAPUA_MEMBER_SESSION.create(firebase).ownProfile();
 
             /*
              * COMPATIBILITY FALLBACK:
@@ -987,10 +988,7 @@
                 if (email) {
 
                     const fallback =
-                        await db
-                            .collection("users")
-                            .where(
-                                "email",
+                        await window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email",
                                 "==",
                                 email
                             )
@@ -1248,21 +1246,9 @@
                 );
 
                 try {
-                    const snap = await db
-                        .collection("users")
-                        .doc(currentProfileUser.uid)
-                        .get();
-
-                    if (!snap.exists) {
-                        throw new Error("Data anggota tidak ditemukan.");
-                    }
-
-                    await db
-                        .collection("users")
-                        .doc(currentProfileUser.uid)
-                        .update({
-                            foto_profil: base64
-                        });
+                    const own = await window.SIPAPUA_MEMBER_SESSION.create(firebase).ownProfile();
+                    const response = await window.SIPAPUA_MEMBER_SESSION.create(firebase).callable("updateSIPAPUAProfile")({docId: own.id, changes: {foto_profil: base64}});
+                    if (response.data?.updated !== true) throw new Error("Penyimpanan foto belum dikonfirmasi.");
 
                     debug.innerText = "✓ Foto profil berhasil diperbarui.";
                     debug.style.color = "#218c55";

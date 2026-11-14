@@ -888,7 +888,7 @@
 
             <select
                 id="lokasi"
-                onchange="updateKomsel(); updateNIJPreview();"
+                onchange="updateKomsel();"
             >
                 <option value="">-- Pilih Lokasi --</option>
                 <option value="ABE">Abepura</option>
@@ -1035,13 +1035,16 @@
     </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-check.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
 <script src="sipapua-maintenance.js"></script>
+<script src="sipapua-spark-registration.js"></script>
+<script src="sipapua-spark-member.js"></script>
 <script src="sipapua-registration.js"></script>
+<script src="sipapua-app-check.js"></script>
 
 
 <script>
@@ -1057,13 +1060,19 @@
     const firebaseConfig = { apiKey: _ENV.k, authDomain: _ENV.aD, projectId: _ENV.pI, storageBucket: _ENV.sB, messagingSenderId: _ENV.mS, appId: _ENV.aI };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-    // Preserve the existing optional App Check initialization. Registration
-    // now uses Firestore transactions and the companion Rules, not callables.
-    const APP_CHECK_SITE_KEY = "";
-    if (APP_CHECK_SITE_KEY && firebase.appCheck) {
-        firebase.appCheck().activate(APP_CHECK_SITE_KEY, true);
+    // Site key is configured only in sipapua-app-check.js; missing config fails closed.
+    let acquireRegistrationAppCheck = null;
+    try {
+        if (window.SIPAPUA_APP_CHECK) {
+            acquireRegistrationAppCheck = window.SIPAPUA_APP_CHECK.prepare(firebase);
+        }
+    } catch (_) {
+        acquireRegistrationAppCheck = null;
     }
-
+    async function requireRegistrationAppCheck() {
+        if (!acquireRegistrationAppCheck) throw new Error("Pendaftaran belum siap. Hubungi pengurus.");
+        await acquireRegistrationAppCheck();
+    }
     const db = firebase.firestore();
     const auth = firebase.auth();
 
@@ -1107,7 +1116,7 @@
     }
 
     // --- KONFIGURASI API WILAYAH ---
-    const BASE_URL_WILAYAH = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+    const BASE_URL_WILAYAH = './assets/wilayah/v2';
 
     // --- DATA KOMSEL ---
     const dataKomsel = { 
@@ -1119,68 +1128,141 @@
     };
 
     // --- FUNGSI API WILAYAH (ALAMAT & KELAHIRAN) ---
+    const wilayahRequests = new Map();
+    const wilayahGenerations = new Map();
+    const wilayahFields = ['provinsi', 'kota', 'kecamatan', 'desa'];
+    const wilayahLabels = [
+        '-- Pilih Provinsi --', '-- Pilih Kota/Kabupaten --',
+        '-- Pilih Kecamatan --', '-- Pilih Desa/Kelurahan --'
+    ];
+
+    function wilayahId(index, suffix) {
+        if (suffix !== '' && suffix !== 'lahir') {
+            throw new Error('Dropdown wilayah tidak valid');
+        }
+        return wilayahFields[index] + (suffix ? '_' + suffix : '');
+    }
+
+    function invalidateWilayah(id) {
+        const generation = (wilayahGenerations.get(id) || 0) + 1;
+        wilayahGenerations.set(id, generation);
+        return generation;
+    }
+
+    function setWilayahOptions(select, data, placeholder) {
+        select.replaceChildren(
+            new Option(placeholder, ''),
+            ...data.map(row => new Option(row.name, row.id))
+        );
+    }
+
+    function resetWilayahFrom(index, suffix) {
+        for (let i = index; i < wilayahFields.length; i++) {
+            const id = wilayahId(i, suffix);
+            invalidateWilayah(id);
+            const select = document.getElementById(id);
+            if (select) setWilayahOptions(select, [], wilayahLabels[i]);
+        }
+    }
+
+    async function fetchWilayah(path) {
+        if (wilayahRequests.has(path)) return wilayahRequests.get(path);
+        const pending = (async () => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 8000);
+            try {
+                const response = await fetch(`${BASE_URL_WILAYAH}/${path}`, {
+                    signal: controller.signal,
+                    credentials: 'omit',
+                    redirect: 'error'
+                });
+                if (!response.ok) throw new Error('Wilayah tidak tersedia');
+                const payload = await response.json();
+                if (!payload || !Array.isArray(payload.data) ||
+                    !payload.data.every(row => row &&
+                        typeof row.id === 'string' && typeof row.name === 'string')) {
+                    throw new Error('Respons wilayah tidak valid');
+                }
+                return payload.data;
+            } finally {
+                clearTimeout(timer);
+            }
+        })();
+        wilayahRequests.set(path, pending);
+        try {
+            return await pending;
+        } finally {
+            if (wilayahRequests.get(path) === pending) wilayahRequests.delete(path);
+        }
+    }
+
     async function loadProvinsi() {
+        const targets = ['', 'lahir'].map(suffix => {
+            resetWilayahFrom(0, suffix);
+            const id = wilayahId(0, suffix);
+            return {id, generation: wilayahGenerations.get(id),
+                select: document.getElementById(id)};
+        });
+        for (const target of targets) {
+            if (target.select) setWilayahOptions(target.select, [], 'Memuat...');
+        }
         try {
-            const res = await fetch(`${BASE_URL_WILAYAH}/provinces.json`);
-            const data = await res.json();
-            let options = '<option value="">-- Pilih Provinsi --</option>';
-            data.forEach(p => options += `<option value="${p.id}">${p.name}</option>`);
-            
-            if(document.getElementById("provinsi")) document.getElementById("provinsi").innerHTML = options;
-            if(document.getElementById("provinsi_lahir")) document.getElementById("provinsi_lahir").innerHTML = options;
-        } catch (e) { console.error("Gagal load provinsi"); }
+            const data = await fetchWilayah('provinces.json');
+            for (const target of targets) {
+                if (target.select &&
+                    wilayahGenerations.get(target.id) === target.generation) {
+                    setWilayahOptions(target.select, data, wilayahLabels[0]);
+                }
+            }
+        } catch (error) {
+            for (const target of targets) {
+                if (target.select &&
+                    wilayahGenerations.get(target.id) === target.generation) {
+                    setWilayahOptions(target.select, [],
+                        'Gagal memuat; muat ulang halaman');
+                }
+            }
+        }
     }
 
-    async function loadKota(suffix = "") {
-        const idPrefix = suffix ? `provinsi_${suffix}` : "provinsi";
-        const targetId = suffix ? `kota_${suffix}` : "kota";
-        
-        const provId = document.getElementById(idPrefix).value;
-        const kotaSelect = document.getElementById(targetId);
-        if (!provId || !kotaSelect) return;
-
-        kotaSelect.innerHTML = '<option value="">Memuat...</option>';
+    async function loadWilayahChild(index, suffix, endpoint, parentPattern) {
+        const parent = document.getElementById(wilayahId(index - 1, suffix));
+        const targetId = wilayahId(index, suffix);
+        // Invalidate successes and failures from all stale descendants.
+        resetWilayahFrom(index, suffix);
+        const target = document.getElementById(targetId);
+        if (!parent || !target) return;
+        const parentCode = parent.value;
+        if (!parentPattern.test(parentCode)) return;
+        const generation = wilayahGenerations.get(targetId);
+        const isCurrent = () =>
+            wilayahGenerations.get(targetId) === generation &&
+            parent.value === parentCode;
+        setWilayahOptions(target, [], 'Memuat...');
         try {
-            const res = await fetch(`${BASE_URL_WILAYAH}/regencies/${provId}.json`);
-            const data = await res.json();
-            let options = `<option value="">-- Pilih Kota/Kabupaten --</option>`;
-            data.forEach(k => options += `<option value="${k.id}">${k.name}</option>`);
-            kotaSelect.innerHTML = options;
-        } catch (e) { if(kotaSelect) kotaSelect.innerHTML = '<option value="">Gagal memuat</option>'; }
+            const data = await fetchWilayah(
+                `${endpoint}/${encodeURIComponent(parentCode)}.json`
+            );
+            if (!isCurrent()) return;
+            setWilayahOptions(target, data, wilayahLabels[index]);
+        } catch (error) {
+            if (!isCurrent()) return;
+            setWilayahOptions(target, [],
+                'Gagal memuat; pilih ulang wilayah induk');
+        }
     }
 
-    async function loadKecamatan(suffix = "") {
-        const idPrefix = suffix ? `kota_${suffix}` : "kota";
-        const targetId = suffix ? `kecamatan_${suffix}` : "kecamatan";
-        
-        const kotaId = document.getElementById(idPrefix).value;
-        const kecSelect = document.getElementById(targetId);
-        if (!kotaId || !kecSelect) return;
-
-        try {
-            const res = await fetch(`${BASE_URL_WILAYAH}/districts/${kotaId}.json`);
-            const data = await res.json();
-            let options = '<option value="">-- Pilih Kecamatan --</option>';
-            data.forEach(k => options += `<option value="${k.id}">${k.name}</option>`);
-            kecSelect.innerHTML = options;
-        } catch (e) { console.error("Gagal load kecamatan"); }
+    async function loadKota(suffix = '') {
+        return loadWilayahChild(1, suffix, 'regencies', /^[1-9][0-9]$/);
     }
 
-    async function loadDesa(suffix = "") {
-        const idPrefix = suffix ? `kecamatan_${suffix}` : "kecamatan";
-        const targetId = suffix ? `desa_${suffix}` : "desa";
-        
-        const kecId = document.getElementById(idPrefix).value;
-        const desaSelect = document.getElementById(targetId);
-        if (!kecId || !desaSelect) return;
+    async function loadKecamatan(suffix = '') {
+        return loadWilayahChild(2, suffix, 'districts', /^[1-9][0-9]\.[0-9]{2}$/);
+    }
 
-        try {
-            const res = await fetch(`${BASE_URL_WILAYAH}/villages/${kecId}.json`);
-            const data = await res.json();
-            let options = '<option value="">-- Pilih Desa/Kelurahan --</option>';
-            data.forEach(d => options += `<option value="${d.id}">${d.name}</option>`);
-            desaSelect.innerHTML = options;
-        } catch (e) { console.error("Gagal load desa"); }
+    async function loadDesa(suffix = '') {
+        return loadWilayahChild(3, suffix, 'villages',
+            /^[1-9][0-9]\.[0-9]{2}\.[0-9]{2}$/);
     }
 
     // --- FUNGSI UPDATE JABATAN & PELAYANAN ---
@@ -1213,6 +1295,12 @@
         const sub = document.getElementById("sub_jabatan").value;
         const pel = document.getElementById("pelayanan");
         pel.innerHTML = '<option value="">-- Pilih Fungsi Spesifik --</option>';
+        pel.disabled = sub === "Jemaat Simpatisan";
+        if (pel.disabled) {
+            pel.value = "";
+            updateNonStruktural();
+            return;
+        }
 
         const listPel = [
             "Pengembalaan Jemaat", "Bagian Komisi", "Sekertaris Umum Gereja", "Bendahara Umum gereja",
@@ -1230,16 +1318,34 @@
         const nst = document.getElementById("pelayanan_spesifik_non");
         if(nst) {
             nst.innerHTML = '<option value="">-- Pilih Detail Pelayanan --</option>';
+            nst.disabled =
+                document.getElementById("sub_jabatan").value === "Jemaat Simpatisan";
+            if (nst.disabled) {
+                nst.value = "";
+                return;
+            }
             nst.add(new Option("Sesuai Fungsi Utama", "Utama"));
         }
     }
 
     // --- FUNGSI PREVIEW NIJ ---
+    let nijPreviewRequest = 0;
+
     async function updateNIJPreview() {
+        const requestId = ++nijPreviewRequest;
         const lokasiSelect = document.getElementById("lokasi");
         const displayInput = document.getElementById("nij-display");
         if (!lokasiSelect || !displayInput) return;
-        let lokasiKode = lokasiSelect.value;
+
+        const hasFinalNij = () =>
+            /^NIJ-PPP-(ABE|STN|DYO|ARS1|ARS2)-[0-9]{3,9}-[0-9]{4}$/
+                .test(displayInput.value);
+        if (hasFinalNij()) return;
+
+        displayInput.value =
+            "NIJ diterbitkan otomatis setelah registrasi berhasil.";
+
+        const lokasiKode = lokasiSelect.value;
         if (!lokasiKode) return;
 
         let namaWilayahFull = lokasiKode;
@@ -1247,13 +1353,19 @@
         if (lokasiKode === "STN") namaWilayahFull = "Sentani";
         if (lokasiKode === "DYO") namaWilayahFull = "Doyo";
 
-        displayInput.value = "Menghitung nomor...";
         try {
-            const nextNum = await getNextNijNumber(namaWilayahFull);
-            const tahun = new Date().getFullYear();
-            displayInput.value = `NIJ-PPP-${lokasiKode}-${String(nextNum).padStart(3, '0')}-${tahun}`;
+            // Readiness only; this does not return or allocate a NIJ.
+            await getNextNijNumber(namaWilayahFull);
         } catch (e) {
-            displayInput.value = "Gagal memuat nomor...";
+            if (requestId !== nijPreviewRequest ||
+                lokasiSelect.value !== lokasiKode || hasFinalNij()) return;
+
+            const code = String(e && e.code || "")
+                .replace(/^functions\//, "");
+            displayInput.value =
+                ["unavailable", "deadline-exceeded"].includes(code)
+                    ? "Pemeriksaan kesiapan belum berhasil. Silakan coba kembali."
+                    : "Registrasi belum siap. Silakan coba kembali atau hubungi pengurus.";
         }
     }
 
@@ -1572,9 +1684,8 @@ function validateRegistrationRequiredFields() {
         btnSubmit.innerText = "Mengamankan NIJ...";
         registrationBusy = true;
 
-        // Remove a newly created Auth account only after a definite rejection
-        // and a server read confirming that no profile was saved.
-        let createdUser = null;
+        // Keep the same Auth account after an ambiguous backend result.
+        // Reconcile the server profile/allocation before allowing a retry.
         let profileSaved = false;
         let profileWriteStarted = false;
         let registrationUser = null;
@@ -1698,7 +1809,6 @@ return {
                 let userCredential;
                 try {
                     userCredential = await auth.createUserWithEmailAndPassword(rawEmail, rawPass);
-                    createdUser = userCredential.user;
                 } catch (accountError) {
                     if (accountError.code !== "auth/email-already-in-use") throw accountError;
                     // Resume the same owned account after an interrupted attempt.
@@ -1707,14 +1817,14 @@ return {
                 user = userCredential.user;
             }
 
-            // NIJ, duplicate reservations and the original complete profile
-            // are committed atomically; no Cloud Functions are called.
+            // The callable atomically commits the complete profile, permanent
+            // NIJ allocation, counter and both identity reservations.
             profileWriteStarted = true;
             registrationUser = user;
             const allocation = await registrationService.registerProfile(user, lokasiKode, {
                 uid: user.uid,
                 nama: rawNama,
-                email: rawEmail,
+                email: emailNormalized,
                 email_normalized: emailNormalized,
                 whatsapp: rawHp,
                 whatsapp_normalized: whatsappNormalized,
@@ -1732,10 +1842,12 @@ return {
                 jabatan: document.getElementById("jabatan_jemaat").value,
                 sub_jabatan: document.getElementById("sub_jabatan").value || "-",
                 pelayanan:
-document.getElementById("pelayanan").value,
+document.getElementById("sub_jabatan").value === "Jemaat Simpatisan"
+    ? "" : document.getElementById("pelayanan").value,
 
                 detail_pelayanan:
-document.getElementById("pelayanan_spesifik_non").value || "-",
+document.getElementById("sub_jabatan").value === "Jemaat Simpatisan"
+    ? "" : document.getElementById("pelayanan_spesifik_non").value || "-",
 
                 tgl_lahir:
 document.getElementById("tgl_lahir").value || "",
@@ -1801,8 +1913,7 @@ document.getElementById("status_pernikahan").value,
 
                 wilayah_orang_tua:
                     document.getElementById("wilayah_orang_tua")?.value || "",
-                status_akun: "Menunggu Verifikasi", // Kita tandai agar admin tahu
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                status_akun: "Menunggu Verifikasi"
             });
             profileSaved = true;
             document.getElementById("nij-display").value = allocation.nij;
@@ -1833,9 +1944,6 @@ document.getElementById("status_pernikahan").value,
                     alert("Penyimpanan belum dapat dipastikan. Akun tidak dihapus. Periksa koneksi lalu coba kembali dengan akun yang sama.");
                     return;
                 }
-            }
-            if (createdUser && auth.currentUser?.uid === createdUser.uid && !profileSaved && e.code === "permission-denied") {
-                await createdUser.delete().catch(() => {});
             }
             alert(e.code === "permission-denied"
                 ? "Pendaftaran ditolak. Email atau WhatsApp mungkin sudah terdaftar, atau persiapan pendaftaran belum sesuai. Hubungi pengurus."
@@ -2035,209 +2143,10 @@ document.getElementById("status_pernikahan").value,
     }
 
     async function findFamilyReferenceUsers(query) {
-        const cleanQuery =
-            String(
-                query || ""
-            ).trim();
-
-        if (
-            cleanQuery.length < 2
-        ) {
-            return [];
-        }
-
-        const resultMap =
-            new Map();
-
-        /*
-         * Firestore string matching bersifat case-sensitive.
-         * Karena data lama dapat tersimpan:
-         *
-         *   akbar tanjung
-         *   Akbar Tanjung
-         *   AKBAR TANJUNG
-         *
-         * kita coba beberapa bentuk prefix.
-         */
-        const variants = [
-            cleanQuery,
-            cleanQuery.toLowerCase(),
-            cleanQuery.toUpperCase(),
-            cleanQuery
-                .toLowerCase()
-                .replace(
-                    /\b\w/g,
-                    (char) =>
-                        char.toUpperCase()
-                )
-        ];
-
-        const uniqueVariants =
-            [
-                ...new Set(
-                    variants
-                )
-            ];
-
-        /*
-         * Cari pada kedua field yang memang dipakai
-         * oleh data jemaat lama/baru.
-         */
-        for (
-            const field of [
-                "nama",
-                "nama_lengkap"
-            ]
-        ) {
-            for (
-                const variant of
-                uniqueVariants
-            ) {
-                try {
-                    const snapshot =
-                        await db
-                            .collection(
-                                "users"
-                            )
-                            .orderBy(
-                                field
-                            )
-                            .startAt(
-                                variant
-                            )
-                            .endAt(
-                                variant +
-                                "\uf8ff"
-                            )
-                            .limit(10)
-                            .get();
-
-                    snapshot.docs.forEach(
-                        (doc) => {
-                            if (
-                                !resultMap.has(
-                                    doc.id
-                                )
-                            ) {
-                                resultMap.set(
-                                    doc.id,
-                                    {
-                                        uid:
-                                            doc.id,
-                                        ...doc.data()
-                                    }
-                                );
-                            }
-                        }
-                    );
-
-                } catch (error) {
-                    /*
-                     * Field/query tertentu dapat gagal karena
-                     * schema/index Firestore lama. Query lainnya
-                     * tetap diteruskan.
-                     */
-                    console.warn(
-                        `Family search ${field}/${variant} gagal:`,
-                        error
-                    );
-                }
-            }
-        }
-
-        /*
-         * =====================================================
-         * FALLBACK TERAKHIR
-         *
-         * Bila prefix query tidak menemukan hasil, ambil
-         * dokumen users lalu cocokkan secara case-insensitive.
-         *
-         * Ini hanya digunakan saat query utama kosong,
-         * sehingga tidak menjadi jalur utama.
-         * =====================================================
-         */
-        if (
-            resultMap.size === 0
-        ) {
-            try {
-                const snapshot =
-                    await db
-                        .collection(
-                            "users"
-                        )
-                        .get();
-
-                const normalized =
-                    cleanQuery
-                        .toLowerCase();
-
-                snapshot.docs.forEach(
-                    (doc) => {
-                        const data =
-                            doc.data();
-
-                        const nama =
-                            String(
-                                data.nama ||
-                                ""
-                            )
-                            .trim()
-                            .toLowerCase();
-
-                        const namaLengkap =
-                            String(
-                                data.nama_lengkap ||
-                                ""
-                            )
-                            .trim()
-                            .toLowerCase();
-
-                        const nij =
-                            String(
-                                data.nij ||
-                                ""
-                            )
-                            .trim()
-                            .toLowerCase();
-
-                        if (
-                            nama.includes(
-                                normalized
-                            ) ||
-                            namaLengkap.includes(
-                                normalized
-                            ) ||
-                            nij.includes(
-                                normalized
-                            )
-                        ) {
-                            resultMap.set(
-                                doc.id,
-                                {
-                                    uid:
-                                        doc.id,
-                                    ...data
-                                }
-                            );
-                        }
-                    }
-                );
-
-            } catch (error) {
-                console.error(
-                    "Fallback Family Reference gagal:",
-                    error
-                );
-            }
-        }
-
-        return Array.from(
-            resultMap.values()
-        )
-            .slice(
-                0,
-                10
-            );
+        const cleanQuery=String(query||"").trim();
+        if(cleanQuery.length<2)return [];
+        if(!auth.currentUser)return []; // Free-text names remain available before login.
+        return []; // Free-text family names stay available; private directory lookup is paused.
     }
     function renderFamilyReferenceResults(
         type,
@@ -2343,8 +2252,7 @@ document.getElementById("status_pernikahan").value,
                         font-size:12px;
                     "
                 >
-                    Data tidak ditemukan.
-                    Jemaat belum terdaftar di SIPAPUA.
+                    Referensi yang berwenang belum tersedia. Masuk untuk mencari data yang telah disetujui; nama tetap dapat diisi tanpa tautan.
                 </div>
             `;
 

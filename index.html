@@ -272,9 +272,15 @@
         </div>
     </div>
  
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+<script src="sipapua-app-check.js"></script>
+<script src="sipapua-spark-member.js"></script>
+<script src="sipapua-member-session.js"></script>
+<script src="sipapua-login.js"></script>
  
    <script>
         // FIREBASE CONFIG
@@ -288,6 +294,7 @@
         };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const auth = firebase.auth();
+        const memberLogin = window.SIPAPUA_LOGIN.create(auth, window.SIPAPUA_MEMBER_SESSION.create(firebase));
         const db = firebase.firestore();
  
         // DOM ELEMENTS
@@ -311,48 +318,24 @@
         // --- PERBAIKAN DI SINI: Menutup blok onAuthStateChanged dengan benar ---
         // True from MASUK until the login attempt has been handled.
         let loginSubmitting = false;
-        auth.onAuthStateChanged(async (user) => {
-            if (!user) return;
-            // Sesi belum terverifikasi yang tertinggal (reload atau tab ditinggal
-            // saat modal kirim ulang terbuka) diakhiri. Selama login berjalan
-            // atau modal terbuka, sesi itu masih dibutuhkan untuk kirim ulang.
-            if (!user.emailVerified) {
-                if (!loginSubmitting && !verifyModalOpen()) await auth.signOut();
-                return;
+        async function confirmLogin(user, navigate=true) {
+            const result=await memberLogin.status(user);
+            if (!result.active) {
+                localStorage.removeItem('userUid'); localStorage.removeItem('userEmail');
+                if (result.emailVerified===false) openVerifyModal(user.email);
+                else showBlockNotif('Aktivasi belum dikonfirmasi server. Hubungi pengurus.');
+                return false;
             }
-
-            // Validasi sesi yang sudah melewati login.
-            if (localStorage.getItem("userUid") !== user.uid) return;
-
-            try {
-                const userDoc = await db.collection("users").doc(user.uid).get();
-
-                if (!userDoc.exists) {
-                    localStorage.removeItem("userUid");
-                    localStorage.removeItem("userEmail");
-                    await auth.signOut();
-                    return;
-                }
-
-                const statusAkun = String(userDoc.data().status_akun || "").trim();
-
-                if (statusAkun !== "Aktif") {
-                    localStorage.removeItem("userUid");
-                    localStorage.removeItem("userEmail");
-                    showBlockNotif("Akun belum diaktifkan oleh administrator.");
-                    await auth.signOut();
-                    return;
-                }
-
-                localStorage.setItem("userUid", user.uid);
-                localStorage.setItem("userEmail", user.email);
-                window.location.replace("menu.html");
-            } catch (err) {
-                console.error("Gagal memeriksa status akun:", err);
-                localStorage.removeItem("userUid");
-                localStorage.removeItem("userEmail");
-                await auth.signOut();
-            }
+            localStorage.setItem('userUid',user.uid);localStorage.setItem('userEmail',user.email || '');
+            if(result.activationPath==='admin-override') showBlockNotif('Akun aktif melalui persetujuan administrator. Email belum terverifikasi.');
+            else showBlockNotif('Anda berhasil login. Status akun dikonfirmasi server.');
+            if(navigate)window.location.replace('menu.html');
+            return true;
+        }
+        auth.onAuthStateChanged(async user=>{
+            if(!user||loginSubmitting||localStorage.getItem('userUid')!==user.uid)return;
+            try {await confirmLogin(user);}
+            catch(error){localStorage.removeItem('userUid');localStorage.removeItem('userEmail');showBlockNotif('Status akun belum dapat dikonfirmasi. Periksa koneksi lalu masuk kembali.');}
         });
         // FUNGSI TAMPIL NOTIFIKASI CUSTOM
         function showBlockNotif(message, duration = 2000) {
@@ -483,57 +466,18 @@
            btn.disabled = true;
            loginSubmitting = true;
  
+            localStorage.removeItem('userUid');localStorage.removeItem('userEmail');
             try {
-                const userCredential = await auth.signInWithEmailAndPassword(email, pass);
-                if (userCredential.user.emailVerified) {
-                   try {
-                       const userDoc = await db.collection("users").doc(userCredential.user.uid).get();
-
-                       if (!userDoc.exists) {
-                           showBlockNotif("Data akun tidak ditemukan.");
-                           btn.innerText = "MASUK";
-                           btn.disabled = false;
-                           await auth.signOut();
-                           return;
-                       }
-
-                       const statusAkun = String(userDoc.data().status_akun || "").trim();
-
-                       if (statusAkun !== "Aktif") {
-                           showBlockNotif("Akun belum diaktifkan oleh administrator.");
-                           btn.innerText = "MASUK";
-                           btn.disabled = false;
-                           await auth.signOut();
-                           return;
-                       }
-
-                       localStorage.setItem("userUid", userCredential.user.uid);
-                       localStorage.setItem("userEmail", userCredential.user.email);
-                       showBlockNotif("Anda berhasil login.");
-                       setTimeout(() => window.location.replace("menu.html"), 1500);
-                   } catch (statusErr) {
-                       console.error("Gagal memeriksa status akun:", statusErr);
-                       showBlockNotif("Gagal memeriksa status akun. Silakan coba lagi.");
-                       btn.innerText = "MASUK";
-                       btn.disabled = false;
-                       await auth.signOut();
-                   }
-                } else {
-                   // Tidak dikirim otomatis: pengguna memilih lewat tombol.
-                   // Sesi tetap aktif sampai modal ditutup (dibutuhkan Firebase).
-                   btn.innerText = "MASUK";
-                   btn.disabled = false;
-                   openVerifyModal(userCredential.user.email);
-                }
-            } catch (err) {
-               showBlockNotif("Gagal Login! Periksa kembali email & password.");
-               btn.innerText = "MASUK";
-               btn.disabled = false;
+                const credential=await auth.signInWithEmailAndPassword(email,pass);
+                await confirmLogin(credential.user);
+            } catch(error) {
+                localStorage.removeItem('userUid');localStorage.removeItem('userEmail');
+                showBlockNotif('Login atau status akun belum dapat dikonfirmasi. Periksa koneksi dan akun Anda.');
             } finally {
-               loginSubmitting = false;
+                btn.innerText='MASUK';btn.disabled=false;loginSubmitting=false;
             }
         };
- 
+
         // EMAIL VERIFIKASI: kirim ulang hanya atas klik, dengan jeda di perangkat.
         // Batas sebenarnya dari Firebase dilaporkan sebagai auth/too-many-requests.
         const VERIFY_COOLDOWN_MS = 60 * 1000;
@@ -589,9 +533,10 @@
             try {
                 const user = auth.currentUser;
                 if (!user) throw { code: 'auth/no-current-user' };
-                await user.reload().catch(() => {});
+                await user.reload();
                 if (auth.currentUser.emailVerified) {
-                    message.innerText = 'Email sudah terverifikasi. Tutup lalu login kembali.';
+                    await confirmLogin(auth.currentUser);
+                    message.innerText = 'Email terverifikasi; status akun diperiksa server.';
                     codeLine.style.display = 'none';
                     return;
                 }
@@ -615,7 +560,7 @@
 
         document.getElementById('closeVerify').onclick = async () => {
             document.getElementById('verifyModal').style.display = 'none';
-            if (auth.currentUser && !auth.currentUser.emailVerified) await auth.signOut();
+            if (auth.currentUser) { try { if (!(await confirmLogin(auth.currentUser))) await auth.signOut(); } catch (_) { await auth.signOut(); } }
         };
 
         // FORGOT PASSWORD (DIPERBARUI DENGAN EFEK DINAMIS)
