@@ -124,6 +124,7 @@
 
     let curCustId = null;
     let myId = null;
+    let listUnsubscribe = null, messageUnsubscribe = null;
 
     function showToast(message) {
         const notif = document.getElementById("custom-notif");
@@ -133,6 +134,13 @@
     }
 
     auth.onAuthStateChanged(user => {
+        if (listUnsubscribe) listUnsubscribe();
+        if (messageUnsubscribe) messageUnsubscribe();
+        myId = null; curCustId = null;
+        document.getElementById('list-container').replaceChildren();
+        document.getElementById('chat-body').replaceChildren();
+        document.getElementById('input-chat').disabled = true;
+        document.getElementById('btn-kirim').disabled = true;
         if (user) { myId = user.uid; muatDaftarChat(); } 
         else { window.location.href = "umkm-jemaat.html"; }
     });
@@ -151,17 +159,18 @@
 
     function muatDaftarChat() {
         // FILTER: deleted_by_seller tidak boleh bernilai true
-        db.collection("chats")
-        .where("seller_uid", "==", myId)
-        .where("deleted_by_seller", "==", false)
+        const owner = myId;
+        listUnsubscribe = db.collection("chats")
+        .where("seller_uid", "==", owner)
         .orderBy("timestamp", "desc")
         .onSnapshot(snap => {
             const container = document.getElementById("list-container");
-            if (!container) return;
-            container.innerHTML = "";
+            if (!container || auth.currentUser?.uid !== owner) return;
+            container.replaceChildren();
             const uniqueCustomers = [];
             snap.forEach(doc => {
                 const data = doc.data();
+                if (data.deleted_by_seller === true || typeof data.customer_id !== 'string') return;
                 if (!uniqueCustomers.includes(data.customer_id)) {
                     uniqueCustomers.push(data.customer_id);
                     renderUserItem(data);
@@ -177,16 +186,18 @@
         const isActive = curCustId === data.customer_id ? 'active' : '';
         const item = document.createElement('div');
         item.className = `customer-item ${isActive}`;
-        item.innerHTML = `
-            <input type="checkbox" class="chat-checkbox" value="${data.customer_id}" onclick="event.stopPropagation(); updateDeleteButtonVisibility();">
-            <div style="display:flex; align-items:center; gap:12px; flex:1;" onclick="bukaPercakapan('${data.customer_id}', '${cName}')">
-                <div class="avatar">${cName.charAt(0)}</div>
-                <div class="customer-info">
-                    <div class="p-name">${cName}</div>
-                    <div class="p-msg">${data.message || ""}</div>
-                </div>
-            </div>
-        `;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.className = 'chat-checkbox'; checkbox.value = data.customer_id;
+        checkbox.onclick = event => { event.stopPropagation(); updateDeleteButtonVisibility(); };
+        const details = document.createElement('div');
+        details.style.cssText = 'display:flex; align-items:center; gap:12px; flex:1;';
+        details.onclick = () => bukaPercakapan(data.customer_id, cName);
+        const avatar = document.createElement('div'); avatar.className = 'avatar'; avatar.textContent = String(cName).charAt(0);
+        const info = document.createElement('div'); info.className = 'customer-info';
+        const name = document.createElement('div'); name.className = 'p-name'; name.textContent = String(cName);
+        const preview = document.createElement('div'); preview.className = 'p-msg'; preview.textContent = typeof data.message === 'string' ? data.message : '';
+        info.appendChild(name); info.appendChild(preview); details.appendChild(avatar); details.appendChild(info);
+        item.appendChild(checkbox); item.appendChild(details);
         container.appendChild(item);
     }
 
@@ -214,6 +225,7 @@
     }
 
     async function bukaPercakapan(cid, cname) {
+        if (!myId || auth.currentUser?.uid !== myId) return;
         curCustId = cid;
         document.getElementById("target-name").innerText = cname;
         document.getElementById("input-chat").disabled = false;
@@ -227,12 +239,12 @@
                 .where("seller_uid", "==", myId)
                 .where("customer_id", "==", cid)
                 .where("sender", "==", "customer") 
-                .where("is_read", "==", false)
                 .get();
 
             if (!pesanBelumDibaca.empty) {
                 pesanBelumDibaca.forEach(doc => {
-                    batch.update(doc.ref, { is_read: true });
+                    if (doc.data().is_read !== true && doc.data().deleted_by_seller !== true)
+                        batch.update(doc.ref, { is_read: true });
                 });
                 await batch.commit(); 
             }
@@ -243,19 +255,23 @@
 
     function muatPesan() {
         if (!curCustId) return;
-        // FILTER: deleted_by_seller tidak boleh bernilai true
-        db.collection("chats")
+        if (messageUnsubscribe) messageUnsubscribe();
+        const owner = myId, customer = curCustId;
+        messageUnsubscribe = db.collection("chats")
         .where("seller_uid", "==", myId)
         .where("customer_id", "==", curCustId)
-        .where("deleted_by_seller", "==", false)
         .orderBy("timestamp", "asc")
         .onSnapshot(snap => {
             const body = document.getElementById("chat-body");
-            body.innerHTML = "";
+            if (auth.currentUser?.uid !== owner || curCustId !== customer) return;
+            body.replaceChildren();
             snap.forEach(doc => {
                 const m = doc.data();
-                const isOut = m.sender === 'seller';
-                body.innerHTML += `<div class="bubble ${isOut ? 'bubble-out' : 'bubble-in'}">${m.message}</div>`;
+                if (m.deleted_by_seller === true) return;
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble ' + (m.sender === 'seller' ? 'bubble-out' : 'bubble-in');
+                bubble.textContent = typeof m.message === 'string' ? m.message : (m.is_product ? 'Tanya Produk' : '...');
+                body.appendChild(bubble);
             });
             body.scrollTop = body.scrollHeight;
         });
@@ -263,7 +279,7 @@
 
     async function kirimBalasan() {
         const input = document.getElementById("input-chat");
-        if (!input.value.trim()) return;
+        if (!input.value.trim() || !curCustId || !myId || auth.currentUser?.uid !== myId) return;
         
         // Mengirim pesan baru dengan status deleted_by_seller: false 
         // agar muncul kembali di dashboard jika sebelumnya pernah dihapus
@@ -271,7 +287,7 @@
             seller_uid: myId, 
             customer_id: curCustId, 
             sender: 'seller', 
-            is_read: true,
+            is_read: false,
             deleted_by_seller: false,
             message: input.value.trim(), 
             timestamp: firebase.firestore.FieldValue.serverTimestamp()

@@ -340,8 +340,12 @@
             <label>Status Akun</label>
             <select id="status_akun">
                 <option value="Pending">Pending</option>
+                <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
                 <option value="Aktif">Aktif</option>
             </select>
+            <label><input type="checkbox" id="activation_identity_confirmed"> Saya telah memverifikasi identitas jemaat.</label>
+            <button type="button" id="activate_existing_member" onclick="activateMemberFromExistingEditor()">Aktifkan dengan audit</button>
+            <p id="existing_activation_result" role="status"></p>
         </div>
 
         <div class="form-group">
@@ -441,10 +445,16 @@
     </form>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+<script src="sipapua-spark-registration.js"></script>
+<script src="sipapua-spark-member.js"></script>
 <script src="sipapua-registration.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+<script src="sipapua-app-check.js"></script>
+<script src="sipapua-member-session.js"></script>
 <script src="https://upload-widget.cloudinary.com/latest/global/all.js"></script>
 
 
@@ -498,6 +508,58 @@
         const role = String(adminData.role || "").trim().toLowerCase();
         editAdminVerified = adminData.status === "active" && EDIT_ADMIN_ROLES.has(role);
         return editAdminVerified;
+    }
+
+    async function activateMemberFromExistingEditor(propagateFailure = false) {
+        const button = document.getElementById('activate_existing_member');
+        const result = document.getElementById('existing_activation_result');
+        if (button.disabled) {
+            if(propagateFailure)throw new Error('Tunggu konfirmasi aktivasi sebelum menyimpan.');
+            return;
+        }
+        button.disabled = true;
+        let activated = false;
+        try {
+            if (document.getElementById('status_akun').value !== 'Aktif' ||
+                !document.getElementById('activation_identity_confirmed').checked) {
+                throw new Error('Pilih Aktif dan konfirmasi pemeriksaan identitas terlebih dahulu.');
+            }
+            const actor = auth.currentUser;
+            if (!actor || !userId) throw new Error('Sesi atau target aktivasi tidak tersedia.');
+            await actor.reload();
+            await actor.getIdToken(true);
+            if (auth.currentUser?.uid !== actor.uid) throw new Error('Sesi administrator berubah.');
+            const snapshot = await db.collection('admin_users').doc(actor.uid).get({source:'server'});
+            const admin = snapshot.exists ? snapshot.data() : null;
+            if (auth.currentUser?.uid !== actor.uid || !admin || admin.status !== 'active' ||
+                !['master', 'super_admin'].includes(admin.role) || admin.permissions?.canActivateMembers !== true) {
+                throw new Error('Administrator tidak memiliki izin aktivasi.');
+            }
+            const response = await window.SIPAPUA_MEMBER_SESSION.create(firebase).callable('adminActivateSIPAPUAProfile')({
+                targetUid: userId, identityVerified: true
+            });
+            if (auth.currentUser?.uid !== actor.uid || response.data?.active !== true) {
+                throw new Error('Aktivasi belum terkonfirmasi. Periksa status sebelum mencoba kembali.');
+            }
+            activated = true;
+            document.getElementById('activation_identity_confirmed').checked = false;
+            result.textContent = 'Aktivasi dikonfirmasi backend melalui jalur audit. Status verifikasi email tidak diubah.';
+        } catch (error) {
+            result.textContent = 'Aktivasi belum dikonfirmasi: ' + error.message;
+            if(propagateFailure)throw error;
+        } finally {
+            button.disabled = activated;
+        }
+    }
+
+    async function saveExistingAccountStatus(requestedStatus) {
+        const current = await db.collection('users').doc(userId).get({source:'server'});
+        if(!current.exists)throw new Error('Profil tidak ditemukan.');
+        if(requestedStatus === 'Aktif'&&(current.data().status_akun !== 'Aktif'||document.getElementById('activation_identity_confirmed').checked)){
+            await activateMemberFromExistingEditor(true);
+        }else if(requestedStatus !== current.data().status_akun){
+            throw new Error('Perubahan ini memerlukan prosedur penonaktifan terpisah.');
+        }
     }
 
     function denyEditAccess(message) {
@@ -1787,6 +1849,10 @@ const emailNormalized = document.getElementById("email").value.trim().toLowerCas
 
             const originalRegionLabel = ({ARS1:'Arso 1',ARS2:'Arso 2'})[originalMemberRegion] || originalMemberRegion;
             if (updateData.wilayah === originalRegionLabel) updateData.wilayah = originalMemberRegion;
+            // Existing dropdown + Simpan is the manual activation workflow.
+            // Do not send status as an ordinary profile edit or forge Auth verification.
+            await saveExistingAccountStatus(updateData.status_akun);
+            delete updateData.status_akun;
             await originalRegistrationService().updateProfile(userId, updateData);
             alert("Data User Berhasil Diperbarui!");
             window.location.href = 'database-jemaat.html';

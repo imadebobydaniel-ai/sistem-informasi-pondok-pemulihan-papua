@@ -1,0 +1,103 @@
+    // BLOCKED local proposal: noncanonical unindexed UID conflicts are unresolved.
+    // Approval is immutable and records the approving actor. DO NOT DEPLOY.
+    function linkManager(uid) {
+      let a = get(/databases/$(database)/documents/admin_users/$(uid)).data;
+      return a.status == 'active' && a.role in ['master','super_admin']
+        && a.get('permissions', {}).get('canActivateMembers', false) == true;
+    }
+    function linkMember() {
+      return signedIn() && request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+    }
+    function linkFree(uid) {
+      return !exists(/databases/$(database)/documents/users/$(uid))
+        && !exists(/databases/$(database)/documents/nij_allocations/$(uid));
+    }
+    function linkCore(grantId, uid) {
+      let g = get(/databases/$(database)/documents/legacy_link_approvals/$(grantId)).data;
+      let r = get(/databases/$(database)/documents/legacy_link_requests/$(uid)).data;
+      let p = get(/databases/$(database)/documents/users/$(g.profileId)).data;
+      return linkMember() && request.auth.uid == uid && g.uid == uid
+        && r.status == 'pending' && r.uid == uid
+        && g.identityVerified == true && g.expiresAt > request.time
+        && g.approvedAt >= r.createdAt && g.approvedAt <= request.time
+        && linkManager(g.approverUid) && p.get('uid','') == '' && p.nij == g.nij
+        && linkFree(uid);
+    }
+    function linkIndex(data, grantId, uid) {
+      let g = get(/databases/$(database)/documents/legacy_link_approvals/$(grantId)).data;
+      return data == {'uid':uid,'profileId':g.profileId,'grantId':grantId,'linkedAt':request.time};
+    }
+    function linkRequestAfter(uid, grantId) {
+      let before = get(/databases/$(database)/documents/legacy_link_requests/$(uid)).data;
+      let after = getAfter(/databases/$(database)/documents/legacy_link_requests/$(uid)).data;
+      return after == {'uid':uid,'createdAt':before.createdAt,'status':'completed','grantId':grantId,'completedAt':request.time};
+    }
+    function linkAudit(data, grantId, uid) {
+      let g = get(/databases/$(database)/documents/legacy_link_approvals/$(grantId)).data;
+      return data == {'action':'legacy-identity-link','uid':uid,'profileId':g.profileId,'nij':g.nij,
+        'grantId':grantId,'approverUid':g.approverUid,'actorUid':uid,'identityVerified':true,
+        'approvedAt':g.approvedAt,'createdAt':request.time};
+    }
+    function linkBoth(grantId, uid) {
+      let g = get(/databases/$(database)/documents/legacy_link_approvals/$(grantId)).data;
+      return linkIndex(getAfter(/databases/$(database)/documents/member_identity/$(uid)).data,grantId,uid)
+        && linkIndex(getAfter(/databases/$(database)/documents/legacy_profile_owners/$(g.profileId)).data,grantId,uid);
+    }
+    function linkedOwner(profileId) {
+      let b = get(/databases/$(database)/documents/member_identity/$(request.auth.uid)).data;
+      let p = get(/databases/$(database)/documents/legacy_profile_owners/$(profileId)).data;
+      return b.uid == request.auth.uid && b.profileId == profileId && p == b;
+    }
+    match /legacy_link_requests/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || linkManager(request.auth.uid));
+      allow list: if signedIn() && linkManager(request.auth.uid);
+      allow create: if linkMember() && request.auth.uid == uid && linkFree(uid)
+        && !exists(/databases/$(database)/documents/member_identity/$(uid))
+        && request.resource.data == {'uid':uid,'status':'pending','createdAt':request.time};
+      allow update: if linkCore(request.resource.data.grantId,uid)
+        && linkRequestAfter(uid,request.resource.data.grantId)
+        && linkBoth(request.resource.data.grantId,uid)
+        && linkAudit(getAfter(/databases/$(database)/documents/registration_audit/$('legacy-link_' + request.resource.data.grantId)).data,request.resource.data.grantId,uid);
+      allow delete: if false;
+    }
+    match /legacy_link_approvals/{grantId} {
+      allow get: if signedIn() && (resource.data.uid == request.auth.uid || linkManager(request.auth.uid));
+      allow list: if signedIn() && linkManager(request.auth.uid);
+      allow create: if signedIn() && linkManager(request.auth.uid)
+        && request.resource.data.keys().hasOnly(['uid','profileId','nij','approverUid','identityVerified','approvedAt','expiresAt'])
+        && request.resource.data.approverUid == request.auth.uid
+        && request.resource.data.identityVerified == true
+        && request.resource.data.approvedAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(15,'m')
+        && get(/databases/$(database)/documents/legacy_link_requests/$(request.resource.data.uid)).data.status == 'pending'
+        && get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data.get('uid','') == ''
+        && get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data.nij == request.resource.data.nij
+        && request.resource.data.nij is string && request.resource.data.nij.size() > 0
+        && linkFree(request.resource.data.uid)
+        && !exists(/databases/$(database)/documents/member_identity/$(request.resource.data.uid))
+        && !exists(/databases/$(database)/documents/legacy_profile_owners/$(request.resource.data.profileId));
+      allow update, delete: if false;
+    }
+    match /member_identity/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isActiveAdmin());
+      allow list: if isActiveAdmin();
+      allow create: if linkCore(request.resource.data.grantId,uid)
+        && linkIndex(request.resource.data,request.resource.data.grantId,uid)
+        && linkIndex(getAfter(/databases/$(database)/documents/legacy_profile_owners/$(request.resource.data.profileId)).data,request.resource.data.grantId,uid)
+        && linkRequestAfter(uid,request.resource.data.grantId)
+        && linkAudit(getAfter(/databases/$(database)/documents/registration_audit/$('legacy-link_' + request.resource.data.grantId)).data,request.resource.data.grantId,uid);
+      allow update, delete: if false;
+    }
+    match /legacy_profile_owners/{profileId} {
+      allow get: if signedIn() && (isActiveAdmin() || (resource.data.uid == request.auth.uid && linkedOwner(profileId)));
+      allow list: if isActiveAdmin();
+      allow create: if linkCore(request.resource.data.grantId,request.auth.uid)
+        && profileId == request.resource.data.profileId
+        && linkIndex(request.resource.data,request.resource.data.grantId,request.auth.uid)
+        && linkIndex(getAfter(/databases/$(database)/documents/member_identity/$(request.auth.uid)).data,request.resource.data.grantId,request.auth.uid)
+        && linkRequestAfter(request.auth.uid,request.resource.data.grantId)
+        && linkAudit(getAfter(/databases/$(database)/documents/registration_audit/$('legacy-link_' + request.resource.data.grantId)).data,request.resource.data.grantId,request.auth.uid);
+      allow update, delete: if false;
+    }

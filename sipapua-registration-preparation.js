@@ -42,11 +42,11 @@
         }
         const existing=new Map(data.claims.map(r=>[r.id,r.data.uid]));
         const writes=[];
-        for(const [key,uid] of claims)if(existing.get(key)!==uid)writes.push({key,uid});
+        for(const [key,uid] of claims){if(existing.has(key)&&existing.get(key)!==uid)issue('IDENTITY_RESERVATION_CONFLICT',key);else if(!existing.has(key))writes.push({key,uid});}
         const removes=[];
         for(const r of data.claims){
             if(!/^(email_|phone_)/.test(r.id)||typeof r.data.uid!=='string'||Object.keys(r.data).some(k=>!['uid','createdAt'].includes(k)))issue('UNKNOWN_REGISTRY_DOCUMENT',r.id);
-            else if(!claims.has(r.id))removes.push(r.id);
+            // Permanent old reservations are retained; no removal operation is planned.
         }
         const countMap=new Map(data.counters.map(r=>[r.id,r.data.last]));
         const counterWrites=Object.entries(counters).filter(([r,n])=>countMap.get(r)!==n).map(([region,last])=>({region,last}));
@@ -56,66 +56,20 @@
         return {issues,warnings,counters,writes,removes,counterWrites,profileCount:data.users.length,
             source:JSON.stringify([projection,allocationProjection,counterProjection]),identities:JSON.stringify([projection,allocationProjection])};
     }
-    async function hash(text){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');}
-    function create(db,auth,stamp){
-        const project=db.app.options.projectId;
-        if(!['boby-apps-project','demo-sipapua-original'].includes(project)||auth.app.options.projectId!==project)throw error('WRONG_PROJECT');
-        const state=db.doc('registration_control/state');
-        function same(user){if(!user||auth.currentUser?.uid!==user.uid)throw error('SESSION_CHANGED');}
-        async function manager(){
-            const user=auth.currentUser;same(user);
-            const snap=await db.doc('admin_users/'+user.uid).get({source:'server'});same(user);
-            if(!snap.exists||snap.data().status!=='active'||!['master','super_admin'].includes(snap.data().role))throw error('ACTIVE_MANAGER_REQUIRED');
-            return user;
+    // Analysis remains pure; all database access and mutations belong to backend.
+    function create(db,auth,stamp,functions){
+        async function call(name,data){
+            const user=auth.currentUser;
+            if(!user)throw error("ACTIVE_MANAGER_REQUIRED");
+            const invoke=functions?functions.httpsCallable(name):root.SIPAPUA_MEMBER_SESSION.create(root.firebase).callable(name);
+            const response=await invoke(data);
+            if(auth.currentUser?.uid!==user.uid)throw error("SESSION_CHANGED");
+            return response.data;
         }
-        async function scan(){
-            const user=await manager(),data={};
-            for(const [key,collection] of Object.entries({users:'users',allocations:'nij_allocations',counters:'nij_counters',claims:'registration_unique'})){
-                const snap=await db.collection(collection).get({source:'server'});same(user);
-                if(snap.metadata.fromCache||snap.metadata.hasPendingWrites)throw error('SERVER_READ_REQUIRED');
-                data[key]=snap.docs.map(d=>({id:d.id,data:d.data()}));
-            }
-            const p=plan(data),control=await state.get({source:'server'});same(user);
-            if(control.exists&&control.data().version!==api.version)throw error('UNKNOWN_PREPARATION_VERSION');
-            return {user,p,control,fingerprint:await hash(p.source)};
-        }
-        function report(s){return {projectId:project,profileCount:s.p.profileCount,issues:s.p.issues,warnings:s.p.warnings,counters:s.p.counters,
-            claimWrites:s.p.writes.length,claimRemovals:s.p.removes.length,counterWrites:s.p.counterWrites.length,
-            prepared:s.p.issues.length===0&&!s.p.writes.length&&!s.p.removes.length&&!s.p.counterWrites.length,
-            enabled:s.control.exists&&s.control.data().enabled===true,fingerprint:s.fingerprint};}
-        async function audit(){return report(await scan());}
-        async function abort(){
-            const user=await manager();
-            await db.runTransaction(async tx=>{same(user);const c=await tx.get(state);if(c.exists){if(c.data().enabled===true)throw error('REGISTRATION_ALREADY_OPEN');tx.delete(state);}});
-        }
-        async function prepare(expectedFingerprint){
-            const before=await scan();
-            if(before.fingerprint!==expectedFingerprint)throw error('SOURCE_CHANGED_REVIEW_AGAIN');
-            if(before.p.issues.length)throw error('LEGACY_DATA_REVIEW_REQUIRED');
-            if(before.control.exists&&before.control.data().enabled===true)throw error('REGISTRATION_ALREADY_OPEN');
-            await db.runTransaction(async tx=>{same(before.user);const c=await tx.get(state);if(c.exists&&c.data().enabled===true)throw error('REGISTRATION_ALREADY_OPEN');tx.set(state,{enabled:false,version:api.version,preparedAt:stamp()});});
-            try {
-                const frozen=await scan();
-                if(frozen.fingerprint!==before.fingerprint)throw error('SOURCE_CHANGED_REVIEW_AGAIN');
-                const operations=[...frozen.p.writes.map(r=>({type:'set',path:'registration_unique/'+r.key,data:{uid:r.uid,createdAt:stamp()}})),
-                    ...frozen.p.removes.map(key=>({type:'delete',path:'registration_unique/'+key})),
-                    ...frozen.p.counterWrites.map(r=>({type:'set',path:'nij_counters/'+r.region,data:{last:r.last,updatedAt:stamp()}}))];
-                for(let i=0;i<operations.length;i+=100){same(before.user);const batch=db.batch();for(const op of operations.slice(i,i+100)){const ref=db.doc(op.path);if(op.type==='set')batch.set(ref,op.data);else batch.delete(ref);}await batch.commit();}
-                const after=await scan();
-                if(after.p.identities!==before.p.identities||!report(after).prepared)throw error('PREPARATION_NOT_CONFIRMED');
-                return report(after);
-            } catch(e){
-                // Registration stays closed if abort succeeds; member profiles were never written.
-                try {await abort();}catch(_){throw error('PREPARATION_INTERRUPTED_ADMIN_REVIEW_REQUIRED');}
-                throw e;
-            }
-        }
-        async function enable(expectedFingerprint){
-            const s=await scan();if(s.fingerprint!==expectedFingerprint)throw error('SOURCE_CHANGED_REVIEW_AGAIN');
-            if(!report(s).prepared||!s.control.exists)throw error('PREPARATION_REQUIRED');
-            await db.runTransaction(async tx=>{same(s.user);const c=await tx.get(state);if(!c.exists||c.data().version!==api.version)throw error('PREPARATION_REQUIRED');tx.set(state,{enabled:true,version:api.version,preparedAt:stamp()});});
-            return {projectId:project,enabled:true};
-        }
+        async function audit(){return call("auditSIPAPUARegistry",{});}
+        async function prepare(fingerprint){await call("prepareSIPAPUARegistry",{fingerprint});return audit();}
+        async function enable(fingerprint){await call("enableSIPAPUARegistry",{fingerprint});return audit();}
+        async function abort(){const report=await audit();return call("abortSIPAPUARegistry",{fingerprint:report.fingerprint});}
         return Object.freeze({audit,prepare,enable,abort});
     }
     const exported=Object.freeze({create,plan});root.SIPAPUA_REGISTRATION_PREPARATION=exported;

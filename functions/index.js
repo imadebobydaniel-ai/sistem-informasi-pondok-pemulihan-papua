@@ -13,6 +13,14 @@ const { buildPublicStatistics } = require("./public-statistics");
 
 initializeApp();
 
+const memberCard = require("./member-card");
+exports.getMyCardToken = memberCard.getMyCardToken;
+exports.lookupMemberCard = memberCard.lookupMemberCard;
+const { createQrFriendship } = require("./qr-friendship");
+const qrFriendship = createQrFriendship(getFirestore());
+exports.scanQrIntroduction = qrFriendship.scanQrIntroduction;
+exports.requestQrIntroduction = qrFriendship.requestQrIntroduction;
+
 exports.healthCheck = onCall(
     {
         region: "asia-southeast2",
@@ -1645,3 +1653,28 @@ exports.pksDemoLogin = onCall(
         };
     }
 );
+
+// Registration callables share the Admin SDK app initialized above.
+// Local integration only; production readiness and deployment require review.
+const registration = require("./registration-paket-a");
+exports.registrationReadiness = registration.registrationReadiness;
+exports.registerSIPAPUAProfile = registration.registerSIPAPUAProfile;
+exports.activateVerifiedSIPAPUAProfile = registration.activateVerifiedSIPAPUAProfile;
+exports.adminActivateSIPAPUAProfile = registration.adminActivateSIPAPUAProfile;
+exports.memberLoginStatus = registration.memberLoginStatus;
+exports.lookupSIPAPUAFamily = registration.lookupSIPAPUAFamily;
+
+// Authorized member lifecycle, shared existing Admin SDK instance.
+const lifecycle = require("./member-lifecycle");
+exports.getSIPAPUAOwnProfile = lifecycle.getSIPAPUAOwnProfile;
+exports.updateSIPAPUAProfile = lifecycle.updateSIPAPUAProfile;
+exports.deleteSIPAPUAProfiles = lifecycle.deleteSIPAPUAProfiles;
+
+// Registry preparation is explicit, authorized, and never runs on page load.
+const registryPreparation = require("./registry-preparation");
+exports.auditSIPAPUARegistry = registryPreparation.auditSIPAPUARegistry;
+exports.prepareSIPAPUARegistry = registryPreparation.prepareSIPAPUARegistry;
+exports.enableSIPAPUARegistry = registryPreparation.enableSIPAPUARegistry;
+exports.abortSIPAPUARegistry = registryPreparation.abortSIPAPUARegistry;
+
+exports.searchSIPAPUAFamily = registration.searchSIPAPUAFamily;

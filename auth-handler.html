@@ -22,8 +22,15 @@
         <div id="action-area"></div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+<script src="sipapua-app-check.js"></script>
+<script src="sipapua-spark-member.js"></script>
+<script src="sipapua-member-session.js"></script>
+<script src="sipapua-login.js"></script>
 
     <script>
         // CONFIG FIREBASE ANDA
@@ -60,20 +67,20 @@
         }
 
         // FUNGSI VERIFIKASI EMAIL
-        function handleVerifyEmail(code) {
-            auth.applyActionCode(code)
-                .then(() => {
-                    loaderEl.style.display = 'none';
-                    messageEl.innerHTML = `
-                        <i class="fa-solid fa-circle-check" style="color: #D4AF37; font-size: 3rem;"></i>
-                        <h3>Email Terverifikasi!</h3>
-                        <p>Akun Anda sekarang aktif. Silakan kembali untuk login.</p>
-                        <a href="index.html" class="btn">KE HALAMAN LOGIN</a>
-                    `;
-                })
-                .catch((error) => {
-                    showError("Gagal verifikasi: " + error.message);
-                });
+        async function handleVerifyEmail(code) {
+            try {
+                if(!code)throw new Error('Tautan tidak lengkap.');
+                await auth.applyActionCode(code);
+                history.replaceState(null,'',location.pathname);
+            } catch(error) {showError('Verifikasi gagal. Masuk untuk mengirim ulang atau hubungi pengurus.');return;}
+            let message='Email telah diverifikasi. Masuk dengan akun yang sama untuk pemeriksaan aktivasi server.';
+            try {
+                // Wait for persisted Auth session restoration before checking status.
+                const user=await new Promise(resolve=>{let off;off=auth.onAuthStateChanged(u=>{if(off)off();resolve(u);});});
+                if(user){const status=await window.SIPAPUA_LOGIN.create(auth, window.SIPAPUA_MEMBER_SESSION.create(firebase)).status(user);message=status.active?'Email terverifikasi dan akun aktif; dikonfirmasi server.':'Email terverifikasi; aktivasi belum dikonfirmasi server.';}
+            } catch(error){message='Email terverifikasi; pemeriksaan aktivasi belum berhasil. Masuk kembali untuk mencoba lagi.';}
+            loaderEl.style.display='none';messageEl.textContent=message;
+            const link=document.createElement('a');link.href='index.html';link.className='btn';link.textContent='KE HALAMAN LOGIN';document.getElementById('action-area').appendChild(link);
         }
 
         // FUNGSI RESET PASSWORD

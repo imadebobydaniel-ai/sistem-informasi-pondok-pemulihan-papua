@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bio Singkat Jemaat</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="notification/styles/notification.css">
     <style>
@@ -64,6 +63,9 @@
 <script src="notification/core/manager.js"></script>
 <script src="notification/index.js"></script>
 <script src="sipapua-maintenance.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+<script src="sipapua-app-check.js"></script>
+<script src="sipapua-member-card.js"></script>
 
 <script>
     const firebaseConfig = {
@@ -77,13 +79,10 @@
     
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const auth = firebase.auth();
-    const db = firebase.firestore();
 
     // Logika Utama: Deteksi Scan langsung di dalam APK
     window.onload = async () => {
-        // Card lookups need the Cloud Function lookupMemberCard; while it is
-        // paused (sipapua-maintenance.js, or that file did not load) only a
-        // notice is shown and nothing is looked up.
+        const cardToken = SIPAPUA_MEMBER_CARD.takeScan();
         if (!window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("memberCard")) {
             const box = document.getElementById('msg-error');
             const text = document.getElementById('errorText');
@@ -99,24 +98,10 @@
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-
-        // Kartu QR: sipapua://scan?t=<token acak dari server>. QR lama berisi
-        // email ('email' / 'scan') tidak lagi dipakai untuk mencari anggota.
-        const cardToken = urlParams.get('t');
         const legacyEmailScan = urlParams.has('legacy') || urlParams.has('email') || urlParams.has('scan');
 
-        // Karena ini dijalankan di dalam APK, kita asumsikan user sudah login 
-        // saat mengakses scanner di menu aplikasi.
-        const myEmail = localStorage.getItem("userEmail");
-
-        if (!myEmail) {
-            document.getElementById('msg-error').style.display = 'block';
-            document.getElementById('errorText').innerText = "Sesi Tidak Ditemukan. Silakan Login di Aplikasi SIPAPUA.";
-            return;
-        }
-
         if (cardToken) {
-            muatDataProfil(cardToken);
+            await muatDataProfil(cardToken);
         } else {
             document.getElementById('msg-error').style.display = 'block';
             document.getElementById('errorText').innerText = legacyEmailScan
@@ -127,216 +112,75 @@
 
     async function muatDataProfil(token) {
         try {
-            // Profiles are private; the card fields come from a Cloud Function,
-            // called once the signed-in session is restored.
-            await new Promise(resolve => {
-                const unsubscribe = auth.onAuthStateChanged(() => { unsubscribe(); resolve(); });
-            });
-            const result = await firebase.app().functions("asia-southeast2")
-                .httpsCallable("lookupMemberCard")({ token });
-            if (result.data && result.data.found) {
-                const data = result.data;
-                const targetUid = data.uid;
-                
-                // Isi Data ke UI
-                document.getElementById('p-nij').innerText = data.nij || "0000 0000";
-                document.getElementById('p-nama').innerText = data.nama || "-";
-                document.getElementById('p-komsel').innerText = data.komsel ? "JC " + data.komsel : "-";
-                document.getElementById('p-jemaat').innerText = data.lokasi_berjemaat || "Pondok Pemulihan Papua";
-                
-                if(data.foto_profil) {
-                    document.getElementById('p-foto').src = data.foto_profil;
-                }
-                
-                // Tampilkan Pop-up
-                document.getElementById('popupBio').style.display = 'block';
+            const scanner = await SIPAPUA_MEMBER_CARD.restoredUser(auth);
+            const introduction = await SIPAPUA_MEMBER_CARD.call("scanQrIntroduction", { token });
+            if (!scanner || auth.currentUser !== scanner) throw new Error("Sesi berubah.");
 
-                // Logika Tombol Tambah: gunakan sistem friend_requests berbasis UID.
-                document.getElementById('btnAdd').onclick = async () => {
-                    const btnAdd = document.getElementById('btnAdd');
-                    const currentUser = await new Promise(resolve => {
-                        let settled = false;
-                        const unsubscribe = auth.onAuthStateChanged(user => {
-                            if (settled) return;
-                            settled = true;
-                            unsubscribe();
-                            resolve(user);
-                        });
-                    });
+            const { member, expiresAt } = introduction;
+            let receipt = introduction.receipt;
+            document.getElementById('p-nij').innerText = member.nij || "-";
+            document.getElementById('p-nama').innerText = member.nama || "-";
+            document.getElementById('p-komsel').innerText = "-";
+            document.getElementById('p-jemaat').innerText = "-";
+            document.getElementById('popupBio').style.display = 'block';
 
-                    if (!currentUser) {
-                        await Swal.fire({
-                            title: 'Sesi Tidak Ditemukan',
-                            text: 'Silakan login ulang ke SIPAPUA.',
-                            icon: 'warning',
-                            heightAuto: false
-                        });
-                        window.location.href = 'index.html';
-                        return;
-                    }
-
-                    if (currentUser.uid === targetUid) {
-                        await Swal.fire({
-                            title: 'Info',
-                            text: 'Ini adalah kartu Anda sendiri.',
-                            icon: 'info',
-                            heightAuto: false
-                        });
-                        return;
-                    }
-
+            const btnAdd = document.getElementById('btnAdd');
+            const originalText = btnAdd.textContent;
+            btnAdd.onclick = async () => {
+                if (btnAdd.disabled) return;
+                if (auth.currentUser !== scanner) {
+                    receipt = null;
                     btnAdd.disabled = true;
-                    const originalText = btnAdd.textContent;
-                    btnAdd.textContent = 'MENGIRIM...';
+                    await Swal.fire({ title: 'Sesi berubah', text: 'Silakan login ulang ke SIPAPUA.', icon: 'warning' });
+                    return;
+                }
+                if (!receipt || !(expiresAt > Date.now())) {
+                    receipt = null;
+                    btnAdd.disabled = true;
+                    await Swal.fire({ title: 'Kartu kedaluwarsa', text: 'Silakan pindai ulang kartu QR.', icon: 'info' });
+                    return;
+                }
 
-                    try {
-                        const targetContactRef = db
-                            .collection('contacts')
-                            .doc(currentUser.uid)
-                            .collection('friends')
-                            .doc(targetUid);
-                        const existingContact = await targetContactRef.get();
-
-                        if (existingContact.exists) {
-                            await Swal.fire({
-                                title: 'Sudah Berteman',
-                                text: 'Jemaat ini sudah ada di daftar kontak Anda.',
-                                icon: 'info',
-                                heightAuto: false
-                            });
-                            btnAdd.textContent = 'SUDAH BERTEMAN';
-                            return;
-                        }
-
-                        const pairRequestId = [currentUser.uid, targetUid].sort().join('_');
-                        const requestRef = db.collection('friend_requests').doc(pairRequestId);
-                        const requestSnapshot = await requestRef.get().catch(error => {
-                                if (error?.code === 'permission-denied') return null;
-                                throw error;
-                            });
-
-                        if (requestSnapshot.exists) {
-                            const requestData = requestSnapshot.data() || {};
-                            const requestStatus = String(requestData.status || '').trim().toLowerCase();
-
-                            if (requestStatus === 'pending') {
-                                await Swal.fire({
-                                    title: 'Sudah Dikirim',
-                                    text: 'Permintaan pertemanan sudah dikirim dan menunggu respons.',
-                                    icon: 'info',
-                                    heightAuto: false
-                                });
-                                btnAdd.textContent = 'TERKIRIM';
-                                return;
-                            }
-
-                            if (requestStatus === 'accepted') {
-                                await Swal.fire({
-                                    title: 'Sudah Berteman',
-                                    text: 'Permintaan sebelumnya sudah diterima.',
-                                    icon: 'success',
-                                    heightAuto: false
-                                });
-                                btnAdd.textContent = 'SUDAH BERTEMAN';
-                                return;
-                            }
-
-                            if (requestStatus === 'blocked') {
-                                await Swal.fire({
-                                    title: 'Tidak Dapat Menambahkan',
-                                    text: 'Permintaan pertemanan untuk akun ini sedang diblokir.',
-                                    icon: 'warning',
-                                    heightAuto: false
-                                });
-                                btnAdd.textContent = originalText;
-                                btnAdd.disabled = false;
-                                return;
-                            }
-
-                            if (requestStatus === 'rejected') {
-                                await Swal.fire({
-                                    title: 'Permintaan Sebelumnya Ditolak',
-                                    text: 'Permintaan pertemanan sebelumnya sudah ditolak.',
-                                    icon: 'info',
-                                    heightAuto: false
-                                });
-                                btnAdd.textContent = originalText;
-                                btnAdd.disabled = false;
-                                return;
-                            }
-                        }
-
-                        const ownPresenceSnapshot = await db.collection('presence').doc(currentUser.uid).get();
-                        if (!ownPresenceSnapshot.exists) {
-                            throw Object.assign(new Error('PRESENCE_NOT_READY'), { code: 'presence-not-ready' });
-                        }
-
-                        const ownPresence = ownPresenceSnapshot.data() || {};
-                        const fromDisplayName = typeof ownPresence.displayName === 'string' ? ownPresence.displayName : '';
-                        const fromPhotoURL = typeof ownPresence.photoURL === 'string' ? ownPresence.photoURL : '';
-
-                        await requestRef.set({
-                            fromUid: currentUser.uid,
-                            toUid: targetUid,
-                            status: 'pending',
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            fromDisplayName,
-                            fromPhotoURL
-                        });
-
-                        await Swal.fire({
-                            title: 'Berhasil!',
-                            text: 'Permintaan pertemanan telah dikirim.',
-                            icon: 'success',
-                            confirmButtonText: 'OK',
-                            confirmButtonColor: '#003366',
-                            heightAuto: false
-                        });
-
-                        btnAdd.textContent = 'TERKIRIM';
-                    } catch (error) {
-                        console.error('Gagal mengirim permintaan pertemanan:', error);
-
-                        let message = 'Permintaan pertemanan gagal dikirim.';
-                        const code = String(error?.code || '').replace(/^firestore\//, '');
-
-                        if (code === 'permission-denied') {
-                            message = 'Permintaan ditolak. Pastikan akun tujuan dapat menerima koneksi dan tidak sedang memblokir Anda.';
-                        } else if (code === 'unauthenticated') {
-                            message = 'Sesi login tidak valid. Silakan login ulang.';
-                        } else if (code === 'presence-not-ready') {
-                            message = 'Profil koneksi Anda belum siap. Kembali ke menu utama lalu coba scan lagi.';
-                        } else if (code === 'already-exists') {
-                            message = 'Permintaan pertemanan sudah ada.';
-                        }
-
-                        await Swal.fire({
-                            title: 'Gagal',
-                            text: message,
-                            icon: 'error',
-                            confirmButtonColor: '#003366',
-                            heightAuto: false
-                        });
-
-                        btnAdd.textContent = originalText;
-                        btnAdd.disabled = false;
-                    }
-                };            } else {
-                SIPAPUA.notify.error({
-                    title: "Error",
-                    message: "Data jemaat tidak ditemukan.",
-                    duration: 0
-                });
-            }
-        } catch (e) {
-            console.error(e);
-            SIPAPUA.notify.error({
-                title: "Error",
-                message: "Gagal mengambil data dari server.",
-                duration: 0
-            });
+                btnAdd.disabled = true;
+                btnAdd.textContent = 'MENGIRIM...';
+                try {
+                    await SIPAPUA_MEMBER_CARD.call("requestQrIntroduction", { receipt });
+                    receipt = null;
+                    btnAdd.textContent = 'TERKIRIM';
+                    await Swal.fire({
+                        title: 'Berhasil!',
+                        text: 'Permintaan pertemanan menunggu persetujuan penerima.',
+                        icon: 'success',
+                        confirmButtonColor: '#003366',
+                        heightAuto: false
+                    });
+                } catch (error) {
+                    const denied = error?.code === "functions/permission-denied" || error?.code === "permission-denied";
+                    if (denied) receipt = null;
+                    btnAdd.textContent = originalText;
+                    btnAdd.disabled = denied;
+                    await Swal.fire({
+                        title: 'Gagal',
+                        text: denied
+                            ? 'Permintaan tidak tersedia. Silakan pindai ulang jika kartu masih berlaku.'
+                            : 'Permintaan pertemanan gagal dikirim.',
+                        icon: 'error',
+                        confirmButtonColor: '#003366',
+                        heightAuto: false
+                    });
+                }
+            };
+        } catch (error) {
+            const cooldown = error?.code === "functions/resource-exhausted" || error?.code === "resource-exhausted";
+            showLookupError(cooldown
+                ? "Tunggu sebentar sebelum memindai ulang."
+                : "Perkenalan QR tidak tersedia. Periksa sesi dan pastikan penerima mengizinkan perkenalan QR.");
         }
+    }
+
+    function showLookupError(message) {
+        document.getElementById('msg-error').style.display = 'block';
+        document.getElementById('errorText').textContent = message;
     }
 </script>
 </body>
