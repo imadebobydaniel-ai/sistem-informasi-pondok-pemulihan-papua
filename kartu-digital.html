@@ -175,50 +175,43 @@
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
 <script src="sipapua-app-check.js"></script>
-<script src="sipapua-spark-member.js"></script>
-<script src="sipapua-member-session.js"></script>
+<script src="sipapua-maintenance.js"></script>
+<script src="sipapua-member-card.js"></script>
 
     <script>
-        // Catatan: Pastikan 'db' dan 'userEmail' sudah diinisialisasi di script utama Anda
-        // const db = firebase.firestore();
-        // const userEmail = localStorage.getItem("userEmail");
+    const firebaseConfig = {
+        apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+        authDomain: "boby-apps-project.firebaseapp.com",
+        projectId: "boby-apps-project",
+        storageBucket: "boby-apps-project.appspot.com",
+        messagingSenderId: "125984859692",
+        appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+    };
 
-        function bukaKartuDigital() {
-            // 1. Tampilkan Modal dengan status memuat
-            document.getElementById('cardModal').style.display = 'flex';
-            document.getElementById('d-nama').innerText = "Memuat data...";
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        async function bukaKartuDigital() {
+            const modal = document.getElementById('cardModal');
+            if (modal.style.display === 'flex') return;
+            const qrBox = document.getElementById("qrcode");
+            const name = document.getElementById('d-nama');
+            name.textContent = "-";
+            document.getElementById('d-nij').textContent = "-";
+            document.getElementById('d-komsel').textContent = "-";
+            document.getElementById('d-jemaat').textContent = "-";
+            qrBox.textContent = SIPAPUA_MEMBER_CARD.paused() ? SIPAPUA_MEMBER_CARD.message() : "Memuat QR...";
+            modal.style.display = 'flex';
+            if (SIPAPUA_MEMBER_CARD.paused()) return;
 
-            // 2. Ambil data dari Firestore
-            window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email", "==", userEmail).get().then(s => {
-                if(!s.empty) {
-                    const d = s.docs[0].data();
-                    
-                    // 3. Masukkan data ke elemen kartu
-                    document.getElementById('d-nama').innerText = d.nama || "I MADE BOBY";
-                    document.getElementById('d-nij').innerText = d.nij || "NIJ-PPP-ABE-001-2026";
-                    document.getElementById('d-komsel').innerText = d.komsel || "-";
-                    document.getElementById('d-jemaat').innerText = d.cabang || "ABEPURA";
-                    
-                    // 4. Generate QR Code
-                    const qrBox = document.getElementById("qrcode");
-                    qrBox.innerHTML = ""; // Bersihkan QR sebelumnya
-                    new QRCode(qrBox, { 
-                        text: userEmail, 
-                        width: 80, // Ukuran disesuaikan agar pas di kotak kartu
-                        height: 80,
-                        colorDark : "#003366",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
-                    });
-                } else {
-                    alert("Data jemaat tidak ditemukan.");
-                    closeDigitalCard();
-                }
-            }).catch(err => {
-                console.error("Error mengambil data kartu: ", err);
-                alert("Gagal mengambil data. Silakan coba lagi.");
-                closeDigitalCard();
-            });
+            try {
+                const card = await SIPAPUA_MEMBER_CARD.call("getMyCardToken", {});
+                name.textContent = card.profile.nama || "-";
+                document.getElementById('d-nij').textContent = card.profile.nij;
+                document.getElementById('d-komsel').textContent = card.profile.komsel || "-";
+                document.getElementById('d-jemaat').textContent = card.profile.lokasi_berjemaat || "-";
+                SIPAPUA_MEMBER_CARD.render(qrBox, card, 80);
+            } catch (error) {
+                qrBox.textContent = error.message || "QR kartu tidak tersedia.";
+            }
         }
 
         function closeDigitalCard() {

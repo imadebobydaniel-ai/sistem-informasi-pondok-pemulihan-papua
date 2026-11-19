@@ -126,73 +126,114 @@
 
     <div class="chat-input">
         <input type="text" id="msg-input" placeholder="Tulis pesan ke penjual..." onkeypress="handleEnter(event)">
-        <button onclick="kirimPesan()"><i class="fa-solid fa-paper-plane"></i></button>
+        <button id="send-message" onclick="kirimPesan()"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
+    <script src="sipapua-app-check.js"></script>
 
    <script>
-    // Pastikan variabel 'message' konsisten digunakan
-    async function kirimPesanPopup() {
-        const input = document.getElementById("msg-input-popup");
-        const msg = input.value.trim();
-        if (!msg || !currentSellerUid) return;
-
-        try {
-            await db.collection("chats").add({
-                seller_uid: currentSellerUid,
-                customer_id: customerAnonymousId,
-                message: msg, // Field utama pesan
-                sender: 'customer',
-                is_product: false,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            input.value = "";
-        } catch (e) { 
-            console.error("Gagal kirim:", e);
+    // Anonymous Auth is permitted only with explicit isolated-test configuration.
+    function guestTestConfiguration(raw) {
+        if (raw === undefined) return null;
+        const port = value => Number.isInteger(value) && value > 0 && value < 65536;
+        if (!['localhost', '127.0.0.1'].includes(location.hostname) ||
+            raw.projectId !== 'demo-sipapua-guest-chat-closeout' || raw.allowAnonymous !== true ||
+            !port(raw.authPort) || !port(raw.firestorePort)) {
+            throw new Error('Konfigurasi pengujian chat tidak sah.');
         }
+        return Object.freeze({ projectId: raw.projectId, authPort: raw.authPort, firestorePort: raw.firestorePort });
     }
-
+    const guestTest = guestTestConfiguration(window.SIPAPUA_GUEST_CHAT_TEST);
+    const firebaseConfig = guestTest ? { apiKey: 'demo-key', projectId: guestTest.projectId,
+        authDomain: 'localhost' } : {
+        apiKey: 'AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM',
+        authDomain: 'boby-apps-project.firebaseapp.com', projectId: 'boby-apps-project',
+        storageBucket: 'boby-apps-project.appspot.com',
+        appId: '1:125984859692:web:09f75df5d2e4b6e3bcd389'
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    if (firebase.app().options.projectId !== firebaseConfig.projectId) throw new Error('Proyek chat tidak sesuai.');
+    const db = firebase.firestore(), auth = firebase.auth();
+    if (guestTest) {
+        auth.useEmulator('http://127.0.0.1:' + guestTest.authPort);
+        db.useEmulator('127.0.0.1', guestTest.firestorePort);
+    }
+    const params = new URLSearchParams(location.search);
+    const currentSellerUid = params.get('seller_uid') || params.get('seller') || params.get('uid');
+    let chatUnsubscribe = null, customerAnonymousId = null, acquireChatToken = null;
+    const input = document.getElementById('msg-input'), sendButton = document.getElementById('send-message');
+    input.disabled = sendButton.disabled = true;
+    function chatError(error) {
+        document.getElementById('store-name').textContent = error.message || 'Chat belum tersedia.';
+    }
+    function validChatUser(user) { return user && (!user.isAnonymous || guestTest); }
+    function handleEnter(event) { if (event.key === 'Enter') { event.preventDefault(); kirimPesan(); } }
+    function renderChatMessage(box, message) {
+        const bubble = document.createElement('div');
+        bubble.className = 'msg ' + (message.sender === 'customer' ? 'sent' : 'received');
+        if (message.is_product && typeof message.product_img === 'string') {
+            try {
+                const url = new URL(message.product_img);
+                if (url.protocol === 'https:' && !url.username && !url.password) {
+                    const image = document.createElement('img'); image.src = url.href;
+                    image.alt = 'Produk'; image.style.maxWidth = '100%'; bubble.appendChild(image);
+                }
+            } catch (_) { /* Invalid legacy image URLs are not rendered. */ }
+        }
+        const text = document.createElement('span');
+        text.textContent = typeof message.message === 'string' ? message.message : (message.is_product ? 'Tanya Produk' : '...');
+        bubble.appendChild(text); box.appendChild(bubble);
+    }
     function listenChat(uid) {
         if (chatUnsubscribe) chatUnsubscribe();
-        
-        chatUnsubscribe = db.collection("chats")
-            .where("seller_uid", "==", uid)
-            .where("customer_id", "==", customerAnonymousId)
-            .orderBy("timestamp", "asc") // Memanfaatkan indeks yang sudah Enabled
-            .onSnapshot(snap => {
-                const box = document.getElementById("chat-box-popup");
-                box.innerHTML = "";
-                snap.forEach(doc => {
-                    const m = doc.data();
-                    if (!m.timestamp) return; // Mencegah error saat render awal serverTimestamp
-
-                    const isMe = m.sender === 'customer';
-                    const align = isMe ? 'flex-end' : 'flex-start';
-                    const bg = isMe ? 'var(--navy)' : '#eee';
-                    const color = isMe ? 'white' : '#333';
-                    
-                    // Gunakan fallback jika message kosong
-                    const konten = m.message || (m.is_product ? "Tanya Produk" : "...");
-
-                    if (m.is_product) {
-                        box.innerHTML += `
-                            <div style="align-self: ${align}; width: 85%; margin-bottom:10px;">
-                                <div class="chat-product-attachment">
-                                    <img src="${m.product_img}">
-                                    <div class="chat-product-info"><b>Produk:</b><br>${m.message}</div>
-                                </div>
-                            </div>`;
-                    } else {
-                        box.innerHTML += `
-                            <div style="align-self: ${align}; background: ${bg}; color: ${color}; padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 12px; margin-bottom:5px;">
-                                ${konten}
-                            </div>`;
-                    }
-                });
+        const owner = customerAnonymousId;
+        chatUnsubscribe = db.collection('chats').where('seller_uid', '==', uid)
+            .where('customer_id', '==', owner).orderBy('timestamp', 'asc').onSnapshot(snapshot => {
+                if (!validChatUser(auth.currentUser) || auth.currentUser.uid !== owner) return;
+                const box = document.getElementById('chat-box'); box.replaceChildren();
+                snapshot.forEach(doc => renderChatMessage(box, doc.data()));
                 box.scrollTop = box.scrollHeight;
-            });
+            }, chatError);
     }
+    async function kirimPesan() {
+        const message = input.value.trim(), user = auth.currentUser;
+        if (!message || !validChatUser(user) || user.uid !== customerAnonymousId || !acquireChatToken) return;
+        sendButton.disabled = true;
+        try {
+            await acquireChatToken();
+            if (auth.currentUser !== user) throw new Error('Sesi chat berubah. Muat ulang halaman.');
+            await db.collection('chats').add({ seller_uid: currentSellerUid, customer_id: user.uid,
+                message, sender: 'customer', is_product: false, deleted_by_seller: false, is_read: false,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            if (input.value.trim() === message) input.value = '';
+        } catch (error) { chatError(error); }
+        finally { sendButton.disabled = !validChatUser(auth.currentUser); }
+    }
+    function kirimPesanPopup() { return kirimPesan(); }
+    async function startChat() {
+        try {
+            if (!currentSellerUid || !/^[A-Za-z0-9_-]{1,128}$/.test(currentSellerUid)) throw new Error('Penjual belum dipilih.');
+            acquireChatToken = window.SIPAPUA_APP_CHECK.prepare(firebase);
+            await acquireChatToken();
+            await new Promise((resolve, reject) => {
+                const stop = auth.onAuthStateChanged(() => { resolve(); Promise.resolve().then(() => stop()); }, reject);
+            });
+            if (!auth.currentUser && guestTest) await auth.signInAnonymously();
+            auth.onAuthStateChanged(user => {
+                if (chatUnsubscribe) { chatUnsubscribe(); chatUnsubscribe = null; }
+                document.getElementById('chat-box').replaceChildren();
+                customerAnonymousId = validChatUser(user) ? user.uid : null;
+                input.disabled = sendButton.disabled = !customerAnonymousId;
+                if (!customerAnonymousId) { chatError(new Error('Silakan masuk untuk menggunakan chat.')); return; }
+                document.getElementById('store-name').textContent = params.get('store_name') || 'Chat Penjual';
+                listenChat(currentSellerUid);
+            }, chatError);
+        } catch (error) { acquireChatToken = null; chatError(error); }
+    }
+    startChat();
 </script></body>
 </html>

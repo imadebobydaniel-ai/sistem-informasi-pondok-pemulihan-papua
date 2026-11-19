@@ -2,8 +2,9 @@
 // tokens of synthetic users from the Auth EMULATOR. Covers what Lacak Domba
 // relies on: presence, presence_locations, user_blocks (both directions)
 // and the account status the Edge Function reads from users/{uid}.
-// Run (emulators started first, see emulator.ts):
-//   deno test --no-lock --no-config --allow-net --allow-read --allow-env tests/lacak-domba-firebase/rules_test.ts
+// Run only after separate test authorization, with cached dependencies/offline
+// resolution, loopback-only network permissions and the explicit environment
+// required by ../registration/emulator-guard.mjs. See emulator.ts.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
     adminWrite,
@@ -19,8 +20,8 @@ import {
     write,
 } from "./emulator.ts";
 
-const ignore = !(await emulatorsRunning());
-if (ignore) console.warn("Firebase emulators not running: rules tests SKIPPED.");
+// A missing/misconfigured required Emulator fails the suite; never skip safety.
+await emulatorsRunning();
 
 const ALICE = "test-ld-emu-alice";
 const BOB = "test-ld-emu-bob";
@@ -50,7 +51,6 @@ const location = (latitude = -1, longitude = 131) => ({ latitude, longitude, upd
 const test = (name: string, fn: () => Promise<void>) =>
     Deno.test({
         name,
-        ignore,
         sanitizeOps: false,
         sanitizeResources: false,
         fn: async () => {
@@ -145,6 +145,8 @@ test("user_blocks: owner only; no self-block, no edit, no foreign entries", asyn
 });
 
 // --- users / account status (read by the Edge Function) ------------------------
+// WP-04-03 must update legacy direct-create/public-read expectations below.
+// Existing assertions are preserved for isolation work, not approved as policy.
 
 test("users: an account can never make itself Aktif", async () => {
     assertEquals(

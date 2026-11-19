@@ -99,8 +99,10 @@
     </div>
 
     <script src="sipapua-maintenance.js"></script>
+    <script src="sipapua-member-card.js"></script>
     <script>
         let html5QrCode;
+        let scanHandled = false;
 
         // Scanned cards are looked up by the Cloud Function lookupMemberCard;
         // while it is paused (sipapua-maintenance.js, or that file did not
@@ -118,35 +120,29 @@
             document.querySelector(".instruction p").textContent = "Pemindaian kartu sementara tidak tersedia.";
         }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            // Memberikan getaran sukses
+        async function onScanSuccess(decodedText) {
+            if (scanHandled || SIPAPUA_MEMBER_CARD.paused()) return;
+            scanHandled = true;
+            let destination;
+            try {
+                destination = SIPAPUA_MEMBER_CARD.scanDestination(decodedText);
+            } catch (_) {
+                document.querySelector(".instruction p").textContent = "Hasil scan tidak dapat disimpan.";
+                scanHandled = false;
+                return;
+            }
+            if (!destination) {
+                document.querySelector(".instruction p").textContent = "QR kartu tidak dikenal.";
+                scanHandled = false;
+                return;
+            }
             if (navigator.vibrate) navigator.vibrate(100);
-
-            // Kartu QR: sipapua://scan?t=<token>. QR lama (email) diarahkan
-            // ke pesan kartu versi lama tanpa membawa emailnya.
-            if (decodedText.includes("sipapua://scan") || decodedText.includes("@")) {
-                const tokenMatch = /[?&]t=([A-Za-z0-9_-]+)/.exec(decodedText);
-                let target = "";
-
-                if (tokenMatch) {
-                    target = "bio-singkat-jemaat.html?t=" + tokenMatch[1];
-                } else {
-                    // QR lama berisi email: email tidak dibawa ke URL.
-                    target = "bio-singkat-jemaat.html?legacy=1";
-                }
-
-                if (target) {
-                    // Berhenti scan agar tidak terjadi pemindaian ganda
-                    html5QrCode.stop().then(() => {
-                        // Arahkan ke halaman bio singkat
-                        window.location.href = target;
-                    }).catch(err => {
-                        console.error("Gagal menghentikan scanner", err);
-                        window.location.href = target;
-                    });
-                }
-            } else {
-                console.log("QR Code tidak dikenal");
+            try {
+                await html5QrCode.stop();
+            } catch (_) {
+                // Navigation releases the camera if the scanner cannot stop.
+            } finally {
+                window.location.href = destination;
             }
         }
 

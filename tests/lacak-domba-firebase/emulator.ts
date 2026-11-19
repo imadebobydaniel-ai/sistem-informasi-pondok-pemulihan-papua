@@ -1,21 +1,31 @@
 // Helpers for the Firebase Auth and Firestore EMULATORS (127.0.0.1 only).
 // Synthetic users only; nothing here can reach a Firebase project:
 // every URL is built from the local emulator hosts below.
-//   firebase emulators:start --only auth,firestore --project boby-apps-project
+// Requires separately authorized Auth/Firestore/Functions Emulators and Hub.
+// Explicit project/endpoint environment settings: see ../registration/emulator-guard.mjs.
 // Rules are loaded from this repository's firestore.rules before each run.
 
-export const PROJECT_ID = "boby-apps-project";
-export const AUTH_HOST = Deno.env.get("LD_AUTH_EMULATOR") || "127.0.0.1:9099";
-export const FIRESTORE_HOST = Deno.env.get("LD_FIRESTORE_EMULATOR") || "127.0.0.1:8080";
+import { emulatorEnvironment, assertEmulatorsAvailable, assertEmulatorUrl } from "../registration/emulator-guard.mjs";
 
-const LOCAL = /^(127\.0\.0\.1|localhost):\d+$/;
-if (!LOCAL.test(AUTH_HOST) || !LOCAL.test(FIRESTORE_HOST)) {
-    throw new Error("Firebase emulator hosts must be local (127.0.0.1:<port>)");
+export const PROJECT_ID = emulatorEnvironment.projectId;
+export const AUTH_HOST = emulatorEnvironment.authHost;
+export const FIRESTORE_HOST = emulatorEnvironment.firestoreHost;
+
+// Test fixture requests remain here, outside the read-only environment guard.
+// Capture at load time so tests stubbing fetch do not bypass local-only checks.
+const localFetch = globalThis.fetch.bind(globalThis);
+async function emulatorFetch(input: string, options: RequestInit = {}): Promise<Response> {
+    const url = assertEmulatorUrl(input);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try {
+        return await localFetch(url, { ...options, redirect: "error", signal: controller.signal });
+    } catch {
+        throw new Error("Local Emulator request failed or timed out.");
+    } finally {
+        clearTimeout(timer);
+    }
 }
-
-// Taken at load time, so a test that stubs globalThis.fetch afterwards
-// still reaches the emulators directly.
-const emulatorFetch = globalThis.fetch.bind(globalThis);
 
 const AUTH = `http://${AUTH_HOST}`;
 const FS = `http://${FIRESTORE_HOST}`;
@@ -23,14 +33,8 @@ export const DOCUMENTS = `${FS}/v1/projects/${PROJECT_ID}/databases/(default)/do
 const ROOT = `projects/${PROJECT_ID}/databases/(default)/documents`;
 
 export async function emulatorsRunning(): Promise<boolean> {
-    try {
-        const [auth, fs] = await Promise.all([emulatorFetch(`${AUTH}/`), emulatorFetch(`${FS}/`)]);
-        await auth.body?.cancel();
-        await fs.body?.cancel();
-        return true;
-    } catch {
-        return false;
-    }
+    await assertEmulatorsAvailable();
+    return true;
 }
 
 // Loads the repository's firestore.rules into the emulator.

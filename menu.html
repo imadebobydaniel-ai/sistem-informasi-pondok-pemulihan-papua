@@ -1608,6 +1608,7 @@ button.topbar-button { padding: 0; cursor: pointer; }
 <script src="sipapua-spark-member.js"></script>
 <script src="sipapua-member-session.js"></script>
     <script src="sipapua-maintenance.js"></script>
+    <script src="sipapua-member-card.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 <script>
     const firebaseConfig = { 
@@ -3209,28 +3210,39 @@ button.topbar-button { padding: 0; cursor: pointer; }
             });
         }
     }
-    function bukaKartuDigital() {
-        db.collection("users").doc(userUid).get().then(s => {
-            if(s.exists) {
-                const d = s.data();
-                document.getElementById('dnama').innerText = d.nama || "User";
-                document.getElementById('dnij').innerText = d.nij || "0000 0000";
-                const qrBox = document.getElementById("qrbox");
-                qrBox.innerHTML = "";
-                if (memberCardPaused()) {
-                    qrBox.innerText = memberCardMaintenanceMessage();
-                    document.getElementById('modalKartuDigital').style.display = 'flex';
-                    return;
-                }
-                // The QR carries a random card token issued by the server, never the email.
-                firebase.app().functions("asia-southeast2").httpsCallable("getMyCardToken")()
-                    .then((result) => {
-                        new QRCode(qrBox, { text: "sipapua://scan?t=" + encodeURIComponent(result.data.token), width: 200, height: 200, colorDark : "#003366", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
-                    })
-                    .catch(() => { qrBox.innerText = "QR kartu tersedia setelah akun aktif."; });
-                document.getElementById('modalKartuDigital').style.display = 'flex';
+    async function bukaKartuDigital() {
+        const modal = document.getElementById('modalKartuDigital');
+        if (modal.style.display === 'flex') return;
+        const box = document.getElementById("qrbox");
+        const name = document.getElementById('dnama');
+        const nij = document.getElementById('dnij');
+        name.textContent = "-";
+        nij.textContent = "-";
+        modal.style.display = 'flex';
+        if (SIPAPUA_MEMBER_CARD.paused()) {
+            box.textContent = SIPAPUA_MEMBER_CARD.message();
+            const user = auth.currentUser;
+            if (user) {
+                try {
+                    const snapshot = await db.collection("users").doc(user.uid).get();
+                    if (snapshot.exists && auth.currentUser === user) {
+                        name.textContent = snapshot.get("nama") || "-";
+                        nij.textContent = snapshot.get("nij") || "-";
+                    }
+                } catch (_) {}
             }
-        });
+            return;
+        }
+
+        box.textContent = "Memuat QR...";
+        try {
+            const card = await SIPAPUA_MEMBER_CARD.call("getMyCardToken", {});
+            name.textContent = card.profile.nama || "-";
+            nij.textContent = card.profile.nij;
+            SIPAPUA_MEMBER_CARD.render(box, card, 200);
+        } catch (error) {
+            box.textContent = error.message || "QR kartu tidak tersedia.";
+        }
     }
 
     function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
@@ -3247,62 +3259,26 @@ button.topbar-button { padding: 0; cursor: pointer; }
         });
     }
 
-    // The QR card and card lookups need the Cloud Functions getMyCardToken and
-    // lookupMemberCard; while they are paused (sipapua-maintenance.js, or that
-    // file did not load) a notice replaces them and nothing is called.
-    function memberCardPaused() {
-        return !window.SIPAPUA_MAINTENANCE || window.SIPAPUA_MAINTENANCE.isPaused("memberCard");
-    }
-
-    function memberCardMaintenanceMessage() {
-        return window.SIPAPUA_MAINTENANCE
-            ? window.SIPAPUA_MAINTENANCE.message("memberCard")
-            : "Kartu QR jemaat sedang dalam pemeliharaan.";
-    }
-
-    function onScanSuccess(decodedText, decodedResult) {
-        if (memberCardPaused()) {
-            Swal.fire({ title: "Sedang Dalam Pemeliharaan", text: memberCardMaintenanceMessage(), icon: "info", heightAuto: false });
-            return;
-        }
-        // Card QR: sipapua://scan?t=<token>. Older cards held the email,
-        // which no longer identifies a member.
-        const match = /[?&]t=([A-Za-z0-9_-]+)/.exec(String(decodedText || ""));
-        if (!match) {
-            Swal.fire({ title: "Kartu tidak dikenali", text: "QR ini versi lama atau bukan kartu SIPAPUA. Minta pemilik kartu membuka Kartu Digital terbaru.", icon: "warning", heightAuto: false });
+    let cardScanHandled = false;
+    function onScanSuccess(decodedText) {
+        if (cardScanHandled) return;
+        if (SIPAPUA_MEMBER_CARD.paused()) {
+            Swal.fire({ title: "Sedang Dalam Pemeliharaan", text: SIPAPUA_MEMBER_CARD.message(), icon: "info", heightAuto: false });
             return;
         }
 
-        // Profiles are private; the card fields come from a Cloud Function.
-        firebase.app().functions("asia-southeast2").httpsCallable("lookupMemberCard")({ token: match[1] })
-        .then((result) => {
-            if (result.data && result.data.found) {
-                renderDetailBiodata(result.data);
-            } else {
-                Swal.fire({ title: "Ops!", text: "Biodata tidak ditemukan.", icon: "error", heightAuto: false });
+        try {
+            const destination = SIPAPUA_MEMBER_CARD.scanDestination(decodedText);
+            if (destination) {
+                cardScanHandled = true;
+                window.location.href = destination;
+                return;
             }
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-            Swal.fire({ title: "Ops!", text: error.message || "Kartu tidak dapat diperiksa.", icon: "error", heightAuto: false });
-        });
-    }
-
-    function renderDetailBiodata(data) {
-        Swal.fire({
-            title: 'Biodata Terdeteksi',
-            html: `
-                <div style="text-align:left; font-size:14px;">
-                    <center><img src="${escapeInboxText(data.foto_profil || 'https://via.placeholder.com/100')}" style="width:80px; border-radius:10px; margin-bottom:10px;"></center>
-                    <b>Nama:</b> ${escapeInboxText(data.nama)}<br>
-                    <b>NIJ:</b> ${escapeInboxText(data.nij || '-')}<br>
-                    <b>Komsel:</b> JC ${escapeInboxText(data.komsel || '-')}
-                </div>
-            `,
-            confirmButtonText: 'Tutup',
-            confirmButtonColor: '#003366',
-            heightAuto: false
-        });
+        } catch (_) {
+            Swal.fire({ title: "Gagal", text: "Hasil scan tidak dapat disimpan.", icon: "error", heightAuto: false });
+            return;
+        }
+        Swal.fire({ title: "Kartu tidak dikenali", text: "Minta pemilik kartu membuka Kartu Digital terbaru.", icon: "warning", heightAuto: false });
     }
 
     window.onload = () => {

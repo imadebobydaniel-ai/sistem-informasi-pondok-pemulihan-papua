@@ -1,0 +1,121 @@
+--- a/rapor.html
++++ b/rapor.html
+@@ -298,8 +298,9 @@
+ 
+ <body>
+ 
++    <p id="rapor-admin-status" role="status" hidden style="text-align:center"></p>
+     <div class="dashboard-container" id="report-content">
+-        <h2 style="text-align:center; margin-bottom:0;">REKAPITULASI RAPOR ANDA</h2>
++        <h2 id="rapor-heading" style="text-align:center; margin-bottom:0;">REKAPITULASI RAPOR ANDA</h2>
+         <p id="periode-rapor" style="text-align:center; color:#666; margin-top:5px;">Periode: Memuat...</p>
+ 
+         <div class="period-controls" id="period-controls">
+@@ -495,6 +496,15 @@
+ 
+         const auth = firebase.auth();
+         const db = firebase.firestore();
++
++        const adminNij = new URLSearchParams(window.location.search).get("adminNij");
++        const adminStatus = document.getElementById("rapor-admin-status");
++        const reportContent = document.getElementById("report-content");
++        if (adminNij !== null) {
++            reportContent.hidden = true;
++            adminStatus.hidden = false;
++            adminStatus.textContent = "Memuat Rapor anggota...";
++        }
+ 
+         const WEIGHT_EXACT = 10;
+ 
+@@ -2588,14 +2598,18 @@
+             const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
+                 .operation("getSIPAPUAOwnProfile")({}, state.user);
+             if (!data?.profile) throw new Error("PROFILE_NOT_FOUND");
+-            state.profile = data.profile;
++            displayProfile(data.profile, state.user.displayName);
++        }
++
++        function displayProfile(profile, fallbackName) {
++            state.profile = profile;
+ 
+             document.getElementById(
+                 "display-nama"
+             ).innerText =
+                 state.profile.nama_lengkap ||
+                 state.profile.nama ||
+-                state.user.displayName ||
++                fallbackName ||
+                 "Tidak Ada Nama";
+ 
+             document.getElementById(
+@@ -2740,8 +2754,37 @@
+                 );
+         }
+ 
++        async function loadAdministratorRapor(user) {
++            const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++                .operation("getSIPAPUAAdministratorRapor")({ nij: adminNij }, user);
++            if (auth.currentUser?.uid !== user.uid) return;
++            if (!data?.profile || !Array.isArray(data.records)) throw new Error("REPORT_NOT_CONFIRMED");
++            document.getElementById("rapor-heading").textContent = "REKAPITULASI RAPOR ANGGOTA";
++            displayProfile(data.profile);
++            state.records = data.records;
++            adminStatus.hidden = true;
++            reportContent.hidden = false;
++            renderRapor();
++        }
++
+         auth.onAuthStateChanged(
+             user => {
++                if (adminNij !== null) {
++                    reportContent.hidden = true;
++                    adminStatus.hidden = false;
++                    if (!user || (state.user && state.user.uid !== user.uid)) {
++                        window.location.replace("admin-bigdata.html");
++                        return;
++                    }
++                    state.user = user;
++                    loadAdministratorRapor(user).catch(() => {
++                        if (auth.currentUser?.uid !== user.uid) return;
++                        reportContent.hidden = true;
++                        adminStatus.hidden = false;
++                        adminStatus.textContent = "Rapor anggota tidak dapat dibuka. Periksa NIJ dan izin akses.";
++                    });
++                    return;
++                }
+                 if (!user || !user.uid) {
+                     window.location.replace(
+                         "index.html"
+--- a/admin-bigdata.html
++++ b/admin-bigdata.html
+@@ -332,6 +332,11 @@
+     </div>
+ 
+     <div class="data-section">
++        <form action="rapor.html" method="get" class="bd-table-controls">
++            <label for="bdRaporNij">Rapor anggota</label>
++            <input id="bdRaporNij" name="adminNij" type="text" placeholder="NIJ anggota" required maxlength="100">
++            <button class="bd-refresh" type="submit">Buka Rapor</button>
++        </form>
+         <div class="bd-table-controls"><input id="bdSearch" type="search" placeholder="Cari nama atau data..." aria-label="Cari pada tabel" oninput="filterBigDataRows()"><select id="bdActivityFilter" aria-label="Filter kegiatan" onchange="handleRealtimeActivityFilter()"><option value="">Pilih kegiatan / tab</option></select><select id="bdStatus" aria-label="Filter status" onchange="filterBigDataRows()"><option value="">Semua status</option><option value="HADIR">Hadir</option><option value="TIDAK HADIR">Tidak hadir</option></select><select id="bdPageSize" aria-label="Jumlah baris" onchange="filterBigDataRows()"><option value="10">10 baris</option><option value="25" selected>25 baris</option><option value="50">50 baris</option><option value="all">Semua baris</option></select><span id="bdRowCount">Menunggu data tabel</span></div>
+         <div class="chart-title" id="table-title" style="text-align: left;">Memuat...</div>
+         <div class="table-wrapper">
+--- a/sipapua-member-session.js
++++ b/sipapua-member-session.js
+@@ -6,7 +6,7 @@
+         if (instances.has(app)) return instances.get(app);
+         const auth = firebase.auth();
+         const operations = new Set([
+-            'memberLoginStatus', 'getSIPAPUAOwnProfile', 'updateSIPAPUAProfile',
++            'memberLoginStatus', 'getSIPAPUAOwnProfile', 'getSIPAPUAAdministratorRapor', 'updateSIPAPUAProfile',
+             'deleteSIPAPUAProfiles', 'adminActivateSIPAPUAProfile',
+             'submitSIPAPUAReading', 'submitSIPAPUAServiceReport', 'submitSIPAPUAAttendance'
+         ]);
+--- a/functions/index.js
++++ b/functions/index.js
+@@ -1683,3 +1683,5 @@
+ exports.submitSIPAPUAReading = memberReports.submitSIPAPUAReading;
+ exports.submitSIPAPUAServiceReport = memberReports.submitSIPAPUAServiceReport;
+ exports.submitSIPAPUAAttendance = memberReports.submitSIPAPUAAttendance;
++
++exports.getSIPAPUAAdministratorRapor = require('./administrator-rapor').getSIPAPUAAdministratorRapor;

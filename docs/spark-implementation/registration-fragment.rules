@@ -1,0 +1,78 @@
+    // SPARK CANDIDATE: creation only. Existing identity/activation writers stay denied.
+    function sparkRegion(code) {
+      return {'ABE':'Abepura','STN':'Sentani','DYO':'Doyo','ARS1':'ARS1','ARS2':'ARS2'}[code];
+    }
+    function sparkEmailKey(email) {
+      return 'email_' + email.replace('%', '%25').replace('/', '%2F');
+    }
+    function sparkReady() {
+      let s = get(/databases/$(database)/documents/registration_control/state).data;
+      return s.enabled == true && s.maintenance == false && s.version == 'original-spark-v1';
+    }
+    function sparkNew(uid) {
+      return signedIn() && request.auth.uid == uid && sparkReady()
+        && !exists(/databases/$(database)/documents/nij_allocations/$(uid));
+    }
+    function sparkProof(uid) {
+      let p = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+      let a = getAfter(/databases/$(database)/documents/nij_allocations/$(uid)).data;
+      let c = get(/databases/$(database)/documents/nij_counters/$(a.wilayah)).data;
+      let next = getAfter(/databases/$(database)/documents/nij_counters/$(a.wilayah)).data;
+      let digits = a.nij_number < 10 ? '00' + string(a.nij_number) : (a.nij_number < 100 ? '0' + string(a.nij_number) : string(a.nij_number));
+      let year = string((request.time + duration.value(9, 'h')).year());
+      return a.keys().hasOnly(['uid','lokasi','wilayah','nij','nij_number','createdAt'])
+        && a.uid == uid && a.wilayah == sparkRegion(a.lokasi)
+        && c.last is int && c.last >= 0 && c.last < 999999999
+        && a.nij_number is int && a.nij_number == c.last + 1
+        && next.last == a.nij_number && next.updatedAt == request.time
+        && next.diff(c).affectedKeys().hasOnly(['last','updatedAt'])
+        && a.nij == 'NIJ-PPP-' + a.lokasi + '-' + digits + '-' + year
+        && a.createdAt == request.time
+        && p.uid == uid && p.nij == a.nij && p.nij_number == a.nij_number && p.wilayah == a.wilayah
+        && p.createdAt == request.time && p.status_akun == 'Menunggu Verifikasi'
+        && p.email == request.auth.token.email.lower() && p.email_normalized == p.email
+        && p.whatsapp is string && p.whatsapp_normalized is string
+        && p.whatsapp_normalized.matches('^62[0-9]{8,13}$')
+        && p.whatsapp.replace('[^0-9]', '').replace('^0', '62') == p.whatsapp_normalized
+        && !p.keys().hasAny(['activation','initial_verification_status','role','permissions','isAdmin'])
+        && !exists(/databases/$(database)/documents/registration_unique/$(sparkEmailKey(p.email)))
+        && !exists(/databases/$(database)/documents/registration_unique/$('phone_' + p.whatsapp_normalized))
+        && getAfter(/databases/$(database)/documents/registration_unique/$(sparkEmailKey(p.email))).data == {'uid':uid,'createdAt':request.time}
+        && getAfter(/databases/$(database)/documents/registration_unique/$('phone_' + p.whatsapp_normalized)).data == {'uid':uid,'createdAt':request.time};
+    }
+    match /users/{uid} {
+      allow read: if ownsProfile(uid) || isActiveAdmin();
+      allow create: if sparkNew(uid) && sparkProof(uid);
+      allow update, delete: if false;
+    }
+    match /users/{uid}/{subcollection}/{document=**} {
+      allow read, write: if isActiveAdmin() || (signedIn() && request.auth.uid == uid);
+    }
+    match /nij_allocations/{uid} {
+      allow get: if (signedIn() && request.auth.uid == uid) || isActiveAdmin();
+      allow list: if isActiveAdmin();
+      allow create: if sparkNew(uid) && sparkProof(uid);
+      allow update, delete: if false;
+    }
+    match /nij_counters/{id} {
+      allow get: if signedIn();
+      allow update: if sparkNew(request.auth.uid) && sparkProof(request.auth.uid)
+        && getAfter(/databases/$(database)/documents/nij_allocations/$(request.auth.uid)).data.wilayah == id;
+      allow create, delete, list: if false;
+    }
+    match /registration_unique/{id} {
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/registration_unique/$(id)) || resource.data.uid == request.auth.uid);
+      allow create: if sparkNew(request.auth.uid) && sparkProof(request.auth.uid)
+        && (id == sparkEmailKey(getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.email)
+          || id == 'phone_' + getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.whatsapp_normalized)
+        && request.resource.data == {'uid':request.auth.uid,'createdAt':request.time};
+      allow update, delete, list: if false;
+    }
+    match /registration_control/{id} {
+      allow get: if id == 'state';
+      allow write, list: if false;
+    }
+    match /registration_audit/{id} {
+      allow read: if isActiveAdmin();
+      allow write: if false;
+    }

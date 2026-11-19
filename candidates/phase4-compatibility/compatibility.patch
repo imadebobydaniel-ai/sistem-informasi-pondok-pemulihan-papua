@@ -1,0 +1,990 @@
+--- a/index.html
++++ b/index.html
+@@ -333,7 +333,7 @@
+             return true;
+         }
+         auth.onAuthStateChanged(async user=>{
+-            if(!user||loginSubmitting||localStorage.getItem('userUid')!==user.uid)return;
++            if (!user || loginSubmitting) return;
+             try {await confirmLogin(user);}
+             catch(error){localStorage.removeItem('userUid');localStorage.removeItem('userEmail');showBlockNotif('Status akun belum dapat dikonfirmasi. Periksa koneksi lalu masuk kembali.');}
+         });
+--- a/sipapua-member-session.js
++++ b/sipapua-member-session.js
+@@ -5,32 +5,34 @@
+         const app = firebase.app();
+         if (instances.has(app)) return instances.get(app);
+         const auth = firebase.auth();
+-        const member=root.SIPAPUA_SPARK_MEMBER.create(firebase.firestore(),auth,()=>firebase.firestore.FieldValue.serverTimestamp());
++        const operations = new Set([
++            'memberLoginStatus', 'getSIPAPUAOwnProfile', 'updateSIPAPUAProfile',
++            'deleteSIPAPUAProfiles', 'adminActivateSIPAPUAProfile',
++            'submitSIPAPUAReading', 'submitSIPAPUAServiceReport', 'submitSIPAPUAAttendance'
++        ]);
+         let acquire = null;
+         try { acquire = root.SIPAPUA_APP_CHECK.prepare(firebase); } catch (_) { /* Fail closed on invocation. */ }
+         function same(user) {
+             if (!user || auth.currentUser?.uid !== user.uid) throw new Error('Sesi berubah. Masuk kembali.');
+         }
+         function callable(name) {
+-            return async data => {
+-                const user = auth.currentUser; same(user);
++            if (!operations.has(name)) throw new Error('Operasi tidak tersedia.');
++            return async (data = {}, expectedUser = auth.currentUser) => {
++                same(expectedUser);
+                 if (!acquire) throw new Error('App Check belum dikonfigurasi. Hubungi pengurus.');
+-                await acquire(); same(user);
+-                let result;
+-                if(name==='memberLoginStatus')result=await member.status();
+-                else if(name==='getSIPAPUAOwnProfile'){const p=await member.ownProfile();result={id:p.id,profile:p.data()};}
+-                else if(name==='updateSIPAPUAProfile')result=await member.updateProfile(data.docId,data.changes);
+-                else if(name==='deleteSIPAPUAProfiles')result=await member.deleteProfiles(data.docIds);
+-                else if(name==='adminActivateSIPAPUAProfile')result=await member.activate(data.targetUid,'admin-override',data.identityVerified);
+-                else throw new Error('Operasi tidak tersedia pada rilis Spark.');
+-                same(user);return {data:result};
++                await acquire();
++                same(expectedUser);
++                const result = await app.functions('asia-southeast2').httpsCallable(name)(data);
++                same(expectedUser);
++                return result;
+             };
+         }
+         async function ownProfile() {
+-            const user=auth.currentUser;same(user);
+-            if(!acquire)throw new Error('App Check belum dikonfigurasi.');
+-            await acquire();same(user);
+-            return member.ownProfile();
++            const user = auth.currentUser;
++            const { data } = await callable('getSIPAPUAOwnProfile')({}, user);
++            if (!data?.id || !data.profile) throw new Error('Profil belum dikonfirmasi server.');
++            const ref = firebase.firestore().collection('users').doc(data.id);
++            return { id: data.id, exists: true, data: () => data.profile, ref };
+         }
+         const api = Object.freeze({ operation:callable, callable, ownProfile }); instances.set(app, api); return api;
+     }
+@@ -68,9 +70,8 @@
+                         check(user);
+                         const profile = await create(firebase).ownProfile();
+                         if (disposed || current !== generation) return;
+-                        if (profile.id !== user.uid && !profile.data().uid && !user.emailVerified) {
+-                            // Ownership of an unverified legacy identity is proved
+-                            // by its backend activation audit, never by email Rules.
++                        if (profile.id !== user.uid) {
++                            // Legacy documents are resolved by the callable and may have no direct read grant.
+                             next(snapshot(profile));
+                             return;
+                         }
+--- a/sipapua-login.js
++++ b/sipapua-login.js
+@@ -5,7 +5,7 @@
+             const uid = user?.uid;
+             const same = () => { if (!uid || auth.currentUser?.uid !== uid) throw new Error('Sesi berubah. Masuk kembali.'); };
+             same(); await user.reload(); same(); await user.getIdToken(true); same();
+-            const response = await session.operation('memberLoginStatus')({}); same();
++            const response = await session.operation('memberLoginStatus')({}, user); same();
+             if (typeof response.data?.active !== 'boolean') throw new Error('Status akun belum dikonfirmasi server.');
+             return response.data;
+         }
+--- a/menu.html
++++ b/menu.html
+@@ -9,14 +9,6 @@
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+-
+-    <script>
+-        const isMember = localStorage.getItem("userEmail");
+-        const isAdmin = localStorage.getItem("adminLoggedIn");
+-        if (!isMember && isAdmin !== "true") {
+-            window.location.href = "index.html";
+-        }
+-    </script>
+ 
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+ <style>
+@@ -1623,8 +1615,7 @@
+     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+     const db = firebase.firestore();
+     const auth = firebase.auth();
+-    const userEmail = localStorage.getItem("userEmail");
+-    const userUid = localStorage.getItem("userUid");
++    let stopProfileListener = () => {};
+ 
+     let memberSessionTimerId = null;
+     let memberPresenceHeartbeatId = null;
+@@ -1634,6 +1625,9 @@
+     const memberPresenceProfiles = new Map();
+ 
+     auth.onAuthStateChanged((user) => {
++        stopProfileListener();
++        stopProfileListener = () => {};
++        if (user?.email) listenMemberProfile(user.email);
+         if (!user) {
+             if (memberSessionTimerId) {
+                 clearTimeout(memberSessionTimerId);
+@@ -1648,6 +1642,7 @@
+                 friendRequestsUnsubscribe = null;
+             }
+             activePresenceUid = null;
++            window.location.replace("index.html");
+             return;
+         }
+ 
+@@ -1859,9 +1854,8 @@
+             }, 500);
+         }
+     }
+-    function listenData() {
+-        if (userEmail) {
+-            window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email", "==", userEmail).onSnapshot(s => {
++    function listenMemberProfile(userEmail) {
++        stopProfileListener = window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email", "==", userEmail).onSnapshot(s => {
+                 if (!s.empty) {
+                     const d = s.docs[0].data();
+                     document.getElementById('disp_nama').innerText = d.nama || "User";
+@@ -1881,9 +1875,10 @@
+                         document.getElementById('default-icon').style.display = "none";
+                     }
+                 }
+-            });
+-        }
+-
++        }, error => console.warn("Profil belum dapat dimuat.", error));
++    }
++
++    function listenData() {
+         /*
+          * MEDIA PLAYER SIPAPUA
+          * portal_media = sumber daftar konten
+@@ -2618,12 +2613,7 @@
+         const user =
+             getInboxCurrentUser();
+ 
+-        const viewerUid =
+-            user?.uid ||
+-            localStorage.getItem(
+-                "userUid"
+-            ) ||
+-            "";
++        const viewerUid = user?.uid || "";
+ 
+         const userKomsel =
+             localStorage.getItem(
+--- a/edit-jemaat-administrator.html
++++ b/edit-jemaat-administrator.html
+@@ -471,10 +471,6 @@
+     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+     const auth = firebase.auth();
+     const db = firebase.firestore();
+-    function originalRegistrationService() {
+-        if (!window.SIPAPUA_REGISTRATION) throw new Error("Komponen pendaftaran belum termuat. Muat ulang halaman sebelum mengubah data.");
+-        return window.SIPAPUA_REGISTRATION.create(db, firebase.auth(), () => firebase.firestore.FieldValue.serverTimestamp());
+-    }
+     const EDIT_ADMIN_ROLES = new Set(["master", "super_admin", "admin", "viewer"]);
+     let editAdminVerified = false;
+     const urlParams = new URLSearchParams(window.location.search);
+@@ -1853,7 +1849,9 @@
+             // Do not send status as an ordinary profile edit or forge Auth verification.
+             await saveExistingAccountStatus(updateData.status_akun);
+             delete updateData.status_akun;
+-            await originalRegistrationService().updateProfile(userId, updateData);
++            const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++                .operation('updateSIPAPUAProfile')({ docId: userId, changes: updateData });
++            if (data?.updated !== true) throw new Error('Perubahan profil belum dikonfirmasi.');
+             alert("Data User Berhasil Diperbarui!");
+             window.location.href = 'database-jemaat.html';
+         } catch (error) {
+--- a/database-jemaat.html
++++ b/database-jemaat.html
+@@ -2460,9 +2460,13 @@
+ 
+     const auth = firebase.auth();
+     const db = firebase.firestore();
+-    function originalRegistrationService() {
+-        if (!window.SIPAPUA_REGISTRATION) throw new Error("Komponen pendaftaran belum termuat. Muat ulang halaman sebelum mengubah data.");
+-        return window.SIPAPUA_REGISTRATION.create(db, firebase.auth(), () => firebase.firestore.FieldValue.serverTimestamp());
++    async function deleteProfiles(docIds) {
++        const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++            .operation("deleteSIPAPUAProfiles")({ docIds });
++        if (data?.deleted !== true || !Array.isArray(data.docIds) ||
++            data.docIds.length !== docIds.length || !docIds.every(id => data.docIds.includes(id))) {
++            throw new Error("Penghapusan belum dikonfirmasi.");
++        }
+     }
+ 
+     const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
+@@ -5253,10 +5257,9 @@
+         const ids = Array.from(new Set(checkboxes.map(checkbox => checkbox.value)));
+         let completed = 0;
+         try {
+-            const registration = originalRegistrationService();
+             for (let start = 0; start < ids.length; start += 4) {
+                 const group = ids.slice(start, start + 4);
+-                await registration.deleteProfiles(group);
++                await deleteProfiles(group);
+                 completed += group.length;
+             }
+ 
+@@ -6967,7 +6970,7 @@
+         }
+         if (confirm("Hapus data ini secara permanen?")) {
+             try {
+-                await originalRegistrationService().deleteProfile(id);
++                await deleteProfiles([id]);
+             } catch (error) {
+                 alert("Penghapusan belum terkonfirmasi. Muat ulang daftar sebelum mencoba kembali. " + error.message);
+             }
+--- a/baca-alkitab.html
++++ b/baca-alkitab.html
+@@ -158,7 +158,6 @@
+     };
+ 
+     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+-    const db = firebase.firestore();
+     const auth = firebase.auth();
+     const authUserPromise = new Promise((resolve) => {
+         let unsubscribe = () => {};
+@@ -173,7 +172,6 @@
+             }
+         );
+     });
+-    const userEmail = localStorage.getItem("userEmail");
+ 
+     const daftarKitab = ["Kejadian", "Keluaran", "Imamat", "Bilangan", "Ulangan", "Yosua", "Hakim-hakim", "Rut", "1 Samuel", "2 Samuel", "1 Raja-raja", "2 Raja-raja", "1 Tawarikh", "2 Tawarikh", "Ezra", "Nehemia", "Ester", "Ayub", "Mazmur", "Amsal", "Pengkhotbah", "Kidung Agung", "Yesaya", "Yeremia", "Ratapan", "Yehezkiel", "Daniel", "Hosea", "Yoel", "Amos", "Obaja", "Yunus", "Mikha", "Nahum", "Habakuk", "Zefanya", "Hagai", "Zakharia", "Maleakhi", "Matius", "Markus", "Lukas", "Yohanes", "Kisah Para Rasul", "Roma", "1 Korintus", "2 Korintus", "Galatia", "Efesus", "Filipi", "Kolose", "1 Tesalonika", "2 Tesalonika", "1 Timotius", "2 Timotius", "Titus", "Filemon", "Ibrani", "Yakobus", "1 Petrus", "2 Petrus", "1 Yohanes", "2 Yohanes", "3 Yohanes", "Yudas", "Wahyu"];
+ 
+@@ -312,7 +310,6 @@
+         btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Menyimpan...";
+         btn.disabled = true;
+ 
+-        const sekarang = new Date();
+         const tglString = initialReportingState.date;
+ 
+         try {
+@@ -334,63 +331,26 @@
+                 return;
+             }
+ 
+-            // 1. CEK DOUBLE INPUT (Berdasarkan UID dan Tanggal hari ini)
+-            const cekDouble = await db.collection("laporan_bacaan")
+-                .where("uid", "==", authUser.uid)
+-                .where("tanggal_str", "==", tglString)
+-                .get();
+-
+-            if (!cekDouble.empty) {
++            const range = (book, from, to) => ({
++                kitab: document.getElementById(book).value,
++                dari: Number(document.getElementById(from).value),
++                sampai: Number(document.getElementById(to).value)
++            });
++            const payload = {
++                tanggal: tglString,
++                utama: range('kitab-utama', 'pasal-dari', 'pasal-sampai'),
++                amsal: Number(document.getElementById('pasal-amsal').value)
++            };
++            if (document.getElementById('card-extension').style.display === 'block') {
++                payload.extension = range('kitab-ext', 'pasal-dari-ext', 'pasal-sampai-ext');
++            }
++            const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++                .operation('submitSIPAPUAReading')(payload, authUser);
++            if (!data?.id) throw new Error('Laporan belum dikonfirmasi.');
++            if (data.duplicate) {
+                 showBlock("GAGAL", "Laporan sudah dikirim hari ini.", "fa-circle-xmark", "#e74c3c");
+                 return;
+             }
+-
+-            // 2. AMBIL DATA USER
+-            const snapUser = await window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email", "==", userEmail).get();
+-            if (snapUser.empty) {
+-                alert("Data profil tidak ditemukan!");
+-                location.reload();
+-                return;
+-            }
+-            const u = snapUser.docs[0].data();
+-
+-            if (!getAllowedWitReportingState(tglString)) {
+-                btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+-                validasiTombol();
+-                return;
+-            }
+-
+-            // 3. SUSUN PAYLOAD DENGAN TIMESTAMP AKURAT
+-            const payload = {
+-                uid: authUser.uid,
+-                nama: u.nama || "Tanpa Nama", 
+-                email: userEmail, 
+-                jc: String(u.komsel || u.jc || "Umum").trim(),
+-                kitab: document.getElementById('kitab-utama').value,
+-                pasal_dari: parseInt(document.getElementById('pasal-dari').value),
+-                pasal_sampai: parseInt(document.getElementById('pasal-sampai').value),
+-                pasal_utama_full: `${document.getElementById('kitab-utama').value} ${document.getElementById('pasal-dari').value}-${document.getElementById('pasal-sampai').value}`,
+-                pasal_hikmat: `Amsal ${document.getElementById('pasal-amsal').value}`,
+-                
+-                // `tanggal` is the official calendar date; keep `tanggal_str`
+-                // as a legacy alias for existing duplicate checks/readers.
+-                tanggal: tglString,
+-                tanggal_str: tglString,
+-                timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Waktu Server (Detik)
+-                created_at: sekarang.getTime() // Waktu Client (Milidetik) sebagai cadangan
+-            };
+-
+-            if(document.getElementById('card-extension').style.display === "block") {
+-                payload.pasal_extension = `${document.getElementById('kitab-ext').value} ${document.getElementById('pasal-dari-ext').value}-${document.getElementById('pasal-sampai-ext').value}`;
+-            }
+-
+-            // 4. KIRIM KE FIRESTORE
+-            if (!getAllowedWitReportingState(tglString)) {
+-                btn.innerHTML = "KIRIM LAPORAN SEKARANG";
+-                validasiTombol();
+-                return;
+-            }
+-            await db.collection("laporan_bacaan").add(payload);
+             showBlock("BERHASIL", "Laporan Anda telah tersimpan rapi.", "fa-circle-check", "#2ecc71");
+ 
+         } catch (e) {
+@@ -410,8 +370,8 @@
+         document.getElementById('block-screen').style.display = 'flex';
+     }
+ 
+-    window.onload = function() {
+-        if(!userEmail) {
++    window.onload = async function() {
++        if (!(await authUserPromise)) {
+             window.location.href = "index.html";
+             return;
+         }
+--- a/laporan-pelayanan.html
++++ b/laporan-pelayanan.html
+@@ -366,7 +366,6 @@
+ 
+         firebase.initializeApp(firebaseConfig);
+ 
+-        const db = firebase.firestore();
+         const auth = firebase.auth();
+ 
+ 
+@@ -406,22 +405,6 @@
+ 
+                         throw new Error(
+                             "AUTH_SESSION_NOT_FOUND"
+-                        );
+-
+-                    }
+-
+-
+-                    const localEmail =
+-                        localStorage.getItem("userEmail");
+-
+-                    const userEmail =
+-                        authUser.email || localEmail || "";
+-
+-
+-                    if (!userEmail) {
+-
+-                        throw new Error(
+-                            "USER_EMAIL_NOT_FOUND"
+                         );
+ 
+                     }
+@@ -465,113 +448,17 @@
+                     }
+ 
+ 
+-                    const dataLaporan = {
+-
+-                        uid: authUser.uid,
+-
+-                        email: userEmail,
+-
+-                        kategori: kategori,
+-
+-                        nama_kegiatan: namaKegiatan,
+-
+-                        lokasi: lokasi,
+-
+-                        tanggal: tanggal,
+-
+-                        created_at:
+-                            firebase.firestore.FieldValue.serverTimestamp(),
+-
+-                        poin: 10
+-
+-                    };
+-
+-
+-                    console.log(
+-                        "[SIPAPUA] Menyimpan laporan:",
+-                        dataLaporan
+-                    );
+-
+-
+-                    const laporanRef =
+-                        await db
+-                            .collection("laporan_pelayanan")
+-                            .add(dataLaporan);
+-
+-
+-                    console.log(
+-                        "[SIPAPUA] Laporan berhasil disimpan:",
+-                        laporanRef.id
+-                    );
+-
+-
+-                    /*
+-                     * UPDATE POIN LEADERBOARD
+-                     *
+-                     * Jika update poin gagal, laporan tetap
+-                     * dianggap berhasil karena data laporan
+-                     * sudah tersimpan.
+-                     */
+-
+-                    try {
+-
+-                        const userQuery =
+-                            window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email",
+-                                    "==",
+-                                    userEmail
+-                                );
+-
+-
+-                        const snapshot =
+-                            await userQuery.get();
+-
+-
+-                        if (!snapshot.empty) {
+-
+-                            const userDoc =
+-                                snapshot.docs[0];
+-
+-                            const currentPoints =
+-                                userDoc.data().total_poin || 0;
+-
+-
+-                            await db
+-                                .collection("users")
+-                                .doc(userDoc.id)
+-                                .update({
+-
+-                                    total_poin:
+-                                        currentPoints + 10
+-
+-                                });
+-
+-
+-                            console.log(
+-                                "[SIPAPUA] Poin berhasil diperbarui."
+-                            );
+-
+-                        } else {
+-
+-                            console.warn(
+-                                "[SIPAPUA] Data user tidak ditemukan di collection users:",
+-                                userEmail
+-                            );
+-
+-                        }
+-
+-                    } catch (pointError) {
+-
+-                        console.error(
+-                            "[SIPAPUA] Gagal update poin:",
+-                            pointError
+-                        );
+-
+-                    }
+-
+-
+-                    /*
+-                     * TAMPILKAN PESAN SUKSES
+-                     */
++                    const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++                        .operation("submitSIPAPUAServiceReport")({
++                            kategori, nama_kegiatan: namaKegiatan, lokasi, tanggal
++                        }, authUser);
++                    if (!data?.id) throw new Error("Laporan belum dikonfirmasi.");
++                    if (data.duplicate) {
++                        SIPAPUA.notify.warning({ message: "Laporan ini sudah tersimpan." });
++                        btn.disabled = false;
++                        btn.innerHTML = "KIRIM LAPORAN";
++                        return;
++                    }
+ 
+                     formContainer.style.display = "none";
+ 
+--- a/kehadiran.html
++++ b/kehadiran.html
+@@ -138,10 +138,14 @@
+     <a href="menu.html" style="display:block; margin-top:20px; color:#003366; text-decoration:none; font-weight:bold; font-size:13px;"><i class="fa-solid fa-house"></i> KEMBALI KE MENU</a>
+ </div>
+ 
+-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+-
++<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
++<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
++<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
++
++<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
++<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
++<script src="sipapua-app-check.js"></script>
++<script src="sipapua-member-session.js"></script>
+ <script src="notification/core/queue.js"></script>
+ <script src="notification/core/lifecycle.js"></script>
+ <script src="notification/core/error-normalizer.js"></script>
+@@ -179,7 +183,7 @@
+         );
+     });
+ 
+-    const userName = localStorage.getItem("userName") || "Jemaat";
++    const attendanceAttempts = new Map();
+ 
+     function showLockDisplay(type, title, msg) {
+         const lock = document.getElementById('lock-display');
+@@ -434,29 +438,15 @@
+             alert("Mohon pilih wilayah Ibadah Raya terlebih dahulu!");
+             return;
+         }
+-        // Tentukan koleksi tujuan
+-        let targetColl = "kehadiran_jemaat";
+-        if (menu === "Absen Komsel Reguler" || menu === "Absen Komsel Gabungan") {
+-            targetColl = "laporan_komsel_umum";
+-        } else if (menu === "Doa Puasa Jemaat") {
+-            targetColl = "laporan_doa";
+-        }
+-
+-        let payload = {
+-            uid: authUser.uid,
++        const payload = {
+             status: tipe,
+-            nama: userName,
+             tanggal: attendanceDate,
+-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+             kegiatan: menu,
+             lokasi_koordinat: koordinat,
+-            ...(menu === "Absen Ibadah Raya" || menu === "Doa Puasa Jemaat" ? { wilayah_ibadah: document.getElementById("wilayah-ibadah").value } : {}),
+-            alamat_fisik: alamat, // Menyimpan alamat hasil pelacakan
+-            keterangan: (tipe === 'TIDAK HADIR') ? document.getElementById("alasan").value : "Hadir di Lokasi",
+-            ...(menu === "Doa Puasa Jemaat" ? {
+-                status_doa: tipe,
+-                pokok_doa: (tipe === "TIDAK HADIR") ? document.getElementById("alasan").value : "Hadir di Doa Puasa Jemaat"
+-            } : {})
++            alamat_fisik: alamat,
++            keterangan: tipe === 'TIDAK HADIR' ? document.getElementById("alasan").value : "Hadir di Lokasi",
++            ...(menu === "Absen Ibadah Raya" || menu === "Doa Puasa Jemaat"
++                ? { wilayah_ibadah: document.getElementById("wilayah-ibadah").value } : {})
+         };
+ 
+         // Data khusus Pelayanan PW / Non PW
+@@ -494,8 +484,19 @@
+ 
+         try {
+             if (!getAllowedWitReportingState(attendanceDate)) return;
+-            await db.collection(targetColl).add(payload);
+-            await db.collection("statistik_jemaat_pusat").add({...payload, type: "Umum_Entry"});
++            const attemptKey = JSON.stringify([authUser.uid, attendanceDate, menu, tipe,
++                payload.keterangan, payload.wilayah_ibadah, payload.pelayanan_pw, payload.pelayanan_nonpw,
++                payload.extension_nama_kegiatan, payload.extension_lokasi, payload.extension_tanggal,
++                payload.gabungan_lokasi, payload.gabungan_nama_komsel, payload.gabungan_tanggal_pelaksanaan]);
++            if (!attendanceAttempts.has(attemptKey)) attendanceAttempts.set(attemptKey, crypto.randomUUID());
++            const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++                .operation("submitSIPAPUAAttendance")({ ...payload, attempt: attendanceAttempts.get(attemptKey) }, authUser);
++            if (!data?.id) throw new Error("Laporan belum dikonfirmasi.");
++            attendanceAttempts.delete(attemptKey);
++            if (data.duplicate) {
++                showLockDisplay('error', 'Laporan Sudah Tersimpan', 'Laporan ini telah tercatat.');
++                return;
++            }
+             
+             // Tampilan Notifikasi Sesuai Permintaan
+             const pesanSukses = (tipe === 'HADIR') 
+--- a/functions/registration-paket-a.js
++++ b/functions/registration-paket-a.js
+@@ -171,6 +171,19 @@
+   const target=rd.uid?await getAuth().getUser(rd.uid):await getAuth().getUserByEmail(rd.email);
+   if(target.disabled||String(rd.email||'').trim().toLowerCase()!==String(target.email||'').trim().toLowerCase())throw new HttpsError('failed-precondition','Identitas target tidak cocok.');
+   const allocation=await tx.get(db.doc('nij_allocations/'+target.uid));
++  if (allocation.exists && requested.id !== target.uid) {
++   throw new HttpsError('failed-precondition','Gunakan profil terdaftar yang sesuai dengan alokasi NIJ.');
++  }
++  if (!allocation.exists) {
++   const matches = await tx.get(db.collection('users').where('email','==',rd.email).limit(2));
++   const linked = await tx.get(db.collection('users').where('uid','==',target.uid).limit(2));
++   const canonical = await tx.get(db.doc('users/'+target.uid));
++   if (matches.size !== 1 || matches.docs[0].id !== requested.id ||
++       linked.docs.some(snapshot => snapshot.id !== requested.id) ||
++       (canonical.exists && canonical.id !== requested.id)) {
++    throw new HttpsError('failed-precondition','Kepemilikan profil memerlukan pemeriksaan pengurus.');
++   }
++  }
+   const profile=allocation.exists?await registrationProof(tx,db,target):rd;
+   return activateTransaction(tx,db,target.uid,profile,actor.uid,'admin-override',requested.id);
+  });
+@@ -181,35 +194,22 @@
+  if(!onlyKeys(request.data||{},[]))throw new HttpsError('invalid-argument','Parameter tidak valid.');
+  const db=getFirestore();
+  return db.runTransaction(async tx=>{
+-  const owned=await require('./member-lifecycle').resolveOwnedProfile(db,user,tx);
++  const { resolveOwnedProfile, hasAuditedOverride } = require('./member-lifecycle');
++  const owned=await resolveOwnedProfile(db,user,tx);
+   const allocation=await tx.get(db.doc('nij_allocations/'+user.uid));
+   if(!allocation.exists||owned.id!==user.uid){
+    const legacy=owned.data();
+    // Read-only legacy access. No NIJ, profile migration or automatic activation.
+    if(user.emailVerified)return {active:legacy.status_akun==='Aktif',emailVerified:true,legacy:true};
+    if(legacy.status_akun==='Aktif'&&legacy.activation?.method==='admin-override'&&typeof legacy.activation.auditId==='string'&&safeUid(legacy.activation.auditId)){
+-    const audit=await tx.get(db.doc('registration_audit/'+legacy.activation.auditId)),a=audit.data();
+-    const approved=audit.exists&&a.targetUid===user.uid&&a.uid===user.uid&&a.action==='activate-admin-override'&&a.activationPath==='admin-override'&&a.identityVerificationAttested===true&&
+-     ['Pending','Menunggu Verifikasi'].includes(a.previousStatus)&&a.newStatus==='Aktif'&&typeof a.actorUid==='string'&&a.actorUid.length>0&&typeof a.createdAt?.toMillis==='function'&&typeof legacy.activation.at?.toMillis==='function'&&a.createdAt.toMillis()===legacy.activation.at.toMillis();
++    const approved = await hasAuditedOverride(tx, db, user.uid, legacy);
+     return {active:approved,emailVerified:false,legacy:true,activationPath:approved?'admin-override':null};
+    }
+    return {active:false,emailVerified:false,legacy:true};
+   }
+   const d=await registrationProof(tx,db,user);
+   if(user.emailVerified)return activateTransaction(tx,db,user.uid,d,user.uid,'verified-email');
+-  let approved=false;
+-  if(d.status_akun==='Aktif'&&d.activation?.method==='admin-override'){
+-   // Also accept Gate 003 audit records, which predate the auditId link.
+-   const records=typeof d.activation.auditId==='string'&&safeUid(d.activation.auditId)
+-    ? [await tx.get(db.doc('registration_audit/'+d.activation.auditId))]
+-    : (await tx.get(db.collection('registration_audit').where('targetUid','==',user.uid).limit(10))).docs;
+-   approved=records.some(r=>{
+-    const a=r.data();return r.exists&&a?.targetUid===user.uid&&a.uid===user.uid&&typeof a.actorUid==='string'&&a.actorUid.length>0&&
+-     a.action==='activate-admin-override'&&a.activationPath==='admin-override'&&['Pending','Menunggu Verifikasi'].includes(a.previousStatus)&&
+-     a.newStatus==='Aktif'&&a.identityVerificationAttested===true&&typeof a.createdAt?.toMillis==='function'&&
+-     typeof d.activation.at?.toMillis==='function'&&a.createdAt.toMillis()===d.activation.at.toMillis();
+-   });
+-  }
++  const approved = await hasAuditedOverride(tx, db, user.uid, d, true);
+   return {active:approved,emailVerified:false,activationPath:approved?'admin-override':null};
+  });
+ });
+--- a/functions/index.js
++++ b/functions/index.js
+@@ -1678,3 +1678,8 @@
+ exports.abortSIPAPUARegistry = registryPreparation.abortSIPAPUARegistry;
+ 
+ exports.searchSIPAPUAFamily = registration.searchSIPAPUAFamily;
++
++const memberReports = require('./member-reports');
++exports.submitSIPAPUAReading = memberReports.submitSIPAPUAReading;
++exports.submitSIPAPUAServiceReport = memberReports.submitSIPAPUAServiceReport;
++exports.submitSIPAPUAAttendance = memberReports.submitSIPAPUAAttendance;
+--- a/functions/member-lifecycle.js
++++ b/functions/member-lifecycle.js
+@@ -17,7 +17,7 @@
+ }
+ function owns(user, snapshot) {
+     const d = snapshot.data();
+-    return snapshot.id === user.uid || d.uid === user.uid ||
++    return (snapshot.id === user.uid && (!d.uid || d.uid === user.uid)) || d.uid === user.uid ||
+         (!d.uid && user.emailVerified && email(d.email) === email(user.email));
+ }
+ async function resolveOwnedProfile(db, user, tx) {
+@@ -43,9 +43,31 @@
+     }
+     return legacy.docs[0]; // Read-only compatibility, never migration or NIJ allocation.
+ }
++async function hasAuditedOverride(tx, db, uid, profile, allowUnlinkedAudit = false) {
++    const activation = profile.activation;
++    if (profile.status_akun !== "Aktif" || activation?.method !== "admin-override") return false;
++    let records;
++    if (typeof activation.auditId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(activation.auditId)) {
++        records = [await tx.get(db.doc("registration_audit/" + activation.auditId))];
++    } else if (allowUnlinkedAudit) {
++        // Gate 003 canonical activations can predate the explicit audit link.
++        records = (await tx.get(db.collection("registration_audit").where("targetUid", "==", uid).limit(10))).docs;
++    } else return false;
++
++    return records.some(record => {
++        const audit = record.data();
++        return record.exists && audit.uid === uid && audit.targetUid === uid &&
++            typeof audit.actorUid === "string" && audit.actorUid.length > 0 &&
++            audit.action === "activate-admin-override" && audit.activationPath === "admin-override" &&
++            audit.identityVerificationAttested === true && audit.newStatus === "Aktif" &&
++            ["Pending", "Menunggu Verifikasi"].includes(audit.previousStatus) &&
++            typeof audit.createdAt?.toMillis === "function" && typeof activation.at?.toMillis === "function" &&
++            audit.createdAt.toMillis() === activation.at.toMillis();
++    });
++}
+ async function authorize(tx, db, user, snapshots) {
+     const admin = await tx.get(db.doc("admin_users/" + user.uid)), d = admin.data();
+-    const manager = admin.exists && d.status === "active" && ["master", "super_admin", "admin", "viewer"].includes(d.role);
++    const manager = admin.exists && d.status === "active" && ["master", "super_admin"].includes(d.role);
+     if (!manager && snapshots.some(s => s.exists && !owns(user, s))) {
+         let own;
+         try { own = await resolveOwnedProfile(db, user, tx); } catch (_) { fail("permission-denied", "Tidak berwenang mengubah profil ini."); }
+@@ -117,7 +139,7 @@
+     const db = getFirestore();
+     return db.runTransaction(async tx => {
+         const snapshots = await Promise.all(ids.map(v => tx.get(db.doc("users/" + v))));
+-        await authorize(tx, db, user, snapshots);
++        if (!(await authorize(tx, db, user, snapshots))) fail("permission-denied", "Izin penghapusan administrator diperlukan.");
+         for (const p of snapshots) {
+             if (!p.exists) continue;
+             tx.delete(p.ref); // Existing hard-delete behavior; no archive or new recovery policy.
+@@ -127,3 +149,4 @@
+     });
+ });
+ exports.resolveOwnedProfile = resolveOwnedProfile;
++exports.hasAuditedOverride = hasAuditedOverride;
+--- a/rapor.html
++++ b/rapor.html
+@@ -6,9 +6,13 @@
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Rapor Anda - Lengkap</title>
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore-compat.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
++    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
++    <script src="sipapua-app-check.js"></script>
++    <script src="sipapua-member-session.js"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+ 
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+@@ -2541,8 +2545,6 @@
+             clearListeners();
+ 
+             const snapshots = {};
+-            let statisticsSnapshot =
+-                null;
+ 
+             const requiredCollections = [
+                 "kehadiran_jemaat",
+@@ -2564,19 +2566,6 @@
+                         rebuildRecords(
+                             snapshots
+                         );
+-
+-                    if (
+-                        statisticsSnapshot
+-                    ) {
+-                        state.statisticsRecords =
+-                            statisticsSnapshot.docs.map(
+-                                doc => ({
+-                                    id: doc.id,
+-                                    data:
+-                                        doc.data() || {}
+-                                })
+-                            );
+-                    }
+ 
+                     renderRapor();
+                 };
+@@ -2594,59 +2583,12 @@
+                 }
+             );
+ 
+-            const statisticsUnsubscribe =
+-                db.collection(
+-                    "statistik_jemaat_pusat"
+-                )
+-                    .onSnapshot(
+-                        snapshot => {
+-                            statisticsSnapshot =
+-                                snapshot;
+-
+-                            state.statisticsRecords =
+-                                snapshot.docs.map(
+-                                    doc => ({
+-                                        id: doc.id,
+-                                        data:
+-                                            doc.data() || {}
+-                                    })
+-                                );
+-
+-                            renderRapor();
+-                        },
+-                        error => {
+-                            console.error(
+-                                "Gagal membaca statistik pusat:",
+-                                error
+-                            );
+-
+-                            state.statisticsRecords =
+-                                [];
+-
+-                            renderRapor();
+-                        }
+-                    );
+-
+-            state.unsubscribe.push(
+-                statisticsUnsubscribe
+-            );
+         }
+         async function loadProfile() {
+-            const snap =
+-                await db.collection(
+-                    "users"
+-                )
+-                    .doc(state.user.uid)
+-                    .get();
+-
+-            if (!snap.exists) {
+-                throw new Error(
+-                    "PROFILE_NOT_FOUND"
+-                );
+-            }
+-
+-            state.profile =
+-                snap.data() || {};
++            const { data } = await window.SIPAPUA_MEMBER_SESSION.create(firebase)
++                .operation("getSIPAPUAOwnProfile")({}, state.user);
++            if (!data?.profile) throw new Error("PROFILE_NOT_FOUND");
++            state.profile = data.profile;
+ 
+             document.getElementById(
+                 "display-nama"
+--- a/admin-bigdata.html
++++ b/admin-bigdata.html
+@@ -512,11 +512,11 @@
+     }
+ 
+     const menuConfig = {
+-        ibadah_abepura: { title: 'Ibadah Abepura', col: 'kehadiran_jemaat', wilayah: 'Abepura', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+-        ibadah_sentani: { title: 'Ibadah Sentani', col: 'kehadiran_jemaat', wilayah: 'Sentani', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+-        ibadah_doyo: { title: 'Ibadah Doyo', col: 'kehadiran_jemaat', wilayah: 'Doyo', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+-        ibadah_arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_jemaat', wilayah: 'Arso 1', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+-        ibadah_arso2: { title: 'Ibadah Arso 2', col: 'kehadiran_jemaat', wilayah: 'Arso 2', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
++        ibadah_abepura: { title: 'Ibadah Abepura', col: 'kehadiran_jemaat', kegiatan: 'Absen Ibadah Raya', wilayah: 'Abepura', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
++        ibadah_sentani: { title: 'Ibadah Sentani', col: 'kehadiran_jemaat', kegiatan: 'Absen Ibadah Raya', wilayah: 'Sentani', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
++        ibadah_doyo: { title: 'Ibadah Doyo', col: 'kehadiran_jemaat', kegiatan: 'Absen Ibadah Raya', wilayah: 'Doyo', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
++        ibadah_arso1: { title: 'Ibadah Arso 1', col: 'kehadiran_jemaat', kegiatan: 'Absen Ibadah Raya', wilayah: 'Arso 1', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
++        ibadah_arso2: { title: 'Ibadah Arso 2', col: 'kehadiran_jemaat', kegiatan: 'Absen Ibadah Raya', wilayah: 'Arso 2', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+         komsel: { title: 'Komsel Reguler', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Reguler', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
+         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
+         absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
+@@ -870,8 +870,7 @@
+         }).catch(error => {
+             auxiliarySnapshotPromises.delete(collectionName);
+             console.error(`BIG DATA AUXILIARY SOURCE ERROR: ${collectionName}`, error);
+-            auxiliarySnapshots.set(collectionName, []);
+-            return [];
++            throw error;
+         });
+         auxiliarySnapshotPromises.set(collectionName, request);
+         return request;
+@@ -895,7 +894,16 @@
+             return;
+         }
+         if (auxiliarySnapshots.has(cfg.col)) { renderTab(getRecordsForTab(type)); return; }
+-        loadAuxiliarySnapshotOnce(cfg.col).then(() => renderTab(getRecordsForTab(type)));
++        loadAuxiliarySnapshotOnce(cfg.col).then(() => {
++            if (currentType === type) renderTab(getRecordsForTab(type));
++        }).catch(() => {
++            if (currentType !== type) return;
++            renderTab([]);
++            const row = document.getElementById("data-list").insertRow();
++            const cell = row.insertCell();
++            cell.colSpan = cfg.fields.length;
++            cell.textContent = "Sumber data tidak dapat dibaca.";
++        });
+     }
+     function formatTableData(type, snapshot) {
+         const cfg = menuConfig[type];
+@@ -2083,60 +2091,10 @@
+ 
+         const monthEl = document.getElementById("monthSelect");
+         const yearEl = document.getElementById("yearSelect");
+-
+-        const monthIndex = monthEl
+-            ? Number(monthEl.value)
+-            : new Date().getMonth();
+-
+-        const yearValue = yearEl
+-            ? Number(yearEl.value)
+-            : new Date().getFullYear();
+-
+-        const monthText = monthEl
+-            ? monthEl.options[monthEl.selectedIndex].text
+-            : "Januari";
+-
+-        const periodText = `${monthText} ${yearValue}`;
+-
+-        /*
+-         * ============================================================
+-         * FILTER PDF HARUS SAMA DENGAN FILTER BIG DATA
+-         * ============================================================
+-         */
+-
+-        const periodStart = new Date(
+-            yearValue,
+-            monthIndex,
+-            1,
+-            0,
+-            0,
+-            0,
+-            0
+-        );
+-
+-        const periodEnd = new Date(
+-            yearValue,
+-            monthIndex + 1,
+-            0,
+-            23,
+-            59,
+-            59,
+-            999
+-        );
+-
+-        let query = db
+-            .collection(cfg.col)
+-            .orderBy("timestamp", "desc");
+-
+-        /*
+-         * Filter bulan + tahun yang benar-benar dipilih
+-         * oleh operator Big Data.
+-         */
+-        query = query
+-            .where("timestamp", ">=", periodStart)
+-            .where("timestamp", "<=", periodEnd);
+-
+-        const snapshot = await query.get();
++        const periodText = [monthEl?.selectedOptions[0]?.text, yearEl?.selectedOptions[0]?.text]
++            .filter(Boolean).join(" ");
++        const source = await db.collection(cfg.col).get();
++        const snapshot = filterAndSortSnapshot(source, cfg, null);
+ 
+         const model = buildPdfModel(snapshot);
+         const insights = buildPdfInsight(model, cfg, periodText);
+@@ -3168,21 +3126,22 @@
+ 
+         return exportPDF("single");
+     }
+-    async function exportPDF(mode = "single") {        const { jsPDF } = window.jspdf;
++    async function exportPDF(mode = "single") {
++        const { jsPDF } = window.jspdf;
+         const doc = new jsPDF('p', 'pt', 'a4');
+-
+-        if (mode === 'single') { 
+-            await processTabToPDF(doc, currentType);
+-        } else {
+-            const keys = Object.keys(menuConfig);
+-            for (let i = 0; i < keys.length; i++) {
+-                await processTabToPDF(doc, keys[i], i > 0);
++        const tabs = mode === "single" ? [currentType] : Object.keys(menuConfig);
++        try {
++            for (const [index, type] of tabs.entries()) {
++                await processTabToPDF(doc, type, index > 0);
+             }
+-        }
+-        
+-        doc.save(`Laporan_Pondok_Pemulihan_${Date.now()}.pdf`);
+-        document.getElementById('loading').style.display = 'none';
+-        document.getElementById('pdfDropdown').classList.remove('show');
++            doc.save(`Laporan_Pondok_Pemulihan_${Date.now()}.pdf`);
++        } catch (error) {
++            console.error("BIG DATA PDF ERROR:", error);
++            alert("PDF tidak dapat dibuat karena sumber data tidak dapat dibaca.");
++        } finally {
++            document.getElementById('loading').style.display = 'none';
++            document.getElementById('pdfDropdown').classList.remove('show');
++        }
+     }
+ 
+     window.onload = () => {

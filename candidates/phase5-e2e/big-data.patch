@@ -1,0 +1,64 @@
+--- a/admin-bigdata.html
++++ b/admin-bigdata.html
+@@ -519,7 +519,7 @@
+         ibadah_arso2: { title: 'Ibadah Arso 2', col: 'kehadiran_jemaat', kegiatan: 'Absen Ibadah Raya', wilayah: 'Arso 2', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan'] },
+         komsel: { title: 'Komsel Reguler', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Reguler', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
+         komsel_gabungan: { title: 'Komsel Gabungan', col: 'laporan_komsel_umum', kegiatan: 'Absen Komsel Gabungan', fields: ['Nama', 'Komsel', 'Tanggal', 'Status', 'Lokasi'] },
+-        absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
++        absen_kd: { title: 'Kingdom Discipleship', col: 'kehadiran_kd', attendanceActivity: 'Absen KD', fields: ['Nama', 'Kelas', 'Tanggal', 'Status', 'Materi'] },
+         absen_doa: { title: 'Absen Doa', col: 'kehadiran_jemaat', kegiatan: 'Absen Doa', fields: ['Nama', 'Wilayah', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
+         pertemuan_pemimpin: { title: 'Pertemuan Pemimpin', col: 'kehadiran_jemaat', kegiatan: 'Absen Pertemuan Pemimpin', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi Kehadiran'] },
+         latihan_pw: { title: 'Latihan PW', col: 'kehadiran_jemaat', kegiatan: 'Absen Latihan PW', fields: ['Nama', 'Tanggal', 'Status', 'Keterangan', 'Lokasi GPS'] },
+@@ -529,7 +529,7 @@
+         bacaan: { title: 'Laporan Baca Alkitab', col: 'laporan_bacaan', fields: ['Nama', 'JC', 'Bacaan', 'Tanggal', 'Hikmat'] },
+         pelayanan: { title: 'Laporan Pelayanan', col: 'laporan_pelayanan', timeField: 'created_at', fields: ['Email', 'Kategori', 'Nama Kegiatan', 'Lokasi', 'Tanggal', 'Poin'] },
+         doa_komsel: { title: 'Doa Puasa Jemaat', col: 'laporan_doa', fields: ['Nama', 'Lokasi Doa', 'Hadir', 'Tidak Hadir'] },
+-        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
++        peringkat_jc: { title: 'Peringkat JC', col: 'peringkat_jc', timeField: 'periode', fields: ['Peringkat', 'Nama JC', 'Total Poin', 'Periode', 'Status'] },
+     };
+ 
+     function toggleBigDataMenu() {
+@@ -658,6 +658,8 @@
+             }
+             if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+             const raw = String(value).trim();
++            const rankingPeriod = field === "periode" && raw.match(/^(\d{4})-(0[1-9]|1[0-2])$/);
++            if (rankingPeriod) return new Date(Number(rankingPeriod[1]), Number(rankingPeriod[2]) - 1, 1);
+             const localDate = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+             const result = localDate
+                 ? new Date(Number(localDate[3]), Number(localDate[2]) - 1, Number(localDate[1]))
+@@ -740,7 +742,20 @@
+                 return true;
+             });
+         }
+-        return (auxiliarySnapshots.get(cfg.col) || []).map(doc => wrapRealtimeRecord(cfg.col, doc));
++        const legacy = auxiliarySnapshots.get(cfg.col) || [];
++        return combineTabSources(cfg, legacy, realtimeState.kehadiran_jemaat.records);
++    }
++
++    function combineTabSources(cfg, primary, attendance = []) {
++        const records = primary.map(doc => wrapRealtimeRecord(cfg.col, doc));
++        if (cfg.attendanceActivity) {
++            for (const doc of attendance) {
++                if (doc.data().kegiatan === cfg.attendanceActivity) {
++                    records.push(wrapRealtimeRecord("kehadiran_jemaat", doc));
++                }
++            }
++        }
++        return records;
+     }
+ 
+     function updateRealtimeStatus() {
+@@ -2093,7 +2108,11 @@
+         const yearEl = document.getElementById("yearSelect");
+         const periodText = [monthEl?.selectedOptions[0]?.text, yearEl?.selectedOptions[0]?.text]
+             .filter(Boolean).join(" ");
+-        const source = await db.collection(cfg.col).get();
++        const primary = await db.collection(cfg.col).get();
++        const supplemental = cfg.attendanceActivity
++            ? await db.collection("kehadiran_jemaat").where("kegiatan", "==", cfg.attendanceActivity).get()
++            : null;
++        const source = { docs: combineTabSources(cfg, primary.docs, supplemental?.docs) };
+         const snapshot = filterAndSortSnapshot(source, cfg, null);
+ 
+         const model = buildPdfModel(snapshot);
