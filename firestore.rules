@@ -270,67 +270,218 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    function canDeleteMemberProfile(profileId, before) {
-      let linkedUid = before.get("uid", "");
-      return signedIn()
-        && ((isActiveAdmin() && isAdminManager())
-          || linkedUid == request.auth.uid
-          || (profileId == request.auth.uid && linkedUid == ""));
+    function ownsProfile(uid) {
+      return signedIn() && ((request.auth.uid == uid
+        && (!exists(/databases/$(database)/documents/users/$(uid)) || resource.data.get('uid','') in ['',request.auth.uid]))
+        || resource.data.get('uid','') == request.auth.uid);
     }
-
-    function profileDeleteAudit(profileId, before) {
-      return {
-        "action": "profile-delete",
-        "actorUid": request.auth.uid,
-        "targetUid": before.get("uid", "") != "" ? before.uid : profileId,
-        "profileId": profileId,
-        "createdAt": request.time
-      };
+    function activationManager() {
+      return isActiveAdmin() && isAdminManager() && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.get('permissions',{}).get('canActivateMembers',false) == true;
     }
-
-    match /registration_audit/{auditId} {
-      function validProfileDeleteAudit(profileId) {
-        let profile = /databases/$(database)/documents/users/$(profileId);
-        let before = get(profile).data;
-        return auditId == "profile-delete_" + profileId
-          && canDeleteMemberProfile(profileId, before)
-          && request.resource.data == profileDeleteAudit(profileId, before)
-          && !existsAfter(profile);
-      }
-      allow create: if signedIn()
-        && request.resource.data.get("profileId", "") is string
-        && request.resource.data.profileId.size() > 0
-        && request.resource.data.profileId.size() <= 160
-        && validProfileDeleteAudit(request.resource.data.profileId);
+    function finalActivation(profileId, before, after) {
+      let audit = getAfter(/databases/$(database)/documents/registration_audit/$(after.activation.auditId)).data;
+      let targetUid = before.get('uid','') != '' ? before.uid : profileId;
+      let verified = request.auth.uid == targetUid && request.auth.token.get('email_verified',false) == true
+        && before.get('email_normalized',before.email.lower()) == request.auth.token.email.lower()
+        && profileId == request.auth.uid;
+      let manual = activationManager();
+      return targetUid is string && targetUid.size() > 0
+        && before.status_akun in ['Pending','Menunggu Verifikasi','Aktif'] && after.status_akun == 'Aktif'
+        && after.diff(before).affectedKeys().hasOnly(['status_akun','activation','initial_verification_status'])
+        && after.initial_verification_status == before.status_akun
+        && after.activation.keys().hasOnly(['method','at','auditId']) && after.activation.at == request.time
+        && ((verified && before.status_akun in ['Pending','Menunggu Verifikasi'] && after.activation.method == 'verified-email')
+          || (manual && after.activation.method == 'admin-override'))
+        && !exists(/databases/$(database)/documents/registration_audit/$(after.activation.auditId))
+        && audit == {'uid':targetUid,'targetUid':targetUid,'profileId':profileId,'actorUid':request.auth.uid,
+          'action':after.activation.method == 'verified-email' ? 'activate-verified-email' : 'activate-admin-override',
+          'activationPath':after.activation.method,'previousStatus':before.status_akun,'newStatus':'Aktif',
+          'identityVerificationAttested':after.activation.method == 'admin-override','createdAt':request.time};
     }
-
+    function safeProfileEdit(uid) {
+      return (ownsProfile(uid) || isActiveAdmin()) && keepsRegistrationIdentity()
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lokasi_berjemaat'])
+          || (request.resource.data.lokasi_berjemaat is string && request.resource.data.lokasi_berjemaat.size() <= 150))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nama','nama_lengkap','tgl_lahir','tanggal_lahir','tanggal_lahir_murni','jenis_kelamin','sudah_dibaptis',
+          'pemuridan_kd','pemuridan_kd_angkatan','sudah_alpha','alpha_angkatan','darah','provinsi','kabupaten_kota',
+          'kota','kecamatan','desa_kelurahan','desa','alamat_detail','alamat','provinsi_lahir','kota_lahir',
+          'kecamatan_lahir','desa_lahir','pekerjaan','status_pernikahan','nama_pasangan','komsel','jabatan',
+          'lokasi_berjemaat','sub_jabatan','sub_bidang','pelayanan','detail_pelayanan','foto_profil','last_update']);
+    }
+    function profileDelete(profileId, before) {
+      return signedIn() && ((request.auth.uid == profileId && before.get('uid','') in ['',request.auth.uid]) || before.get('uid','') == request.auth.uid || (isActiveAdmin() && isAdminManager()))
+        && before.get('nij','') is string && before.get('nij','').size() > 0
+        && get(/databases/$(database)/documents/nij_allocations/$(profileId)).data.nij == before.nij
+        && !exists(/databases/$(database)/documents/registration_audit/$('profile-delete_' + profileId))
+        && getAfter(/databases/$(database)/documents/registration_audit/$('profile-delete_' + profileId)).data == {
+          'action':'profile-delete','actorUid':request.auth.uid,'targetUid':before.get('uid','') != '' ? before.uid : profileId,
+          'profileId':profileId,'createdAt':request.time};
+    }
+    function familyProfileEdit(uid) {
+      return (ownsProfile(uid) || isActiveAdmin()) && keepsRegistrationIdentity()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'anak','jumlah_anak','nama_ayah','nama_ibu','orang_tua_berjemaat','wilayah_orang_tua'])
+        && request.resource.data.get('jumlah_anak',0) == request.resource.data.get('anak',[]).size()
+        && sparkAppend(resource.data.get('anak',[]),request.resource.data.get('anak',[]));
+    }
+    function contactProof(profileId, before, after) {
+      let owner = before.get('uid','') != '' ? before.uid : profileId;
+      let changedEmail = after.email.lower() != before.email.lower();
+      let changedPhone = after.get('whatsapp_normalized','') != before.get('whatsapp_normalized','');
+      return signedIn() && (request.auth.uid == owner || isActiveAdmin()) && (changedEmail || changedPhone)
+        && !after.diff(before).affectedKeys().hasAny(['uid','nij','nij_number','wilayah','createdAt','status_akun','activation','initial_verification_status','role','permissions','isAdmin'])
+        && after.diff(before).affectedKeys().hasOnly(['email','email_normalized','whatsapp','whatsapp_normalized','lastContactAuditId',
+          'nama','nama_lengkap','tgl_lahir','tanggal_lahir','tanggal_lahir_murni','jenis_kelamin','sudah_dibaptis','pemuridan_kd',
+          'pemuridan_kd_angkatan','sudah_alpha','alpha_angkatan','darah','provinsi','kabupaten_kota','kota','kecamatan','desa_kelurahan',
+          'desa','alamat_detail','alamat','provinsi_lahir','kota_lahir','kecamatan_lahir','desa_lahir','pekerjaan','status_pernikahan',
+          'nama_pasangan','komsel','jabatan','sub_jabatan','sub_bidang','pelayanan','detail_pelayanan','foto_profil','last_update'])
+        && (!changedEmail || (request.auth.uid == owner && after.email_normalized == request.auth.token.email.lower()
+          && after.email.lower() == after.email_normalized
+          && getAfter(/databases/$(database)/documents/registration_unique/$(sparkEmailKey(after.email_normalized))).data.uid == owner))
+        && (!changedPhone || (after.whatsapp_normalized.matches('^62[0-9]{8,13}$')
+          && after.whatsapp.replace('[^0-9]','').replace('^0','62') == after.whatsapp_normalized
+          && getAfter(/databases/$(database)/documents/registration_unique/$('phone_' + after.whatsapp_normalized)).data.uid == owner))
+        && !exists(/databases/$(database)/documents/registration_audit/$(after.lastContactAuditId))
+        && getAfter(/databases/$(database)/documents/registration_audit/$(after.lastContactAuditId)).data == {
+          'action':'profile-contact-update','actorUid':request.auth.uid,'targetUid':owner,'profileId':profileId,'createdAt':request.time};
+    }
+    function contactClaim(id) {
+      let profileId = request.resource.data.profileId;
+      let before = get(/databases/$(database)/documents/users/$(profileId)).data;
+      let after = getAfter(/databases/$(database)/documents/users/$(profileId)).data;
+      let owner = before.get('uid','') != '' ? before.uid : profileId;
+      return contactProof(profileId,before,after)
+        && request.resource.data == {'uid':owner,'profileId':profileId,'createdAt':request.time}
+        && ((after.email.lower() != before.email.lower() && id == sparkEmailKey(after.email_normalized))
+          || (after.get('whatsapp_normalized','') != before.get('whatsapp_normalized','') && id == 'phone_' + after.whatsapp_normalized));
+    }
+    function keepsRegistrationIdentity() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        "uid", "nij", "nij_number", "wilayah", "email", "email_normalized",
+        "whatsapp", "whatsapp_normalized", "createdAt", "status_akun",
+        "activation", "initial_verification_status"
+      ]);
+    }
+    // SPARK CANDIDATE: creation only. Existing identity/activation writers stay denied.
+    function sparkRegion(code) {
+      return {'ABE':'Abepura','STN':'Sentani','DYO':'Doyo','ARS1':'ARS1','ARS2':'ARS2'}[code];
+    }
+    function sparkEmailKey(email) {
+      return 'email_' + email.replace('%', '%25').replace('/', '%2F');
+    }
+    function sparkReady() {
+      let s = get(/databases/$(database)/documents/registration_control/state).data;
+      return s.enabled == true && s.maintenance == false && s.version == 'original-spark-v1';
+    }
+    function sparkNew(uid) {
+      return signedIn() && request.auth.uid == uid && sparkReady()
+        && !exists(/databases/$(database)/documents/nij_allocations/$(uid));
+    }
+    function sparkChild(c) { return c == {'nama':c.nama,'uid':'','nij':''} && c.nama is string && c.nama.size() <= 150; }
+    function sparkAppend(before, after) {
+      let n = before.size(); let m = after.size();
+      return after is list && m <= 30 && (after == before || after == []
+        || (m == n + 1 && after == before.concat([after[n + 0]])
+          && sparkChild(after[n + 0]))
+        || (m == n + 2 && after == before.concat([after[n + 0],after[n + 1]])
+          && sparkChild(after[n + 0]) && sparkChild(after[n + 1]))
+        || (m == n + 3 && after == before.concat([after[n + 0],after[n + 1],after[n + 2]])
+          && sparkChild(after[n + 0]) && sparkChild(after[n + 1]) && sparkChild(after[n + 2]))
+        || (m == n + 4 && after == before.concat([after[n + 0],after[n + 1],after[n + 2],after[n + 3]])
+          && sparkChild(after[n + 0]) && sparkChild(after[n + 1]) && sparkChild(after[n + 2]) && sparkChild(after[n + 3]))
+        || (m == n + 5 && after == before.concat([after[n + 0],after[n + 1],after[n + 2],after[n + 3],after[n + 4]])
+          && sparkChild(after[n + 0]) && sparkChild(after[n + 1]) && sparkChild(after[n + 2]) && sparkChild(after[n + 3]) && sparkChild(after[n + 4]))); }
+    function sparkNewFields(p) { return p.keys().hasOnly(["uid","nama","email","email_normalized","whatsapp","whatsapp_normalized","wilayah","provinsi","kabupaten_kota","kecamatan","desa_kelurahan","alamat_detail","provinsi_lahir","kota_lahir","kecamatan_lahir","desa_lahir","komsel","jabatan","sub_jabatan","pelayanan","detail_pelayanan","tgl_lahir","jenis_kelamin","sudah_dibaptis","pemuridan_kd","pemuridan_kd_angkatan","sudah_alpha","alpha_angkatan","darah","pekerjaan","nama_pasangan","jumlah_anak","anak","nama_ayah","nama_ayah_uid","nama_ayah_nij","nama_ibu","nama_ibu_uid","nama_ibu_nij","status_pernikahan","orang_tua_berjemaat","wilayah_orang_tua","status_akun","nij","nij_number","createdAt"])
+        && p.get('nama_ayah_uid','') == '' && p.get('nama_ayah_nij','') == ''
+        && p.get('nama_ibu_uid','') == '' && p.get('nama_ibu_nij','') == ''
+        && p.get('anak',[]) == [] && p.get('jumlah_anak',0) == 0; }
+    function sparkAnchor(uid) {
+      let p = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+      return signedIn() && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/users/$(uid))
+        && p.uid == uid && p.createdAt == request.time;
+    }
+    function sparkProof(uid) {
+      let p = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+      let a = getAfter(/databases/$(database)/documents/nij_allocations/$(uid)).data;
+      let c = get(/databases/$(database)/documents/nij_counters/$(a.wilayah)).data;
+      let next = getAfter(/databases/$(database)/documents/nij_counters/$(a.wilayah)).data;
+      let digits = a.nij_number < 10 ? '00' + string(a.nij_number) : (a.nij_number < 100 ? '0' + string(a.nij_number) : string(a.nij_number));
+      let year = string((request.time + duration.value(9, 'h')).year());
+      return a.keys().hasOnly(['uid','lokasi','wilayah','nij','nij_number','createdAt'])
+        && a.uid == uid && a.wilayah == sparkRegion(a.lokasi)
+        && c.last is int && c.last >= 0 && c.last < 999999999
+        && a.nij_number is int && a.nij_number == c.last + 1
+        && next.last == a.nij_number && next.updatedAt == request.time
+        && next.diff(c).affectedKeys().hasOnly(['last','updatedAt'])
+        && a.nij == 'NIJ-PPP-' + a.lokasi + '-' + digits + '-' + year
+        && a.createdAt == request.time
+        && p.uid == uid && p.nij == a.nij && p.nij_number == a.nij_number && p.wilayah == a.wilayah
+        && p.createdAt == request.time && p.status_akun == 'Menunggu Verifikasi'
+        && p.email == request.auth.token.email.lower() && p.email_normalized == p.email
+        && p.whatsapp is string && p.whatsapp_normalized is string
+        && p.whatsapp_normalized.matches('^62[0-9]{8,13}$')
+        && p.whatsapp.replace('[^0-9]', '').replace('^0', '62') == p.whatsapp_normalized
+        && true
+        && getAfter(/databases/$(database)/documents/registration_unique/$(sparkEmailKey(p.email))).data == {'uid':uid,'createdAt':request.time}
+        && getAfter(/databases/$(database)/documents/registration_unique/$('phone_' + p.whatsapp_normalized)).data == {'uid':uid,'createdAt':request.time};
+    }
     match /users/{uid} {
-      // Profile reads remain compatible with existing registration lookups.
-      // Writes must come from the profile owner or an active administrator.
-      allow read: if true;
-      allow create: if isActiveAdmin()
-        || (signedIn()
-          && request.auth.uid == uid
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.status_akun == "Menunggu Verifikasi");
-
-      allow update: if isActiveAdmin()
-        || (signedIn()
-          && (request.auth.uid == uid
-            || resource.data.get("uid", "") == request.auth.uid)
-          && !request.resource.data.diff(resource.data)
-            .affectedKeys()
-            .hasAny(["status_akun"]));
-      allow delete: if canDeleteMemberProfile(uid, resource.data)
-        && !exists(/databases/$(database)/documents/registration_audit/$("profile-delete_" + uid))
-        && getAfter(/databases/$(database)/documents/registration_audit/$("profile-delete_" + uid)).data
-          == profileDeleteAudit(uid, resource.data);
+      allow read: if ownsProfile(uid) || isActiveAdmin();
+      allow create: if sparkNew(uid) && sparkProof(uid) && sparkNewFields(request.resource.data);
+      allow update: if safeProfileEdit(uid) || familyProfileEdit(uid) || (signedIn() && (contactProof(uid,resource.data,request.resource.data) || finalActivation(uid,resource.data,request.resource.data)));
+      allow delete: if profileDelete(uid,resource.data);
     }
-
     match /users/{uid}/{subcollection}/{document=**} {
-      allow read: if true;
-      allow write: if isActiveAdmin()
-        || (signedIn() && request.auth.uid == uid);
+      allow read, write: if isActiveAdmin() || (signedIn() && request.auth.uid == uid && get(/databases/$(database)/documents/users/$(uid)).data.get('uid','') in ['',request.auth.uid]);
+    }
+    match /nij_allocations/{uid} {
+      allow get: if (signedIn() && request.auth.uid == uid) || isActiveAdmin();
+      allow list: if isActiveAdmin();
+      allow create: if sparkAnchor(uid);
+      allow update, delete: if false;
+    }
+    match /nij_counters/{id} {
+      allow get: if signedIn();
+      allow update: if sparkAnchor(request.auth.uid)
+        && getAfter(/databases/$(database)/documents/nij_allocations/$(request.auth.uid)).data.wilayah == id;
+      allow create, delete, list: if false;
+    }
+    match /registration_unique/{id} {
+      allow get: if signedIn() && (!exists(/databases/$(database)/documents/registration_unique/$(id)) || resource.data.uid == request.auth.uid);
+      allow create: if sparkAnchor(request.auth.uid)
+        && (id == sparkEmailKey(getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.email)
+          || id == 'phone_' + getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.whatsapp_normalized)
+        && request.resource.data == {'uid':request.auth.uid,'createdAt':request.time}
+        || (signedIn() && contactClaim(id));
+      allow update, delete, list: if false;
+    }
+    match /registration_control/{id} {
+      allow get: if id == 'state';
+      allow write, list: if false;
+    }
+    match /registration_audit/{id} {
+      allow read: if isActiveAdmin();
+      allow get: if signedIn() && resource.data.get('targetUid','') == request.auth.uid
+        && resource.data.get('action','') == 'activate-admin-override';
+      allow create: if signedIn() && (
+        (request.resource.data.get('action','') == 'profile-contact-update'
+          && getAfter(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data.lastContactAuditId == id
+          && contactProof(request.resource.data.profileId,get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data,
+            getAfter(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data))
+        ||
+        (request.resource.data.get('action','') == 'profile-delete'
+          && id == 'profile-delete_' + request.resource.data.profileId
+          && !existsAfter(/databases/$(database)/documents/users/$(request.resource.data.profileId))
+          && profileDelete(request.resource.data.profileId,get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data))
+        || (
+        request.resource.data.get('action','') in ['activate-verified-email','activate-admin-override']
+        && getAfter(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data.activation.auditId == id
+        && finalActivation(request.resource.data.profileId,
+          get(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data,
+          getAfter(/databases/$(database)/documents/users/$(request.resource.data.profileId)).data)));
+      allow update, delete: if false;
     }
 
     match /login_logs/{document=**} {
@@ -527,9 +678,6 @@ service cloud.firestore {
       allow delete: if signedIn() && uid == request.auth.uid;
     }
 
-    // Game leaderboard: one document per player, keyed by auth uid. Points are earned
-    // client-side (20 per correct answer, up to 100 questions per round), so each write may
-    // add at most one full round (2000) and the running total can never go down.
     function validGameScore(uid) {
       let data = request.resource.data;
       return signedIn()
@@ -669,6 +817,250 @@ service cloud.firestore {
         signedIn()
         && uid == request.auth.uid;
     }
+    // MUTUAL CHAT (chat.html) - private 1:1 text chat between two accepted
+    // contacts. Never /chats (the UMKM seller collection). The conversation id
+    // is pairRequestId(a, b), so a pair has exactly one conversation. Access is
+    // decided from the path on every read and write: both contact entries
+    // accepted, the pair request accepted, and no block in either direction.
+    // When the friendship ends or a block is added, history is kept but
+    // neither side can read it or send until they are contacts again.
+    function chatPair(pairId) {
+      return pairId.split("_");
+    }
+
+    function mutualContacts(firstUid, secondUid) {
+      let firstContact = /databases/$(database)/documents/contacts/$(firstUid)/friends/$(secondUid);
+      let secondContact = /databases/$(database)/documents/contacts/$(secondUid)/friends/$(firstUid);
+      let pairRequest = /databases/$(database)/documents/friend_requests/$(pairRequestId(firstUid, secondUid));
+      return firstUid != secondUid
+        && exists(firstContact)
+        && get(firstContact).data.status == "accepted"
+        && exists(secondContact)
+        && get(secondContact).data.status == "accepted"
+        && exists(pairRequest)
+        && get(pairRequest).data.status == "accepted"
+        && !blockedBetween(firstUid, secondUid);
+    }
+
+    // The signed-in user is one of the two members of an existing friendship.
+    function chatMember(pairId) {
+      let pair = chatPair(pairId);
+      return activeOfficialAccount()
+        && pair.size() == 2
+        && pairId == pairRequestId(pair[0], pair[1])
+        && request.auth.uid in pair
+        && mutualContacts(pair[0], pair[1]);
+    }
+
+    match /mutual_chats/{pairId} {
+      // get only: no listing of conversations in this first version.
+      allow get: if chatMember(pairId);
+      allow list: if false;
+
+      allow create: if chatMember(pairId)
+        && request.resource.data.keys().hasOnly(["members", "createdAt", "lastMessageAt"])
+        && request.resource.data.keys().hasAll(["members", "createdAt", "lastMessageAt"])
+        && request.resource.data.members == chatPair(pairId)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.lastMessageAt == request.time;
+
+      // Only the activity time moves; members and createdAt never change.
+      allow update: if chatMember(pairId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["lastMessageAt"])
+        && request.resource.data.lastMessageAt == request.time;
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if chatMember(pairId);
+
+        // Text only, written by the signed-in member as themself, server time,
+        // into a conversation that exists (or is created in the same batch).
+        allow create: if chatMember(pairId)
+          && existsAfter(/databases/$(database)/documents/mutual_chats/$(pairId))
+          && request.resource.data.keys().hasOnly(["senderUid", "text", "createdAt"])
+          && request.resource.data.keys().hasAll(["senderUid", "text", "createdAt"])
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.text.trim().size() > 0
+          && request.resource.data.createdAt == request.time;
+
+        // Messages are never edited or removed by clients.
+        allow update, delete: if false;
+      }
+    }
+
+    // GROUP CHAT (chat-group.html) - the single default room "Ruang Bersama
+    // SIPAPUA" (sipapua_group_rooms/official-general) for every official,
+    // active account with a verified email. No membership list: eligibility is
+    // read from the caller's own profile on every request, so an account set
+    // inactive loses access with its next read or write. Status cannot be
+    // changed by the owner (users rules above). The room document itself is
+    // created by an administrator outside the app; clients never create,
+    // rename or delete rooms. Personal blocks do not apply here.
+    //
+    // Anti-spam: every message is written together with the sender's
+    // rate_limits/{uid} document, which names that message and the server time.
+    // The document also keeps the sender's earlier send times (server times
+    // only, newest last, at most 200 in all), so the limits are rolling windows:
+    // 5 s since the last message, 60 in the last hour, 200 in the last 24 h.
+    //
+    // Moderation: members report a message (one report per member and
+    // message, readable only by moderators). A moderator hides or shows a
+    // message again; every action is an append-only moderation_log entry
+    // written in the same batch. Hidden messages are not readable by members
+    // at all (rules), not just hidden in the page.
+    function activeOfficialAccount() {
+      let profile = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != "anonymous"
+        && request.auth.token.email_verified == true
+        && exists(profile)
+        && get(profile).data.get("status_akun", "") == "Aktif";
+    }
+
+    // PO policy: only active master and super_admin accounts (admin_users, A2)
+    // moderate. Admin and viewer do not; there is no delegation.
+    function isGroupModerator() {
+      return isActiveAdmin() && (isMaster() || isSuperAdmin());
+    }
+
+    // h = the sender's earlier send times, oldest first (server times).
+    // Allowed when the 60th most recent is over an hour old and the 200th most
+    // recent is over a day old, so the new message keeps both windows in limit.
+    function groupSendHistoryAllows(h) {
+      return (h.size() < 60 || h[h.size() - 60] <= request.time - duration.value(1, "h"))
+        && (h.size() < 200 || h[h.size() - 200] <= request.time - duration.value(24, "h"));
+    }
+
+    // The earlier send times kept after this message: the newest 199, so with
+    // lastSentAt the document always holds the newest 200 send times.
+    function groupHistoryAfter(h) {
+      return h.size() > 199 ? h[h.size() - 199:h.size()] : h;
+    }
+
+    // Sender name and photo are copied from the sender's own profile, never chosen freely.
+    function groupSenderMatchesProfile() {
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return request.resource.data.senderName is string
+        && request.resource.data.senderName == profile.get("nama", "")
+        && request.resource.data.senderPhotoURL is string
+        && (request.resource.data.senderPhotoURL == ""
+          || (request.resource.data.senderPhotoURL == profile.get("foto_profil", "")
+            && request.resource.data.senderPhotoURL.size() <= 2048
+            && request.resource.data.senderPhotoURL.matches("https://.*")));
+    }
+
+    function groupRoomPath() {
+      return /databases/$(database)/documents/sipapua_group_rooms/official-general;
+    }
+
+    match /sipapua_group_rooms/{roomId} {
+      allow get: if roomId == "official-general" && (activeOfficialAccount() || isGroupModerator());
+      allow list: if false;
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        // Members read only visible messages (queries must filter hidden == false);
+        // moderators read everything.
+        allow read: if roomId == "official-general"
+          && ((activeOfficialAccount() && resource.data.hidden == false) || isGroupModerator());
+
+        allow create: if roomId == "official-general"
+          && activeOfficialAccount()
+          && exists(groupRoomPath())
+          && request.resource.data.keys().hasOnly(["senderUid", "senderName", "senderPhotoURL", "text", "createdAt", "hidden"])
+          && request.resource.data.keys().hasAll(["senderUid", "senderName", "senderPhotoURL", "text", "createdAt", "hidden"])
+          && request.resource.data.senderUid == request.auth.uid
+          && groupSenderMatchesProfile()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.text.trim().size() > 0
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.hidden == false
+          // Same batch: the sender's rate document points at this message.
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/rate_limits/$(request.auth.uid)).data.lastMessageId == messageId
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/rate_limits/$(request.auth.uid)).data.lastSentAt == request.time;
+
+        // Only a moderator, only the moderation fields, together with its log entry.
+        allow update: if roomId == "official-general"
+          && isGroupModerator()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["hidden", "moderatedBy", "moderatedAt", "moderationLogId"])
+          && request.resource.data.hidden is bool
+          && request.resource.data.hidden != resource.data.hidden
+          && request.resource.data.moderatedBy == request.auth.uid
+          && request.resource.data.moderatedAt == request.time
+          && existsAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/moderation_log/$(request.resource.data.moderationLogId));
+
+        allow delete: if false;
+      }
+
+      // One document per sender, written only together with that sender's new
+      // message. It can never be deleted, so the history cannot be reset, and
+      // each write must carry the previous history plus the previous lastSentAt
+      // exactly, so entries cannot be dropped, changed or invented.
+      match /rate_limits/{uid} {
+        allow get: if roomId == "official-general" && signedIn() && uid == request.auth.uid;
+        allow list: if false;
+        allow create: if roomId == "official-general"
+          && activeOfficialAccount()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.keys().hasAll(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.lastSentAt == request.time
+          && request.resource.data.recent == []
+          && request.resource.data.lastMessageId is string
+          && existsAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId))
+          && !exists(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId));
+        allow update: if roomId == "official-general"
+          && activeOfficialAccount()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.keys().hasAll(["lastSentAt", "lastMessageId", "recent"])
+          && request.resource.data.lastSentAt == request.time
+          && request.time >= resource.data.lastSentAt + duration.value(5, "s")
+          && resource.data.recent is list
+          && groupSendHistoryAllows(resource.data.recent.concat([resource.data.lastSentAt]))
+          && request.resource.data.recent == groupHistoryAfter(resource.data.recent.concat([resource.data.lastSentAt]))
+          && request.resource.data.lastMessageId is string
+          && existsAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId))
+          && !exists(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.lastMessageId));
+        allow delete: if false;
+      }
+
+      // Report id = messageId + "_" + reporter uid: one report per member and message.
+      match /reports/{reportId} {
+        allow read: if roomId == "official-general" && isGroupModerator();
+        allow create: if roomId == "official-general"
+          && activeOfficialAccount()
+          && request.resource.data.keys().hasOnly(["messageId", "reporterUid", "reason", "createdAt"])
+          && request.resource.data.keys().hasAll(["messageId", "reporterUid", "reason", "createdAt"])
+          && request.resource.data.reporterUid == request.auth.uid
+          && reportId == request.resource.data.messageId + "_" + request.auth.uid
+          && request.resource.data.reason in ["spam", "tidak_pantas", "penipuan", "lainnya"]
+          && request.resource.data.createdAt == request.time
+          && exists(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId))
+          && get(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId)).data.senderUid != request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Append-only audit trail; each entry belongs to the message change in the same batch.
+      match /moderation_log/{logId} {
+        allow read: if roomId == "official-general" && isGroupModerator();
+        allow create: if roomId == "official-general"
+          && isGroupModerator()
+          && request.resource.data.keys().hasOnly(["action", "messageId", "moderatorUid", "createdAt"])
+          && request.resource.data.keys().hasAll(["action", "messageId", "moderatorUid", "createdAt"])
+          && request.resource.data.action in ["hide", "show"]
+          && request.resource.data.moderatorUid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId)).data.moderationLogId == logId
+          && getAfter(/databases/$(database)/documents/sipapua_group_rooms/official-general/messages/$(request.resource.data.messageId)).data.hidden == (request.resource.data.action == "hide");
+        allow update, delete: if false;
+      }
+    }
+
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;
