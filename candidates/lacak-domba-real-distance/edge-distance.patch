@@ -1,0 +1,43 @@
+--- a/supabase/functions/lacak-domba-nearby/index.ts
++++ b/supabase/functions/lacak-domba-nearby/index.ts
+@@ -439,10 +439,10 @@
+     const radians = (degrees: number) => degrees * Math.PI / 180;
+     const dLat = radians(lat2 - lat1);
+     const dLon = radians(lon2 - lon1);
+-    const a = Math.sin(dLat / 2) ** 2
++    const a = Math.min(1, Math.max(0, Math.sin(dLat / 2) ** 2
+         + Math.cos(radians(lat1))
+         * Math.cos(radians(lat2))
+-        * Math.sin(dLon / 2) ** 2;
++        * Math.sin(dLon / 2) ** 2));
+     return 6371 * 2 * Math.atan2(
+         Math.sqrt(a),
+         Math.sqrt(1 - a),
+@@ -514,12 +514,8 @@
+         );
+     }
+     const latDelta = radiusKm / 110.574;
+-    const cosLat = Math.max(0.01, Math.cos(latitude * Math.PI / 180));
+-    const lonDelta = Math.min(180, radiusKm / (111.320 * cosLat));
+     const minLat = Math.max(-90, latitude - latDelta);
+     const maxLat = Math.min(90, latitude + latDelta);
+-    const minLon = longitude - lonDelta;
+-    const maxLon = longitude + lonDelta;
+     await purgeStale(supabase);
+     // Session, presence and location age, the caller and blocks in both
+     // directions are filtered in the database, on the database clock.
+@@ -560,12 +556,8 @@
+         ) {
+             continue;
+         }
+-        if (
+-            minLon >= -180 && maxLon <= 180
+-            && (row.longitude < minLon || row.longitude > maxLon)
+-        ) {
+-            continue;
+-        }
++        // The latitude band already bounds the query. A longitude estimate
++        // can exclude valid points before the exact spherical radius check.
+         const distance = distanceKm(
+             latitude,
+             longitude,

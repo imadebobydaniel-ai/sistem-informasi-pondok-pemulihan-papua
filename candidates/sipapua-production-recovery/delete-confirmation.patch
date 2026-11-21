@@ -1,0 +1,90 @@
+--- a/sipapua-spark-member.js
++++ b/sipapua-spark-member.js
+@@ -100,15 +100,20 @@
+                 docIds.some(id => typeof id !== 'string' || !id.length || id.length > 160 || id.includes('/'))) {
+                 throw new Error('Pilih hingga empat ID profil yang berbeda.');
+             }
+-            await db.runTransaction(async tx=>{
++            const result = await db.runTransaction(async tx=>{
+                 const refs=docIds.map(id=>db.collection('users').doc(id));
+                 const profiles=await Promise.all(refs.map(ref=>tx.get(ref)));same(user);
++                let deletedCount = 0;
+                 for(let i=0;i<profiles.length;i++)if(profiles[i].exists){
++                    deletedCount++;
+                     tx.delete(refs[i]);
+                     tx.set(db.collection('registration_audit').doc('profile-delete_'+docIds[i]),{
+                         action:'profile-delete',actorUid:user.uid,targetUid:profiles[i].data().uid||docIds[i],profileId:docIds[i],createdAt:stamp()});
+                 }
+-            });same(user);return{deleted:true};
++                return {deleted: true, deletedCount, alreadyAbsentCount: docIds.length - deletedCount};
++            });
++            same(user);
++            return result;
+         }
+         return Object.freeze({ownProfile,status,activate,updateProfile,deleteProfiles});
+     }
+--- a/sipapua-registration.js
++++ b/sipapua-registration.js
+@@ -78,7 +78,13 @@
+         async function deleteProfile(docId) { return deleteProfiles([docId]); }
+         async function deleteProfiles(docIds) {
+             const response = await lifecycleCall("deleteSIPAPUAProfiles", {docIds});
+-            if (response.data?.deleted !== true) throw failure("unconfirmed-profile", "Penghapusan belum dikonfirmasi server.");
++            const {deleted, deletedCount, alreadyAbsentCount} = response.data || {};
++            if (deleted !== true || !Number.isSafeInteger(deletedCount) || deletedCount < 0 ||
++                !Number.isSafeInteger(alreadyAbsentCount) || alreadyAbsentCount < 0 ||
++                deletedCount + alreadyAbsentCount !== docIds.length) {
++                throw failure("unconfirmed-profile", "Penghapusan belum dikonfirmasi server.");
++            }
++            return {deleted, deletedCount, alreadyAbsentCount};
+         }
+         return Object.freeze({ preflight, registerProfile, ownProfile, updateProfile, deleteProfile, deleteProfiles, assertEditingReady });
+     }
+--- a/database-jemaat.html
++++ b/database-jemaat.html
+@@ -5252,12 +5252,16 @@
+ 
+         const ids = Array.from(new Set(checkboxes.map(checkbox => checkbox.value)));
+         let completed = 0;
++        let removed = 0;
++        let alreadyAbsent = 0;
+         try {
+             const registration = originalRegistrationService();
+             for (let start = 0; start < ids.length; start += 4) {
+                 const group = ids.slice(start, start + 4);
+-                await registration.deleteProfiles(group);
++                const result = await registration.deleteProfiles(group);
+                 completed += group.length;
++                removed += result.deletedCount;
++                alreadyAbsent += result.alreadyAbsentCount;
+             }
+ 
+             const checkAll =
+@@ -5270,7 +5274,7 @@
+             updateActionMenu();
+ 
+             alert(
+-                `${ids.length} data jemaat berhasil dihapus.`
++                `Server mengonfirmasi ${removed} profil dihapus dan ${alreadyAbsent} sudah tidak ada.`
+             );
+ 
+         } catch (error) {
+@@ -5281,7 +5285,7 @@
+             );
+ 
+             alert(
+-                `Penghapusan terkonfirmasi: ${completed} dari ${ids.length} profil. Sisa penghapusan belum terkonfirmasi; muat ulang daftar sebelum mencoba kembali.`
++                `Penghapusan terkonfirmasi: ${completed} dari ${ids.length} profil (${removed} dihapus, ${alreadyAbsent} sudah tidak ada). Sisa penghapusan belum terkonfirmasi; muat ulang daftar sebelum mencoba kembali.`
+             );
+         }
+     }
+@@ -6967,7 +6971,8 @@
+         }
+         if (confirm("Hapus data ini secara permanen?")) {
+             try {
+-                await originalRegistrationService().deleteProfile(id);
++                const result = await originalRegistrationService().deleteProfile(id);
++                alert(result.deletedCount === 1 ? "Profil berhasil dihapus." : "Profil sudah tidak ada.");
+             } catch (error) {
+                 alert("Penghapusan belum terkonfirmasi. Muat ulang daftar sebelum mencoba kembali. " + error.message);
+             }

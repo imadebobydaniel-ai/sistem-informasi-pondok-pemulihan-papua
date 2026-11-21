@@ -1,0 +1,114 @@
+--- a/lacak-domba.html
++++ b/lacak-domba.html
+@@ -1113,12 +1113,11 @@
+         }
+     });
+ 
+-    async function getRelationshipState() {
+-        const uid = authUser.uid;
++    async function getRelationshipState(uid, options) {
+         const [contacts, sentRequests, receivedRequests] = await Promise.all([
+-            db.collection("contacts").doc(uid).collection("friends").get(),
+-            db.collection("friend_requests").where("fromUid", "==", uid).where("status", "==", "pending").get(),
+-            db.collection("friend_requests").where("toUid", "==", uid).where("status", "==", "pending").get()
++            db.collection("contacts").doc(uid).collection("friends").get(options),
++            db.collection("friend_requests").where("fromUid", "==", uid).where("status", "==", "pending").get(options),
++            db.collection("friend_requests").where("toUid", "==", uid).where("status", "==", "pending").get(options)
+         ]);
+ 
+         return {
+@@ -1126,6 +1125,13 @@
+             sent: new Set(sentRequests.docs.map((item) => item.data().toUid)),
+             received: new Set(receivedRequests.docs.map((item) => item.data().fromUid))
+         };
++    }
++
++    function relationTo(state, uid) {
++        if (state.contacts.has(uid)) return "contact";
++        if (state.sent.has(uid)) return "sent";
++        if (state.received.has(uid)) return "received";
++        return "none";
+     }
+ 
+     function renderNearbyMembers(results, truncated) {
+@@ -1147,23 +1153,17 @@
+         radar.appendChild(center);
+ 
+         nearbyResults.innerHTML = results.map((member) => {
+-            const relation = relationshipState.contacts.has(member.uid)
+-                ? "contact"
+-                : relationshipState.sent.has(member.uid)
+-                    ? "sent"
+-                    : relationshipState.received.has(member.uid)
+-                        ? "received"
+-                        : "none";
++            const relation = relationTo(relationshipState, member.uid);
+             const status = member.online
+                 ? '<span class="online-indicator"><i class="fas fa-circle"></i> Online</span>'
+                 : '<span class="offline-indicator"><i class="far fa-circle"></i> Status online disembunyikan</span>';
+             const relationshipAction = relation === "contact"
+-                ? '<button type="button" data-action="contact" data-uid="' + escapeHtml(member.uid) + '">BUKA KONTAK</button>'
++                ? '<button type="button" data-action="contact" data-uid="' + escapeHtml(member.uid) + '">SUDAH BERTEMAN</button>'
+                 : relation === "sent"
+                     ? '<button type="button" class="secondary" disabled>PERMINTAAN TERKIRIM</button>'
+                     : relation === "received"
+                         ? '<button type="button" class="secondary" disabled>PERMINTAAN MASUK DI MENU</button>'
+-                        : '<button type="button" data-action="request" data-uid="' + escapeHtml(member.uid) + '">TAMBAH KONTAK</button>';
++                        : '<button type="button" data-action="request" data-uid="' + escapeHtml(member.uid) + '">TAMBAH TEMAN</button>';
+             const groupParts = [member.komsel, member.wilayah].filter(Boolean);
+ 
+             return '<article class="member-card">'
+@@ -1294,7 +1294,7 @@
+             blocksSyncPending = false;
+             // A scan reports the session but never extends it.
+             applyDiscoveryState(response);
+-            const relationships = await getRelationshipState();
++            const relationships = await getRelationshipState(uid);
+             if (!isCurrent()) return;
+             relationshipState = relationships;
+             lastScanRadius = radiusKm;
+@@ -1334,10 +1334,24 @@
+         } else if (button.dataset.action === "contact") {
+             window.location.href = "kontak.html";
+         } else if (button.dataset.action === "request") {
++            const actor = auth.currentUser;
++            if (!actor || actor !== authUser || !presenceReady) return;
++            const current = () => auth.currentUser === actor && authUser === actor && presenceReady;
++            async function updateKnownRelationship() {
++                const latest = await getRelationshipState(actor.uid, {source:"server"});
++                if (!current()) return true;
++                if (relationTo(latest, member.uid) === "none") return false;
++                relationshipState = latest;
++                renderNearbyMembers(Array.from(memberResults.values()), false);
++                return true;
++            }
+             button.disabled = true;
+             try {
+-                await pairRequestRef(authUser.uid, member.uid).set({
+-                    fromUid: authUser.uid,
++                if (await updateKnownRelationship() || !current()) return;
++                // A single pair path and create-only pending transition also
++                // reject races across tabs and requests in the opposite direction.
++                await pairRequestRef(actor.uid, member.uid).set({
++                    fromUid: actor.uid,
+                     toUid: member.uid,
+                     status: "pending",
+                     createdAt: serverTimestamp(),
+@@ -1345,6 +1359,7 @@
+                     fromDisplayName: publicProfile.displayName,
+                     fromPhotoURL: publicProfile.photoURL
+                 });
++                if (!current()) return;
+                 relationshipState.sent.add(member.uid);
+                 renderNearbyMembers(Array.from(memberResults.values()), false);
+                 SIPAPUA.notify.success({
+@@ -1352,6 +1367,9 @@
+                     message: "Permintaan kontak menunggu persetujuan jemaat tersebut."
+                 });
+             } catch (error) {
++                if (!current()) return;
++                try { if (await updateKnownRelationship()) return; } catch (_) {}
++                if (!current()) return;
+                 button.disabled = false;
+                 console.error("Permintaan kontak gagal:", error);
+                 SIPAPUA.notify.error({
