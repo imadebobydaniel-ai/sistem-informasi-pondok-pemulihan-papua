@@ -6,8 +6,7 @@
     <title>Bio Singkat Jemaat</title>
     <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-functions-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="notification/styles/notification.css">
     <style>
         body { font-family: sans-serif; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
@@ -33,17 +32,14 @@
     <div id="popupBio" class="popup-bio">
         <div class="header">Bio Jemaat</div>
         <div class="content">
-            <img id="p-foto" src="https://via.placeholder.com/80x100" class="foto-box">
             <div class="info-box">
                 <b>NIJ:</b> <span id="p-nij">-</span>
                 <b>NAMA:</b> <span id="p-nama">-</span>
                 <b>KOMSEL:</b> <span id="p-komsel">-</span>
-                <b>JEMAAT:</b> <span id="p-jemaat">-</span>
             </div>
         </div>
         <div class="footer">
             <button class="btn btn-cancel" onclick="window.location.href='menu.html'">CANCEL</button>
-            <button class="btn btn-add" id="btnAdd">ADD</button>
         </div>
     </div>
 
@@ -65,6 +61,8 @@
 <script src="sipapua-maintenance.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-check-compat.js"></script>
 <script src="sipapua-app-check.js"></script>
+<script src="sipapua-qr-http.js"></script>
+<script type="module" src="bootstrap.mjs"></script>
 <script src="sipapua-member-card.js"></script>
 
 <script>
@@ -78,7 +76,6 @@
     };
     
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-    const auth = firebase.auth();
 
     // Logika Utama: Deteksi Scan langsung di dalam APK
     window.onload = async () => {
@@ -97,86 +94,24 @@
             return;
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const legacyEmailScan = urlParams.has('legacy') || urlParams.has('email') || urlParams.has('scan');
-
-        if (cardToken) {
-            await muatDataProfil(cardToken);
-        } else {
-            document.getElementById('msg-error').style.display = 'block';
-            document.getElementById('errorText').innerText = legacyEmailScan
-                ? "Kartu QR versi lama. Minta pemilik kartu membuka Kartu Digital terbaru."
-                : "Data Scan Tidak Valid.";
+        const back = document.querySelector("#msg-error button");
+        back.textContent = "KEMBALI KE MENU";
+        back.onclick = () => { window.location.href = "menu.html"; };
+        if (!cardToken) {
+            showLookupError("QR kartu tidak valid.");
+            return;
+        }
+        try {
+            const result = await SIPAPUA_MEMBER_CARD.lookup(cardToken);
+            const profile = result.profile;
+            document.getElementById("p-nij").textContent = profile.nij;
+            document.getElementById("p-nama").textContent = profile.nama || "-";
+            document.getElementById("p-komsel").textContent = profile.komsel || "-";
+            document.getElementById("popupBio").style.display = "block";
+        } catch (error) {
+            showLookupError(error.message || "Profil kartu tidak tersedia.");
         }
     };
-
-    async function muatDataProfil(token) {
-        try {
-            const scanner = await SIPAPUA_MEMBER_CARD.restoredUser(auth);
-            const introduction = await SIPAPUA_MEMBER_CARD.call("scanQrIntroduction", { token });
-            if (!scanner || auth.currentUser !== scanner) throw new Error("Sesi berubah.");
-
-            const { member, expiresAt } = introduction;
-            let receipt = introduction.receipt;
-            document.getElementById('p-nij').innerText = member.nij || "-";
-            document.getElementById('p-nama').innerText = member.nama || "-";
-            document.getElementById('p-komsel').innerText = "-";
-            document.getElementById('p-jemaat').innerText = "-";
-            document.getElementById('popupBio').style.display = 'block';
-
-            const btnAdd = document.getElementById('btnAdd');
-            const originalText = btnAdd.textContent;
-            btnAdd.onclick = async () => {
-                if (btnAdd.disabled) return;
-                if (auth.currentUser !== scanner) {
-                    receipt = null;
-                    btnAdd.disabled = true;
-                    await Swal.fire({ title: 'Sesi berubah', text: 'Silakan login ulang ke SIPAPUA.', icon: 'warning' });
-                    return;
-                }
-                if (!receipt || !(expiresAt > Date.now())) {
-                    receipt = null;
-                    btnAdd.disabled = true;
-                    await Swal.fire({ title: 'Kartu kedaluwarsa', text: 'Silakan pindai ulang kartu QR.', icon: 'info' });
-                    return;
-                }
-
-                btnAdd.disabled = true;
-                btnAdd.textContent = 'MENGIRIM...';
-                try {
-                    await SIPAPUA_MEMBER_CARD.call("requestQrIntroduction", { receipt });
-                    receipt = null;
-                    btnAdd.textContent = 'TERKIRIM';
-                    await Swal.fire({
-                        title: 'Berhasil!',
-                        text: 'Permintaan pertemanan menunggu persetujuan penerima.',
-                        icon: 'success',
-                        confirmButtonColor: '#003366',
-                        heightAuto: false
-                    });
-                } catch (error) {
-                    const denied = error?.code === "functions/permission-denied" || error?.code === "permission-denied";
-                    if (denied) receipt = null;
-                    btnAdd.textContent = originalText;
-                    btnAdd.disabled = denied;
-                    await Swal.fire({
-                        title: 'Gagal',
-                        text: denied
-                            ? 'Permintaan tidak tersedia. Silakan pindai ulang jika kartu masih berlaku.'
-                            : 'Permintaan pertemanan gagal dikirim.',
-                        icon: 'error',
-                        confirmButtonColor: '#003366',
-                        heightAuto: false
-                    });
-                }
-            };
-        } catch (error) {
-            const cooldown = error?.code === "functions/resource-exhausted" || error?.code === "resource-exhausted";
-            showLookupError(cooldown
-                ? "Tunggu sebentar sebelum memindai ulang."
-                : "Perkenalan QR tidak tersedia. Periksa sesi dan pastikan penerima mengizinkan perkenalan QR.");
-        }
-    }
 
     function showLookupError(message) {
         document.getElementById('msg-error').style.display = 'block';

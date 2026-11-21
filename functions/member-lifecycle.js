@@ -43,9 +43,9 @@ async function resolveOwnedProfile(db, user, tx) {
     }
     return legacy.docs[0]; // Read-only compatibility, never migration or NIJ allocation.
 }
-async function authorize(tx, db, user, snapshots) {
+async function authorize(tx, db, user, snapshots, roles = ["master", "super_admin", "admin", "viewer"]) {
     const admin = await tx.get(db.doc("admin_users/" + user.uid)), d = admin.data();
-    const manager = admin.exists && d.status === "active" && ["master", "super_admin", "admin", "viewer"].includes(d.role);
+    const manager = admin.exists && d.status === "active" && roles.includes(d.role);
     if (!manager && snapshots.some(s => s.exists && !owns(user, s))) {
         let own;
         try { own = await resolveOwnedProfile(db, user, tx); } catch (_) { fail("permission-denied", "Tidak berwenang mengubah profil ini."); }
@@ -117,7 +117,7 @@ exports.deleteSIPAPUAProfiles = onCall(options, async request => {
     const db = getFirestore();
     return db.runTransaction(async tx => {
         const snapshots = await Promise.all(ids.map(v => tx.get(db.doc("users/" + v))));
-        await authorize(tx, db, user, snapshots);
+        await authorize(tx, db, user, snapshots, ["master", "super_admin"]);
         for (const p of snapshots) {
             if (!p.exists) continue;
             tx.delete(p.ref); // Existing hard-delete behavior; no archive or new recovery policy.

@@ -270,6 +270,40 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    function canDeleteMemberProfile(profileId, before) {
+      let linkedUid = before.get("uid", "");
+      return signedIn()
+        && ((isActiveAdmin() && isAdminManager())
+          || linkedUid == request.auth.uid
+          || (profileId == request.auth.uid && linkedUid == ""));
+    }
+
+    function profileDeleteAudit(profileId, before) {
+      return {
+        "action": "profile-delete",
+        "actorUid": request.auth.uid,
+        "targetUid": before.get("uid", "") != "" ? before.uid : profileId,
+        "profileId": profileId,
+        "createdAt": request.time
+      };
+    }
+
+    match /registration_audit/{auditId} {
+      function validProfileDeleteAudit(profileId) {
+        let profile = /databases/$(database)/documents/users/$(profileId);
+        let before = get(profile).data;
+        return auditId == "profile-delete_" + profileId
+          && canDeleteMemberProfile(profileId, before)
+          && request.resource.data == profileDeleteAudit(profileId, before)
+          && !existsAfter(profile);
+      }
+      allow create: if signedIn()
+        && request.resource.data.get("profileId", "") is string
+        && request.resource.data.profileId.size() > 0
+        && request.resource.data.profileId.size() <= 160
+        && validProfileDeleteAudit(request.resource.data.profileId);
+    }
+
     match /users/{uid} {
       // Profile reads remain compatible with existing registration lookups.
       // Writes must come from the profile owner or an active administrator.
@@ -287,10 +321,10 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data)
             .affectedKeys()
             .hasAny(["status_akun"]));
-      allow delete: if isActiveAdmin()
-        || (signedIn()
-          && (request.auth.uid == uid
-            || resource.data.get("uid", "") == request.auth.uid));
+      allow delete: if canDeleteMemberProfile(uid, resource.data)
+        && !exists(/databases/$(database)/documents/registration_audit/$("profile-delete_" + uid))
+        && getAfter(/databases/$(database)/documents/registration_audit/$("profile-delete_" + uid)).data
+          == profileDeleteAudit(uid, resource.data);
     }
 
     match /users/{uid}/{subcollection}/{document=**} {
