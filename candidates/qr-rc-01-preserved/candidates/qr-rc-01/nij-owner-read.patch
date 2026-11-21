@@ -1,0 +1,16 @@
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -729,6 +729,13 @@
+         signedIn()
+         && uid == request.auth.uid;
+     }
++    // QR Worker candidate: a signed-in member can fetch only their own binding.
++    match /nij_allocations/{uid} {
++      allow get: if signedIn() && request.auth.uid == uid
++        && request.auth.token.get("firebase", {}).get("sign_in_provider", "") != "anonymous"
++        && resource.data.get("uid", "") == uid;
++      allow list, create, update, delete: if false;
++    }
+     // Deny everything else by default.
+     match /{document=**} {
+       allow read, write: if false;
