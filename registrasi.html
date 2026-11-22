@@ -1812,7 +1812,12 @@ return {
                 } catch (accountError) {
                     if (accountError.code !== "auth/email-already-in-use") throw accountError;
                     // Resume the same owned account after an interrupted attempt.
-                    userCredential = await auth.signInWithEmailAndPassword(rawEmail, rawPass);
+                    try {
+                        userCredential = await auth.signInWithEmailAndPassword(rawEmail, rawPass);
+                    } catch (resumeError) {
+                        if (!["auth/invalid-credential", "auth/invalid-login-credentials", "auth/wrong-password"].includes(resumeError.code)) throw resumeError;
+                        throw accountError;
+                    }
                 }
                 user = userCredential.user;
             }
@@ -1928,6 +1933,14 @@ document.getElementById("status_pernikahan").value,
             showVerificationResult(verificationResult, rawEmail);
 
         } catch (e) {
+            if (["auth/email-already-in-use", "registration/email-in-use"].includes(e.code)) {
+                alert("Email sudah terdaftar. Gunakan halaman masuk jika ini akun Anda.");
+                return;
+            }
+            if (e.code === "registration/whatsapp-in-use") {
+                alert("WhatsApp sudah digunakan.");
+                return;
+            }
             // Never delete Auth after an ambiguous network/commit result.
             // A server read resolves saved vs missing before an explicit retry.
             if (profileWriteStarted && !profileSaved && registrationUser && auth.currentUser?.uid === registrationUser.uid) {
@@ -1946,7 +1959,7 @@ document.getElementById("status_pernikahan").value,
                 }
             }
             alert(e.code === "permission-denied"
-                ? "Pendaftaran ditolak. Email atau WhatsApp mungkin sudah terdaftar, atau persiapan pendaftaran belum sesuai. Hubungi pengurus."
+                ? "Server menolak pendaftaran. Hubungi pengurus untuk memeriksa status pendaftaran."
                 : e.message);
         } finally {
             registrationBusy = false;

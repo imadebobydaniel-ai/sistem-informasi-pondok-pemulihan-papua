@@ -1559,6 +1559,7 @@ function renderTable(data) {
         </tr>
     `).join("");
 
+    const canDelete = Boolean(auth.currentUser && agendaDeleteUid === auth.currentUser.uid && !deleteSelectedAgenda.inProgress);
     const selectedVisibleCount = data.filter(item =>
         selectedAgendaIds.has(item.id)
     ).length;
@@ -1620,14 +1621,10 @@ function renderTable(data) {
                 <button
                     type="button"
                     class="btn"
-                    disabled
-                    style="
-                        background:#b42318;
-                        color:#fff;
-                        opacity:.5;
-                        cursor:not-allowed;
-                    "
-                    title="Penghapusan Agenda belum tersedia"
+                    onclick="deleteSelectedAgenda()"
+                    ${canDelete && selectedVisibleCount ? "" : "disabled"}
+                    style="background:#b42318;color:#fff;"
+                    title="${canDelete ? "Hapus agenda yang dipilih" : "Penghapusan Agenda belum tersedia untuk sesi ini"}"
                 >
                     <i class="fas fa-trash"></i>
                     Hapus Terpilih
@@ -1701,6 +1698,8 @@ function toggleAllAgendaSelection(checked) {
     renderTable(visibleItems);
 }
 
+let agendaDeleteUid = null;
+
 async function requestAnnualRecordDelete(kind, ids) {
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -1710,6 +1709,7 @@ async function requestAnnualRecordDelete(kind, ids) {
     }
 
     const idToken = await currentUser.getIdToken();
+    if (auth.currentUser?.uid !== currentUser.uid) throw new Error("Sesi Administrator berubah.");
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/admin-delete-annual-records`,
         {
@@ -1739,6 +1739,7 @@ async function requestAnnualRecordDelete(kind, ids) {
 }
 
 async function deleteSelectedAgenda() {
+    if (!auth.currentUser || agendaDeleteUid !== auth.currentUser.uid) return;
     const targets = applyCurrentAgendaFiltersOnly().filter(item =>
         selectedAgendaIds.has(item.id)
     );
@@ -1758,6 +1759,7 @@ async function deleteSelectedAgenda() {
     if (!confirmed) return;
 
     deleteSelectedAgenda.inProgress = true;
+    applyFilters();
 
     try {
         const result = await requestAnnualRecordDelete(
@@ -1765,6 +1767,11 @@ async function deleteSelectedAgenda() {
             targets.map(item => String(item.id))
         );
 
+        const deleted = new Set(result.deletedIds);
+        if (result.kind !== "agenda_programs" || result.recordsDeleted !== targets.length ||
+            deleted.size !== targets.length || targets.some(item => !deleted.has(String(item.id).toLowerCase()))) {
+            throw new Error("Server belum mengonfirmasi semua agenda yang dipilih.");
+        }
         targets.forEach(item => selectedAgendaIds.delete(item.id));
         await loadAgenda();
         alert(
@@ -1774,10 +1781,6 @@ async function deleteSelectedAgenda() {
     } catch (error) {
         console.error("Gagal menghapus Program Tahunan:", error);
 
-        if (error.partial) {
-            await loadAgenda();
-        }
-
         alert(
             "Penghapusan Program Tahunan gagal.\n\n" +
             `${error.message}` +
@@ -1785,6 +1788,7 @@ async function deleteSelectedAgenda() {
         );
     } finally {
         deleteSelectedAgenda.inProgress = false;
+        applyFilters();
     }
 }
 
@@ -3195,6 +3199,7 @@ if (resetAnnualFilter) {
 
 
 auth.onAuthStateChanged(async (user) => {
+    agendaDeleteUid = null;
     if (!user) {
         window.location.replace("login_cyber.html");
         return;
@@ -3222,6 +3227,14 @@ auth.onAuthStateChanged(async (user) => {
             throw new Error("ADMIN_INACTIVE");
         }
 
+        if (["master", "super_admin"].includes(role)) {
+            try {
+                const readiness = await requestAnnualRecordDelete("agenda_delete_status", []);
+                if (readiness.ready === true && auth.currentUser?.uid === user.uid) agendaDeleteUid = user.uid;
+            } catch {
+                // Keep the action disabled until the authenticated backend confirms readiness.
+            }
+        }
         await loadAgenda();
         await loadPublishedEvents();
         await loadPublishedAnnualActivities();

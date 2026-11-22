@@ -190,7 +190,7 @@ async function readAdminRole(uid: string, idToken: string) {
     return role;
 }
 
-async function readRequest(request: Request): Promise<{ kind: RecordKind; ids: string[] }> {
+async function readRequest(request: Request): Promise<{ kind: RecordKind | "agenda_delete_status"; ids: string[] }> {
     let body: unknown;
     try {
         body = await request.json();
@@ -199,6 +199,7 @@ async function readRequest(request: Request): Promise<{ kind: RecordKind; ids: s
     }
 
     const kind = (body as { kind?: unknown })?.kind;
+    if (kind === "agenda_delete_status") return { kind, ids: [] };
     if (typeof kind !== "string" || !Object.hasOwn(RECORD_KINDS, kind)) {
         throw new HttpError(
             400,
@@ -367,6 +368,19 @@ Deno.serve(async (request) => {
         role = await readAdminRole(verified.uid, verified.idToken);
         ({ kind, ids } = await readRequest(request));
 
+        if (kind === "agenda_delete_status" || kind === "agenda_programs") {
+            if (!["master", "super_admin"].includes(role)) {
+                throw new HttpError(403, "role_not_allowed", "Hanya Master atau SuperAdmin aktif yang dapat menghapus agenda.");
+            }
+            const { data, error } = await serviceClient().rpc("delete_published_agenda_atomic", { p_ids: ids });
+            if (error) {
+                if (error.code === "P0002") {
+                    throw new HttpError(409, "agenda_changed", "Data agenda berubah. Muat ulang sebelum mencoba kembali.");
+                }
+                throw new HttpError(503, "agenda_delete_unavailable", "Penghapusan agenda belum tersedia atau tidak dapat dikonfirmasi.");
+            }
+            return json(200, { ok: true, ...data }, origin);
+        }
         const result = await deleteRecords(kind as RecordKind, ids);
         console.log(JSON.stringify({
             action: "admin-delete-annual-records",

@@ -34,7 +34,9 @@
                 const control = s.data(), count = c.data();
                 if (!s.exists || control.enabled !== true || control.maintenance !== false || control.version !== 'original-spark-v1' || !c.exists || !Number.isSafeInteger(count.last) || count.last < 0 || count.last >= 999999999) throw new Error('Registrasi belum siap.');
                 observedLast = count.last;
-                if (p.exists || a.exists || e.exists || w.exists) throw new Error('Profil atau identitas sudah terdaftar.');
+                if (e.exists) throw Object.assign(new Error('Email sudah terdaftar.'), {code:'registration/email-in-use'});
+                if (w.exists) throw Object.assign(new Error('WhatsApp sudah digunakan.'), {code:'registration/whatsapp-in-use'});
+                if (p.exists || a.exists) throw new Error('Profil atau identitas sudah terdaftar.');
                 const next = count.last + 1;
                 // The server Rules independently check Jayapura year. A wrong local
                 // clock fails closed; it never creates a different permanent NIJ.
