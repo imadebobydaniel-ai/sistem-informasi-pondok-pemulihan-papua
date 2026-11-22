@@ -43,9 +43,9 @@ async function resolveOwnedProfile(db, user, tx) {
     }
     return legacy.docs[0]; // Read-only compatibility, never migration or NIJ allocation.
 }
-async function authorize(tx, db, user, snapshots) {
+async function authorize(tx, db, user, snapshots, roles = ["master", "super_admin", "admin", "viewer"]) {
     const admin = await tx.get(db.doc("admin_users/" + user.uid)), d = admin.data();
-    const manager = admin.exists && d.status === "active" && ["master", "super_admin", "admin", "viewer"].includes(d.role);
+    const manager = admin.exists && d.status === "active" && roles.includes(d.role);
     if (!manager && snapshots.some(s => s.exists && !owns(user, s))) {
         let own;
         try { own = await resolveOwnedProfile(db, user, tx); } catch (_) { fail("permission-denied", "Tidak berwenang mengubah profil ini."); }
@@ -117,11 +117,30 @@ exports.deleteSIPAPUAProfiles = onCall(options, async request => {
     const db = getFirestore();
     return db.runTransaction(async tx => {
         const snapshots = await Promise.all(ids.map(v => tx.get(db.doc("users/" + v))));
-        await authorize(tx, db, user, snapshots);
-        for (const p of snapshots) {
-            if (!p.exists) continue;
-            tx.delete(p.ref); // Existing hard-delete behavior; no archive or new recovery policy.
-            tx.create(db.collection("registration_audit").doc(), { action: "profile-delete", actorUid: user.uid, targetUid: p.data().uid || p.id, profileId: p.id, createdAt: FieldValue.serverTimestamp() });
+        const profiles = snapshots.filter(snapshot => snapshot.exists);
+        const admin = await tx.get(db.doc("admin_users/" + user.uid));
+        const manager = admin.exists && admin.data().status === "active" &&
+            ["master", "super_admin"].includes(admin.data().role);
+        const checked = await Promise.all(profiles.map(async profile => {
+            const data = profile.data();
+            const linkedUid = data.uid ?? "";
+            if (!manager && linkedUid !== user.uid && !(linkedUid === "" && profile.id === user.uid)) {
+                fail("permission-denied", "Tidak berwenang menghapus profil ini.");
+            }
+            const audit = db.doc("registration_audit/profile-delete_" + profile.id);
+            const [allocation, existingAudit] = await Promise.all([
+                tx.get(db.doc("nij_allocations/" + profile.id)),
+                tx.get(audit)
+            ]);
+            if (typeof data.nij !== "string" || !data.nij.length || allocation.data()?.nij !== data.nij) {
+                fail("failed-precondition", "Alokasi NIJ profil tidak cocok.");
+            }
+            if (existingAudit.exists) fail("failed-precondition", "Audit penghapusan sudah ada.");
+            return { profile, audit, targetUid: linkedUid || profile.id };
+        }));
+        for (const { profile, audit, targetUid } of checked) {
+            tx.delete(profile.ref);
+            tx.create(audit, { action: "profile-delete", actorUid: user.uid, targetUid, profileId: profile.id, createdAt: FieldValue.serverTimestamp() });
         }
         return { deleted: true, docIds: ids };
     });
