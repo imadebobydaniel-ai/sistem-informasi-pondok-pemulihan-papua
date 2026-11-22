@@ -107,8 +107,11 @@
                 for(let i=0;i<profiles.length;i++)if(profiles[i].exists){
                     deletedCount++;
                     tx.delete(refs[i]);
+                    const uid = profiles[i].data().uid;
+                    // Rules distinguish an explicit null from a missing or empty UID.
+                    const targetUid = uid === null ? null : (uid || docIds[i]);
                     tx.set(db.collection('registration_audit').doc('profile-delete_'+docIds[i]),{
-                        action:'profile-delete',actorUid:user.uid,targetUid:profiles[i].data().uid||docIds[i],profileId:docIds[i],createdAt:stamp()});
+                        action:'profile-delete',actorUid:user.uid,targetUid,profileId:docIds[i],createdAt:stamp()});
                 }
                 return {deleted: true, deletedCount, alreadyAbsentCount: docIds.length - deletedCount};
             });
