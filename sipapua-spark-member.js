@@ -95,16 +95,28 @@
         }
         async function deleteProfiles(docIds){
             const user=auth.currentUser;same(user);
-            if(!Array.isArray(docIds)||docIds.length<1||docIds.length>4)throw new Error('Hapus paling banyak empat profil.');
-            await db.runTransaction(async tx=>{
+            if (!Array.isArray(docIds) || docIds.length < 1 || docIds.length > 4 ||
+                new Set(docIds).size !== docIds.length ||
+                docIds.some(id => typeof id !== 'string' || !id.length || id.length > 160 || id.includes('/'))) {
+                throw new Error('Pilih hingga empat ID profil yang berbeda.');
+            }
+            const result = await db.runTransaction(async tx=>{
                 const refs=docIds.map(id=>db.collection('users').doc(id));
                 const profiles=await Promise.all(refs.map(ref=>tx.get(ref)));same(user);
+                let deletedCount = 0;
                 for(let i=0;i<profiles.length;i++)if(profiles[i].exists){
+                    deletedCount++;
                     tx.delete(refs[i]);
+                    const uid = profiles[i].data().uid;
+                    // Rules distinguish an explicit null from a missing or empty UID.
+                    const targetUid = uid === null ? null : (uid || docIds[i]);
                     tx.set(db.collection('registration_audit').doc('profile-delete_'+docIds[i]),{
-                        action:'profile-delete',actorUid:user.uid,targetUid:profiles[i].data().uid||docIds[i],profileId:docIds[i],createdAt:stamp()});
+                        action:'profile-delete',actorUid:user.uid,targetUid,profileId:docIds[i],createdAt:stamp()});
                 }
-            });same(user);return{deleted:true};
+                return {deleted: true, deletedCount, alreadyAbsentCount: docIds.length - deletedCount};
+            });
+            same(user);
+            return result;
         }
         return Object.freeze({ownProfile,status,activate,updateProfile,deleteProfiles});
     }

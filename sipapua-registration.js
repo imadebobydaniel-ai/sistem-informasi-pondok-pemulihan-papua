@@ -78,7 +78,13 @@
         async function deleteProfile(docId) { return deleteProfiles([docId]); }
         async function deleteProfiles(docIds) {
             const response = await lifecycleCall("deleteSIPAPUAProfiles", {docIds});
-            if (response.data?.deleted !== true) throw failure("unconfirmed-profile", "Penghapusan belum dikonfirmasi server.");
+            const {deleted, deletedCount, alreadyAbsentCount} = response.data || {};
+            if (deleted !== true || !Number.isSafeInteger(deletedCount) || deletedCount < 0 ||
+                !Number.isSafeInteger(alreadyAbsentCount) || alreadyAbsentCount < 0 ||
+                deletedCount + alreadyAbsentCount !== docIds.length) {
+                throw failure("unconfirmed-profile", "Penghapusan belum dikonfirmasi server.");
+            }
+            return {deleted, deletedCount, alreadyAbsentCount};
         }
         return Object.freeze({ preflight, registerProfile, ownProfile, updateProfile, deleteProfile, deleteProfiles, assertEditingReady });
     }
