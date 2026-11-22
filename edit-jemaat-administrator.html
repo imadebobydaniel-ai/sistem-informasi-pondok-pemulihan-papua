@@ -510,15 +510,27 @@
         return editAdminVerified;
     }
 
+    let activationInFlight = null;
+    let activationRevision = 0;
+
     async function activateMemberFromExistingEditor(propagateFailure = false) {
+        if (!activationInFlight) {
+            activationRevision++;
+            activationInFlight = performExistingMemberActivation().finally(() => {
+                activationInFlight = null;
+            });
+        }
+        try {
+            await activationInFlight;
+        } catch (error) {
+            if (propagateFailure) throw error;
+        }
+    }
+
+    async function performExistingMemberActivation() {
         const button = document.getElementById('activate_existing_member');
         const result = document.getElementById('existing_activation_result');
-        if (button.disabled) {
-            if(propagateFailure)throw new Error('Tunggu konfirmasi aktivasi sebelum menyimpan.');
-            return;
-        }
         button.disabled = true;
-        let activated = false;
         try {
             if (document.getElementById('status_akun').value !== 'Aktif' ||
                 !document.getElementById('activation_identity_confirmed').checked) {
@@ -541,25 +553,44 @@
             if (auth.currentUser?.uid !== actor.uid || response.data?.active !== true) {
                 throw new Error('Aktivasi belum terkonfirmasi. Periksa status sebelum mencoba kembali.');
             }
-            activated = true;
             document.getElementById('activation_identity_confirmed').checked = false;
             result.textContent = 'Aktivasi dikonfirmasi backend melalui jalur audit. Status verifikasi email tidak diubah.';
         } catch (error) {
             result.textContent = 'Aktivasi belum dikonfirmasi: ' + error.message;
-            if(propagateFailure)throw error;
+            throw error;
         } finally {
-            button.disabled = activated;
+            button.disabled = false;
         }
     }
 
-    async function saveExistingAccountStatus(requestedStatus) {
+    async function readExistingAccountStatus(actor) {
+        if (!actor || auth.currentUser?.uid !== actor.uid) throw new Error('Sesi administrator berubah.');
         const current = await db.collection('users').doc(userId).get({source:'server'});
-        if(!current.exists)throw new Error('Profil tidak ditemukan.');
-        if(requestedStatus === 'Aktif'&&(current.data().status_akun !== 'Aktif'||document.getElementById('activation_identity_confirmed').checked)){
+        if (auth.currentUser?.uid !== actor.uid) throw new Error('Sesi administrator berubah.');
+        if (!current.exists) throw new Error('Profil tidak ditemukan.');
+        if (current.metadata.fromCache || current.metadata.hasPendingWrites) throw new Error('Status profil belum dikonfirmasi server.');
+        return current.data().status_akun;
+    }
+
+    async function saveExistingAccountStatus(requestedStatus) {
+        const actor = auth.currentUser;
+        let revision, status;
+        do {
+            revision = activationRevision;
+            if (activationInFlight) await activationInFlight;
+            status = await readExistingAccountStatus(actor);
+            // An activation can finish while the status read is outstanding.
+        } while (revision !== activationRevision);
+
+        if (requestedStatus === status) return;
+        if (requestedStatus === 'Aktif') {
             await activateMemberFromExistingEditor(true);
-        }else if(requestedStatus !== current.data().status_akun){
-            throw new Error('Perubahan ini memerlukan prosedur penonaktifan terpisah.');
+            if (await readExistingAccountStatus(actor) !== 'Aktif') {
+                throw new Error('Aktivasi belum terkonfirmasi. Periksa status sebelum mencoba kembali.');
+            }
+            return;
         }
+        throw new Error('Perubahan ini memerlukan prosedur penonaktifan terpisah.');
     }
 
     function denyEditAccess(message) {
