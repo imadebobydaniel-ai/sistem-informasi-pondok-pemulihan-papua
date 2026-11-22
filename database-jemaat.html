@@ -2468,9 +2468,9 @@ const firebaseConfig = {
     const MASTER_UID = "hXo6v5OKhkMVtRAAuUqcYcASplo2";
     const ADMIN_ROLES = new Set(["master", "super_admin", "superadmin", "admin", "viewer"]);
     let currentAdminRole = "";
-    const DELETE_DENIED_MESSAGE = "Penghapusan data membutuhkan password Superadmin.";
+    const DELETE_DENIED_MESSAGE = "Penghapusan data memerlukan sesi Master atau SuperAdmin aktif.";
     function canDeleteAdminData() {
-        return ["master", "super_admin", "superadmin"].includes(
+        return ["master", "super_admin"].includes(
             String(currentAdminRole || "").trim().toLowerCase()
         );
     }
@@ -5252,12 +5252,16 @@ snapshot.forEach(doc => {
 
         const ids = Array.from(new Set(checkboxes.map(checkbox => checkbox.value)));
         let completed = 0;
+        let removed = 0;
+        let alreadyAbsent = 0;
         try {
             const registration = originalRegistrationService();
             for (let start = 0; start < ids.length; start += 4) {
                 const group = ids.slice(start, start + 4);
-                await registration.deleteProfiles(group);
+                const result = await registration.deleteProfiles(group);
                 completed += group.length;
+                removed += result.deletedCount;
+                alreadyAbsent += result.alreadyAbsentCount;
             }
 
             const checkAll =
@@ -5270,7 +5274,7 @@ snapshot.forEach(doc => {
             updateActionMenu();
 
             alert(
-                `${ids.length} data jemaat berhasil dihapus.`
+                `Server mengonfirmasi ${removed} profil dihapus dan ${alreadyAbsent} sudah tidak ada.`
             );
 
         } catch (error) {
@@ -5281,7 +5285,7 @@ snapshot.forEach(doc => {
             );
 
             alert(
-                `Penghapusan terkonfirmasi: ${completed} dari ${ids.length} profil. Sisa penghapusan belum terkonfirmasi; muat ulang daftar sebelum mencoba kembali.`
+                `Penghapusan terkonfirmasi: ${completed} dari ${ids.length} profil (${removed} dihapus, ${alreadyAbsent} sudah tidak ada). Sisa penghapusan belum terkonfirmasi; muat ulang daftar sebelum mencoba kembali.`
             );
         }
     }
@@ -6967,7 +6971,8 @@ snapshot.forEach(doc => {
         }
         if (confirm("Hapus data ini secara permanen?")) {
             try {
-                await originalRegistrationService().deleteProfile(id);
+                const result = await originalRegistrationService().deleteProfile(id);
+                alert(result.deletedCount === 1 ? "Profil berhasil dihapus." : "Profil sudah tidak ada.");
             } catch (error) {
                 alert("Penghapusan belum terkonfirmasi. Muat ulang daftar sebelum mencoba kembali. " + error.message);
             }
