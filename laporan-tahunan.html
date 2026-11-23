@@ -1559,6 +1559,7 @@ function renderTable(data) {
         </tr>
     `).join("");
 
+    const canDelete = Boolean(auth.currentUser && agendaDeleteUid === auth.currentUser.uid && !deleteSelectedAgenda.inProgress);
     const selectedVisibleCount = data.filter(item =>
         selectedAgendaIds.has(item.id)
     ).length;
@@ -1620,14 +1621,10 @@ function renderTable(data) {
                 <button
                     type="button"
                     class="btn"
-                    disabled
-                    style="
-                        background:#b42318;
-                        color:#fff;
-                        opacity:.5;
-                        cursor:not-allowed;
-                    "
-                    title="Penghapusan Agenda belum tersedia"
+                    onclick="deleteSelectedAgenda()"
+                    ${canDelete && selectedVisibleCount ? "" : "disabled"}
+                    style="background:#b42318;color:#fff;"
+                    title="${canDelete ? "Hapus agenda yang dipilih" : "Penghapusan Agenda belum tersedia untuk sesi ini"}"
                 >
                     <i class="fas fa-trash"></i>
                     Hapus Terpilih
@@ -1701,6 +1698,8 @@ function toggleAllAgendaSelection(checked) {
     renderTable(visibleItems);
 }
 
+let agendaDeleteUid = null;
+
 async function requestAnnualRecordDelete(kind, ids) {
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -1710,6 +1709,9 @@ async function requestAnnualRecordDelete(kind, ids) {
     }
 
     const idToken = await currentUser.getIdToken();
+    if (kind.startsWith("agenda_") && auth.currentUser?.uid !== currentUser.uid) {
+        throw new Error("Sesi Administrator berubah.");
+    }
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/admin-delete-annual-records`,
         {
@@ -1732,6 +1734,7 @@ async function requestAnnualRecordDelete(kind, ids) {
         );
         error.code = result?.code || `HTTP_${response.status}`;
         error.partial = Boolean(result?.details?.partial);
+        if (kind === "agenda_programs") error.httpStatus = response.status;
         throw error;
     }
 
@@ -1739,6 +1742,7 @@ async function requestAnnualRecordDelete(kind, ids) {
 }
 
 async function deleteSelectedAgenda() {
+    if (!auth.currentUser || agendaDeleteUid !== auth.currentUser.uid) return;
     const targets = applyCurrentAgendaFiltersOnly().filter(item =>
         selectedAgendaIds.has(item.id)
     );
@@ -1758,6 +1762,8 @@ async function deleteSelectedAgenda() {
     if (!confirmed) return;
 
     deleteSelectedAgenda.inProgress = true;
+    let reloadFailed = false;
+    applyFilters();
 
     try {
         const result = await requestAnnualRecordDelete(
@@ -1765,52 +1771,91 @@ async function deleteSelectedAgenda() {
             targets.map(item => String(item.id))
         );
 
+        const deleted = new Set(result.deletedIds);
+        if (result.kind !== "agenda_programs" || result.recordsDeleted !== targets.length ||
+            deleted.size !== targets.length || targets.some(item => !deleted.has(String(item.id).toLowerCase()))) {
+            throw new Error("Server belum mengonfirmasi semua agenda yang dipilih.");
+        }
         targets.forEach(item => selectedAgendaIds.delete(item.id));
-        await loadAgenda();
-        alert(
-            `${result.recordsDeleted} Program Tahunan dihapus ` +
-            `(${result.photosDeleted} foto terkait dihapus dari database).`
-        );
+        try {
+            reloadFailed = (await loadAgenda()) !== true;
+        } catch (error) {
+            reloadFailed = true;
+            console.error("Gagal memuat ulang daftar agenda:", error);
+        }
+        const success = `${result.recordsDeleted} Program Tahunan dihapus ` +
+            `(${result.photosDeleted} foto terkait dihapus dari database).`;
+        alert(reloadFailed ? success + "\n\nDaftar belum dapat dimuat ulang. Muat ulang halaman untuk melihat daftar terbaru." : success);
     } catch (error) {
         console.error("Gagal menghapus Program Tahunan:", error);
-
-        if (error.partial) {
-            await loadAgenda();
-        }
+        const unconfirmed = !(error.httpStatus >= 400 && error.httpStatus < 500);
+        if (unconfirmed) agendaDeleteUid = null;
 
         alert(
-            "Penghapusan Program Tahunan gagal.\n\n" +
+            (unconfirmed
+                ? "Hasil penghapusan belum terkonfirmasi. Muat ulang daftar dan periksa status sebelum mencoba lagi.\n\n"
+                : "Penghapusan Program Tahunan gagal.\n\n") +
             `${error.message}` +
             (error.code ? `\n(Kode: ${error.code})` : "")
         );
     } finally {
         deleteSelectedAgenda.inProgress = false;
+        if (!reloadFailed) applyFilters();
     }
 }
 
 function applyCurrentAgendaFiltersOnly() {
-    const tahun = document.getElementById("filterTahun")?.value || "";
-    const wilayah = document.getElementById("filterWilayah")?.value || "";
-    const kategori = document.getElementById("filterKategori")?.value || "";
-    const bulan = document.getElementById("filterBulan")?.value || "";
+    const year = filterTahun?.value || "";
+    const wilayah = filterWilayah?.value || "";
+    const divisi = filterKategori?.value || "";
+    const periode = document.getElementById("filterPeriode")?.value || "";
+    const bulan = filterBulan?.value || "";
 
     return allAgenda.filter(item => {
-        const itemTahun = String(item.tahun || "");
-        const itemWilayah = String(item.wilayah || "").trim();
-        const itemKategori = String(item.kategori || item.divisi || "").trim();
-
-        let cocokBulan = true;
-
-        if (bulan) {
-            cocokBulan = getAgendaMonthValue(item.bulan) === bulan;
+        if (
+            year &&
+            String(item.tahun || "") !== year
+        ) {
+            return false;
         }
 
-        return (
-            (!tahun || itemTahun === tahun) &&
-            (!wilayah || itemWilayah === wilayah) &&
-            (!kategori || itemKategori === kategori) &&
-            cocokBulan
-        );
+        if (
+            wilayah &&
+            normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)
+        ) {
+            return false;
+        }
+
+        if (
+            divisi &&
+            String(item.divisi || "") !== divisi
+        ) {
+            return false;
+        }
+
+        if (
+            periode &&
+            String(item.periode || "") !== periode
+        ) {
+            return false;
+        }
+
+        if (bulan) {
+            const monthName =
+                MONTH_NAMES[Number(bulan)] || "";
+
+            const itemMonth =
+                String(item.bulan || "").trim();
+
+            if (
+                itemMonth !== monthName &&
+                itemMonth !== String(bulan)
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     });
 }
 function openDetail(item) {
@@ -2008,58 +2053,7 @@ async function exportSelectedAgendaPdf() {
 }
 
 function applyFilters() {
-    const year = filterTahun?.value || "";
-    const wilayah = filterWilayah?.value || "";
-    const divisi = filterKategori?.value || "";
-    const periode = document.getElementById("filterPeriode")?.value || "";
-    const bulan = filterBulan?.value || "";
-
-    const filtered = allAgenda.filter(item => {
-        if (
-            year &&
-            String(item.tahun || "") !== year
-        ) {
-            return false;
-        }
-
-        if (
-            wilayah &&
-            normalizeWilayahValue(item.wilayah) !== normalizeWilayahValue(wilayah)
-        ) {
-            return false;
-        }
-
-        if (
-            divisi &&
-            String(item.divisi || "") !== divisi
-        ) {
-            return false;
-        }
-
-        if (
-            periode &&
-            String(item.periode || "") !== periode
-        ) {
-            return false;
-        }
-
-        if (bulan) {
-            const monthName =
-                MONTH_NAMES[Number(bulan)] || "";
-
-            const itemMonth =
-                String(item.bulan || "").trim();
-
-            if (
-                itemMonth !== monthName &&
-                itemMonth !== String(bulan)
-            ) {
-                return false;
-            }
-        }
-
-        return true;
-    });
+    const filtered = applyCurrentAgendaFiltersOnly();
 
     renderSummary(filtered);
     renderTable(filtered);
@@ -2098,12 +2092,13 @@ async function loadAgenda() {
 
         const data = await response.json();
 
-        allAgenda =
-            Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) throw new Error("Respons daftar agenda tidak valid.");
+        allAgenda = data;
 
         populateYears(allAgenda);
         populateAgendaFilters(allAgenda);
         applyFilters();
+        return true;
 
     } catch (error) {
         console.error(
@@ -2128,6 +2123,7 @@ async function loadAgenda() {
                 </div>
             </div>
         `;
+        return false;
     }
 }
 
@@ -2451,11 +2447,22 @@ async function deleteSelectedEventJemaat() {
         }
 
         selectedEventJemaatIds.clear();
-        await loadPublishedEvents();
-        alert(
-            `${result.eventsArchived} Event Jemaat diarsipkan dan tidak lagi tampil di SIPAPUA. ` +
-            "Data tetap tersimpan di Dashboard PKS sebagai history."
-        );
+        const refreshed = await loadPublishedEvents();
+
+        if (refreshed === false) {
+            alert(
+                result.eventsArchived +
+                " Event Jemaat berhasil diarsipkan oleh server, " +
+                "tetapi daftar gagal dimuat ulang. " +
+                "Periksa koneksi lalu muat ulang halaman."
+            );
+        } else {
+            alert(
+                result.eventsArchived +
+                " Event Jemaat berhasil diarsipkan dan " +
+                "daftar sudah diperbarui."
+            );
+        }
     } catch (error) {
         console.error("Gagal menghapus Event Jemaat:", error, result);
 
@@ -2556,6 +2563,7 @@ async function loadPublishedEvents() {
 
         populateEventFilters();
         applyEventFilters();
+        return true;
 
     } catch (error) {
         console.error(
@@ -2579,6 +2587,7 @@ async function loadPublishedEvents() {
                 </div>
             </div>
         `;
+        return false;
     }
 }
 
@@ -3195,6 +3204,7 @@ if (resetAnnualFilter) {
 
 
 auth.onAuthStateChanged(async (user) => {
+    agendaDeleteUid = null;
     if (!user) {
         window.location.replace("login_cyber.html");
         return;
@@ -3222,6 +3232,16 @@ auth.onAuthStateChanged(async (user) => {
             throw new Error("ADMIN_INACTIVE");
         }
 
+        if (["master", "super_admin"].includes(role)) {
+            requestAnnualRecordDelete("agenda_delete_status", []).then(readiness => {
+                if (readiness.ready === true && auth.currentUser?.uid === user.uid) {
+                    agendaDeleteUid = user.uid;
+                    applyFilters();
+                }
+            }).catch(() => {
+                // Keep the agenda action disabled when readiness cannot be verified.
+            });
+        }
         await loadAgenda();
         await loadPublishedEvents();
         await loadPublishedAnnualActivities();
