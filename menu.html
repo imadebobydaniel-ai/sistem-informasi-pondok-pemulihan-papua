@@ -1607,6 +1607,7 @@ button.topbar-button { padding: 0; cursor: pointer; }
 <script src="sipapua-app-check.js"></script>
 <script src="sipapua-spark-member.js"></script>
 <script src="sipapua-member-session.js"></script>
+<script src="sipapua-settings.js"></script>
     <script src="sipapua-maintenance.js"></script>
     <script src="sipapua-member-card.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -1626,7 +1627,6 @@ button.topbar-button { padding: 0; cursor: pointer; }
     const userEmail = localStorage.getItem("userEmail");
     const userUid = localStorage.getItem("userUid");
 
-    let memberSessionTimerId = null;
     let memberPresenceHeartbeatId = null;
     let activePresenceUid = null;
     let friendRequestsUnsubscribe = null;
@@ -1635,10 +1635,6 @@ button.topbar-button { padding: 0; cursor: pointer; }
 
     auth.onAuthStateChanged((user) => {
         if (!user) {
-            if (memberSessionTimerId) {
-                clearTimeout(memberSessionTimerId);
-                memberSessionTimerId = null;
-            }
             if (memberPresenceHeartbeatId) {
                 clearInterval(memberPresenceHeartbeatId);
                 memberPresenceHeartbeatId = null;
@@ -1651,7 +1647,6 @@ button.topbar-button { padding: 0; cursor: pointer; }
             return;
         }
 
-        startMemberSessionTimer();
         if (activePresenceUid !== user.uid) {
             activePresenceUid = user.uid;
             updateMemberPresence(user).catch((error) => console.warn("Presence belum dapat diperbarui.", error));
@@ -1724,54 +1719,18 @@ button.topbar-button { padding: 0; cursor: pointer; }
         }
     }
 
-    function startMemberSessionTimer() {
-        if (memberSessionTimerId) {
-            clearTimeout(memberSessionTimerId);
-            memberSessionTimerId = null;
+    window.SIPAPUA_SETTINGS?.watchTimeout(auth, async user => {
+        let wait;
+        try {
+            await Promise.race([markPresenceOffline(user.uid), new Promise(resolve => { wait = setTimeout(resolve, 1500); })]);
+        } finally {
+            clearTimeout(wait);
         }
-
-        const timerMinutes = parseInt(
-            localStorage.getItem("setTimer") || "0",
-            10
-        );
-
-        if (!Number.isFinite(timerMinutes) || timerMinutes <= 0) {
-            return;
-        }
-
-        const sessionKey = "sipapua_session_started_at";
-        let startedAt = parseInt(
-            sessionStorage.getItem(sessionKey) || "0",
-            10
-        );
-
-        if (!startedAt || !Number.isFinite(startedAt)) {
-            startedAt = Date.now();
-            sessionStorage.setItem(sessionKey, String(startedAt));
-        }
-
-        const expiresAt = startedAt + (timerMinutes * 60 * 1000);
-        const remaining = expiresAt - Date.now();
-
-        if (remaining <= 0) {
-            markPresenceOffline(auth.currentUser?.uid).finally(() => auth.signOut()).finally(() => {
-                sessionStorage.removeItem(sessionKey);
-                localStorage.removeItem("userEmail");
-                localStorage.removeItem("userUid");
-                window.location.replace("index.html");
-            });
-            return;
-        }
-
-        memberSessionTimerId = setTimeout(() => {
-            markPresenceOffline(auth.currentUser?.uid).finally(() => auth.signOut()).finally(() => {
-                sessionStorage.removeItem(sessionKey);
-                localStorage.removeItem("userEmail");
-                localStorage.removeItem("userUid");
-                window.location.replace("index.html");
-            });
-        }, remaining);
-    }
+        if (auth.currentUser !== user) return;
+        await auth.signOut();
+        clearMemberSession(user.uid);
+        window.location.replace("index.html");
+    }, () => console.warn("Logout otomatis belum dapat dijalankan."));
 
     let ytPlayer;
     let isYtReady = false;
@@ -3248,13 +3207,19 @@ button.topbar-button { padding: 0; cursor: pointer; }
     function tutupKartuDigital() { document.getElementById('modalKartuDigital').style.display = 'none'; }
     function confirmLogout() { document.getElementById('modal-logout').style.display = 'flex'; }
     function closeLogoutModal() { document.getElementById('modal-logout').style.display = 'none'; }
-    function executeLogout() {
-        const uid = auth.currentUser?.uid;
-        markPresenceOffline(uid).finally(() => auth.signOut()).then(() => {
+    function clearMemberSession(uid) {
+        try {
+            if (uid) window.SIPAPUA_SETTINGS?.clearSession(uid);
             sessionStorage.removeItem("sipapua_popup_dismissed");
             sessionStorage.removeItem("sipapua_session_started_at");
             localStorage.removeItem("userEmail");
             localStorage.removeItem("userUid");
+        } catch (_) { /* Firebase Auth sign-out already succeeded. */ }
+    }
+    function executeLogout() {
+        const uid = auth.currentUser?.uid;
+        markPresenceOffline(uid).finally(() => auth.signOut()).then(() => {
+            clearMemberSession(uid);
             window.location.href = "index.html";
         });
     }
