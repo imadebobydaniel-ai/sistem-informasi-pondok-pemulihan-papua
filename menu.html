@@ -1624,7 +1624,6 @@ button.topbar-button { padding: 0; cursor: pointer; }
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
     const auth = firebase.auth();
-    const userEmail = localStorage.getItem("userEmail");
     const userUid = localStorage.getItem("userUid");
 
     let memberPresenceHeartbeatId = null;
@@ -1632,8 +1631,11 @@ button.topbar-button { padding: 0; cursor: pointer; }
     let friendRequestsUnsubscribe = null;
     const friendRequestPrompts = new Set();
     const memberPresenceProfiles = new Map();
+    let profileSession;
+    let profileGeneration = 0;
 
     auth.onAuthStateChanged((user) => {
+        loadMemberHeader(user);
         if (!user) {
             if (memberPresenceHeartbeatId) {
                 clearInterval(memberPresenceHeartbeatId);
@@ -1659,6 +1661,50 @@ button.topbar-button { padding: 0; cursor: pointer; }
             }, 90000);
         }
     });
+
+    async function loadMemberHeader(user) {
+        if (auth.currentUser !== user || profileSession === user) return;
+        profileSession = user;
+        const generation = ++profileGeneration;
+        const name = document.getElementById('disp_nama');
+        const email = document.getElementById('disp_email');
+        const komsel = document.getElementById('disp_komsel');
+        const photo = document.getElementById('user-photo');
+        const icon = document.getElementById('default-icon');
+        email.textContent = "";
+        komsel.textContent = "KOMSEL";
+        photo.removeAttribute("src");
+        photo.style.display = "none";
+        icon.style.display = "";
+        if (!user || user.isAnonymous) {
+            name.textContent = "Profil anggota tidak tersedia.";
+            return;
+        }
+
+        name.textContent = "Memuat...";
+        const isCurrent = () => generation === profileGeneration && auth.currentUser === user;
+        try {
+            const profile = await window.SIPAPUA_MEMBER_SESSION.create(firebase).ownProfile();
+            if (!isCurrent()) return;
+            const data = profile.data();
+            if (!data) throw new Error("Profil tidak ditemukan.");
+            name.textContent = data.nama || "User";
+            email.textContent = user.email || "";
+            komsel.textContent = data.komsel || "KOMSEL";
+            if (data.foto_profil) {
+                photo.src = data.foto_profil;
+                photo.style.display = "block";
+                icon.style.display = "none";
+            }
+            try {
+                localStorage.setItem("userKomsel", data.komsel || "Semua JC");
+                localStorage.setItem("userName", data.nama || "User SIPAPUA");
+                localStorage.setItem("userFoto", data.foto_profil || "");
+            } catch (_) { /* The verified profile is already visible. */ }
+        } catch (_) {
+            if (isCurrent()) name.textContent = "Profil gagal dimuat. Muat ulang halaman.";
+        }
+    }
 
     document.addEventListener("visibilitychange", () => {
         if (!document.hidden && auth.currentUser) {
@@ -1753,7 +1799,7 @@ button.topbar-button { padding: 0; cursor: pointer; }
             events: { 
                 'onReady': (event) => { 
                     isYtReady = true; 
-                    listenData();
+                    listenMediaData();
                 },
                 'onStateChange': onPlayerStateChange
             }
@@ -1818,31 +1864,7 @@ button.topbar-button { padding: 0; cursor: pointer; }
             }, 500);
         }
     }
-    function listenData() {
-        if (userEmail) {
-            window.SIPAPUA_MEMBER_SESSION.query(firebase).where("email", "==", userEmail).onSnapshot(s => {
-                if (!s.empty) {
-                    const d = s.docs[0].data();
-                    document.getElementById('disp_nama').innerText = d.nama || "User";
-                    document.getElementById('disp_email').innerText = userEmail;
-                    
-                    // PERBAIKAN: Menghilangkan teks "JC" statis di depan agar tidak ganda sesuai permintaan
-                    document.getElementById('disp_komsel').innerText = d.komsel ? d.komsel : "KOMSEL";
-                    
-                    localStorage.setItem("userKomsel", d.komsel ? d.komsel : "Semua JC");
-                    localStorage.setItem("userName", d.nama || "User SIPAPUA");
-                    localStorage.setItem("userFoto", d.foto_profil || "");
-
-                    if (d.foto_profil) {
-                        const img = document.getElementById('user-photo');
-                        img.src = d.foto_profil;
-                        img.style.display = "block";
-                        document.getElementById('default-icon').style.display = "none";
-                    }
-                }
-            });
-        }
-
+    function listenMediaData() {
         /*
          * MEDIA PLAYER SIPAPUA
          * portal_media = sumber daftar konten
