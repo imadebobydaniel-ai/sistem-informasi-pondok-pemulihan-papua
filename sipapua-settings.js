@@ -67,19 +67,50 @@
     const page = root.document.getElementById("settings");
     if (!page) return;
     const byId = id => root.document.getElementById(id);
-    const sections = [...page.querySelectorAll("section")];
-    const links = [...page.querySelectorAll("nav a")];
+    const sections = [...page.querySelectorAll("#settings-panels > section")];
+    const links = [...page.querySelectorAll(".groups a")];
+    const back = byId("settings-back");
+    const title = byId("settings-title");
+    let pendingOverviewLink = false;
     function activateSection(focus = false) {
         const id = root.location.hash.slice(1);
-        const active = sections.find(section => section.id === id) || sections[0];
+        const active = sections.find(section => section.id === id);
+        page.dataset.settingsView = active ? "panel" : "overview";
+        back.href = active ? "#" : "menu.html";
+        back.setAttribute("aria-label", active ? "Kembali ke Pengaturan" : "Kembali ke Menu");
         for (const section of sections) section.hidden = section !== active;
         for (const link of links) {
-            if (link.hash === "#" + active.id) link.setAttribute("aria-current", "location");
+            if (active && link.hash === "#" + active.id) link.setAttribute("aria-current", "location");
             else link.removeAttribute("aria-current");
         }
-        if (focus) active.querySelector("h2").focus();
+        if (focus) {
+            root.requestAnimationFrame(() => {
+                if (root.location.hash.slice(1) === id) (active ? active.querySelector("h2") : title).focus();
+            });
+        }
     }
-    root.addEventListener("hashchange", () => activateSection(true));
+    for (const link of links) {
+        link.addEventListener("click", event => {
+            if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+                pendingOverviewLink = page.dataset.settingsView === "overview";
+            }
+        });
+    }
+    root.addEventListener("hashchange", () => {
+        if (pendingOverviewLink) root.history.replaceState({ settingsFromOverview: true }, "");
+        pendingOverviewLink = false;
+        activateSection(true);
+    });
+    back.addEventListener("click", event => {
+        if (page.dataset.settingsView !== "panel" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        if (root.history.state?.settingsFromOverview) {
+            root.history.back();
+        } else {
+            root.history.replaceState(null, "", root.location.pathname + root.location.search);
+            activateSection(true);
+        }
+    });
     activateSection();
 
     const maintenance = root.SIPAPUA_MAINTENANCE;

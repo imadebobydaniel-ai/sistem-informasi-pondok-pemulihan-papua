@@ -2,44 +2,73 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#10385c">
     <title>Jadwal Ibadah &amp; Pelayanan · SIPAPUA</title>
     <style>
-        :root { color-scheme: light; --navy: #10385c; --blue: #075395; --text: #142b43; --muted: #435b71; --line: #bfcedb; }
+        :root { color-scheme: light; --navy: #10385c; --blue: #075395; --text: #142b43; --muted: #435b71; --line: #d3dee8; --gold: #f1cb78; }
         * { box-sizing: border-box; }
         [hidden] { display: none !important; }
         body { margin: 0; background: #edf3f8; color: var(--text); font: 1rem/1.55 "Segoe UI", system-ui, sans-serif; }
-        .shell { max-width: 64rem; margin: auto; padding: clamp(1rem, 4vw, 2.5rem); }
-        header { background: var(--navy); color: #fff; padding: clamp(1rem, 4vw, 2rem); border-radius: 1rem; }
+        .shell { max-width: 57rem; margin: auto; padding: 0 max(.875rem,env(safe-area-inset-right)) max(1.5rem,env(safe-area-inset-bottom)) max(.875rem,env(safe-area-inset-left)); }
         a { color: var(--blue); text-underline-offset: .2em; }
-        header a { color: #e0efff; }
-        h1 { font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.15; margin: .65rem 0 0; }
-        h2 { margin: 0 0 .5rem; font-size: 1.18rem; }
-        .filters, .notice, article { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: .85rem; background: #fff; }
-        .filters { display: grid; gap: .85rem; }
-        label { display: grid; gap: .3rem; font-weight: 650; }
-        select { width: 100%; min-width: 0; min-height: 44px; padding: .45rem .65rem; font: inherit; color: var(--text); background: #fff; border: 1px solid var(--line); border-radius: .45rem; }
         :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
-        .notice { color: var(--muted); }
-        .notice[data-state="error"] { color: #842029; border-color: #ad525b; }
-        article { overflow-wrap: anywhere; }
+        .icon { width:1.25rem; height:1.25rem; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+        .app-bar { min-height:3.5rem; display:flex; align-items:center; gap:.5rem; padding:max(.4rem,env(safe-area-inset-top)) 0 .4rem; }
+        .icon-button { display:grid; place-items:center; width:44px; min-width:44px; height:44px; border-radius:50%; background:#fff; color:var(--navy); }
+        .app-bar strong { font-size:1.12rem; }
+        .app-bar .brand { margin-inline-start:auto; color:var(--muted); font-size:.72rem; font-weight:800; letter-spacing:.08em; }
+        .hero { display:flex; align-items:center; gap:.8rem; background:linear-gradient(135deg,var(--navy),#16476e); color:#fff; padding:clamp(.9rem,4vw,1.55rem); border-radius:1.2rem; }
+        .hero-mark { display:grid; place-items:center; width:2.75rem; height:2.75rem; flex:none; border-radius:.75rem; background:var(--gold); color:var(--navy); }
+        h1 { font-size:clamp(1.35rem,5vw,2rem); line-height:1.13; margin:0; }
+        h2 { margin:0 0 .45rem; font-size:1.14rem; line-height:1.25; }
+        h3 { margin:0 0 .45rem; font-size:1.08rem; line-height:1.25; }
+        .development { display:flex; align-items:flex-start; gap:.6rem; margin:.75rem 0; padding:.75rem .85rem; background:#fff2ce; color:#533e10; border-radius:.75rem; font-size:.875rem; }
+        .development .icon { margin-top:.1rem; }
+        .filters, .notice, article { margin-top:.8rem; padding:.9rem; min-width:0; border:1px solid var(--line); border-radius:1rem; background:#fff; }
+        .filters { display:grid; gap:.6rem; }
+        .filter-title { margin:0; font-size:.84rem; font-weight:750; color:var(--muted); }
+        .area-chips { display:flex; gap:.4rem; overflow-x:auto; padding:.25rem .2rem .5rem; scroll-padding-inline:.2rem; overscroll-behavior-inline:contain; }
+        .area-chips button, .segments button { min-height:44px; border:1px solid var(--line); border-radius:2rem; background:#eff5fa; color:var(--navy); padding:.4rem .68rem; font:inherit; font-size:.875rem; font-weight:700; cursor:pointer; }
+        .area-chips button { flex:none; white-space:nowrap; }
+        .segments { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.25rem; padding:.25rem; background:#e9f0f7; border-radius:.85rem; }
+        .segments button { min-width:0; background:transparent; border-color:transparent; border-radius:.65rem; line-height:1.2; overflow-wrap:anywhere; }
+        .area-chips [aria-pressed="true"], .segments [aria-pressed="true"] { background:var(--navy); color:#fff; border-color:var(--navy); }
+        .area-chips button, .segments button { transition:background .15s ease; }
+        .results-header { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin-top:1rem; }
+        .results-header h2 { margin:0; }
+        .wit { display:inline-block; color:#60460b; background:#ffeabc; padding:.12rem .5rem; border-radius:.35rem; font-size:.76rem; font-weight:750; }
+        .notice { color:var(--muted); }
+        .notice[data-state="empty"] { padding:1.65rem .85rem; text-align:center; }
+        .notice[data-state="empty"]::before { display:grid; place-items:center; content:'—'; margin:0 auto .65rem; width:2.4rem; height:2.4rem; border:2px solid #bdcfe2; border-radius:.7rem; background:#e8f1fa; color:var(--navy); font-weight:800; }
+        .notice[data-state="error"] { color:#842029; border-color:#ad525b; }
+        #sign-in a { display:inline-flex; align-items:center; min-height:44px; }
+        article { overflow-wrap:anywhere; border-inline-start:4px solid #ad812b; }
         article p { margin: 0 0 .65rem; }
-        article dl { margin: 0; }
-        article dt { font-weight: 650; }
-        article dd { margin: 0 0 .5rem; white-space: pre-line; }
-        .badge { display: inline-block; border-radius: .4rem; background: #e6f0fa; color: var(--navy); padding: .15rem .5rem; }
+        article dl { display:grid; grid-template-columns:minmax(0,1fr); margin:0; font-size:.9rem; }
+        article dt { font-weight:700; color:var(--muted); }
+        article dd { margin:0 0 .45rem; white-space:pre-line; }
+        .schedule-time { color:var(--muted); font-size:.9rem; font-weight:650; }
+        .badge { display:inline-block; border-radius:1rem; background:#dcf2e9; color:#175043; padding:.16rem .6rem; font-size:.78rem; font-weight:750; }
         .cancelled { background: #fce8ea; color: #842029; }
-        @media (min-width: 36rem) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (min-width:42rem) { .segments { grid-template-columns:repeat(4,minmax(0,1fr)); } article dl { grid-template-columns:minmax(10rem,1fr) minmax(0,2fr); } }
+        @media (prefers-reduced-motion:reduce) { *, *::before { transition:none !important; } }
     </style>
 </head>
 <body>
 <main class="shell">
-    <header>
-        <a href="menu.html">← Kembali ke Menu Jemaat</a>
-        <h1>Jadwal Ibadah &amp; Pelayanan</h1>
+    <header class="app-bar">
+        <a class="icon-button" href="menu.html" aria-label="Kembali ke Menu Jemaat"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5M8 12h13"/></svg></a>
+        <strong>Jadwal</strong><span class="brand">SIPAPUA</span>
     </header>
-    <p class="notice" id="development-notice">Fitur Jadwal Ibadah &amp; Pelayanan sedang dalam pengembangan. Informasi jadwal, waktu ibadah, dan penugasan pendeta akan tersedia setelah diterbitkan oleh Administrator SIPAPUA.</p>
+    <div class="hero">
+        <span class="hero-mark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-12 5 2 2 4-4"/></svg></span>
+        <h1>Jadwal Ibadah &amp; Pelayanan</h1>
+    </div>
+    <p class="development"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h0"/></svg><span>Fitur Jadwal Ibadah &amp; Pelayanan sedang dalam pengembangan. Informasi jadwal, waktu ibadah, dan penugasan pendeta akan tersedia setelah diterbitkan oleh Administrator SIPAPUA.</span></p>
     <section class="filters" aria-label="Filter jadwal" id="filters" hidden>
+        <p class="filter-title" id="area-label">Wilayah</p>
+        <div class="area-chips" id="area-chips" role="group" aria-labelledby="area-label"></div>
         <label for="area">Wilayah
             <select id="area">
                 <option value="abepura">Abepura</option>
@@ -49,6 +78,8 @@
                 <option value="arso-2">Arso 2</option>
             </select>
         </label>
+        <p class="filter-title" id="view-label">Tampilan jadwal</p>
+        <div class="segments" id="schedule-segments" role="group" aria-labelledby="view-label"></div>
         <label for="view">Tampilan
             <select id="view">
                 <option value="week">Minggu Ini</option>
@@ -58,9 +89,10 @@
             </select>
         </label>
     </section>
+    <div class="results-header" id="results-header" hidden><h2 id="results-title">Minggu Ini</h2><span class="wit">WIT</span></div>
     <p class="notice" id="status" role="status">Memeriksa sesi anggota…</p>
     <p id="sign-in" hidden><a href="index.html">Masuk ke SIPAPUA</a></p>
-    <section id="schedules" aria-label="Daftar jadwal pelayanan"></section>
+    <section id="schedules" aria-labelledby="results-title"></section>
 </main>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
@@ -102,6 +134,8 @@
     const status = document.getElementById("status");
     const signIn = document.getElementById("sign-in");
     const schedules = document.getElementById("schedules");
+    const resultsHeader = document.getElementById("results-header");
+    const resultsTitle = document.getElementById("results-title");
     const civilClock = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Jayapura", year: "numeric", month: "2-digit", day: "2-digit",
         hour: "2-digit", minute: "2-digit", hourCycle: "h23"
@@ -152,9 +186,10 @@
 
     function scheduleCard(record) {
         const article = document.createElement("article");
-        const heading = document.createElement("h2");
+        const heading = document.createElement("h3");
         heading.textContent = record.title;
         const date = document.createElement("p");
+        date.className = "schedule-time";
         date.textContent = dateLabel.format(new Date(record.date + "T00:00:00+09:00")) +
             " · " + record.startTime + "–" + record.endTime + " WIT";
         const badge = document.createElement("p");
@@ -184,18 +219,41 @@
 
     function render() {
         const visible = selectSchedules();
+        resultsHeader.hidden = false;
+        resultsTitle.textContent = view.selectedOptions[0].textContent;
         schedules.replaceChildren(...visible.map(scheduleCard));
-        setStatus(visible.length ? "" : "Jadwal pelayanan belum tersedia.");
+        setStatus(visible.length ? "" : "Jadwal pelayanan belum tersedia.", visible.length ? "" : "empty");
     }
 
     function showUnavailable(message) {
         filters.hidden = true;
+        resultsHeader.hidden = true;
         schedules.replaceChildren();
         setStatus(message, "error");
     }
 
-    area.addEventListener("change", render);
-    view.addEventListener("change", render);
+    function bindFilter(select, groupId) {
+        const group = document.getElementById(groupId);
+        const buttons = [...select.options].map(option => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = option.textContent;
+            button.addEventListener("click", () => {
+                select.value = option.value;
+                select.dispatchEvent(new Event("change"));
+            });
+            group.appendChild(button);
+            return { button, value: option.value };
+        });
+        const updateSelection = () => {
+            for (const { button, value } of buttons) button.setAttribute("aria-pressed", String(value === select.value));
+        };
+        select.parentElement.hidden = true;
+        updateSelection();
+        select.addEventListener("change", () => { updateSelection(); render(); });
+    }
+    bindFilter(area, "area-chips");
+    bindFilter(view, "schedule-segments");
 
     try {
         // Restore SIPAPUA's existing browser Auth session. This page neither
@@ -214,6 +272,7 @@
             records = [];
             schedules.replaceChildren();
             filters.hidden = true;
+            resultsHeader.hidden = true;
             signIn.hidden = !!user && !user.isAnonymous;
             if (!user || user.isAnonymous) {
                 setStatus("Masuk dengan akun SIPAPUA untuk melihat jadwal.");
