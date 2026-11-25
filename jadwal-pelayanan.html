@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jadwal Ibadah &amp; Pelayanan · SIPAPUA</title>
+    <style>
+        :root { color-scheme: light; --navy: #10385c; --blue: #075395; --text: #142b43; --muted: #435b71; --line: #bfcedb; }
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        body { margin: 0; background: #edf3f8; color: var(--text); font: 1rem/1.55 "Segoe UI", system-ui, sans-serif; }
+        .shell { max-width: 64rem; margin: auto; padding: clamp(1rem, 4vw, 2.5rem); }
+        header { background: var(--navy); color: #fff; padding: clamp(1rem, 4vw, 2rem); border-radius: 1rem; }
+        a { color: var(--blue); text-underline-offset: .2em; }
+        header a { color: #e0efff; }
+        h1 { font-size: clamp(1.5rem, 5vw, 2.4rem); line-height: 1.15; margin: .65rem 0 0; }
+        h2 { margin: 0 0 .5rem; font-size: 1.18rem; }
+        .filters, .notice, article { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: .85rem; background: #fff; }
+        .filters { display: grid; gap: .85rem; }
+        label { display: grid; gap: .3rem; font-weight: 650; }
+        select { width: 100%; min-width: 0; min-height: 44px; padding: .45rem .65rem; font: inherit; color: var(--text); background: #fff; border: 1px solid var(--line); border-radius: .45rem; }
+        :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+        .notice { color: var(--muted); }
+        .notice[data-state="error"] { color: #842029; border-color: #ad525b; }
+        article { overflow-wrap: anywhere; }
+        article p { margin: 0 0 .65rem; }
+        article dl { margin: 0; }
+        article dt { font-weight: 650; }
+        article dd { margin: 0 0 .5rem; white-space: pre-line; }
+        .badge { display: inline-block; border-radius: .4rem; background: #e6f0fa; color: var(--navy); padding: .15rem .5rem; }
+        .cancelled { background: #fce8ea; color: #842029; }
+        @media (min-width: 36rem) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <header>
+        <a href="menu.html">← Kembali ke Menu Jemaat</a>
+        <h1>Jadwal Ibadah &amp; Pelayanan</h1>
+    </header>
+    <p class="notice" id="development-notice">Fitur Jadwal Ibadah &amp; Pelayanan sedang dalam pengembangan. Informasi jadwal, waktu ibadah, dan penugasan pendeta akan tersedia setelah diterbitkan oleh Administrator SIPAPUA.</p>
+    <section class="filters" aria-label="Filter jadwal" id="filters" hidden>
+        <label for="area">Wilayah
+            <select id="area">
+                <option value="abepura">Abepura</option>
+                <option value="sentani">Sentani</option>
+                <option value="doyo">Doyo</option>
+                <option value="arso-1">Arso 1</option>
+                <option value="arso-2">Arso 2</option>
+            </select>
+        </label>
+        <label for="view">Tampilan
+            <select id="view">
+                <option value="week">Minggu Ini</option>
+                <option value="upcoming">Jadwal Mendatang</option>
+                <option value="sunday-worship">Ibadah Minggu</option>
+                <option value="other-ministry">Pelayanan Lainnya</option>
+            </select>
+        </label>
+    </section>
+    <p class="notice" id="status" role="status">Memeriksa sesi anggota…</p>
+    <p id="sign-in" hidden><a href="index.html">Masuk ke SIPAPUA</a></p>
+    <section id="schedules" aria-label="Daftar jadwal pelayanan"></section>
+</main>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth-compat.js"></script>
+<script>
+(() => {
+    "use strict";
+
+    /**
+     * Member read contract. Times are WIT wall-clock values, for same-day activities.
+     * @typedef {object} MemberSchedule
+     * @property {string} id Stable public schedule ID.
+     * @property {string} title
+     * @property {string} date YYYY-MM-DD in Asia/Jayapura.
+     * @property {string} startTime HH:mm in Asia/Jayapura.
+     * @property {string} endTime HH:mm in Asia/Jayapura.
+     * @property {'abepura'|'sentani'|'doyo'|'arso-1'|'arso-2'} area
+     * @property {'sunday-worship'|'other-ministry'} category
+     * @property {string} venue
+     * @property {string} leader
+     * @property {string[]} officers
+     * @property {string} [theme]
+     * @property {string} [scripture]
+     * @property {string} [publicNotes]
+     * @property {'published'|'cancelled'} status
+     * @property {string} publishedAt Original ISO publication timestamp, retained on cancellation.
+     */
+
+    /** @returns {Promise<ReadonlyArray<MemberSchedule>>} */
+    async function readMemberSchedules() {
+        // Phase 1 has no approved source. A future adapter must supply only
+        // the member projection, excluding drafts and administrator metadata.
+        return [];
+    }
+
+    const area = document.getElementById("area");
+    const view = document.getElementById("view");
+    const areas = new Map([...area.options].map(option => [option.value, option.textContent]));
+    const filters = document.getElementById("filters");
+    const status = document.getElementById("status");
+    const signIn = document.getElementById("sign-in");
+    const schedules = document.getElementById("schedules");
+    const civilClock = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jayapura", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    });
+    const dateLabel = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jayapura", weekday: "long", day: "numeric", month: "long", year: "numeric"
+    });
+    const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+    let records = [];
+
+    function setStatus(message, state = "") {
+        status.textContent = message;
+        status.dataset.state = state;
+        status.hidden = !message;
+    }
+
+    function isPublic(record) {
+        return typeof record?.id === "string" && record.id.trim() &&
+            typeof record.title === "string" && record.title.trim() &&
+            areas.has(record.area) && ["sunday-worship", "other-ministry"].includes(record.category) &&
+            ["published", "cancelled"].includes(record.status) &&
+            typeof record.publishedAt === "string" && Number.isFinite(Date.parse(record.publishedAt)) &&
+            /^\d{4}-\d{2}-\d{2}$/.test(record.date) &&
+            Number.isFinite(Date.parse(record.date)) &&
+            new Date(record.date).toISOString().slice(0, 10) === record.date &&
+            timePattern.test(record.startTime) && timePattern.test(record.endTime) &&
+            record.endTime > record.startTime;
+    }
+
+    function selectSchedules(now = new Date()) {
+        const parts = Object.fromEntries(civilClock.formatToParts(now).map(({ type, value }) => [type, value]));
+        const today = parts.year + "-" + parts.month + "-" + parts.day;
+        const time = parts.hour + ":" + parts.minute;
+        // Calculate the Monday–Sunday window using the WIT calendar date.
+        const monday = new Date(today + "T00:00:00Z");
+        monday.setUTCDate(monday.getUTCDate() - (monday.getUTCDay() + 6) % 7);
+        const sunday = new Date(monday);
+        sunday.setUTCDate(sunday.getUTCDate() + 6);
+        const start = monday.toISOString().slice(0, 10);
+        const end = sunday.toISOString().slice(0, 10);
+        return records.filter(record => {
+            if (!isPublic(record) || record.area !== area.value) return false;
+            if (view.value === "week") return record.date >= start && record.date <= end;
+            if (view.value === "upcoming") return record.date > today || (record.date === today && record.startTime >= time);
+            return record.category === view.value;
+        }).sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime) || a.id.localeCompare(b.id));
+    }
+
+    function scheduleCard(record) {
+        const article = document.createElement("article");
+        const heading = document.createElement("h2");
+        heading.textContent = record.title;
+        const date = document.createElement("p");
+        date.textContent = dateLabel.format(new Date(record.date + "T00:00:00+09:00")) +
+            " · " + record.startTime + "–" + record.endTime + " WIT";
+        const badge = document.createElement("p");
+        badge.className = record.status === "cancelled" ? "badge cancelled" : "badge";
+        badge.textContent = record.status === "cancelled" ? "Dibatalkan" : "Dipublikasikan";
+        const details = document.createElement("dl");
+        const fields = [
+            ["Wilayah pelayanan", areas.get(record.area)],
+            ["Lokasi ibadah", record.venue],
+            ["Pendeta / pemimpin pelayanan", record.leader],
+            ["Petugas pelayanan", Array.isArray(record.officers) ? record.officers.filter(item => typeof item === "string").join("\n") : ""],
+            ["Tema ibadah", record.theme],
+            ["Ayat Alkitab", record.scripture],
+            ["Catatan", record.publicNotes]
+        ];
+        for (const [label, value] of fields) {
+            if (typeof value !== "string" || !value.trim()) continue;
+            const term = document.createElement("dt");
+            const description = document.createElement("dd");
+            term.textContent = label;
+            description.textContent = value;
+            details.append(term, description);
+        }
+        article.append(heading, date, badge, details);
+        return article;
+    }
+
+    function render() {
+        const visible = selectSchedules();
+        schedules.replaceChildren(...visible.map(scheduleCard));
+        setStatus(visible.length ? "" : "Jadwal pelayanan belum tersedia.");
+    }
+
+    function showUnavailable(message) {
+        filters.hidden = true;
+        schedules.replaceChildren();
+        setStatus(message, "error");
+    }
+
+    area.addEventListener("change", render);
+    view.addEventListener("change", render);
+
+    try {
+        // Restore SIPAPUA's existing browser Auth session. This page neither
+        // signs users in nor requests member documents, App Check, or schedule data.
+        const firebase = window.firebase;
+        if (!firebase.apps.length) firebase.initializeApp({
+            apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
+            authDomain: "boby-apps-project.firebaseapp.com",
+            projectId: "boby-apps-project",
+            appId: "1:125984859692:web:09f75df5d2e4b6e3bcd389"
+        });
+        const auth = firebase.auth();
+        let sessionGeneration = 0;
+        auth.onAuthStateChanged(async user => {
+            const generation = ++sessionGeneration;
+            records = [];
+            schedules.replaceChildren();
+            filters.hidden = true;
+            signIn.hidden = !!user && !user.isAnonymous;
+            if (!user || user.isAnonymous) {
+                setStatus("Masuk dengan akun SIPAPUA untuk melihat jadwal.");
+                return;
+            }
+            setStatus("Memuat jadwal pelayanan…");
+            const isCurrent = () => generation === sessionGeneration && auth.currentUser === user;
+            try {
+                const result = await readMemberSchedules();
+                if (!isCurrent()) return;
+                if (!Array.isArray(result)) throw new Error("Invalid member schedule response");
+                records = result;
+                filters.hidden = false;
+                render();
+            } catch (_) {
+                if (isCurrent()) showUnavailable("Jadwal pelayanan gagal dimuat. Muat ulang halaman.");
+            }
+        }, () => {
+            ++sessionGeneration;
+            records = [];
+            showUnavailable("Sesi anggota belum dapat diperiksa. Muat ulang halaman.");
+        });
+    } catch (_) {
+        showUnavailable("Layanan sesi SIPAPUA belum termuat. Muat ulang halaman.");
+    }
+})();
+</script>
+</body>
+</html>
