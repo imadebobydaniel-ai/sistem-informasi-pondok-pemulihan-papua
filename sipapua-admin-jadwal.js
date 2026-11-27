@@ -22,6 +22,7 @@
 
     function validate(fields) {
         if (!fields.title.trim() || !fields.venue.trim() || !fields.leader.trim()) throw new Error("Lengkapi judul, lokasi, dan pemimpin pelayanan.");
+        if (!fields.theme.trim() || fields.theme.trim().length > 150) throw new Error("Tema khotbah wajib diisi (maksimal 150 karakter).");
         if (!Object.hasOwn(areas, fields.area) || !categories.includes(fields.category)) throw new Error("Wilayah atau jenis kegiatan tidak valid.");
         if (!validDate(fields.date)) throw new Error("Tanggal WIT tidak valid.");
         if (!timePattern.test(fields.startTime) || !timePattern.test(fields.endTime) || fields.startTime >= fields.endTime) {
@@ -128,6 +129,11 @@
     const document = root.document;
     const get = id => document.getElementById(id);
     const form = get("schedule-form");
+    const scheduleBackendEnabled = false;
+    get("save").disabled = true;
+    get("save").textContent = "Simpan draft (backend belum aktif)";
+    get("publish").disabled = true;
+    get("cancel").disabled = true;
     const field = name => form.elements.namedItem(name);
     const newId = () => root.crypto.randomUUID();
     const createElement = (tag, label) => {
@@ -150,49 +156,48 @@
     let pendingOccurrences = [];
     let rotation = new Map();
     let dirty = false;
+    let saving = false;
     const anchor = get("anchor");
     anchor.value = witDate.format();
 
     function render() {
         const status = get("status-filter").value;
         const area = get("area-filter").value;
-        const { start, count, offset } = calendarPeriod(validDate(anchor.value) ? anchor.value : witDate.format(), get("calendar-mode").value);
-        const end = plusDays(start, count - 1);
+        const start = validDate(anchor.value) ? anchor.value : witDate.format();
+        const end = plusDays(start, 6);
+        const query = normalize(get("search").value || "");
         const selected = records.filter(record => record.date >= start && record.date <= end &&
-            (!area || record.area === area) && (!status || record.status === status));
+            (!area || record.area === area) && (!status || record.status === status) &&
+            (!query || [record.title, record.theme, record.venue, record.leader].some(value => normalize(value || "").includes(query))));
         get("summary").textContent = Object.entries(statuses).map(([key, label]) =>
             label + " " + records.filter(record => record.status === key).length).join(" · ");
-        get("period").textContent = dayLabel.format(day(start)) + " – " + dayLabel.format(day(end)) + " " + end.slice(0, 4) + " · WIT";
+        get("period").textContent = "Sesi " + dayLabel.format(day(start)) + " – " + dayLabel.format(day(end)) + " " + end.slice(0, 4) + " · WIT";
         get("empty").hidden = selected.length > 0;
-        const cells = Array.from({ length: offset }, () => {
-            const cell = createElement("div");
-            cell.className = "day offset";
-            cell.setAttribute("aria-hidden", "true");
-            return cell;
+        const rows = selected.slice().sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime)).map(item => {
+            const article = createElement("article");
+            article.className = "schedule-row";
+            const info = createElement("div");
+            info.append(createElement("h3", item.title), createElement("div",
+                item.theme + " · " + item.date + " · " + item.startTime + " WIT · " + areas[item.area][0] + " · " + item.venue,
+                "row-meta"));
+            const button = createElement("button", item.startTime + " · " + item.title + " · " + areas[item.area][0] + " · " + statuses[item.status]);
+            button.className = "button";
+            button.type = "button";
+            button.setAttribute("aria-label", "Edit jadwal " + item.title);
+            button.addEventListener("click", () => { if (authorized()) openEditor(item); });
+            article.append(info, button);
+            return article;
         });
-        for (let index = 0; index < count; index++) {
-            const date = plusDays(start, index);
-            const cell = createElement("div");
-            cell.className = "day";
-            cell.append(createElement("h3", dayLabel.format(day(date))));
-            for (const item of selected.filter(record => record.date === date).sort((a, b) => a.startTime.localeCompare(b.startTime))) {
-                const button = createElement("button", item.startTime + " · " + item.title + " · " + areas[item.area][0] + " · " + statuses[item.status]);
-                button.className = "secondary";
-                button.type = "button";
-                button.addEventListener("click", () => { if (authorized()) openEditor(item); });
-                cell.append(button);
-            }
-            cells.push(cell);
-        }
-        get("calendar").replaceChildren(...cells);
+        get("calendar").replaceChildren(...rows);
         get("audit").replaceChildren(...audit.slice().reverse().map(event => createElement("li",
-            auditTime.format(new Date(event.at)) + " WIT · " + event.role + " · " + event.action + " · " + event.title +
-                " (" + (statuses[event.before] || "baru") + " → " + statuses[event.after] + ")")));
+            auditTime.format(new Date(event.at)) + " WIT · " + (event.action === "publish" ? "Jadwal diterbitkan" :
+                event.action === "cancel" ? "Jadwal dibatalkan" : "Jadwal disimpan") + " · " + event.title)));
+        get("audit-empty").hidden = audit.length > 0;
         get("member-preview").textContent = JSON.stringify(records.map(memberProjection).filter(Boolean), null, 2);
     }
 
     function authorized() {
-        return session && auth.currentUser === session.user;
+        return !saving && session && auth.currentUser === session.user;
     }
 
     function feedback(message, state = "") {
@@ -208,19 +213,24 @@
 
     function updateActions(record) {
         const cancelled = record?.status === "cancelled";
-        get("save").disabled = cancelled;
+        get("save").disabled = !scheduleBackendEnabled || cancelled;
         get("preview").disabled = cancelled;
         get("publish").hidden = record?.status !== "draft";
         get("cancel").hidden = record?.status !== "published";
-        get("publish").disabled = dirty;
-        get("cancel").disabled = dirty;
+        get("publish").disabled = !scheduleBackendEnabled || dirty;
+        get("cancel").disabled = !scheduleBackendEnabled || dirty;
         get("editor-state").textContent = (record ? statuses[record.status] : "Draft baru") +
             (record?.publishedAt ? " · Pertama terbit " + auditTime.format(new Date(record.publishedAt)) + " WIT" : "") +
-            (dirty ? " · Perbarui contoh sebelum mengganti status." : "");
+            (dirty ? " · Simpan perubahan sebelum mengubah status." : "");
     }
 
     function openEditor(record, focus = true) {
         form.reset();
+        posterDataUrl = null;
+        get("poster-file").value = "";
+        get("poster-note").textContent = "Poster belum memiliki penyimpanan permanen. Berkas hanya ditinjau sementara di browser dan tidak ikut tersimpan; anggota memakai poster fallback.";
+        get("member-preview-image").src = "poster-fallback.svg";
+        get("member-preview-image").alt = "Poster fallback Jadwal Pelayanan SIPAPUA";
         editingId = record?.id;
         pendingId = record?.id || newId();
         pendingOccurrences = [];
@@ -235,14 +245,16 @@
             field("officers").value = record.officers.map(({ name, role }) => role ? name + " | " + role : name).join("\n");
         }
         for (const input of form.querySelectorAll("input, select, textarea")) input.disabled = record?.status === "cancelled";
-        field("weeks").disabled = !!record;
-        get("recurrence-label").hidden = !!record;
+        field("weeks").value = "1";
+        field("weeks").disabled = true;
+        get("recurrence-label").hidden = true;
         get("scope-label").hidden = !record?.seriesId || record.status === "cancelled";
         get("editor-title").textContent = record ? (record.status === "cancelled" ? "Lihat jadwal" : "Edit jadwal") : "Tambah jadwal";
         get("rotation").replaceChildren();
         renderConflicts([]);
         feedback("");
         updateActions(record);
+        renderPreview();
         get("editor").hidden = false;
         if (focus) get("editor-title").focus();
     }
@@ -264,17 +276,67 @@
         return items;
     }
 
-    function save(items, action) {
-        const at = new Date().toISOString();
-        for (const item of items) {
-            const index = records.findIndex(existing => existing.id === item.id);
-            const before = index === -1 ? null : records[index].status;
-            if (index === -1) records.push(item);
-            else records[index] = item;
-            audit.push({ scheduleId: item.id, actorUid: session.user.uid, role: session.role, action, at, before, after: item.status, title: item.title });
-        }
-        render();
+    let posterDataUrl = null;
+    function renderPreview() {
+        const title = field("title").value.trim();
+        const theme = field("theme").value.trim();
+        const areaLabel = areas[field("area").value]?.[0] || "Wilayah";
+        const categoryLabel = field("category").selectedOptions[0]?.textContent || "Pelayanan";
+        const dateValue = field("date").value;
+        const dateText = validDate(dateValue) ? dayLabel.format(day(dateValue)) : "Tanggal";
+        const timeText = field("startTime").value || "Jam";
+        const venue = field("venue").value.trim() || "Lokasi gereja";
+        get("preview-category").textContent = categoryLabel.toLocaleUpperCase("id-ID");
+        get("preview-title").textContent = title || "Judul pelayanan";
+        get("preview-theme").textContent = theme || "Tema khotbah akan tampil di sini";
+        get("preview-facts").textContent = `${dateText} · ${timeText} WIT · ${venue} · ${areaLabel}`;
+        get("preview-leader").textContent = field("leader").value.trim() || "Pelayan firman";
+        get("member-preview-image").src = posterDataUrl || "poster-fallback.svg";
+        get("member-preview-image").alt = get("preview-image-alt").value.trim() || (posterDataUrl ? "Poster pilihan, pratinjau sementara" : "Poster fallback Jadwal Pelayanan SIPAPUA");
     }
+
+    function sniffPoster(bytes) {
+        const b = new Uint8Array(bytes);
+        if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+        if (b.length >= 8 && [137,80,78,71,13,10,26,10].every((value,index) => b[index] === value)) return "image/png";
+        if (b.length >= 12 && String.fromCharCode(...b.slice(0,4)) === "RIFF" && String.fromCharCode(...b.slice(8,12)) === "WEBP") return "image/webp";
+        return null;
+    }
+
+    get("poster-file").addEventListener("change", async () => {
+        const file = get("poster-file").files?.[0];
+        posterDataUrl = null;
+        if (!file) { get("poster-note").textContent = "Poster tidak dipilih. Kartu anggota memakai poster fallback."; renderPreview(); return; }
+        if (file.size < 1 || file.size > 2 * 1024 * 1024) {
+            get("poster-file").value = "";
+            get("poster-note").textContent = "Berkas harus berukuran maksimal 2 MB. Tidak ada berkas yang diunggah.";
+            feedback("Ukuran poster tidak valid.", "error");
+            renderPreview();
+            return;
+        }
+        try {
+            const bytes = await file.arrayBuffer();
+            const detected = sniffPoster(bytes);
+            if (!detected || !["image/jpeg","image/png","image/webp"].includes(file.type) || detected !== file.type) throw new Error("Format atau isi poster tidak didukung.");
+            const view = new Uint8Array(bytes);
+            let binary = "";
+            for (let offset = 0; offset < view.length; offset += 0x8000) binary += String.fromCharCode(...view.subarray(offset, offset + 0x8000));
+            const base64 = btoa(binary);
+            posterDataUrl = `data:${detected};base64,${base64}`;
+            get("poster-note").textContent = "Poster lolos pemeriksaan format/ukuran untuk pratinjau sementara. Tidak diunggah atau disimpan; anggota tetap memakai poster fallback.";
+            feedback("Poster hanya tampil sementara di pratinjau browser.");
+            renderPreview();
+        } catch (error) {
+            get("poster-file").value = "";
+            posterDataUrl = null;
+            get("poster-note").textContent = "Poster tidak lolos pemeriksaan. Tidak ada berkas yang diunggah.";
+            feedback(error.message || "Poster tidak valid.", "error");
+            renderPreview();
+        }
+    });
+    get("preview-image-alt").addEventListener("input", renderPreview);
+    form.addEventListener("input", renderPreview);
+    form.addEventListener("change", renderPreview);
 
     function showRotation(items) {
         get("rotation").replaceChildren(...items.map((item, index) => {
@@ -314,54 +376,21 @@
 
     form.addEventListener("submit", event => {
         event.preventDefault();
-        if (!authorized() || !form.reportValidity()) return;
-        try {
-            const items = buildPlan();
-            const found = conflicts(items, records);
-            if (found.length && items.some(item => item.status === "published")) {
-                renderConflicts(found);
-                throw new Error("Selesaikan benturan sebelum merevisi jadwal terbit.");
-            }
-            const action = editingId ? "Revisi" : "Buat draft";
-            anchor.value = items[0].date;
-            save(items, action);
-            openEditor(records.find(record => record.id === items[0].id), false);
-            renderConflicts(found);
-            feedback(items.length + " kejadian ditambahkan ke pratinjau halaman." + (found.length ? " Draft masih memiliki benturan." : ""));
-        } catch (error) { feedback(error.message, "error"); }
+        if (!authorized()) return;
+        if (!scheduleBackendEnabled) feedback("Backend jadwal belum aktif. Draft tidak disimpan.", "error");
     });
-
-    function changeStatus(target) {
-        if (!authorized() || dirty) return;
-        const record = records.find(item => item.id === editingId);
-        if (!record) return;
-        try {
-            if (target === "published") {
-                const found = conflicts([record], records);
-                renderConflicts(found);
-                if (found.length) throw new Error("Selesaikan benturan sebelum menerbitkan.");
-            }
-            if (!root.confirm(target === "published" ? "Tampilkan status terbit pada contoh jadwal ini?" : "Tampilkan status dibatalkan pada contoh ini?")) return;
-            const next = transition(record, target, new Date().toISOString());
-            save([next], target === "published" ? "Simulasi terbit" : "Simulasi pembatalan");
-            openEditor(records.find(item => item.id === record.id), false);
-            feedback(target === "published" ? "Contoh sekarang berstatus terbit. Tidak ada jadwal yang dipublikasikan." : "Contoh sekarang berstatus dibatalkan.");
-        } catch (error) { feedback(error.message, "error"); }
+    function changeStatus() {
+        if (!authorized()) return;
+        if (!scheduleBackendEnabled) feedback("Backend jadwal belum aktif. Status tidak diubah.", "error");
     }
     get("publish").addEventListener("click", () => changeStatus("published"));
     get("cancel").addEventListener("click", () => changeStatus("cancelled"));
-    for (const id of ["calendar-mode", "anchor", "area-filter", "status-filter"]) get(id).addEventListener("change", render);
+    for (const id of ["anchor", "area-filter", "status-filter"]) get(id).addEventListener("change", render);
+    get("search").addEventListener("input", render);
     for (const [id, step] of [["previous", -1], ["next", 1]]) {
         get(id).addEventListener("click", () => {
             const date = validDate(anchor.value) ? anchor.value : witDate.format();
-            if (get("calendar-mode").value === "month") {
-                const month = day(date);
-                month.setUTCDate(1);
-                month.setUTCMonth(month.getUTCMonth() + step);
-                anchor.value = isoDate(month);
-            } else {
-                anchor.value = plusDays(date, 7 * step);
-            }
+            anchor.value = plusDays(date, 7 * step);
             render();
         });
     }
@@ -383,8 +412,16 @@
         render();
     }
 
+    const loopbackHost = ["127.0.0.1", "localhost", "::1"].includes(root.location?.hostname);
+    if (loopbackHost && !root.firebase) {
+        clearWorkspace();
+        get("login").hidden = true;
+        get("access").textContent = "Pratinjau lokal tertutup. Login Firebase tidak disimulasikan.";
+        return;
+    }
     try {
         const firebase = root.firebase;
+        if (!firebase || !firebase.apps) throw new Error("Firebase SDK unavailable");
         if (!firebase.apps.length) firebase.initializeApp({
             apiKey: "AIzaSyDU2rk0rIF-sos_Sj7C5IMM9dU8z8p_VJM",
             authDomain: "boby-apps-project.firebaseapp.com",
@@ -393,9 +430,8 @@
         });
         auth = firebase.auth();
         auth.onAuthStateChanged(async user => {
-            if (auth.currentUser !== user || loginUser === user) return;
-            loginUser = user;
             const request = ++generation;
+            loginUser = user;
             clearWorkspace();
             get("login").hidden = !!user && !user.isAnonymous;
             if (!user || user.isAnonymous) {
@@ -407,15 +443,15 @@
                 const admin = await firebase.firestore().collection("admin_users").doc(user.uid).get({ source: "server" });
                 if (request !== generation || auth.currentUser !== user) return;
                 const data = admin.exists ? admin.data() : null;
-                const role = admin.metadata?.fromCache === false && admin.metadata.hasPendingWrites === false && managerRole(data);
-                // Apply the dashboard's protection requirement to Master previews without embedding an account UID.
+                const role = admin.metadata?.fromCache === false && admin.metadata.hasPendingWrites === false ? managerRole(data) : null;
                 if (!role || (role === "master" && data.protected !== true)) {
                     get("access").textContent = "Pengelolaan jadwal hanya tersedia untuk Master atau SuperAdmin aktif.";
                     return;
                 }
                 session = { user, role };
                 get("workspace").hidden = false;
-                get("access").textContent = "Akses pratinjau non-persisten · " + (role === "master" ? "Master" : "SuperAdmin");
+                if (get("storage-mode")) get("storage-mode").textContent = "Pratinjau non-persisten. Backend jadwal belum diaktifkan.";
+                get("access").textContent = "Akses administrator terverifikasi · " + (role === "master" ? "Master" : "SuperAdmin") + " · pratinjau non-persisten.";
             } catch (_) {
                 if (request === generation && auth.currentUser === user) {
                     get("access").textContent = "Izin administrator belum dapat dikonfirmasi. Muat ulang halaman.";
@@ -428,6 +464,7 @@
             get("access").textContent = "Sesi administrator belum dapat diperiksa.";
         });
     } catch (_) {
+        clearWorkspace();
         get("access").textContent = "Layanan sesi administrator belum termuat. Muat ulang halaman.";
     }
 })(typeof window === "object" ? window : globalThis);
